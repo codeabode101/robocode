@@ -1,0 +1,20 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/auth/[...workos]/route": "app/api/auth/[...workos]/route.js",
+  "/api/battle/validate/route": "app/api/battle/validate/route.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/battle/analyzer/page": "app/battle/analyzer/page.js",
+  "/battle/room/[matchId]/page": "app/battle/room/[matchId]/page.js",
+  "/daily/page": "app/daily/page.js",
+  "/debug/page": "app/debug/page.js",
+  "/battle/page": "app/battle/page.js",
+  "/page": "app/page.js",
+  "/leaderboard/page": "app/leaderboard/page.js",
+  "/house/page": "app/house/page.js",
+  "/sandbox/page": "app/sandbox/page.js",
+  "/shop/page": "app/shop/page.js",
+  "/story/chapter/[chapterId]/quest/[questId]/page": "app/story/chapter/[chapterId]/quest/[questId]/page.js",
+  "/onboarding/page": "app/onboarding/page.js",
+  "/tournament/page": "app/tournament/page.js",
+  "/story/page": "app/story/page.js"
+}

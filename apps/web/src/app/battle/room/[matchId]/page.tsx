@@ -42,7 +42,7 @@ export default function BattleRoom({ params }: { params: { matchId: string }}) {
   const [currentTick, setCurrentTick] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
-  const playInterval = useRef<NodeJS.Timer>()
+  const playInterval = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const handleLockIn = () => {
     setIsLocked(true)
@@ -55,14 +55,14 @@ export default function BattleRoom({ params }: { params: { matchId: string }}) {
 
   const togglePlay = () => {
     if (isPlaying) {
-      clearInterval(playInterval.current)
+      if (playInterval.current) clearInterval(playInterval.current)
       setIsPlaying(false)
     } else {
       setIsPlaying(true)
       playInterval.current = setInterval(() => {
         setCurrentTick(prev => {
           if (prev >= MOCK_REPLAY.ticks.length - 1) {
-            clearInterval(playInterval.current)
+            if (playInterval.current) clearInterval(playInterval.current)
             setIsPlaying(false)
             setTimeout(() => setPhase('results'), 1500)
             return prev

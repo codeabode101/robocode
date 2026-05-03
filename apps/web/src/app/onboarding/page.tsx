@@ -6,6 +6,8 @@ import { usePlayerStore } from '@/stores/playerStore'
 
 type OnboardingStep = 'welcome' | 'name' | 'age' | 'species' | 'starter' | 'summary'
 
+const steps: OnboardingStep[] = ['welcome', 'name', 'age', 'species', 'starter', 'summary']
+
 export default function Onboarding() {
   const [step, setStep] = useState<OnboardingStep>('welcome')
   const [robotName, setRobotName] = useState('')
@@ -13,16 +15,49 @@ export default function Onboarding() {
   const [selectedSpecies, setSelectedSpecies] = useState<'robo_pup' | 'circuit_cat' | 'pixel_dragon'>('robo_pup')
   const { setRobot, addCoins } = usePlayerStore()
 
+  const stepIndex = steps.indexOf(step)
+
   const handleComplete = () => {
     setRobot(robotName, selectedSpecies)
     addCoins(50)
-    // TODO: Save to DB and redirect to dashboard
     window.location.href = '/dashboard'
   }
 
+  const speciesInfo = {
+    robo_pup: { emoji: '🤖', name: 'Robo Pup', desc: 'Loyal & fast' },
+    circuit_cat: { emoji: '🐱', name: 'Circuit Cat', desc: 'Sneaky & smart' },
+    pixel_dragon: { emoji: '🐉', name: 'Pixel Dragon', desc: 'Powerful & fierce' },
+  }
+
   return (
-    <main className="min-h-screen bg-[#0f0f1a] text-[#e8eaf0] flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl">
+    <main className="relative min-h-screen bg-[#050510] text-white flex items-center justify-center p-4 overflow-hidden">
+      {/* Background layers */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a2e] via-[#050510] to-[#0f0a1a]" />
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(0,212,170,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,170,0.06) 1px, transparent 1px)',
+            backgroundSize: '60px 60px',
+          }}
+        />
+        <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/5 blur-[120px]" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-lg">
+        {/* Progress bar */}
+        <div className="flex items-center justify-center gap-2 mb-8">
+          {steps.map((_, idx) => (
+            <div
+              key={idx}
+              className={`h-1.5 rounded-full transition-all duration-500 ${
+                idx <= stepIndex ? 'w-8 bg-emerald-500' : 'w-4 bg-white/10'
+              }`}
+            />
+          ))}
+        </div>
+
         <AnimatePresence mode="wait">
           {step === 'welcome' && (
             <motion.div
@@ -30,20 +65,21 @@ export default function Onboarding() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="text-center"
+              transition={{ duration: 0.3 }}
+              className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm shadow-2xl text-center"
             >
-              <div className="text-6xl mb-6">🤖</div>
-              <h1 className="text-5xl font-display font-black text-[#00d4aa] mb-4">
-                Welcome to Robocode, Trainer!
+              <div className="text-7xl mb-6">🤖</div>
+              <h1 className="text-4xl font-display font-black mb-3 bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                Welcome to Robocode!
               </h1>
-              <p className="text-xl text-[#8892a4] mb-8 font-body">
+              <p className="text-lg text-gray-400 mb-8">
                 Program your robot. Master coding. Battle friends.
               </p>
               <button
                 onClick={() => setStep('name')}
-                className="btn-primary text-lg px-8 py-3"
+                className="bg-emerald-500 text-black font-bold text-lg px-8 py-3 rounded-xl hover:bg-emerald-400 transition-all hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95"
               >
-                Start Your Journey
+                Start Your Journey →
               </button>
             </motion.div>
           )}
@@ -54,25 +90,29 @@ export default function Onboarding() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="card"
+              transition={{ duration: 0.3 }}
+              className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm shadow-2xl"
             >
-              <h2 className="text-3xl font-display mb-6">Name Your Robot</h2>
-              <div className="bg-[#0f0f1a] p-4 rounded-[8px] mb-4 font-mono text-[#00d4aa]">
-                <span className="text-[#8892a4]">String</span> robotName = <span className="text-[#f5a623]">"</span>
+              <div className="text-4xl mb-4">✏️</div>
+              <h2 className="text-3xl font-display font-bold mb-2">Name Your Robot</h2>
+              <p className="text-gray-500 mb-6 text-sm">Every great robot needs a legendary name</p>
+              <div className="rounded-xl border border-white/5 bg-black/40 p-5 mb-6 font-mono text-lg">
+                <span className="text-purple-400">String</span> robotName = <span className="text-amber-400">"</span>
                 <input
                   type="text"
                   value={robotName}
                   onChange={(e) => setRobotName(e.target.value)}
-                  className="bg-transparent border-none outline-none text-[#f5a623] w-40"
+                  className="bg-transparent border-none outline-none text-emerald-400 w-40 font-bold placeholder-white/20"
                   placeholder="Sparky"
                   autoFocus
+                  maxLength={20}
                 />
-                <span className="text-[#f5a623]">"</span>;
+                <span className="text-amber-400">"</span>;
               </div>
               <button
                 onClick={() => setStep('age')}
-                disabled={!robotName}
-                className="btn-primary disabled:opacity-50"
+                disabled={!robotName.trim()}
+                className="w-full bg-emerald-500 text-black font-bold px-6 py-3 rounded-xl hover:bg-emerald-400 transition-all disabled:opacity-30 disabled:hover:bg-emerald-500 disabled:cursor-not-allowed"
               >
                 Continue →
               </button>
@@ -85,26 +125,35 @@ export default function Onboarding() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="card"
+              transition={{ duration: 0.3 }}
+              className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm shadow-2xl"
             >
-              <h2 className="text-3xl font-display mb-6">Set Robot Age</h2>
-              <div className="bg-[#0f0f1a] p-4 rounded-[8px] mb-4 font-mono text-[#00d4aa]">
-                <span className="text-[#8892a4]">int</span> robotAge = 
+              <div className="text-4xl mb-4">📅</div>
+              <h2 className="text-3xl font-display font-bold mb-2">Set Robot Age</h2>
+              <p className="text-gray-500 mb-6 text-sm">Younger robots learn faster!</p>
+              <div className="rounded-xl border border-white/5 bg-black/40 p-5 mb-4 font-mono text-lg">
+                <span className="text-purple-400">int</span> robotAge =
                 <input
                   type="number"
                   min={1}
                   max={10}
                   value={robotAge}
                   onChange={(e) => setRobotAge(parseInt(e.target.value) || 1)}
-                  className="bg-[#16213e] border border-white/10 rounded ml-2 px-3 py-1 w-20 text-[#f5a623]"
+                  className="bg-white/5 border border-white/10 rounded-lg ml-2 px-3 py-1 w-20 text-emerald-400 text-center font-bold"
                 />
-                <span className="text-[#8892a4]">  // Robot age (1-10)</span>
+                <span className="text-gray-600 ml-2">// 1-10 years</span>
               </div>
-              <p className="text-[#8892a4] mb-4 text-sm">
-                <span className="text-[#00d4aa]">int</span> stores whole numbers. 
-                <span className="text-[#f5a623]"> String</span> stores words.
-              </p>
-              <button onClick={() => setStep('species')} className="btn-primary">
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 mb-6 text-sm">
+                <span className="text-emerald-400 font-bold">Tip:</span>{' '}
+                <span className="text-gray-400">
+                  <span className="text-purple-400">int</span> stores whole numbers.{' '}
+                  <span className="text-purple-400">String</span> stores text.
+                </span>
+              </div>
+              <button
+                onClick={() => setStep('species')}
+                className="w-full bg-emerald-500 text-black font-bold px-6 py-3 rounded-xl hover:bg-emerald-400 transition-all"
+              >
                 Continue →
               </button>
             </motion.div>
@@ -116,29 +165,37 @@ export default function Onboarding() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="card"
+              transition={{ duration: 0.3 }}
+              className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm shadow-2xl"
             >
-              <h2 className="text-3xl font-display mb-6">Choose Robot Model</h2>
-              <div className="bg-[#0f0f1a] p-4 rounded-[8px] mb-6 font-mono text-[#00d4aa] text-sm">
-                {`if (choice == "robo_pup") {\n  robot = new RoboPup(robotName);\n} else if (choice == "circuit_cat") {\n  robot = new CircuitCat(robotName);\n} else {\n  robot = new PixelDragon(robotName);\n}`}
+              <div className="text-4xl mb-4">⚙️</div>
+              <h2 className="text-3xl font-display font-bold mb-2">Choose Robot Model</h2>
+              <div className="rounded-xl border border-white/5 bg-black/40 p-4 mb-6 font-mono text-xs text-gray-400">
+                <span className="text-purple-400">if</span> (choice == <span className="text-amber-400">&quot;robo_pup&quot;</span>) robot = <span className="text-purple-400">new</span> <span className="text-emerald-400">RoboPup</span>();
+                <br />
+                <span className="text-purple-400">else</span> robot = <span className="text-purple-400">new</span> <span className="text-emerald-400">PixelDragon</span>();
               </div>
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-3 gap-3 mb-6">
                 {(['robo_pup', 'circuit_cat', 'pixel_dragon'] as const).map((species) => (
                   <button
                     key={species}
                     onClick={() => setSelectedSpecies(species)}
-                    className={`card p-4 ${selectedSpecies === species ? 'border-[#00d4aa]' : ''}`}
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
+                      selectedSpecies === species
+                        ? 'border-emerald-500 bg-emerald-500/10 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+                        : 'border-white/10 bg-black/40 hover:border-white/20'
+                    }`}
                   >
-                    <div className="text-4xl mb-2">
-                      {species === 'robo_pup' ? '🤖' : species === 'circuit_cat' ? '🐱' : '🐉'}
-                    </div>
-                    <div className="font-display">
-                      {species === 'robo_pup' ? 'Robo Pup' : species === 'circuit_cat' ? 'Circuit Cat' : 'Pixel Dragon'}
-                    </div>
+                    <div className="text-4xl mb-2">{speciesInfo[species].emoji}</div>
+                    <div className="font-display text-sm font-bold">{speciesInfo[species].name}</div>
+                    <div className="text-xs text-gray-500 mt-1">{speciesInfo[species].desc}</div>
                   </button>
                 ))}
               </div>
-              <button onClick={() => setStep('starter')} className="btn-primary">
+              <button
+                onClick={() => setStep('starter')}
+                className="w-full bg-emerald-500 text-black font-bold px-6 py-3 rounded-xl hover:bg-emerald-400 transition-all"
+              >
                 Continue →
               </button>
             </motion.div>
@@ -150,25 +207,37 @@ export default function Onboarding() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="card"
+              transition={{ duration: 0.3 }}
+              className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm shadow-2xl"
             >
-              <h2 className="text-3xl font-display mb-6">Collect Starter Kit</h2>
-              <div className="bg-[#0f0f1a] p-4 rounded-[8px] mb-4 font-mono text-[#00d4aa] text-sm">
-                {`String[] starterItems = {"WoodSword", "HealPotion", "BasicShield"};\n// Your inventory has 3 slots: [0], [1], [2]`}
+              <div className="text-4xl mb-4">🎒</div>
+              <h2 className="text-3xl font-display font-bold mb-2">Collect Starter Kit</h2>
+              <div className="rounded-xl border border-white/5 bg-black/40 p-4 mb-6 font-mono text-sm">
+                <span className="text-purple-400">String</span>[] starterItems = {`{"WoodSword", "HealPotion", "BasicShield"}`};
+                <br />
+                <span className="text-gray-600">// [0] = Sword, [1] = Potion, [2] = Shield</span>
               </div>
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                {['WoodSword', 'HealPotion', 'BasicShield'].map((item, idx) => (
-                  <div key={item} className="card p-3 text-center cursor-pointer hover:border-[#00d4aa]">
-                    <div className="text-2xl mb-1">{idx === 0 ? '⚔️' : idx === 1 ? '💊' : '🛡️'}</div>
-                    <div className="text-sm">{item}</div>
-                    <div className="text-xs text-[#8892a4] mt-1">[{idx}]</div>
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                {[
+                  { icon: '⚔️', name: 'WoodSword', idx: 0 },
+                  { icon: '💊', name: 'HealPotion', idx: 1 },
+                  { icon: '🛡️', name: 'BasicShield', idx: 2 },
+                ].map((item) => (
+                  <div key={item.name} className="rounded-xl border border-white/10 bg-black/40 p-4 text-center hover:border-emerald-500/50 transition-colors">
+                    <div className="text-3xl mb-2">{item.icon}</div>
+                    <div className="text-sm font-bold">{item.name}</div>
+                    <div className="text-xs text-emerald-400 font-mono mt-1">[{item.idx}]</div>
                   </div>
                 ))}
               </div>
-              <p className="text-[#8892a4] mb-4 text-sm">
-                Arrays store lists of things. Each item has an index number starting at 0.
-              </p>
-              <button onClick={() => setStep('summary')} className="btn-primary">
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 mb-6 text-sm">
+                <span className="text-amber-400 font-bold">Arrays:</span>{' '}
+                <span className="text-gray-400">Store lists of things. Each item has an index starting at 0.</span>
+              </div>
+              <button
+                onClick={() => setStep('summary')}
+                className="w-full bg-emerald-500 text-black font-bold px-6 py-3 rounded-xl hover:bg-emerald-400 transition-all"
+              >
                 Continue →
               </button>
             </motion.div>
@@ -180,44 +249,59 @@ export default function Onboarding() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="card"
+              transition={{ duration: 0.3 }}
+              className="rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-sm shadow-2xl"
             >
-              <h2 className="text-3xl font-display mb-6 text-[#00d4aa]">Ready to Go!</h2>
-              
-              <div className="mb-6">
-                <h3 className="text-xl font-display mb-3 text-[#f5a623]">What you learned:</h3>
+              <div className="text-center mb-6">
+                <div className="text-5xl mb-3">🎉</div>
+                <h2 className="text-3xl font-display font-bold bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                  Ready to Go!
+                </h2>
+              </div>
+
+              <div className="rounded-xl border border-white/5 bg-black/40 p-5 mb-6">
+                <h3 className="font-display font-bold text-amber-400 mb-3 flex items-center gap-2">
+                  📚 What you learned
+                </h3>
                 <div className="space-y-2">
-                  {['Variables (String, int)', 'If/Else (conditional logic)', 'Arrays (indexed lists)'].map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <span className="text-[#00d4aa]">✓</span>
-                      <span>{item}</span>
+                  {[
+                    { icon: '📝', text: 'Variables (String, int)' },
+                    { icon: '🔀', text: 'If/Else (conditional logic)' },
+                    { icon: '📦', text: 'Arrays (indexed lists)' },
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3 bg-white/5 rounded-lg p-3">
+                      <span className="text-xl">{item.icon}</span>
+                      <span className="text-emerald-400">✓</span>
+                      <span className="text-sm">{item.text}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="mb-6">
-                <h3 className="text-xl font-display mb-3 text-[#f5a623]">Your Robot:</h3>
-                <div className="card bg-[#0f0f1a] p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">
-                      {selectedSpecies === 'robo_pup' ? '🤖' : selectedSpecies === 'circuit_cat' ? '🐱' : '🐉'}
-                    </span>
-                    <div>
-                      <div className="font-display text-lg">{robotName}</div>
-                      <div className="text-[#8892a4] text-sm">
-                        {selectedSpecies === 'robo_pup' ? 'Robo Pup' : selectedSpecies === 'circuit_cat' ? 'Circuit Cat' : 'Pixel Dragon'} • Age {robotAge}
-                      </div>
+              <div className="rounded-xl border border-white/5 bg-black/40 p-5 mb-6">
+                <h3 className="font-display font-bold text-amber-400 mb-3 flex items-center gap-2">
+                  🤖 Your Robot
+                </h3>
+                <div className="flex items-center gap-4 bg-white/5 rounded-lg p-4">
+                  <div className="text-5xl">{speciesInfo[selectedSpecies].emoji}</div>
+                  <div>
+                    <div className="font-display text-lg font-bold">{robotName || 'Sparky'}</div>
+                    <div className="text-gray-500 text-sm">
+                      {speciesInfo[selectedSpecies].name} • Age {robotAge}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="mb-6 text-[#f5a623]">
-                +50 coins awarded!
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-center mb-6">
+                <span className="text-2xl">🪙</span>
+                <span className="text-amber-400 font-display font-bold text-xl ml-2">+50 coins</span>
               </div>
 
-              <button onClick={handleComplete} className="btn-primary text-lg px-8 py-3">
+              <button
+                onClick={handleComplete}
+                className="w-full bg-emerald-500 text-black font-bold text-lg px-8 py-4 rounded-xl hover:bg-emerald-400 transition-all hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:scale-[1.02] active:scale-95"
+              >
                 Enter Robocode →
               </button>
             </motion.div>

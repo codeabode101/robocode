@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Basic validation
-    const lines = scriptBody.split('\n').filter(l => l.trim())
+    const lines = scriptBody.split('\n').filter((l: string) => l.trim())
     if (lines.length > 15) {
       return NextResponse.json({ 
         valid: false, 
