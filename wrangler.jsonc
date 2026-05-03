@@ -5,12 +5,6 @@
   "compatibility_date": "2024-12-01",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
-  "routes": [
-    {
-      "pattern": "robocode.rahejaom.workers.dev",
-      "zone_name": "robocode.rahejaom.workers.dev"
-    }
-  ],
   "vars": {
     "WORKOS_REDIRECT_URI": "https://robocode.rahejaom.workers.dev/auth/callback"
   },
@@ -25,7 +19,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["MultiplayerDO"]
+      "new_sqlite_classes": ["MultiplayerDO"]
     }
   ],
   "assets": {
