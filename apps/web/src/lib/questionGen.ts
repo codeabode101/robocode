@@ -102,12 +102,13 @@ export function generateArrayQuestion(difficulty: 'easy' | 'medium' | 'hard'): Q
 }
 
 export function generateQuestion(concept: string, difficulty: 'easy' | 'medium' | 'hard' | 'ap_exam' = 'easy'): Question {
+  const safeDifficulty = difficulty === 'ap_exam' ? 'hard' : difficulty
   switch(concept) {
-    case 'variables': return generateVariableQuestion(difficulty)
-    case 'loops': return generateLoopQuestion(difficulty)
-    case 'conditionals': return generateConditionalQuestion(difficulty)
-    case 'arrays': return generateArrayQuestion(difficulty)
-    default: return generateVariableQuestion(difficulty)
+    case 'variables': return generateVariableQuestion(safeDifficulty)
+    case 'loops': return generateLoopQuestion(safeDifficulty)
+    case 'conditionals': return generateConditionalQuestion(safeDifficulty)
+    case 'arrays': return generateArrayQuestion(safeDifficulty)
+    default: return generateVariableQuestion(safeDifficulty)
   }
 }
 

@@ -37,11 +37,12 @@ export default function CodeEditor({ value, onChange, onSubmit, disabled = false
     setIsValid(hasValidAction)
   }, [value])
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Tab') {
       e.preventDefault()
-      const start = e.currentTarget.selectionStart
-      const end = e.currentTarget.selectionEnd
+      const target = e.currentTarget
+      const start = target.selectionStart
+      const end = target.selectionEnd
       const newValue = value.substring(0, start) + '  ' + value.substring(end)
       onChange(newValue)
       
