@@ -1,9 +1,5 @@
 import { workos, WORKOS_CLIENT_ID } from "@/lib/workos";
 import { NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET =
-  process.env.JWT_SECRET || "robocode-secret-key-change-in-production";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -19,18 +15,14 @@ export async function GET(request: Request) {
       code,
     });
 
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        name: user.firstName + " " + user.lastName,
-      },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const sessionData = JSON.stringify({
+      userId: user.id,
+      email: user.email,
+      name: `${user.firstName} ${user.lastName}`,
+    });
 
     const response = NextResponse.redirect(new URL("/", url.origin));
-    response.cookies.set("session", token, {
+    response.cookies.set("session", Buffer.from(sessionData).toString("base64"), {
       httpOnly: true,
       secure: true,
       sameSite: "lax",
