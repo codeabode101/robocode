@@ -1,0 +1,19 @@
+name = "robocode"
+compatibility_date = "2023-01-01"
+pages_build_output_dir = ".vercel/output/static"
+
+[env.production]
+  vars = { APP_ENV = "production" }
+
+[[env.production.routes]]
+  pattern = "/api/*"
+  custom_domain = true
+
+[env.production.vars]
+  WORKOS_API_KEY = "sk_test_REPLACE_WITH_YOUR_KEY"
+  WORKOS_CLIENT_ID = "client_REPLACE_WITH_YOUR_ID"
+  COCKROACHDB_CONNECTION_STRING = "postgresql://user:pass@host:port/db?sslmode=verify-full"
+  APPWRITE_PROJECT_ID = "app_REPLACE_WITH_YOUR_ID"
+  APPWRITE_API_KEY = "REPLACE_WITH_YOUR_API_KEY"
+  JWT_SECRET = "REPLACE_WITH_256_BIT_SECRET"
+  BATTLE_ENGINE_SECRET = "REPLACE_WITH_256_BIT_SECRET"

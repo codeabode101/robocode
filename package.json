@@ -1,0 +1,14 @@
+{
+  "name": "robocode",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspace=apps/web",
+    "db:setup": "node apps/server/src/db/setup.js"
+  }
+}
