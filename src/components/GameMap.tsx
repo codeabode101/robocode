@@ -11,7 +11,28 @@ export default function GameMap() {
   const sceneRef = useRef<THREE.Scene | null>(null);
   const localMeshRef = useRef<THREE.Mesh | null>(null);
   const otherMeshesRef = useRef<Record<string, THREE.Mesh>>({});
+  
+  // Tutorial state
   const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+  const [code, setCode] = useState('String robotName = "Sparky";');
+  const [output, setOutput] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const tutorialSteps = [
+    {
+      npcText: "Hey there! I'm Sparky, your new pet robot! But wait... I need a name! Can you declare a String variable for me?",
+      showEditor: false,
+    },
+    {
+      npcText: 'In Java, we declare variables like this: String variableName = "value";',
+      showEditor: false,
+    },
+    {
+      npcText: 'Your turn! Declare a String named "robotName" with the value "Sparky" (dont forget the semicolon!)',
+      showEditor: true,
+    },
+  ];
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -40,7 +61,7 @@ export default function GameMap() {
     scene.add(localMesh);
     localMeshRef.current = localMesh;
 
-    // NPC - Tutorial pet (yellow)
+    // NPC - Tutorial pet (yellow) at position (2, 0)
     const npcGeo = new THREE.CircleGeometry(0.4, 32);
     const npcMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
     const npcMesh = new THREE.Mesh(npcGeo, npcMat);
@@ -50,10 +71,14 @@ export default function GameMap() {
     // Check distance to NPC
     const checkNPCDistance = () => {
       const dist = localMesh.position.distanceTo(npcMesh.position);
-      if (dist < 1.5) {
+      if (dist < 1.5 && !showTutorial) {
         setShowTutorial(true);
-      } else {
+        setTutorialStep(0);
+      } else if (dist >= 1.5) {
         setShowTutorial(false);
+        setTutorialStep(0);
+        setSuccess(false);
+        setOutput('');
       }
     };
 
@@ -87,6 +112,7 @@ export default function GameMap() {
     };
   }, []);
 
+  // Sync other players
   useEffect(() => {
     if (!sceneRef.current) return;
     Object.entries(players).forEach(([userId, pos]) => {
@@ -103,6 +129,38 @@ export default function GameMap() {
     });
   }, [players]);
 
+  const handleNextStep = () => {
+    if (tutorialStep < tutorialSteps.length - 1) {
+      setTutorialStep(tutorialStep + 1);
+    }
+  };
+
+  const checkAnswer = async () => {
+    try {
+      const res = await fetch('/api/tutorial/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, concept: 'string-variable' }),
+      });
+      const data = await res.json();
+      
+      if (data.valid) {
+        setSuccess(true);
+        setOutput('✅ Correct! You declared a String variable named robotName with value "Sparky"!');
+        setTimeout(() => {
+          setShowTutorial(false);
+          setTutorialStep(0);
+          setSuccess(false);
+          setOutput('');
+        }, 2000);
+      } else {
+        setOutput(`❌ ${data.error || 'Try again!'}`);
+      }
+    } catch (error) {
+      setOutput('❌ Error checking answer');
+    }
+  };
+
   if (!isConnected) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
@@ -114,25 +172,73 @@ export default function GameMap() {
   return (
     <div>
       <div className="w-full h-screen" ref={mountRef} />
+      
       {showTutorial && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-gray-800 p-8 rounded-lg max-w-md">
-            <h2 className="text-2xl font-bold text-white mb-4">🤖 Meet Your Pet!</h2>
-            <p className="text-gray-300 mb-4">
-              This little yellow circle is your new pet! But it needs a name...
-            </p>
-            <p className="text-gray-300 mb-6">
-              In Java, we declare a String variable like this:
-            </p>
-            <pre className="bg-gray-900 p-4 rounded mb-6 text-green-400">
-              String petName = "Sparky";
-            </pre>
-            <a
-              href="/game/tutorial"
-              className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded text-white font-semibold inline-block"
-            >
-              Start Tutorial →
-            </a>
+          <div className="bg-gray-800 p-6 rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-yellow-400 flex items-center justify-center text-2xl">
+                🤖
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-white mb-2">Sparky says:</h2>
+                <p className="text-gray-300 mb-4">
+                  {tutorialSteps[tutorialStep].npcText}
+                </p>
+              </div>
+            </div>
+
+            {tutorialSteps[tutorialStep].showEditor && (
+              <div className="mb-4">
+                <div className="bg-gray-900 p-4 rounded mb-4">
+                  <pre className="text-green-400 text-sm">
+                    {`// Type your answer below:\nString robotName = "Sparky";`}
+                  </pre>
+                </div>
+                <textarea
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  className="w-full h-24 bg-gray-900 text-green-400 p-4 rounded font-mono text-sm mb-4"
+                  spellCheck={false}
+                />
+                {output && (
+                  <div className={`p-4 rounded-lg mb-4 ${success ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
+                    {output}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-between">
+              <div className="flex gap-2">
+                {tutorialSteps.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-3 h-3 rounded-full ${i === tutorialStep ? 'bg-blue-600' : 'bg-gray-600'}`}
+                  />
+                ))}
+              </div>
+              <div className="flex gap-2">
+                {tutorialStep < tutorialSteps.length - 1 ? (
+                  <button
+                    onClick={handleNextStep}
+                    className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded text-white font-semibold"
+                  >
+                    Next →
+                  </button>
+                ) : (
+                  <button
+                    onClick={checkAnswer}
+                    disabled={success}
+                    className={`px-6 py-2 rounded font-semibold ${
+                      success ? 'bg-green-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                  >
+                    {success ? '✓ Completed!' : 'Submit Answer'}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
