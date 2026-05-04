@@ -1,143 +1,92 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
-import { useMultiplayer } from "@/hooks/useMultiplayer";
+import { useEffect, useRef } from 'react';
+import * as THREE from 'three';
+import { useMultiplayer } from '@/hooks/useMultiplayer';
 
 export default function GameMap() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { connected, players, movePlayer, playerId } = useMultiplayer();
-  const sceneRef = useRef<{
-    scene: THREE.Scene;
-    camera: THREE.OrthographicCamera;
-    renderer: THREE.WebGLRenderer;
-    playerMesh: THREE.Mesh;
-    playerPos: { x: number; y: number };
-    keys: Set<string>;
-    otherPlayers: Map<string, THREE.Mesh>;
-  } | null>(null);
+  const mountRef = useRef<HTMLDivElement>(null);
+  const { players, isConnected, sendMove } = useMultiplayer();
+  const localPlayerRef = useRef({ x: 0, y: 0 });
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const localMeshRef = useRef<THREE.Mesh | null>(null);
+  const otherMeshesRef = useRef<Record<string, THREE.Mesh>>({});
 
   useEffect(() => {
-    if (!canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    if (!mountRef.current) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x228b22);
+    scene.background = new THREE.Color(0x00ff00);
+    sceneRef.current = scene;
 
-    const camera = new THREE.OrthographicCamera(
-      -width / 2,
-      width / 2,
-      height / 2,
-      -height / 2,
-      0.1,
-      1000
-    );
-    camera.position.z = 500;
+    const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 1000);
+    camera.position.z = 10;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    renderer.setSize(width, height);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+    mountRef.current.appendChild(renderer.domElement);
 
-    const geometry = new THREE.CircleGeometry(20, 32);
-    const material = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-    const playerMesh = new THREE.Mesh(geometry, material);
-    scene.add(playerMesh);
+    const grid = new THREE.GridHelper(20, 20, 0x000000, 0x000000);
+    grid.position.z = 0.1;
+    scene.add(grid);
 
-    const keys = new Set<string>();
-    const otherPlayers = new Map<string, THREE.Mesh>();
-
-    sceneRef.current = {
-      scene,
-      camera,
-      renderer,
-      playerMesh,
-      playerPos: { x: 0, y: 0 },
-      keys,
-      otherPlayers,
-    };
+    const localGeo = new THREE.CircleGeometry(0.5, 32);
+    const localMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+    const localMesh = new THREE.Mesh(localGeo, localMat);
+    localMesh.position.set(0, 0, 0.2);
+    scene.add(localMesh);
+    localMeshRef.current = localMesh;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      keys.add(e.key.toLowerCase());
+      let { x, y } = localPlayerRef.current;
+      const speed = 0.5;
+      switch (e.key) {
+        case 'w': case 'ArrowUp': y += speed; break;
+        case 's': case 'ArrowDown': y -= speed; break;
+        case 'a': case 'ArrowLeft': x -= speed; break;
+        case 'd': case 'ArrowRight': x += speed; break;
+        default: return;
+      }
+      localPlayerRef.current = { x, y };
+      localMesh.position.set(x, y, 0.2);
+      sendMove(x, y);
     };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keys.delete(e.key.toLowerCase());
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener('keydown', handleKeyDown);
 
     const animate = () => {
-      if (!sceneRef.current) return;
-
-      const { playerPos, keys, playerMesh, renderer, scene, camera } =
-        sceneRef.current;
-
-      const speed = 5;
-      if (keys.has("w") || keys.has("arrowup")) playerPos.y += speed;
-      if (keys.has("s") || keys.has("arrowdown")) playerPos.y -= speed;
-      if (keys.has("a") || keys.has("arrowleft")) playerPos.x -= speed;
-      if (keys.has("d") || keys.has("arrowright")) playerPos.x += speed;
-
-      playerMesh.position.x = playerPos.x;
-      playerMesh.position.y = playerPos.y;
-
-      movePlayer(playerPos.x, playerPos.y);
-
-      renderer.render(scene, camera);
       requestAnimationFrame(animate);
+      renderer.render(scene, camera);
     };
-
     animate();
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener('keydown', handleKeyDown);
       renderer.dispose();
+      mountRef.current?.removeChild(renderer.domElement);
     };
   }, []);
 
   useEffect(() => {
-    if (!sceneRef.current || !players) return;
-
-    const { scene, otherPlayers } = sceneRef.current;
-
-    players.forEach((player: any) => {
-      if (player.id === playerId) return;
-
-      if (!otherPlayers.has(player.id)) {
-        const geometry = new THREE.CircleGeometry(20, 32);
-        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const mesh = new THREE.Mesh(geometry, material);
-        scene.add(mesh);
-        otherPlayers.set(player.id, mesh);
+    if (!sceneRef.current) return;
+    Object.entries(players).forEach(([userId, pos]) => {
+      if (!otherMeshesRef.current[userId]) {
+        const geo = new THREE.CircleGeometry(0.5, 32);
+        const mat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const mesh = new THREE.Mesh(geo, mat);
+        sceneRef.current.add(mesh);
+        otherMeshesRef.current[userId] = mesh;
       }
-
-      const mesh = otherPlayers.get(player.id);
-      if (mesh) {
-        mesh.position.x = player.x;
-        mesh.position.y = player.y;
-      }
+      otherMeshesRef.current[userId].position.set(pos.x, pos.y, 0.2);
     });
+  }, [players]);
 
-    otherPlayers.forEach((mesh, id) => {
-      if (!players.find((p: any) => p.id === id)) {
-        scene.remove(mesh);
-        otherPlayers.delete(id);
-      }
-    });
-  }, [players, playerId]);
+  if (!isConnected) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
+        Connecting...
+      </div>
+    );
+  }
 
-  return (
-    <div>
-      <canvas ref={canvasRef} />
-      {!connected && (
-        <div className="absolute top-4 left-4 text-white bg-black/50 px-3 py-1 rounded">
-          Connecting...
-        </div>
-      )}
-    </div>
-  );
+  return <div className="w-full h-screen" ref={mountRef} />;
 }
