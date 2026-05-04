@@ -1,120 +1,102 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Apinator } from '@apinator/client';
 
 interface PlayerPosition {
-  userId: string;
+  user_id: string;
   x: number;
   y: number;
 }
 
-export function useMultiplayer() {
-  const [players, setPlayers] = useState<Record<string, PlayerPosition>>({});
-  const [isConnected, setIsConnected] = useState(false);
-  const localUserIdRef = useRef<string>('');
+export function useMultiplayer(userId: string) {
+  const [players, setPlayers] = useState<Map<string, PlayerPosition>>(new Map());
+  const [connected, setConnected] = useState(false);
   const apinatorRef = useRef<Apinator | null>(null);
 
   useEffect(() => {
-    // Generate a random user ID for the local player if not already set
-    if (!localUserIdRef.current) {
-      localUserIdRef.current = Math.random().toString(36).substring(2, 15);
-    }
-
-    // Get Apinator token from environment variable
-    const apinatorToken = process.env.NEXT_PUBLIC_APINATOR_TOKEN;
-    if (!apinatorToken) {
-      console.warn('Apinator token not found in environment variables');
+    const appKey = process.env.NEXT_PUBLIC_APINATOR_APP_KEY;
+    if (!appKey) {
+      console.error('NEXT_PUBLIC_APINATOR_APP_KEY not set');
       return;
     }
 
-    // Initialize Apinator client
     const apinator = new Apinator({
-      token: apinatorToken,
-      // Optional: configure reconnection attempts, etc.
-      reconnectAttempts: 10,
-      reconnectDelay: 1000,
+      cluster: 'us',   // or 'eu' if that matches your Apinator app
+      appKey,
     });
     apinatorRef.current = apinator;
 
-    // Subscribe to the game channel
-    const channel = apinator.channel('robocode-game');
+    // Monitor connection state
+    apinator.bind('state_change', (state: any) => {
+      const current = typeof state === 'string' ? state : state?.current;
+      console.log('Apinator state:', current);
+      setConnected(current === 'connected');
+    });
 
-    // Handle incoming messages
-    channel.subscribe((message: any) => {
+    // Subscribe to the shared game channel
+    const channel = apinator.subscribe('robocode-game');
+
+    // Listen for other players' moves
+    channel.bind('player-move', (data: any) => {
       try {
-        // Ignore messages from ourselves
-        if (message.userId === localUserIdRef.current) return;
+        const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+        if (!parsed || typeof parsed.user_id !== 'string') return;
+        if (parsed.user_id === userId) return; // ignore self
 
-        // Validate message structure
-        if (
-          message &&
-          typeof message.userId === 'string' &&
-          typeof message.x === 'number' &&
-          typeof message.y === 'number'
-        ) {
-          setPlayers(prev => ({
-            ...prev,
-            [message.userId]: message,
-          }));
-        }
+        setPlayers(prev => {
+          const next = new Map(prev);
+          next.set(parsed.user_id, {
+            user_id: parsed.user_id,
+            x: parsed.x ?? 0,
+            y: parsed.y ?? 0,
+          });
+          return next;
+        });
       } catch (e) {
-        console.error('Error processing Apinator message:', e);
+        console.error('Error parsing move:', e);
       }
     });
 
-    // Handle connection events
-    apinator.on('connect', () => {
-      setIsConnected(true);
-      console.log('Connected to Apinator');
-    });
-
-    apinator.on('disconnect', () => {
-      setIsConnected(false);
-      console.log('Disconnected from Apinator');
-    });
-
-    apinator.on('error', (error: Error) => {
-      console.error('Apinator error:', error);
-      setIsConnected(false);
+    // Listen for other players joining
+    channel.bind('player-join', (data: any) => {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+      if (parsed?.user_id && parsed.user_id !== userId) {
+        setPlayers(prev => {
+          const next = new Map(prev);
+          if (!next.has(parsed.user_id)) {
+            next.set(parsed.user_id, {
+              user_id: parsed.user_id,
+              x: parsed.x ?? 0,
+              y: parsed.y ?? 0,
+            });
+          }
+          return next;
+        });
+      }
     });
 
     // Connect to Apinator
     apinator.connect();
 
-    // Cleanup on unmount
     return () => {
-      if (apinatorRef.current) {
-        apinatorRef.current.disconnect();
-        apinatorRef.current = null;
-      }
+      apinator.unsubscribe('robocode-game');
+      apinator.disconnect();
     };
+  }, [userId]);
+
+  const sendPosition = useCallback(async (x: number, y: number) => {
+    // Send move to server route for publication
+    try {
+      await fetch('/api/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ x, y }),
+      });
+    } catch (e) {
+      console.error('Failed to send move:', e);
+    }
   }, []);
 
-  const sendMove = async (x: number, y: number) => {
-    try {
-      // Publish move to Apinator channel
-      const channel = apinatorRef.current?.channel('robocode-game');
-      if (!channel) {
-        console.warn('Apinator channel not available');
-        return;
-      }
-
-      channel.publish({
-        userId: localUserIdRef.current,
-        x,
-        y,
-      });
-
-      // Also update local player position immediately for responsiveness
-      setPlayers(prev => ({
-        ...prev,
-        [localUserIdRef.current]: { userId: localUserIdRef.current, x, y },
-      }));
-    } catch (error) {
-      console.error('Error sending move via Apinator:', error);
-    }
-  };
-
-  return { players, isConnected, sendMove };
+  return { players, connected, sendPosition };
 }

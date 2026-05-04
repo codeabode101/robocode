@@ -4,14 +4,18 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useMultiplayer } from '@/hooks/useMultiplayer';
 
-export default function GameMap() {
+interface GameMapProps {
+  userId: string;
+}
+
+export default function GameMap({ userId }: GameMapProps) {
   const mountRef = useRef<HTMLDivElement>(null);
-  const { players, isConnected, sendMove } = useMultiplayer();
+  const { players, connected, sendPosition } = useMultiplayer(userId);
   const localPlayerRef = useRef({ x: 0, y: 0 });
   const sceneRef = useRef<THREE.Scene | null>(null);
   const localMeshRef = useRef<THREE.Mesh | null>(null);
   const otherMeshesRef = useRef<Record<string, THREE.Mesh>>({});
-  
+
   // Tutorial state
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
@@ -21,18 +25,32 @@ export default function GameMap() {
 
   const tutorialSteps = [
     {
-      npcText: "Hey there! I'm Sparky, your new pet robot! But wait... I need a name! Can you declare a String variable for me?",
+      npcText:
+        "Yo! I'm Sparky, your new pet robot! But wait... I need a name! Can you declare a String variable for me?",
       showEditor: false,
     },
     {
-      npcText: 'In Java, we declare variables like this: String variableName = "value";',
+      npcText:
+        'In Java, we declare variables like this: <code>String variableName = "value";</code>',
       showEditor: false,
     },
     {
-      npcText: 'Your turn! Declare a String named "robotName" with the value "Sparky" (don\'t forget the semicolon!)',
+      npcText:
+        'Your turn! Declare a String named "robotName" with the value "Sparky" (don\'t forget the semicolon!)',
       showEditor: true,
     },
   ];
+
+  // Announce join when connected
+  useEffect(() => {
+    if (connected) {
+      fetch('/api/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ x: 0, y: 0 }),
+      });
+    }
+  }, [connected]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -86,15 +104,28 @@ export default function GameMap() {
       let { x, y } = localPlayerRef.current;
       const speed = 0.5;
       switch (e.key) {
-        case 'w': case 'ArrowUp': y += speed; break;
-        case 's': case 'ArrowDown': y -= speed; break;
-        case 'a': case 'ArrowLeft': x -= speed; break;
-        case 'd': case 'ArrowRight': x += speed; break;
-        default: return;
+        case 'w':
+        case 'ArrowUp':
+          y += speed;
+          break;
+        case 's':
+        case 'ArrowDown':
+          y -= speed;
+          break;
+        case 'a':
+        case 'ArrowLeft':
+          x -= speed;
+          break;
+        case 'd':
+        case 'ArrowRight':
+          x += speed;
+          break;
+        default:
+          return;
       }
       localPlayerRef.current = { x, y };
       localMesh.position.set(x, y, 0.2);
-      sendMove(x, y);
+      sendPosition(x, y);
       checkNPCDistance();
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -143,10 +174,12 @@ export default function GameMap() {
         body: JSON.stringify({ code, concept: 'string-variable' }),
       });
       const data = await res.json();
-      
+
       if (data.valid) {
         setSuccess(true);
-        setOutput('✅ Correct! You declared a String variable named robotName with value "Sparky"!');
+        setOutput(
+          '✅ Correct! You declared a String variable named robotName with value "Sparky"!'
+        );
         setTimeout(() => {
           setShowTutorial(false);
           setTutorialStep(0);
@@ -161,7 +194,7 @@ export default function GameMap() {
     }
   };
 
-  if (!isConnected) {
+  if (!connected) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
         Connecting...
@@ -172,7 +205,7 @@ export default function GameMap() {
   return (
     <div>
       <div className="w-full h-screen" ref={mountRef} />
-      
+
       {showTutorial && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
           <div className="bg-gray-800 p-6 rounded-lg max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
@@ -182,9 +215,12 @@ export default function GameMap() {
               </div>
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-white mb-2">Sparky says:</h2>
-                <p className="text-gray-300 mb-4">
-                  {tutorialSteps[tutorialStep].npcText}
-                </p>
+                <p
+                  className="text-gray-300 mb-4"
+                  dangerouslySetInnerHTML={{
+                    __html: tutorialSteps[tutorialStep].npcText,
+                  }}
+                />
               </div>
             </div>
 
@@ -202,7 +238,13 @@ export default function GameMap() {
                   spellCheck={false}
                 />
                 {output && (
-                  <div className={`p-4 rounded-lg mb-4 ${success ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'}`}>
+                  <div
+                    className={`p-4 rounded-lg mb-4 ${
+                      success
+                        ? 'bg-green-900 text-green-200'
+                        : 'bg-red-900 text-red-200'
+                    }`}
+                  >
                     {output}
                   </div>
                 )}
@@ -214,7 +256,9 @@ export default function GameMap() {
                 {tutorialSteps.map((_, i) => (
                   <div
                     key={i}
-                    className={`w-3 h-3 rounded-full ${i === tutorialStep ? 'bg-blue-600' : 'bg-gray-600'}`}
+                    className={`w-3 h-3 rounded-full ${
+                      i === tutorialStep ? 'bg-blue-600' : 'bg-gray-600'
+                    }`}
                   />
                 ))}
               </div>
@@ -231,7 +275,9 @@ export default function GameMap() {
                     onClick={checkAnswer}
                     disabled={success}
                     className={`px-6 py-2 rounded font-semibold ${
-                      success ? 'bg-green-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      success
+                        ? 'bg-green-600 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
                     }`}
                   >
                     {success ? '✓ Completed!' : 'Submit Answer'}
