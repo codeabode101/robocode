@@ -14,19 +14,24 @@ export function useMultiplayer() {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket(`wss://ws.apinator.io?token=${process.env.NEXT_PUBLIC_APINATOR_APP_KEY}`);
+    const ws = new WebSocket(
+      `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/multiplayer`
+    );
     wsRef.current = ws;
 
     ws.onopen = () => {
       setIsConnected(true);
-      ws.send(JSON.stringify({ type: 'subscribe', channel: 'robocode-live' }));
     };
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.event === 'player-move') {
-          const playerData: PlayerPosition = data.data;
+        const playerData = JSON.parse(event.data);
+        if (
+          playerData &&
+          typeof playerData.userId === 'string' &&
+          typeof playerData.x === 'number' &&
+          typeof playerData.y === 'number'
+        ) {
           setPlayers(prev => ({
             ...prev,
             [playerData.userId]: playerData,
@@ -39,10 +44,8 @@ export function useMultiplayer() {
 
     ws.onclose = () => {
       setIsConnected(false);
-      // Reconnect after 3 seconds
       setTimeout(() => {
         if (wsRef.current === ws) {
-          // Only reconnect if this is still the current WebSocket
         }
       }, 3000);
     };
