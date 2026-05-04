@@ -1,14 +1,8 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/d1';
 import * as schema from './schema';
 
-function getConnectionString() {
-  if (process.env.HYPERDRIVE) {
-    return (process.env.HYPERDRIVE as any).connectionString;
-  }
-  return process.env.DATABASE_URL!;
+export function getDb(D1: any) {
+  return drizzle(D1, { schema });
 }
 
-const sql = postgres(getConnectionString());
-export const db = drizzle(sql, { schema });
 export * from './schema';
