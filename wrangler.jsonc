@@ -1,15 +1,33 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
-  "name": "robocode",
-  "compatibility_date": "2024-12-01",
-  "compatibility_flags": ["nodejs_compat"],
-  "workers_dev": true,
-  "vars": {
-    "WORKOS_REDIRECT_URI": "https://robocode.rahejaom.workers.dev/auth/callback"
-  },
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"main": ".open-next/worker.js",
+	"name": "robocode",
+	"compatibility_date": "2024-12-01",
+	"account_id": "0bfab51e8cc50b91033dc21005e8cabc",
+	"workers_dev": true,
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"vars": {
+		"WORKOS_CLIENT_ID": "",
+		"WORKOS_API_KEY": "",
+		"WORKOS_REDIRECT_URI": "https://robocode.rahejaom.workers.dev/api/auth/callback",
+		"DATABASE_URL": "",
+		"APINATOR_APP_KEY": "",
+		"APINATOR_SECRET": ""
+	},
+	"services": [
+		{
+			"binding": "WORKER_SELF_REFERENCE",
+			"service": "robocode"
+		}
+	],
+	"images": {
+		"binding": "IMAGES"
+	}
 }
