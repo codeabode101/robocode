@@ -19,8 +19,9 @@ export default function TutorialPage() {
     
     if (data.valid) {
       setSuccess(true);
-      setOutput('✅ Correct! You declared a String variable named robotName with value "Sparky".');
-      setTimeout(() => router.push('/game'), 2000);
+      setOutput('✅ Correct! You declared a String variable named robotName with value "Sparky"!');
+      // Stay on page for 5 seconds so user can see the success
+      setTimeout(() => router.push('/game'), 5000);
     } else {
       setOutput(`❌ ${data.error || 'Try again!'}`);
     }
