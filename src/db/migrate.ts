@@ -1,26 +1,39 @@
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { Pool } from '@neondatabase/serverless';
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
 import { sql } from 'drizzle-orm';
 
+function getConnectionString() {
+  if (process.env.HYPERDRIVE) {
+    return (process.env.HYPERDRIVE as any).connectionString;
+  }
+  return process.env.DATABASE_URL!;
+}
+
 async function migrate() {
-  const pool = new Pool({
-    connectionString: process.env.DATABASE_URL!,
-  });
-  const db = drizzle(pool);
+  const sqlClient = postgres(getConnectionString(), { max: 1 });
+  const db = drizzle(sqlClient);
 
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS users (
+    DROP TABLE IF EXISTS player_positions CASCADE;
+    DROP TABLE IF EXISTS houses CASCADE;
+    DROP TABLE IF EXISTS inventory CASCADE;
+    DROP TABLE IF EXISTS concepts_unlocked CASCADE;
+    DROP TABLE IF EXISTS users CASCADE;
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE users (
       id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
-      workos_id VARCHAR(255) NOT NULL UNIQUE,
       email VARCHAR(255) NOT NULL UNIQUE,
       name VARCHAR(255),
+      password_hash VARCHAR(255) NOT NULL,
       currency INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
 
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS player_positions (
+    CREATE TABLE player_positions (
       user_id VARCHAR(36) PRIMARY KEY REFERENCES users(id),
       x DECIMAL(10,2) NOT NULL,
       y DECIMAL(10,2) NOT NULL,
@@ -30,7 +43,7 @@ async function migrate() {
   `);
 
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS houses (
+    CREATE TABLE houses (
       id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
       owner_id VARCHAR(36) NOT NULL REFERENCES users(id),
       plot_x INTEGER NOT NULL,
@@ -41,7 +54,7 @@ async function migrate() {
   `);
 
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS inventory (
+    CREATE TABLE inventory (
       id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id VARCHAR(36) NOT NULL REFERENCES users(id),
       item_type VARCHAR(255) NOT NULL,
@@ -52,7 +65,7 @@ async function migrate() {
   `);
 
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS concepts_unlocked (
+    CREATE TABLE concepts_unlocked (
       user_id VARCHAR(36) NOT NULL REFERENCES users(id),
       concept VARCHAR(255) NOT NULL,
       unlocked_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -61,7 +74,7 @@ async function migrate() {
   `);
 
   console.log('Migration complete');
-  await pool.end();
+  await sqlClient.end();
 }
 
 migrate().catch(console.error);
