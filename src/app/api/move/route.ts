@@ -20,12 +20,14 @@ export async function POST(request: NextRequest) {
     const { env } = await getCloudflareContext({ async: true }) as any;
     const db = env.DB;
 
+    // Upsert player position
     await db.prepare(`
       INSERT INTO player_positions (user_id, x, y, map, updated_at) 
       VALUES (?, ?, ?, 'default', ?) 
       ON CONFLICT(user_id) DO UPDATE SET x=?, y=?, updated_at=?
     `).bind(userId, x, y, new Date().toISOString(), x, y, new Date().toISOString()).run();
 
+    // Publish to Apinator via REST API
     await fetch('https://api.apinator.io/v1/publish', {
       method: 'POST',
       headers: {
@@ -34,8 +36,8 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         channel: 'robocode-live',
-        event: 'player-move',
-        data: { userId, x: Number(x), y: Number(y) },
+        name: 'player-move',
+        data: JSON.stringify({ userId, x: Number(x), y: Number(y) }),
       }),
     });
 

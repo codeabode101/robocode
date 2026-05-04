@@ -10,48 +10,46 @@ interface PlayerPosition {
 
 export function useMultiplayer() {
   const [players, setPlayers] = useState<Record<string, PlayerPosition>>({});
-  const [isConnected, setIsConnected] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
+  const [isConnected, setIsConnected] = useState(true); // Polling is always "connected"
+  const localPlayerRef = useRef({ x: 0, y: 0 });
 
+  // Poll for other players' positions
   useEffect(() => {
-    const ws = new WebSocket(`wss://ws.apinator.io?token=${process.env.NEXT_PUBLIC_APINATOR_APP_KEY}`);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      setIsConnected(true);
-      // Subscribe to channel
-      ws.send(JSON.stringify({
-        type: 'subscribe',
-        channel: 'robocode-live',
-      }));
-    };
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.event === 'player-move') {
-        const playerData: PlayerPosition = data.data;
-        setPlayers(prev => ({
-          ...prev,
-          [playerData.userId]: playerData,
-        }));
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/players');
+        if (res.ok) {
+          const data = await res.json();
+          const playersMap: Record<string, PlayerPosition> = {};
+          data.players?.forEach((p: any) => {
+            playersMap[p.user_id] = { userId: p.user_id, x: parseFloat(p.x), y: parseFloat(p.y) };
+          });
+          setPlayers(playersMap);
+        }
+      } catch (e) {
+        console.error('Poll error:', e);
       }
     };
 
-    ws.onclose = () => {
-      setIsConnected(false);
-    };
+    poll(); // Initial poll
+    const interval = setInterval(poll, 2000); // Poll every 2 seconds
 
-    return () => {
-      ws.close();
-    };
+    return () => clearInterval(interval);
   }, []);
 
   const sendMove = async (x: number, y: number) => {
-    await fetch('/api/move', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ x, y }),
-    });
+    try {
+      const res = await fetch('/api/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ x, y }),
+      });
+      if (!res.ok) {
+        console.error('Failed to send move:', await res.text());
+      }
+    } catch (error) {
+      console.error('Error sending move:', error);
+    }
   };
 
   return { players, isConnected, sendMove };
