@@ -14,12 +14,7 @@
 		"binding": "ASSETS"
 	},
 	"vars": {
-		"WORKOS_CLIENT_ID": "",
-		"WORKOS_API_KEY": "",
-		"WORKOS_REDIRECT_URI": "https://robocode.rahejaom.workers.dev/api/auth/callback",
-		"DATABASE_URL": "",
-		"APINATOR_APP_KEY": "",
-		"APINATOR_SECRET": ""
+		"WORKOS_REDIRECT_URI": "https://robocode.rahejaom.workers.dev/api/auth/callback"
 	},
 	"services": [
 		{
