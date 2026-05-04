@@ -10,31 +10,51 @@ interface PlayerPosition {
 
 export function useMultiplayer() {
   const [players, setPlayers] = useState<Record<string, PlayerPosition>>({});
-  const [isConnected, setIsConnected] = useState(true); // Polling is always "connected"
-  const localPlayerRef = useRef({ x: 0, y: 0 });
+  const [isConnected, setIsConnected] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
 
-  // Poll for other players' positions
   useEffect(() => {
-    const poll = async () => {
+    const ws = new WebSocket(`wss://ws.apinator.io?token=${process.env.NEXT_PUBLIC_APINATOR_APP_KEY}`);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      setIsConnected(true);
+      ws.send(JSON.stringify({ type: 'subscribe', channel: 'robocode-live' }));
+    };
+
+    ws.onmessage = (event) => {
       try {
-        const res = await fetch('/api/players');
-        if (res.ok) {
-          const data = await res.json();
-          const playersMap: Record<string, PlayerPosition> = {};
-          data.players?.forEach((p: any) => {
-            playersMap[p.user_id] = { userId: p.user_id, x: parseFloat(p.x), y: parseFloat(p.y) };
-          });
-          setPlayers(playersMap);
+        const data = JSON.parse(event.data);
+        if (data.event === 'player-move') {
+          const playerData: PlayerPosition = data.data;
+          setPlayers(prev => ({
+            ...prev,
+            [playerData.userId]: playerData,
+          }));
         }
       } catch (e) {
-        console.error('Poll error:', e);
+        console.error('WebSocket message parse error:', e);
       }
     };
 
-    poll(); // Initial poll
-    const interval = setInterval(poll, 2000); // Poll every 2 seconds
+    ws.onclose = () => {
+      setIsConnected(false);
+      // Reconnect after 3 seconds
+      setTimeout(() => {
+        if (wsRef.current === ws) {
+          // Only reconnect if this is still the current WebSocket
+        }
+      }, 3000);
+    };
 
-    return () => clearInterval(interval);
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    return () => {
+      wsRef.current = null;
+      ws.close();
+    };
   }, []);
 
   const sendMove = async (x: number, y: number) => {
