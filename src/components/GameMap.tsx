@@ -29,7 +29,7 @@ export default function GameMap() {
       showEditor: false,
     },
     {
-      npcText: 'Your turn! Declare a String named "robotName" with the value "Sparky" (dont forget the semicolon!)',
+      npcText: 'Your turn! Declare a String named "robotName" with the value "Sparky" (don\'t forget the semicolon!)',
       showEditor: true,
     },
   ];
