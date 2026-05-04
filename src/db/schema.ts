@@ -3,9 +3,9 @@ import { pgTable, varchar, timestamp, integer, decimal, primaryKey } from 'drizz
 
 export const users = pgTable('users', {
   id: varchar('id', { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-  workos_id: varchar('workos_id', { length: 255 }).notNull().unique(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   name: varchar('name', { length: 255 }),
+  password_hash: varchar('password_hash', { length: 255 }).notNull(),
   currency: integer('currency').notNull().default(0),
   created_at: timestamp('created_at').notNull().defaultNow(),
 });

@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
@@ -13,17 +14,17 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    const res = await fetch('/api/auth/signin', {
+    const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, name, password }),
     });
 
     if (res.ok) {
       router.push('/game');
     } else {
       const data = await res.json();
-      setError(data.error || 'Sign in failed');
+      setError(data.error || 'Sign up failed');
     }
   };
 
@@ -31,7 +32,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
       <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-lg">
         <h1 className="text-4xl font-bold text-center">Robocode</h1>
-        <p className="text-center text-gray-300">Learn Java. Battle friends. Build a world.</p>
+        <p className="text-center text-gray-300">Create your account</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium">Email</label>
@@ -45,6 +46,16 @@ export default function LoginPage() {
             />
           </div>
           <div>
+            <label htmlFor="name" className="block text-sm font-medium">Name</label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 mt-1 text-black rounded"
+            />
+          </div>
+          <div>
             <label htmlFor="password" className="block text-sm font-medium">Password</label>
             <input
               id="password"
@@ -52,20 +63,20 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={8}
               className="w-full px-3 py-2 mt-1 text-black rounded"
             />
           </div>
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded font-semibold">
-            Sign In
+            Sign Up
           </button>
         </form>
         <p className="text-center text-sm">
-          Don't have an account?{' '}
-          <a href="/signup" className="text-blue-400 hover:underline">Sign up</a>
+          Already have an account?{' '}
+          <a href="/login" className="text-blue-400 hover:underline">Sign in</a>
         </p>
       </div>
     </div>
   );
 }
-
