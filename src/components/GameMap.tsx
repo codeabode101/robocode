@@ -70,13 +70,15 @@ export default function GameMap() {
     if (!sceneRef.current) return;
     Object.entries(players).forEach(([userId, pos]) => {
       if (!otherMeshesRef.current[userId]) {
-        const geo = new THREE.CircleGeometry(0.5, 32);
-        const mat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const mesh = new THREE.Mesh(geo, mat);
-        sceneRef.current.add(mesh);
+        const geometry = new THREE.CircleGeometry(0.5, 32);
+        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(pos.x, pos.y, 0.2);
+        sceneRef.current?.add(mesh);
         otherMeshesRef.current[userId] = mesh;
+      } else {
+        otherMeshesRef.current[userId].position.set(pos.x, pos.y, 0.2);
       }
-      otherMeshesRef.current[userId].position.set(pos.x, pos.y, 0.2);
     });
   }, [players]);
 
