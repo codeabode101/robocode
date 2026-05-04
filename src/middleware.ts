@@ -8,7 +8,8 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/api/auth') ||
     pathname === '/login' ||
-    pathname === '/signup'
+    pathname === '/signup' ||
+    pathname === '/'
   ) {
     return NextResponse.next();
   }
