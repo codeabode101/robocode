@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Apinator } from '@apinator/client';
 
 interface PlayerPosition {
   userId: string;
@@ -11,67 +12,107 @@ interface PlayerPosition {
 export function useMultiplayer() {
   const [players, setPlayers] = useState<Record<string, PlayerPosition>>({});
   const [isConnected, setIsConnected] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
+  const localUserIdRef = useRef<string>('');
+  const apinatorRef = useRef<Apinator | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket(
-      `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/multiplayer`
-    );
-    wsRef.current = ws;
+    // Generate a random user ID for the local player if not already set
+    if (!localUserIdRef.current) {
+      localUserIdRef.current = Math.random().toString(36).substring(2, 15);
+    }
 
-    ws.onopen = () => {
-      setIsConnected(true);
-    };
+    // Get Apinator token from environment variable
+    const apinatorToken = process.env.NEXT_PUBLIC_APINATOR_TOKEN;
+    if (!apinatorToken) {
+      console.warn('Apinator token not found in environment variables');
+      return;
+    }
 
-    ws.onmessage = (event) => {
+    // Initialize Apinator client
+    const apinator = new Apinator({
+      token: apinatorToken,
+      // Optional: configure reconnection attempts, etc.
+      reconnectAttempts: 10,
+      reconnectDelay: 1000,
+    });
+    apinatorRef.current = apinator;
+
+    // Subscribe to the game channel
+    const channel = apinator.channel('robocode-game');
+
+    // Handle incoming messages
+    channel.subscribe((message: any) => {
       try {
-        const playerData = JSON.parse(event.data);
+        // Ignore messages from ourselves
+        if (message.userId === localUserIdRef.current) return;
+
+        // Validate message structure
         if (
-          playerData &&
-          typeof playerData.userId === 'string' &&
-          typeof playerData.x === 'number' &&
-          typeof playerData.y === 'number'
+          message &&
+          typeof message.userId === 'string' &&
+          typeof message.x === 'number' &&
+          typeof message.y === 'number'
         ) {
           setPlayers(prev => ({
             ...prev,
-            [playerData.userId]: playerData,
+            [message.userId]: message,
           }));
         }
       } catch (e) {
-        console.error('WebSocket message parse error:', e);
+        console.error('Error processing Apinator message:', e);
       }
-    };
+    });
 
-    ws.onclose = () => {
+    // Handle connection events
+    apinator.on('connect', () => {
+      setIsConnected(true);
+      console.log('Connected to Apinator');
+    });
+
+    apinator.on('disconnect', () => {
       setIsConnected(false);
-      setTimeout(() => {
-        if (wsRef.current === ws) {
-        }
-      }, 3000);
-    };
+      console.log('Disconnected from Apinator');
+    });
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+    apinator.on('error', (error: Error) => {
+      console.error('Apinator error:', error);
+      setIsConnected(false);
+    });
 
+    // Connect to Apinator
+    apinator.connect();
+
+    // Cleanup on unmount
     return () => {
-      wsRef.current = null;
-      ws.close();
+      if (apinatorRef.current) {
+        apinatorRef.current.disconnect();
+        apinatorRef.current = null;
+      }
     };
   }, []);
 
   const sendMove = async (x: number, y: number) => {
     try {
-      const res = await fetch('/api/move', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x, y }),
-      });
-      if (!res.ok) {
-        console.error('Failed to send move:', await res.text());
+      // Publish move to Apinator channel
+      const channel = apinatorRef.current?.channel('robocode-game');
+      if (!channel) {
+        console.warn('Apinator channel not available');
+        return;
       }
+
+      channel.publish({
+        userId: localUserIdRef.current,
+        x,
+        y,
+      });
+
+      // Also update local player position immediately for responsiveness
+      setPlayers(prev => ({
+        ...prev,
+        [localUserIdRef.current]: { userId: localUserIdRef.current, x, y },
+      }));
     } catch (error) {
-      console.error('Error sending move:', error);
+      console.error('Error sending move via Apinator:', error);
     }
   };
 
