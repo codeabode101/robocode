@@ -1,8 +1,6 @@
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
-import { db } from '@/db';
-import { playerPositions } from '@/db/schema';
-import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
@@ -18,31 +16,32 @@ export async function POST(request: NextRequest) {
 
   const { x, y } = await request.json();
 
-  // Publish to Apinator
-  const apinatorRes = await fetch('https://api.apinator.io/v1/publish', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.APINATOR_SECRET!}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      channel: 'robocode-live',
-      event: 'player-move',
-      data: { userId, x: Number(x), y: Number(y) },
-    }),
-  });
+  try {
+    const { env } = await getCloudflareContext({ async: true }) as any;
+    const db = env.DB;
 
-  if (!apinatorRes.ok) {
-    return NextResponse.json({ error: 'Failed to publish' }, { status: 500 });
-  }
+    await db.prepare(`
+      INSERT INTO player_positions (user_id, x, y, map, updated_at) 
+      VALUES (?, ?, ?, 'default', ?) 
+      ON CONFLICT(user_id) DO UPDATE SET x=?, y=?, updated_at=?
+    `).bind(userId, x, y, new Date().toISOString(), x, y, new Date().toISOString()).run();
 
-  // Update player position in DB
-  await db.insert(playerPositions)
-    .values({ user_id: userId, x, y, map: 'default' })
-    .onConflictDoUpdate({
-      target: playerPositions.user_id,
-      set: { x, y, updated_at: new Date() },
+    await fetch('https://api.apinator.io/v1/publish', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.APINATOR_SECRET!}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        channel: 'robocode-live',
+        event: 'player-move',
+        data: { userId, x: Number(x), y: Number(y) },
+      }),
     });
 
-  return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Move error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

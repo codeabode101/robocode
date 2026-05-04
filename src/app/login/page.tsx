@@ -20,7 +20,7 @@ export default function LoginPage() {
     });
 
     if (res.ok) {
-      router.push('/game');
+      window.location.href = '/game';
     } else {
       const data = await res.json();
       setError(data.error || 'Sign in failed');
