@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "main": "worker/index.ts",
+  "main": ".open-next/worker.js",
   "name": "robocode",
   "compatibility_date": "2024-12-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -8,20 +8,6 @@
   "vars": {
     "WORKOS_REDIRECT_URI": "https://robocode.rahejaom.workers.dev/auth/callback"
   },
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "MULTIPLAYER_DO",
-        "class_name": "MultiplayerDO"
-      }
-    ]
-  },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_sqlite_classes": ["MultiplayerDO"]
-    }
-  ],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
