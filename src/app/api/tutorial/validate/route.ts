@@ -30,9 +30,9 @@ export async function POST(request: NextRequest) {
     // Validation for beginner-friendly String variable declarations
     let valid = false;
     let error = '';
+    const normalized = String(code || '').replace(/\s+/g, ' ').trim();
 
-    if (concept === 'string-variable') {
-      const normalized = code.replace(/\s+/g, ' ').trim();
+    if (concept === 'string-variable' || concept === 'string-name' || concept === 'string-color') {
       const declarationPattern = /^String\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"([^"\n]+)"\s*;\s*$/;
       const match = normalized.match(declarationPattern);
 
@@ -50,6 +50,25 @@ export async function POST(request: NextRequest) {
         error = 'Put a text value in quotes, like "teal" or "happy".';
       } else {
         error = 'Try the shape: String favoriteColor = "teal"; then make it your own.';
+      }
+    } else if (concept === 'int-age') {
+      const declarationPattern = /^int\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\d+)\s*;\s*$/;
+      const match = normalized.match(declarationPattern);
+
+      if (match) {
+        valid = true;
+      } else if (!/\bint\b/.test(normalized)) {
+        error = 'Use int at the start for age values.';
+      } else if (!/;/.test(normalized)) {
+        error = 'Add a semicolon at the end (;).';
+      } else if (!/=/.test(normalized)) {
+        error = 'Use = to assign a number.';
+      } else if (!/\bint\s+[A-Za-z_][A-Za-z0-9_]*/.test(normalized)) {
+        error = 'Give your age variable a valid name, like petAge.';
+      } else if (!/\d+/.test(normalized)) {
+        error = 'Age should be a whole number like 2 or 7 (no quotes).';
+      } else {
+        error = 'Try the shape: int petAge = 2;';
       }
     }
 

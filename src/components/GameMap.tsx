@@ -37,6 +37,24 @@ type RemoteAvatar = {
   walkTime: number;
 };
 
+type TutorialChallenge = {
+  concept: 'string-name' | 'string-color' | 'int-age';
+  title: string;
+  prompt: string;
+  hint: string;
+  starterCode: string;
+};
+
+type TutorialPhase =
+  | {
+      kind: 'dialogue';
+      npcText: string;
+    }
+  | ({
+      kind: 'challenge';
+      npcText: string;
+    } & TutorialChallenge);
+
 function escapeHtml(input: string) {
   return input
     .replaceAll('&', '&amp;')
@@ -444,6 +462,41 @@ function createRangoli(x: number, y: number) {
   return rangoli;
 }
 
+function createBigPetShop(x: number, y: number) {
+  const shop = new THREE.Group();
+
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(4.6, 2.9, 1.5),
+    createLitMaterial(0xf8bbd0, 0.7, 0.06)
+  );
+  base.position.set(x, y, 1.05);
+  shop.add(base);
+
+  const roof = new THREE.Mesh(
+    new THREE.BoxGeometry(5.1, 1.2, 1.7),
+    createLitMaterial(0x2563eb, 0.62, 0.08)
+  );
+  roof.position.set(x, y + 1.6, 2.25);
+  shop.add(roof);
+
+  const door = new THREE.Mesh(
+    new THREE.BoxGeometry(1.05, 1.55, 0.34),
+    createLitMaterial(0x1f2937, 0.45, 0.3)
+  );
+  door.position.set(x, y - 0.52, 1.26);
+  shop.add(door);
+
+  const sign = createLabelSprite('PET WORKSHOP', '#f8fafc', 'rgba(15,23,42,0.92)', '#fde68a', 360, 90);
+  sign.scale.set(3.5, 0.95, 1);
+  sign.center.set(0.5, 0);
+  sign.position.set(x, y + 1.55, 3.25);
+  sign.renderOrder = 32;
+  shop.add(sign);
+
+  applyShadows(shop, true, true);
+  return shop;
+}
+
 function animateRobotVisual(visual: RobotVisual, time: number, speedFactor: number, lookX: number, lookY: number) {
   const walkAmount = Math.min(1, speedFactor);
   const bob = Math.sin(time * WALK_BOB_SPEED) * 0.035 * walkAmount;
@@ -475,10 +528,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const keyStateRef = useRef<Set<string>>(new Set());
   const showTutorialRef = useRef(false);
   const tutorialCompleteRef = useRef(false);
+  const shopUnlockedRef = useRef(false);
   const sendAtRef = useRef(0);
   const lastStepAtRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
+  const petShopRef = useRef<THREE.Group | null>(null);
+  const petShopMarkerRef = useRef<THREE.Sprite | null>(null);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
@@ -486,29 +542,56 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
-  const [code, setCode] = useState('String favoriteColor = "";');
+  const [code, setCode] = useState('String petName = "Milo";');
   const [output, setOutput] = useState('');
   const [success, setSuccess] = useState(false);
   const [sparkleBurst, setSparkleBurst] = useState(false);
   const [tutorialComplete, setTutorialComplete] = useState(false);
+  const [shopUnlocked, setShopUnlocked] = useState(false);
+  const [showShopIntro, setShowShopIntro] = useState(false);
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
 
-  const tutorialSteps = [
+  const tutorialPhases: TutorialPhase[] = [
     {
+      kind: 'dialogue',
       npcText:
-        "Hey coder! I'm Sparky 🤖. I need a cool name tag before I can join your team. Let's learn variables!",
-      showEditor: false,
+        "Hey coder! I'm Sparky 🤖. Let's unlock your first job by learning variables.",
     },
     {
+      kind: 'dialogue',
       npcText:
-        'In Java, variables store info. For text, we use <code>String</code>. Example: <code>String robotName = "Sparky";</code>',
-      showEditor: false,
+        'First quick demo: <code>String robotName = "Sparky";</code>. Now you will do your own in 3 short rounds.',
     },
     {
+      kind: 'challenge',
+      concept: 'string-name',
+      title: 'Round 1: Name a pet',
+      prompt: 'Create a String for a pet name.',
+      hint: 'Hint: Strings are text, so put the value in double quotes.',
+      starterCode: 'String petName = "Milo";',
       npcText:
-        'Now you try! Make your own String variable. Example shape: <code>String favoriteColor = "teal";</code>. Pick any valid name and text value, then press Run ✨',
-      showEditor: true,
+        'Now you try! Make a pet name String. You can change both variable name and value.',
+    },
+    {
+      kind: 'challenge',
+      concept: 'string-color',
+      title: 'Round 2: Set a color',
+      prompt: 'Make a String for color.',
+      hint: 'Hint: use this shape → <code>String petColor = "blue";</code> (color must stay in quotes).',
+      starterCode: 'String petColor = "blue";',
+      npcText:
+        'Great! Next make a color String. Keep <code>String</code>, add a variable name, then a quoted color value.',
+    },
+    {
+      kind: 'challenge',
+      concept: 'int-age',
+      title: 'Round 3: Add age with int',
+      prompt: 'Now make an int for age.',
+      hint: 'Hint: use a whole number with no quotes: <code>int petAge = 2;</code>',
+      starterCode: 'int petAge = 2;',
+      npcText:
+        'Final round! Make an <code>int</code> variable for age. Use a number (no quotes).',
     },
   ];
 
@@ -559,6 +642,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   useEffect(() => {
     tutorialCompleteRef.current = tutorialComplete;
   }, [tutorialComplete]);
+
+  useEffect(() => {
+    shopUnlockedRef.current = shopUnlocked;
+  }, [shopUnlocked]);
 
   useEffect(() => {
     if (connected) {
@@ -720,6 +807,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const rangoli = createRangoli(3.98, -2.02);
     scene.add(rangoli);
 
+    const petShop = createBigPetShop(-9.6, -6.4);
+    petShop.visible = shopUnlockedRef.current;
+    scene.add(petShop);
+    petShopRef.current = petShop;
+
+    const petShopMarker = createLabelSprite('!', '#ffffff', 'rgba(220,38,38,0.95)', '#fee2e2', 120, 120);
+    petShopMarker.scale.set(1.02, 1.02, 1);
+    petShopMarker.position.set(-9.6, -3.8, 4.1);
+    petShopMarker.renderOrder = 60;
+    petShopMarker.visible = shopUnlockedRef.current;
+    scene.add(petShopMarker);
+    petShopMarkerRef.current = petShopMarker;
+
     const clouds: THREE.Group[] = [];
     for (let i = 0; i < 7; i += 1) {
       const cloud = new THREE.Group();
@@ -827,7 +927,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (distanceToSparky < 1.7 && !showTutorialRef.current && !tutorialCompleteRef.current) {
         setShowTutorial(true);
         setTutorialStep(0);
-        setCode('String favoriteColor = "";');
+        setCode('String petName = "Milo";');
         setOutput('');
         setSuccess(false);
       } else if (distanceToSparky > 2.25 && showTutorialRef.current) {
@@ -860,6 +960,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       marketLamps.children.forEach((lamp, i) => {
         lamp.scale.setScalar(0.95 + Math.sin(worldTime * 3 + i * 0.4) * 0.08);
       });
+      if (petShopMarker.visible) {
+        petShopMarker.position.y = -3.8 + Math.sin(worldTime * 3.8) * 0.22;
+      }
 
       const cameraTargetX = localPositionRef.current.x * 0.1;
       const cameraTargetY = localPositionRef.current.y * 0.1;
@@ -895,12 +998,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       disposeObject(bazaarPad);
       disposeObject(stonePath);
       disposeObject(rangoli);
+      disposeObject(petShop);
+      disposeObject(petShopMarker);
       scene.clear();
       renderer.dispose();
       mountElement.removeChild(renderer.domElement);
       rendererRef.current = null;
     };
   }, [sendPosition, userId]);
+
+  useEffect(() => {
+    if (petShopRef.current) petShopRef.current.visible = shopUnlocked;
+    if (petShopMarkerRef.current) petShopMarkerRef.current.visible = shopUnlocked;
+  }, [shopUnlocked]);
 
   useEffect(() => {
     if (!sceneRef.current) return;
@@ -949,26 +1059,46 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   };
 
   const checkAnswer = async () => {
+    const activePhase = tutorialPhases[tutorialStep];
+    if (!activePhase || activePhase.kind !== 'challenge') return;
+
     try {
       const res = await fetch('/api/tutorial/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, concept: 'string-variable' }),
+        body: JSON.stringify({ code, concept: activePhase.concept }),
       });
       const data = await res.json();
 
       if (data.valid) {
+        const nextStep = tutorialStep + 1;
+        const nextPhase = tutorialPhases[nextStep];
+
         setSuccess(true);
-        setTutorialComplete(true);
         setSparkleBurst(true);
-        setOutput('✅ Sparky is thrilled! You made your own String variable.');
         playHappyChime();
-        setTimeout(() => setSparkleBurst(false), 900);
-        setTimeout(() => {
-          setShowTutorial(false);
-          setTutorialStep(0);
-          setOutput('');
-        }, 1600);
+
+        if (nextPhase && nextPhase.kind === 'challenge') {
+          setOutput(`✅ Nice! ${activePhase.title} complete.`);
+          setTimeout(() => {
+            setSparkleBurst(false);
+            setSuccess(false);
+            setTutorialStep(nextStep);
+            setCode(nextPhase.starterCode);
+            setOutput('');
+          }, 850);
+        } else {
+          setOutput('✅ Amazing! You finished name, color, and age variables.');
+          setTutorialComplete(true);
+          setShopUnlocked(true);
+          setShowShopIntro(true);
+          setTimeout(() => setSparkleBurst(false), 900);
+          setTimeout(() => {
+            setShowTutorial(false);
+            setTutorialStep(0);
+            setOutput('');
+          }, 1600);
+        }
       } else {
         setOutput(`❌ ${data.error || 'Almost there — try again!'}`);
       }
@@ -979,6 +1109,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   return (
     <div className="relative">
+      {showShopIntro && (
+        <div className="pointer-events-none absolute top-20 right-4 z-40 max-w-sm rounded-2xl border border-amber-200/50 bg-slate-900/90 px-4 py-3 text-sm text-amber-50 shadow-2xl">
+          <div className="font-bold text-amber-300">New Job Unlocked! ❗</div>
+          <div className="mt-1">
+            Hey! You can work here and name and age my pets when I get a new one and get money for it.
+          </div>
+          <button
+            type="button"
+            className="pointer-events-auto mt-3 rounded bg-amber-400 px-3 py-1 text-xs font-semibold text-slate-900"
+            onClick={() => setShowShopIntro(false)}
+          >
+            Got it
+          </button>
+        </div>
+      )}
+
       <div className="w-full h-screen" ref={mountRef} />
 
       <div className="absolute top-4 left-4 bg-black/45 text-white text-sm px-3 py-1 rounded-full">
@@ -986,7 +1132,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       </div>
 
       <div className="absolute bottom-4 left-4 bg-black/40 text-white text-xs md:text-sm px-3 py-2 rounded-lg">
-        Arrow Keys / WASD to move • Meet Sparky 🤖 • Type your first Java variable
+        Arrow Keys / WASD to move • Meet Sparky 🤖 • Learn name, color, and age variables
       </div>
 
       {showTutorial && (
@@ -1006,13 +1152,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 <h2 className="text-white text-xl font-bold">Sparky</h2>
                 <p
                   className="text-slate-200 mt-1"
-                  dangerouslySetInnerHTML={{ __html: tutorialSteps[tutorialStep].npcText }}
+                  dangerouslySetInnerHTML={{ __html: tutorialPhases[tutorialStep].npcText }}
                 />
               </div>
             </div>
 
-            {tutorialSteps[tutorialStep].showEditor && (
+            {tutorialPhases[tutorialStep].kind === 'challenge' && (
               <div className="mb-4">
+                <div className="mb-3 rounded-lg border border-slate-700/70 bg-slate-800/70 px-3 py-2 text-sm text-slate-200">
+                  <div className="font-semibold text-slate-100">{tutorialPhases[tutorialStep].title}</div>
+                  <div className="mt-1">{tutorialPhases[tutorialStep].prompt}</div>
+                  <div className="mt-1 text-sky-300" dangerouslySetInnerHTML={{ __html: tutorialPhases[tutorialStep].hint }} />
+                </div>
                 <div className="rounded-xl border border-slate-700 bg-slate-950 overflow-hidden">
                   <div className="px-3 py-2 text-xs text-slate-300 border-b border-slate-800">
                     Java Editor
@@ -1048,7 +1199,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
             <div className="flex items-center justify-between">
               <div className="flex gap-2">
-                {tutorialSteps.map((_, i) => (
+                {tutorialPhases.map((_, i) => (
                   <span
                     key={i}
                     className={`h-2.5 w-2.5 rounded-full ${
@@ -1058,7 +1209,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 ))}
               </div>
 
-              {tutorialStep < tutorialSteps.length - 1 ? (
+              {tutorialPhases[tutorialStep].kind === 'dialogue' ? (
                 <button
                   onClick={() => setTutorialStep((step) => step + 1)}
                   className="rounded-lg bg-blue-600 px-5 py-2 text-white font-semibold hover:bg-blue-500"
@@ -1075,7 +1226,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                       : 'bg-amber-500 text-slate-900 hover:bg-amber-400'
                   }`}
                 >
-                  {success ? 'Sparky is happy! 🎉' : 'Run Code'}
+                  {success ? 'Great! ✨' : 'Run Code'}
                 </button>
               )}
             </div>
