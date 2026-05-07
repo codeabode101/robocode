@@ -10,14 +10,14 @@ interface GameMapProps {
   apinatorCluster: 'us' | 'eu';
 }
 
-const ISLAND_RADIUS = 12;
+const ISLAND_RADIUS = 28;
 const PLAYER_RADIUS = 0.48;
-const MOVE_SPEED = 5.4;
+const MOVE_SPEED = 7.4;
 const NETWORK_SYNC_MS = 90;
 const NPC_POSITION = new THREE.Vector2(3.6, 1.8);
 const WALK_BOB_SPEED = 14;
 const REMOTE_LERP = 0.18;
-const CAMERA_OFFSET = new THREE.Vector3(0, -10.2, 14.8);
+const CAMERA_OFFSET = new THREE.Vector3(0, -11.6, 15.4);
 const CAMERA_LOOK_AHEAD = new THREE.Vector3(0, 2.2, 0);
 
 type RobotVisual = {
@@ -564,7 +564,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     sceneRef.current = scene;
 
     const aspect = mountElement.clientWidth / mountElement.clientHeight;
-    const viewHeight = 24;
+    const viewHeight = 26;
     const camera = new THREE.OrthographicCamera(
       (-viewHeight * aspect) / 2,
       (viewHeight * aspect) / 2,
@@ -610,7 +610,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.add(sun);
 
     const water = new THREE.Mesh(
-      new THREE.CircleGeometry(ISLAND_RADIUS + 7, 80),
+      new THREE.CircleGeometry(ISLAND_RADIUS + 10, 120),
       createLitMaterial(0x4aa6ff, 0.15, 0.2)
     );
     water.position.z = 0.02;
@@ -618,7 +618,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.add(water);
 
     const beach = new THREE.Mesh(
-      new THREE.RingGeometry(ISLAND_RADIUS - 0.9, ISLAND_RADIUS + 1, 80),
+      new THREE.RingGeometry(ISLAND_RADIUS - 1, ISLAND_RADIUS + 1.4, 120),
       createLitMaterial(0xf5d17c, 0.92, 0.02)
     );
     beach.position.z = 0.09;
@@ -626,7 +626,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.add(beach);
 
     const island = new THREE.Mesh(
-      new THREE.CircleGeometry(ISLAND_RADIUS, 80),
+      new THREE.CircleGeometry(ISLAND_RADIUS, 120),
       createLitMaterial(0x5ac66f, 0.88, 0.02)
     );
     island.position.z = 0.13;
@@ -656,17 +656,27 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       createPalmTree(8.1, 4.9),
       createPalmTree(-6.8, -5.6),
       createPalmTree(7.2, -6),
+      createPalmTree(-16.5, 12),
+      createPalmTree(17.8, 11.4),
+      createPalmTree(-18.7, -9.8),
+      createPalmTree(16.1, -12.2),
+      createPalmTree(-3.2, 20.8),
+      createPalmTree(5.1, -21.2),
+      createPalmTree(21.7, -1.9),
+      createPalmTree(-22.3, 1.3),
+      createPalmTree(12.4, 17.1),
+      createPalmTree(-13.5, 16.4),
     ];
     palmTrees.forEach((tree) => scene.add(tree));
 
     const flowers = new THREE.Group();
-    for (let i = 0; i < 18; i += 1) {
+    for (let i = 0; i < 72; i += 1) {
       const flower = new THREE.Mesh(
         new THREE.CircleGeometry(0.08, 10),
         createLitMaterial([0xff7ab6, 0xfff06a, 0x7ee6ff][i % 3], 0.65, 0.03)
       );
-      const angle = (Math.PI * 2 * i) / 18;
-      const radius = 5.8 + (i % 4) * 0.8;
+      const angle = (Math.PI * 2 * i) / 72;
+      const radius = 7 + (i % 9) * 2;
       flower.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.16);
       flowers.add(flower);
     }
@@ -696,7 +706,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.add(rangoli);
 
     const clouds: THREE.Group[] = [];
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < 7; i += 1) {
       const cloud = new THREE.Group();
       const cloudColor = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 });
       const puffs = [
@@ -709,7 +719,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         mesh.position.set(puff.x, puff.y, 0.02);
         cloud.add(mesh);
       });
-      cloud.position.set(-10 + i * 8.5, 8 - i * 0.8, 0.02);
+      cloud.position.set(-26 + i * 8.5, 12 - i * 1.1, 0.02);
       clouds.push(cloud);
       scene.add(cloud);
     }
