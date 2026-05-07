@@ -2,6 +2,16 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
+type PreparedStatement = {
+  bind: (...params: unknown[]) => {
+    run: () => Promise<unknown>;
+  };
+};
+
+type D1DatabaseLike = {
+  prepare: (query: string) => PreparedStatement;
+};
+
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -17,33 +27,35 @@ export async function POST(request: NextRequest) {
   const { code, concept } = await request.json();
 
   try {
-    // Simple validation for string variable declaration
+    // Validation for beginner-friendly String variable declarations
     let valid = false;
     let error = '';
 
     if (concept === 'string-variable') {
-      // Check for: String robotName = "Sparky";
       const normalized = code.replace(/\s+/g, ' ').trim();
-      const pattern = /String\s+robotName\s*=\s*"Sparky"\s*;/;
-      
-      if (pattern.test(normalized)) {
+      const declarationPattern = /^String\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"([^"\n]+)"\s*;\s*$/;
+      const match = normalized.match(declarationPattern);
+
+      if (match) {
         valid = true;
       } else if (!code.includes('String')) {
-        error = 'Missing: You need to declare the type (String)';
-      } else if (!code.includes('robotName')) {
-        error = 'Missing: Variable name should be "robotName"';
-      } else if (!code.includes('"Sparky"')) {
-        error = 'Missing: Value should be "Sparky" (with quotes)';
+        error = 'Start with the type: use String at the beginning.';
       } else if (!code.includes(';')) {
-        error = 'Missing: Dont forget the semicolon (;)';
+        error = 'Add a semicolon at the end (;).';
+      } else if (!code.includes('=')) {
+        error = 'Use = to assign a text value to your variable.';
+      } else if (!/String\s+[A-Za-z_][A-Za-z0-9_]*/.test(normalized)) {
+        error = 'Give your variable a valid name, like favoriteColor or botMood.';
+      } else if (!/"[^"\n]+"/.test(normalized)) {
+        error = 'Put a text value in quotes, like "teal" or "happy".';
       } else {
-        error = 'Try again! Make sure its exactly: String robotName = "Sparky";';
+        error = 'Try the shape: String favoriteColor = "teal"; then make it your own.';
       }
     }
 
     if (valid) {
       // Mark concept as completed
-      const { env } = await getCloudflareContext({ async: true }) as any;
+      const { env } = (await getCloudflareContext({ async: true })) as unknown as { env: { DB: D1DatabaseLike } };
       const db = env.DB;
       
       await db.prepare(`
@@ -54,8 +66,9 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ valid, error });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Validation error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Unknown validation error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

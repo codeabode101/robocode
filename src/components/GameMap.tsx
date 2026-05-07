@@ -465,6 +465,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const remoteAvatarsRef = useRef<Record<string, RemoteAvatar>>({});
   const keyStateRef = useRef<Set<string>>(new Set());
   const showTutorialRef = useRef(false);
+  const tutorialCompleteRef = useRef(false);
   const sendAtRef = useRef(0);
   const lastStepAtRef = useRef(0);
   const rafRef = useRef<number | null>(null);
@@ -476,10 +477,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
-  const [code, setCode] = useState('String robotName = "Sparky";');
+  const [code, setCode] = useState('String favoriteColor = "";');
   const [output, setOutput] = useState('');
   const [success, setSuccess] = useState(false);
   const [sparkleBurst, setSparkleBurst] = useState(false);
+  const [tutorialComplete, setTutorialComplete] = useState(false);
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
 
@@ -491,12 +493,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     },
     {
       npcText:
-        'In Java, variables store info. For text, we use <code>String</code>. Example: <code>String petName = "Nova";</code>',
+        'In Java, variables store info. For text, we use <code>String</code>. Example: <code>String robotName = "Sparky";</code>',
       showEditor: false,
     },
     {
       npcText:
-        'Your turn! Type this exactly: <code>String robotName = "Sparky";</code> then press Run ✨',
+        'Now you try! Make your own String variable. Example shape: <code>String favoriteColor = "teal";</code>. Pick any valid name and text value, then press Run ✨',
       showEditor: true,
     },
   ];
@@ -544,6 +546,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   useEffect(() => {
     showTutorialRef.current = showTutorial;
   }, [showTutorial]);
+
+  useEffect(() => {
+    tutorialCompleteRef.current = tutorialComplete;
+  }, [tutorialComplete]);
 
   useEffect(() => {
     if (connected) {
@@ -809,9 +815,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       animateRobotVisual(localRobot, worldTime, moved ? 1 : 0, lookDirection.x, lookDirection.y);
 
       const distanceToSparky = localPositionRef.current.distanceTo(NPC_POSITION);
-      if (distanceToSparky < 1.7 && !showTutorialRef.current) {
+      if (distanceToSparky < 1.7 && !showTutorialRef.current && !tutorialCompleteRef.current) {
         setShowTutorial(true);
         setTutorialStep(0);
+        setCode('String favoriteColor = "";');
+        setOutput('');
+        setSuccess(false);
       } else if (distanceToSparky > 2.25 && showTutorialRef.current) {
         setShowTutorial(false);
         setTutorialStep(0);
@@ -941,16 +950,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       if (data.valid) {
         setSuccess(true);
+        setTutorialComplete(true);
         setSparkleBurst(true);
-        setOutput('✅ Sparky is thrilled! You just created your first Java variable.');
+        setOutput('✅ Sparky is thrilled! You made your own String variable.');
         playHappyChime();
         setTimeout(() => setSparkleBurst(false), 900);
         setTimeout(() => {
           setShowTutorial(false);
           setTutorialStep(0);
-          setSuccess(false);
           setOutput('');
-        }, 1800);
+        }, 1600);
       } else {
         setOutput(`❌ ${data.error || 'Almost there — try again!'}`);
       }
@@ -1002,7 +1011,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   <div className="relative h-32">
                     <pre
                       ref={codePreviewRef}
-                      className="absolute inset-0 m-0 p-3 overflow-auto whitespace-pre-wrap break-words font-mono text-sm leading-6 text-slate-100"
+                      className="pointer-events-none absolute inset-0 m-0 p-3 overflow-auto whitespace-pre font-mono text-sm leading-6 text-slate-100 [font-variant-ligatures:none]"
                       dangerouslySetInnerHTML={{ __html: `${highlightedCode}\n` }}
                     />
                     <textarea
@@ -1011,7 +1020,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                       onChange={(event) => setCode(event.target.value)}
                       onScroll={onEditorScroll}
                       spellCheck={false}
-                      className="absolute inset-0 h-full w-full resize-none overflow-auto bg-transparent p-3 font-mono text-sm leading-6 text-transparent caret-green-300"
+                      wrap="off"
+                      className="absolute inset-0 h-full w-full resize-none overflow-auto whitespace-pre bg-transparent p-3 font-mono text-sm leading-6 text-transparent caret-green-300 [font-variant-ligatures:none]"
                     />
                   </div>
                 </div>
