@@ -47,20 +47,29 @@ function escapeHtml(input: string) {
 }
 
 function highlightJava(input: string) {
-  let highlighted = escapeHtml(input);
-  highlighted = highlighted.replace(
-    /\b(String|int|double|boolean|char|float|long|short|byte)\b/g,
-    '<span style="color:#60a5fa">$1</span>'
-  );
-  highlighted = highlighted.replace(
-    /("[^"\n]*")/g,
-    '<span style="color:#f59e0b">$1</span>'
-  );
-  highlighted = highlighted.replace(
-    /\b([a-zA-Z_][a-zA-Z0-9_]*)\b(?=\s*=)/g,
-    '<span style="color:#a78bfa">$1</span>'
-  );
-  return highlighted;
+  const tokenPattern =
+    /"(?:[^"\\\n]|\\.)*"|\b(String|int|double|boolean|char|float|long|short|byte)\b|\b([A-Za-z_][A-Za-z0-9_]*)\b(?=\s*=)/g;
+  let output = '';
+  let lastIndex = 0;
+
+  for (const match of input.matchAll(tokenPattern)) {
+    const value = match[0];
+    const index = match.index ?? 0;
+    output += escapeHtml(input.slice(lastIndex, index));
+
+    if (value.startsWith('"')) {
+      output += `<span style="color:#f59e0b">${escapeHtml(value)}</span>`;
+    } else if (match[1]) {
+      output += `<span style="color:#60a5fa">${escapeHtml(value)}</span>`;
+    } else {
+      output += `<span style="color:#a78bfa">${escapeHtml(value)}</span>`;
+    }
+
+    lastIndex = index + value.length;
+  }
+
+  output += escapeHtml(input.slice(lastIndex));
+  return output;
 }
 
 function hashColor(seed: string) {
