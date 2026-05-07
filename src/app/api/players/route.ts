@@ -16,9 +16,11 @@ export async function GET(request: NextRequest) {
     const { env } = await getCloudflareContext({ async: true }) as any;
     const db = env.DB;
 
-    const players = await db.prepare(
-      'SELECT user_id, x, y FROM player_positions'
-    ).all();
+    const players = await db.prepare(`
+      SELECT p.user_id, p.x, p.y, COALESCE(u.name, 'Robot') as name
+      FROM player_positions p
+      LEFT JOIN users u ON u.id = p.user_id
+    `).all();
 
     return NextResponse.json({ players: players.results || [] });
   } catch (error: any) {
