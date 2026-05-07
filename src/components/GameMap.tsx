@@ -17,6 +17,8 @@ const NETWORK_SYNC_MS = 90;
 const NPC_POSITION = new THREE.Vector2(3.6, 1.8);
 const WALK_BOB_SPEED = 14;
 const REMOTE_LERP = 0.18;
+const CAMERA_OFFSET = new THREE.Vector3(0, -10.2, 14.8);
+const CAMERA_LOOK_AHEAD = new THREE.Vector3(0, 2.2, 0);
 
 type RobotVisual = {
   root: THREE.Group;
@@ -72,10 +74,17 @@ function hashColor(seed: string) {
   return color;
 }
 
-function createNameSprite(label: string, color: THREE.Color) {
+function createLabelSprite(
+  label: string,
+  textColor: string,
+  backgroundColor: string,
+  borderColor: string,
+  canvasWidth = 256,
+  canvasHeight = 72
+) {
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 72;
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
   const context = canvas.getContext('2d');
   if (!context) {
     const texture = new THREE.Texture(canvas);
@@ -85,28 +94,28 @@ function createNameSprite(label: string, color: THREE.Color) {
   }
 
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = 'rgba(8, 15, 30, 0.68)';
-  context.strokeStyle = `#${color.getHexString()}`;
+  context.fillStyle = backgroundColor;
+  context.strokeStyle = borderColor;
   context.lineWidth = 3;
   const radius = 14;
-  const width = canvas.width - 20;
-  const height = canvas.height - 20;
+  const boxWidth = canvas.width - 20;
+  const boxHeight = canvas.height - 20;
   const x = 10;
   const y = 10;
   context.beginPath();
   context.moveTo(x + radius, y);
-  context.lineTo(x + width - radius, y);
-  context.quadraticCurveTo(x + width, y, x + width, y + radius);
-  context.lineTo(x + width, y + height - radius);
-  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  context.lineTo(x + radius, y + height);
-  context.quadraticCurveTo(x, y + height, x, y + height - radius);
+  context.lineTo(x + boxWidth - radius, y);
+  context.quadraticCurveTo(x + boxWidth, y, x + boxWidth, y + radius);
+  context.lineTo(x + boxWidth, y + boxHeight - radius);
+  context.quadraticCurveTo(x + boxWidth, y + boxHeight, x + boxWidth - radius, y + boxHeight);
+  context.lineTo(x + radius, y + boxHeight);
+  context.quadraticCurveTo(x, y + boxHeight, x, y + boxHeight - radius);
   context.lineTo(x, y + radius);
   context.quadraticCurveTo(x, y, x + radius, y);
   context.closePath();
   context.fill();
   context.stroke();
-  context.fillStyle = '#f8fafc';
+  context.fillStyle = textColor;
   context.font = '700 26px system-ui, sans-serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
@@ -118,10 +127,22 @@ function createNameSprite(label: string, color: THREE.Color) {
     map: texture,
     transparent: true,
     depthWrite: false,
+    depthTest: false,
   });
-  const sprite = new THREE.Sprite(material);
+  return new THREE.Sprite(material);
+}
+
+function createNameSprite(label: string, color: THREE.Color) {
+  const sprite = createLabelSprite(
+    label,
+    '#f8fafc',
+    'rgba(8, 15, 30, 0.72)',
+    `#${color.getHexString()}`
+  );
   sprite.scale.set(2.9, 0.82, 1);
-  sprite.position.set(0, 1.15, 0.3);
+  sprite.center.set(0.5, 0.05);
+  sprite.position.set(0, 1.24, 0.96);
+  sprite.renderOrder = 40;
   return sprite;
 }
 
@@ -160,6 +181,19 @@ function createRoundedRectGeometry(width: number, height: number, radius: number
   return new THREE.ShapeGeometry(shape);
 }
 
+function createLitMaterial(color: number | THREE.Color, roughness = 0.78, metalness = 0.06) {
+  return new THREE.MeshStandardMaterial({ color, roughness, metalness });
+}
+
+function applyShadows(object: THREE.Object3D, cast = true, receive = true) {
+  object.traverse((node) => {
+    const mesh = node as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.castShadow = cast;
+    mesh.receiveShadow = receive;
+  });
+}
+
 function createRobotVisual(color: THREE.Color, name: string) {
   const group = new THREE.Group();
 
@@ -172,38 +206,38 @@ function createRobotVisual(color: THREE.Color, name: string) {
   group.add(shadow);
 
   const feet = new THREE.Mesh(
-    createRoundedRectGeometry(0.52, 0.17, 0.08),
-    new THREE.MeshBasicMaterial({ color: 0x1f2937 })
+    new THREE.BoxGeometry(0.52, 0.18, 0.23),
+    createLitMaterial(0x1f2937, 0.62, 0.2)
   );
-  feet.position.set(0, -0.42, 0.23);
+  feet.position.set(0, -0.42, 0.33);
   group.add(feet);
 
   const body = new THREE.Mesh(
-    createRoundedRectGeometry(0.95, 0.94, 0.28),
-    new THREE.MeshBasicMaterial({ color })
+    new THREE.BoxGeometry(0.95, 0.94, 0.42),
+    createLitMaterial(color, 0.7, 0.07)
   );
-  body.position.set(0, 0.02, 0.24);
+  body.position.set(0, 0.02, 0.47);
   group.add(body);
 
   const facePanel = new THREE.Mesh(
-    createRoundedRectGeometry(0.62, 0.5, 0.16),
-    new THREE.MeshBasicMaterial({ color: 0xe2e8f0 })
+    new THREE.BoxGeometry(0.62, 0.5, 0.08),
+    createLitMaterial(0xe2e8f0, 0.5, 0.15)
   );
-  facePanel.position.set(0, 0.12, 0.25);
+  facePanel.position.set(0, 0.12, 0.72);
   group.add(facePanel);
 
   const belly = new THREE.Mesh(
-    createRoundedRectGeometry(0.45, 0.25, 0.12),
-    new THREE.MeshBasicMaterial({ color: 0xf8fafc })
+    new THREE.BoxGeometry(0.45, 0.25, 0.06),
+    createLitMaterial(0xf8fafc, 0.52, 0.1)
   );
-  belly.position.set(0, -0.18, 0.25);
+  belly.position.set(0, -0.18, 0.71);
   group.add(belly);
 
   const armLeft = new THREE.Mesh(
-    createRoundedRectGeometry(0.14, 0.36, 0.06),
-    new THREE.MeshBasicMaterial({ color })
+    new THREE.BoxGeometry(0.14, 0.36, 0.2),
+    createLitMaterial(color, 0.72, 0.06)
   );
-  armLeft.position.set(-0.58, -0.03, 0.22);
+  armLeft.position.set(-0.58, -0.03, 0.45);
   armLeft.rotation.z = 0.15;
   group.add(armLeft);
 
@@ -213,10 +247,10 @@ function createRobotVisual(color: THREE.Color, name: string) {
   group.add(armRight);
 
   const cheekLeft = new THREE.Mesh(
-    new THREE.CircleGeometry(0.06, 12),
-    new THREE.MeshBasicMaterial({ color: 0xfda4af, transparent: true, opacity: 0.9 })
+    new THREE.SphereGeometry(0.06, 12, 12),
+    createLitMaterial(0xfda4af, 0.65, 0.03)
   );
-  cheekLeft.position.set(-0.2, -0.01, 0.26);
+  cheekLeft.position.set(-0.2, -0.01, 0.76);
   group.add(cheekLeft);
 
   const cheekRight = cheekLeft.clone();
@@ -224,10 +258,10 @@ function createRobotVisual(color: THREE.Color, name: string) {
   group.add(cheekRight);
 
   const eyeLeft = new THREE.Mesh(
-    new THREE.CircleGeometry(0.1, 16),
-    new THREE.MeshBasicMaterial({ color: 0xffffff })
+    new THREE.SphereGeometry(0.1, 14, 14),
+    createLitMaterial(0xffffff, 0.4, 0.2)
   );
-  eyeLeft.position.set(-0.15, 0.16, 0.26);
+  eyeLeft.position.set(-0.15, 0.16, 0.8);
   group.add(eyeLeft);
 
   const eyeRight = eyeLeft.clone();
@@ -235,10 +269,10 @@ function createRobotVisual(color: THREE.Color, name: string) {
   group.add(eyeRight);
 
   const leftPupil = new THREE.Mesh(
-    new THREE.CircleGeometry(0.034, 12),
-    new THREE.MeshBasicMaterial({ color: 0x0f172a })
+    new THREE.SphereGeometry(0.034, 12, 12),
+    createLitMaterial(0x0f172a, 0.6, 0.25)
   );
-  leftPupil.position.set(-0.15, 0.16, 0.27);
+  leftPupil.position.set(-0.15, 0.16, 0.88);
   group.add(leftPupil);
 
   const rightPupil = leftPupil.clone();
@@ -246,21 +280,22 @@ function createRobotVisual(color: THREE.Color, name: string) {
   group.add(rightPupil);
 
   const antennaStem = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.06, 0.18),
-    new THREE.MeshBasicMaterial({ color: 0x64748b })
+    new THREE.CylinderGeometry(0.02, 0.02, 0.18, 10),
+    createLitMaterial(0x64748b, 0.4, 0.45)
   );
-  antennaStem.position.set(0, 0.58, 0.26);
+  antennaStem.position.set(0, 0.58, 0.78);
   group.add(antennaStem);
 
   const antennaTip = new THREE.Mesh(
-    new THREE.CircleGeometry(0.06, 14),
-    new THREE.MeshBasicMaterial({ color: 0xf43f5e })
+    new THREE.SphereGeometry(0.06, 12, 12),
+    createLitMaterial(0xf43f5e, 0.5, 0.18)
   );
-  antennaTip.position.set(0, 0.7, 0.27);
+  antennaTip.position.set(0, 0.7, 0.82);
   group.add(antennaTip);
 
   const nameSprite = createNameSprite(name, color);
   group.add(nameSprite);
+  applyShadows(group, true, true);
 
   return { root: group, nameSprite, body, shadow, leftPupil, rightPupil, antennaTip };
 }
@@ -280,22 +315,124 @@ function createGrid(size: number, step: number, color: number) {
 function createPalmTree(x: number, y: number) {
   const tree = new THREE.Group();
   const trunk = new THREE.Mesh(
-    createRoundedRectGeometry(0.24, 1.25, 0.1),
-    new THREE.MeshBasicMaterial({ color: 0x8b5a2b })
+    new THREE.CylinderGeometry(0.14, 0.19, 1.25, 9),
+    createLitMaterial(0x8b5a2b, 0.85, 0.05)
   );
-  trunk.position.set(x, y, 0.2);
+  trunk.position.set(x, y, 0.65);
   tree.add(trunk);
 
-  const leafMaterial = new THREE.MeshBasicMaterial({ color: 0x2e9f59 });
+  const leafMaterial = createLitMaterial(0x2e9f59, 0.9, 0.02);
   for (let i = 0; i < 5; i += 1) {
-    const leaf = new THREE.Mesh(new THREE.CircleGeometry(0.35, 18), leafMaterial);
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), leafMaterial);
     const angle = (Math.PI * 2 * i) / 5;
-    leaf.scale.set(1.5, 0.65, 1);
-    leaf.position.set(x + Math.cos(angle) * 0.26, y + 0.7 + Math.sin(angle) * 0.22, 0.22);
+    leaf.scale.set(1.5, 0.65, 0.42);
+    leaf.position.set(x + Math.cos(angle) * 0.26, y + 0.7 + Math.sin(angle) * 0.22, 1.33);
     leaf.rotation.z = angle;
     tree.add(leaf);
   }
+  applyShadows(tree, true, true);
   return tree;
+}
+
+function createBazaarShop(
+  x: number,
+  y: number,
+  baseColor: number,
+  awningColor: number,
+  label: string
+) {
+  const stall = new THREE.Group();
+
+  const baseShadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.78, 18),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.14 })
+  );
+  baseShadow.scale.set(1.28, 0.72, 1);
+  baseShadow.position.set(x, y - 0.08, 0.12);
+  stall.add(baseShadow);
+
+  const wall = new THREE.Mesh(
+    new THREE.BoxGeometry(1.45, 1.06, 0.56),
+    createLitMaterial(baseColor, 0.74, 0.06)
+  );
+  wall.position.set(x, y, 0.42);
+  stall.add(wall);
+
+  const doorway = new THREE.Mesh(
+    createRoundedRectGeometry(0.5, 0.66, 0.1),
+    createLitMaterial(0x111827, 0.4, 0.3)
+  );
+  doorway.position.set(x, y - 0.13, 0.71);
+  stall.add(doorway);
+
+  const awning = new THREE.Mesh(
+    new THREE.BoxGeometry(1.72, 0.44, 0.24),
+    createLitMaterial(awningColor, 0.68, 0.1)
+  );
+  awning.position.set(x, y + 0.52, 0.7);
+  stall.add(awning);
+
+  const trim = new THREE.Mesh(
+    new THREE.BoxGeometry(1.72, 0.08, 0.25),
+    createLitMaterial(0xf8fafc, 0.55, 0.12)
+  );
+  trim.position.set(x, y + 0.33, 0.7);
+  stall.add(trim);
+
+  const sign = createLabelSprite(
+    label,
+    '#fff7ed',
+    'rgba(2, 6, 23, 0.88)',
+    '#fbbf24',
+    280,
+    78
+  );
+  sign.scale.set(2.45, 0.72, 1);
+  sign.center.set(0.5, 0);
+  sign.position.set(x, y + 0.96, 1.1);
+  sign.renderOrder = 30;
+  stall.add(sign);
+
+  const lampLeft = new THREE.Mesh(
+    new THREE.SphereGeometry(0.07, 12, 12),
+    createLitMaterial(0xfef08a, 0.3, 0.3)
+  );
+  lampLeft.position.set(x - 0.58, y + 0.32, 0.89);
+  stall.add(lampLeft);
+
+  const lampRight = lampLeft.clone();
+  lampRight.position.x = x + 0.58;
+  stall.add(lampRight);
+
+  applyShadows(stall, true, true);
+  return stall;
+}
+
+function createRangoli(x: number, y: number) {
+  const rangoli = new THREE.Group();
+  const colors = [0xfb7185, 0xfacc15, 0x60a5fa, 0x34d399];
+
+  const center = new THREE.Mesh(
+    new THREE.SphereGeometry(0.11, 14, 14),
+    createLitMaterial(0xffffff, 0.42, 0.15)
+  );
+  center.position.set(x, y, 0.2);
+  rangoli.add(center);
+
+  for (let i = 0; i < 8; i += 1) {
+    const petal = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 12, 12),
+      createLitMaterial(colors[i % colors.length], 0.68, 0.06)
+    );
+    const angle = (Math.PI * 2 * i) / 8;
+    petal.position.set(x + Math.cos(angle) * 0.24, y + Math.sin(angle) * 0.24, 0.2);
+    petal.scale.set(1.2, 0.72, 0.6);
+    petal.rotation.z = angle;
+    rangoli.add(petal);
+  }
+  applyShadows(rangoli, true, true);
+
+  return rangoli;
 }
 
 function animateRobotVisual(visual: RobotVisual, time: number, speedFactor: number, lookX: number, lookY: number) {
@@ -436,44 +573,83 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       0.1,
       100
     );
-    camera.position.set(0, 0, 20);
-    camera.lookAt(0, 0, 0);
+    camera.position.copy(CAMERA_OFFSET);
+    camera.lookAt(CAMERA_LOOK_AHEAD);
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mountElement.clientWidth, mountElement.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
     mountElement.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
+    const hemiLight = new THREE.HemisphereLight(0xfff7d1, 0x345b2a, 0.8);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff1b6, 1.15);
+    sunLight.position.set(-10, -8, 20);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(1024, 1024);
+    sunLight.shadow.camera.left = -18;
+    sunLight.shadow.camera.right = 18;
+    sunLight.shadow.camera.top = 18;
+    sunLight.shadow.camera.bottom = -18;
+    sunLight.shadow.camera.near = 1;
+    sunLight.shadow.camera.far = 45;
+    scene.add(sunLight);
+
     const sun = new THREE.Mesh(
       new THREE.CircleGeometry(1.1, 30),
-      new THREE.MeshBasicMaterial({ color: 0xffe066 })
+      createLitMaterial(0xffe066, 0.2, 0.05)
     );
-    sun.position.set(8.5, 6.8, 0.02);
+    sun.position.set(8.5, 6.8, 5.2);
     scene.add(sun);
 
     const water = new THREE.Mesh(
       new THREE.CircleGeometry(ISLAND_RADIUS + 7, 80),
-      new THREE.MeshBasicMaterial({ color: 0x4aa6ff })
+      createLitMaterial(0x4aa6ff, 0.15, 0.2)
     );
-    water.position.z = 0;
+    water.position.z = 0.02;
+    water.receiveShadow = true;
     scene.add(water);
 
     const beach = new THREE.Mesh(
       new THREE.RingGeometry(ISLAND_RADIUS - 0.9, ISLAND_RADIUS + 1, 80),
-      new THREE.MeshBasicMaterial({ color: 0xf5d17c })
+      createLitMaterial(0xf5d17c, 0.92, 0.02)
     );
-    beach.position.z = 0.05;
+    beach.position.z = 0.09;
+    beach.receiveShadow = true;
     scene.add(beach);
 
     const island = new THREE.Mesh(
       new THREE.CircleGeometry(ISLAND_RADIUS, 80),
-      new THREE.MeshBasicMaterial({ color: 0x5ac66f })
+      createLitMaterial(0x5ac66f, 0.88, 0.02)
     );
-    island.position.z = 0.08;
+    island.position.z = 0.13;
+    island.receiveShadow = true;
     scene.add(island);
     scene.add(createGrid(ISLAND_RADIUS - 1, 1, 0x2b7a38));
+
+    const bazaarPad = new THREE.Mesh(
+      createRoundedRectGeometry(6.5, 3.4, 0.44),
+      createLitMaterial(0xd8b47b, 0.86, 0.03)
+    );
+    bazaarPad.position.set(0.65, -1.75, 0.22);
+    bazaarPad.receiveShadow = true;
+    scene.add(bazaarPad);
+
+    const stonePath = new THREE.Mesh(
+      createRoundedRectGeometry(1.15, 5.8, 0.2),
+      createLitMaterial(0xe2cf9e, 0.82, 0.03)
+    );
+    stonePath.position.set(1.7, 0.15, 0.23);
+    stonePath.rotation.z = -0.38;
+    stonePath.receiveShadow = true;
+    scene.add(stonePath);
 
     const palmTrees = [
       createPalmTree(-8.5, 4.6),
@@ -487,16 +663,37 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     for (let i = 0; i < 18; i += 1) {
       const flower = new THREE.Mesh(
         new THREE.CircleGeometry(0.08, 10),
-        new THREE.MeshBasicMaterial({
-          color: [0xff7ab6, 0xfff06a, 0x7ee6ff][i % 3],
-        })
+        createLitMaterial([0xff7ab6, 0xfff06a, 0x7ee6ff][i % 3], 0.65, 0.03)
       );
       const angle = (Math.PI * 2 * i) / 18;
       const radius = 5.8 + (i % 4) * 0.8;
       flower.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.16);
       flowers.add(flower);
     }
+    applyShadows(flowers, true, true);
     scene.add(flowers);
+
+    const shops = [
+      createBazaarShop(-1.55, -1.8, 0xe879f9, 0xf97316, 'Masala Chai'),
+      createBazaarShop(0.78, -1.8, 0x60a5fa, 0xfb7185, 'Code Bazaar'),
+      createBazaarShop(3.1, -1.8, 0x34d399, 0xfacc15, 'Snack Stop'),
+    ];
+    shops.forEach((shop) => scene.add(shop));
+
+    const marketLamps = new THREE.Group();
+    for (let i = 0; i < 9; i += 1) {
+      const lamp = new THREE.Mesh(
+        new THREE.SphereGeometry(0.06, 12, 12),
+        createLitMaterial(0xfef08a, 0.28, 0.3)
+      );
+      lamp.position.set(-2.1 + i * 0.8, -0.66 + Math.sin(i * 0.5) * 0.08, 1.12);
+      marketLamps.add(lamp);
+    }
+    applyShadows(marketLamps, true, true);
+    scene.add(marketLamps);
+
+    const rangoli = createRangoli(3.98, -2.02);
+    scene.add(rangoli);
 
     const clouds: THREE.Group[] = [];
     for (let i = 0; i < 3; i += 1) {
@@ -531,7 +728,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const handleResize = () => {
       if (!mountRef.current || !cameraRef.current || !rendererRef.current) return;
       const nextAspect = mountElement.clientWidth / mountElement.clientHeight;
-      const nextHeight = 24;
+      const nextHeight = viewHeight;
       cameraRef.current.left = (-nextHeight * nextAspect) / 2;
       cameraRef.current.right = (nextHeight * nextAspect) / 2;
       cameraRef.current.top = nextHeight / 2;
@@ -632,9 +829,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         cloud.position.x += Math.sin(worldTime * (0.08 + i * 0.03) + i) * 0.0025;
       });
 
-      camera.position.x += (localPositionRef.current.x * 0.12 - camera.position.x) * 0.06;
-      camera.position.y += (localPositionRef.current.y * 0.12 - camera.position.y) * 0.06;
-      camera.lookAt(camera.position.x, camera.position.y, 0);
+      marketLamps.children.forEach((lamp, i) => {
+        lamp.scale.setScalar(0.95 + Math.sin(worldTime * 3 + i * 0.4) * 0.08);
+      });
+
+      const cameraTargetX = localPositionRef.current.x * 0.1;
+      const cameraTargetY = localPositionRef.current.y * 0.1;
+      camera.position.x += (cameraTargetX + CAMERA_OFFSET.x - camera.position.x) * 0.065;
+      camera.position.y += (cameraTargetY + CAMERA_OFFSET.y - camera.position.y) * 0.065;
+      camera.position.z += (CAMERA_OFFSET.z - camera.position.z) * 0.065;
+      camera.lookAt(
+        cameraTargetX + CAMERA_LOOK_AHEAD.x,
+        cameraTargetY + CAMERA_LOOK_AHEAD.y,
+        CAMERA_LOOK_AHEAD.z
+      );
 
       renderer.render(scene, camera);
       rafRef.current = window.requestAnimationFrame(animate);
@@ -654,6 +862,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       palmTrees.forEach((tree) => disposeObject(tree));
       disposeObject(flowers);
       clouds.forEach((cloud) => disposeObject(cloud));
+      shops.forEach((shop) => disposeObject(shop));
+      disposeObject(marketLamps);
+      disposeObject(bazaarPad);
+      disposeObject(stonePath);
+      disposeObject(rangoli);
       scene.clear();
       renderer.dispose();
       mountElement.removeChild(renderer.domElement);
