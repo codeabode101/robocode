@@ -14,7 +14,9 @@
 		"binding": "ASSETS"
 	},
 	"vars": {
-		"WORKOS_REDIRECT_URI": "https://robocode.rahejaom.workers.dev/api/auth/callback"
+	  "WORKOS_REDIRECT_URI": "https://robocode.rahejaom.workers.dev/api/auth/callback",
+	  "NEXT_PUBLIC_APINATOR_APP_KEY": "app_6f9eb36b9dd488e2fef9ddf0cee08a2d4db8026f",
+	  "NEXT_PUBLIC_APINATOR_CLUSTER": "us"
 	},
 	"services": [
 		{

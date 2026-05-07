@@ -1,7 +1,7 @@
 import { pgTable, varchar, text, integer, timestamp, numeric, primaryKey } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
-  id: varchar('id', { length: 36 }).primaryKey().defaultRandom(),
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   email: varchar('email', { length: 255 }).notNull().unique(),
   name: varchar('name', { length: 255 }),
   password_hash: varchar('password_hash', { length: 255 }).notNull(),
@@ -20,7 +20,7 @@ export const playerPositions = pgTable('player_positions', {
 });
 
 export const houses = pgTable('houses', {
-  id: varchar('id', { length: 36 }).primaryKey().defaultRandom(),
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   owner_id: varchar('owner_id', { length: 36 })
     .notNull()
     .references(() => users.id),
@@ -31,7 +31,7 @@ export const houses = pgTable('houses', {
 });
 
 export const inventory = pgTable('inventory', {
-  id: varchar('id', { length: 36 }).primaryKey().defaultRandom(),
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
   user_id: varchar('user_id', { length: 36 })
     .notNull()
     .references(() => users.id),

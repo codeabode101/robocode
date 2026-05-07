@@ -19,8 +19,14 @@ export default async function GamePage() {
     }
   }
 
-  // If no userId after all, the middleware should have redirected already.
-  // Passing an empty string as fallback, but the map will show "Connecting..." 
-  // and the move endpoint will reject unauthorized requests.
-  return <GameMap userId={userId} />;
+  const apinatorAppKey = process.env.NEXT_PUBLIC_APINATOR_APP_KEY || '';
+  const apinatorCluster = (process.env.NEXT_PUBLIC_APINATOR_CLUSTER as 'us' | 'eu') || 'us';
+
+  return (
+    <GameMap
+      userId={userId}
+      apinatorAppKey={apinatorAppKey}
+      apinatorCluster={apinatorCluster}
+    />
+  );
 }
