@@ -1429,8 +1429,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
         workshopCustomersRef.current = workshopCustomersRef.current.filter((npc) => {
           if (npc.stage === 'follow-to-counter') {
-            const followPoint = localPositionRef.current.clone().add(new THREE.Vector2(-0.45, -0.35));
-            npc.target.copy(followPoint);
+            const playerAtRegister = localPositionRef.current.distanceTo(ROOM_COUNTER_POS) < COUNTER_PAYOUT_DISTANCE;
+            if (playerAtRegister) {
+              npc.target.copy(ROOM_COUNTER_POS);
+            } else {
+              const followPoint = localPositionRef.current.clone().add(new THREE.Vector2(-0.45, -0.35));
+              npc.target.copy(followPoint);
+            }
           } else if (npc.stage === 'walking-to-browse') {
             npc.target.copy(npc.browseSpot);
           } else if (npc.stage === 'browsing' || npc.stage === 'awaiting-code') {
@@ -1464,8 +1469,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
           if (
             npc.stage === 'follow-to-counter' &&
-            localPositionRef.current.distanceTo(ROOM_COUNTER_POS) < COUNTER_PAYOUT_DISTANCE &&
-            npc.position.distanceTo(ROOM_COUNTER_POS) < COUNTER_PAYOUT_DISTANCE
+            npc.position.distanceTo(ROOM_COUNTER_POS) < 0.75
           ) {
             npc.stage = 'leaving';
             npc.target.copy(ROOM_CUSTOMER_EXIT_POS);
@@ -1705,6 +1709,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setActiveCustomer(null);
     setInteractionPromptName(null);
     setWorkshopCode('');
+    setWorkshopOutput('');
     const outsideDoor = new THREE.Vector2(-9.6, -9.7);
     localPositionRef.current.copy(outsideDoor);
     if (localRobotRef.current) {
@@ -1734,6 +1739,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     setWorkshopOutput(`✅ Nice. ${activeCustomer.customerName} will follow you now — lead them to the register for $2.`);
     setWorkshopCode('');
+    setActiveCustomer(null);
     workshopCustomersRef.current = workshopCustomersRef.current.map((npc) =>
       npc.id === selectedId ? { ...npc, stage: 'follow-to-counter' } : npc
     );
@@ -1810,10 +1816,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               className="h-28 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 font-mono text-base leading-7 text-slate-100 [font-variant-ligatures:none]"
             />
           </div>
-          {workshopOutput && (
-            <div className="mt-3 rounded-lg bg-emerald-900/30 px-4 py-2 text-base text-emerald-100">{workshopOutput}</div>
-          )}
-
           <div className="mt-4 flex gap-3">
             <button
               type="button"
@@ -1823,6 +1825,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               Submit Java Code
             </button>
           </div>
+        </div>
+      )}
+
+      {inWorkshopRoom && workshopIntroSeen && workshopOutput && (
+        <div className="absolute left-4 bottom-20 z-40 w-[min(90vw,24rem)] rounded-xl border border-emerald-300/40 bg-emerald-950/70 px-4 py-3 text-base text-emerald-100 shadow-xl">
+          {workshopOutput}
         </div>
       )}
 
