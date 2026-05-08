@@ -19,6 +19,8 @@ const WALK_BOB_SPEED = 14;
 const REMOTE_LERP = 0.18;
 const CAMERA_OFFSET = new THREE.Vector3(0, -11.6, 15.4);
 const CAMERA_LOOK_AHEAD = new THREE.Vector3(0, 2.2, 0);
+const ROOM_SPAWN = new THREE.Vector2(0, -2.2);
+const ROOM_OWNER_POS = new THREE.Vector2(0.85, 0.9);
 
 type RobotVisual = {
   root: THREE.Group;
@@ -592,6 +594,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const audioRef = useRef<AudioContext | null>(null);
   const petShopRef = useRef<THREE.Group | null>(null);
   const petShopMarkerRef = useRef<THREE.Sprite | null>(null);
+  const outdoorGroupRef = useRef<THREE.Group | null>(null);
+  const workshopRoomGroupRef = useRef<THREE.Group | null>(null);
   const obstacleHitboxesRef = useRef<Hitbox[]>([]);
   const workshopDoorHitboxRef = useRef<CircleHitbox | null>(null);
 
@@ -729,6 +733,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.background = new THREE.Color(0x8ed6ff);
     sceneRef.current = scene;
 
+    const outdoorGroup = new THREE.Group();
+    scene.add(outdoorGroup);
+    outdoorGroupRef.current = outdoorGroup;
+
+    const workshopRoomGroup = new THREE.Group();
+    workshopRoomGroup.visible = false;
+    scene.add(workshopRoomGroup);
+    workshopRoomGroupRef.current = workshopRoomGroup;
+
     const aspect = mountElement.clientWidth / mountElement.clientHeight;
     const viewHeight = 26;
     const camera = new THREE.OrthographicCamera(
@@ -773,7 +786,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       createLitMaterial(0xffe066, 0.2, 0.05)
     );
     sun.position.set(8.5, 6.8, 5.2);
-    scene.add(sun);
+    outdoorGroup.add(sun);
 
     const water = new THREE.Mesh(
       new THREE.CircleGeometry(ISLAND_RADIUS + 10, 120),
@@ -781,7 +794,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     );
     water.position.z = 0.02;
     water.receiveShadow = true;
-    scene.add(water);
+    outdoorGroup.add(water);
 
     const beach = new THREE.Mesh(
       new THREE.RingGeometry(ISLAND_RADIUS - 1, ISLAND_RADIUS + 1.4, 120),
@@ -789,7 +802,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     );
     beach.position.z = 0.09;
     beach.receiveShadow = true;
-    scene.add(beach);
+    outdoorGroup.add(beach);
 
     const island = new THREE.Mesh(
       new THREE.CircleGeometry(ISLAND_RADIUS, 120),
@@ -797,8 +810,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     );
     island.position.z = 0.13;
     island.receiveShadow = true;
-    scene.add(island);
-    scene.add(createGrid(ISLAND_RADIUS - 1, 1, 0x2b7a38));
+    outdoorGroup.add(island);
+    outdoorGroup.add(createGrid(ISLAND_RADIUS - 1, 1, 0x2b7a38));
 
     const bazaarPad = new THREE.Mesh(
       createRoundedRectGeometry(6.5, 3.4, 0.44),
@@ -806,7 +819,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     );
     bazaarPad.position.set(0.65, -1.75, 0.22);
     bazaarPad.receiveShadow = true;
-    scene.add(bazaarPad);
+    outdoorGroup.add(bazaarPad);
 
     const stonePath = new THREE.Mesh(
       createRoundedRectGeometry(1.15, 5.8, 0.2),
@@ -815,7 +828,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     stonePath.position.set(1.7, 0.15, 0.23);
     stonePath.rotation.z = -0.38;
     stonePath.receiveShadow = true;
-    scene.add(stonePath);
+    outdoorGroup.add(stonePath);
 
     const palmTrees = [
       createPalmTree(-8.5, 4.6),
@@ -833,7 +846,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       createPalmTree(12.4, 17.1),
       createPalmTree(-13.5, 16.4),
     ];
-    palmTrees.forEach((tree) => scene.add(tree));
+    palmTrees.forEach((tree) => outdoorGroup.add(tree));
 
     const flowers = new THREE.Group();
     for (let i = 0; i < 72; i += 1) {
@@ -847,14 +860,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       flowers.add(flower);
     }
     applyShadows(flowers, true, true);
-    scene.add(flowers);
+    outdoorGroup.add(flowers);
 
     const shops = [
       createBazaarShop(-1.55, -1.8, 0xe879f9, 0xf97316, 'Masala Chai'),
       createBazaarShop(0.78, -1.8, 0x60a5fa, 0xfb7185, 'Code Bazaar'),
       createBazaarShop(3.1, -1.8, 0x34d399, 0xfacc15, 'Snack Stop'),
     ];
-    shops.forEach((shop) => scene.add(shop));
+    shops.forEach((shop) => outdoorGroup.add(shop));
 
     const marketLamps = new THREE.Group();
     for (let i = 0; i < 9; i += 1) {
@@ -866,14 +879,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       marketLamps.add(lamp);
     }
     applyShadows(marketLamps, true, true);
-    scene.add(marketLamps);
+    outdoorGroup.add(marketLamps);
 
     const rangoli = createRangoli(3.98, -2.02);
-    scene.add(rangoli);
+    outdoorGroup.add(rangoli);
 
     const petShop = createBigPetShop(-9.6, -6.4);
-    petShop.visible = shopUnlockedRef.current;
-    scene.add(petShop);
+    petShop.visible = true;
+    outdoorGroup.add(petShop);
     petShopRef.current = petShop;
 
     const petShopMarker = createLabelSprite('!', '#ffffff', 'rgba(220,38,38,0.95)', '#fee2e2', 120, 120);
@@ -881,7 +894,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     petShopMarker.position.set(-9.6, -3.8, 4.1);
     petShopMarker.renderOrder = 60;
     petShopMarker.visible = shopUnlockedRef.current;
-    scene.add(petShopMarker);
+    outdoorGroup.add(petShopMarker);
     petShopMarkerRef.current = petShopMarker;
 
     const obstacleHitboxes: Hitbox[] = [
@@ -938,7 +951,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       });
       cloud.position.set(-26 + i * 8.5, 12 - i * 1.1, 0.02);
       clouds.push(cloud);
-      scene.add(cloud);
+      outdoorGroup.add(cloud);
     }
 
     const localColor = hashColor(userId || 'local-user');
@@ -950,7 +963,55 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
     sparky.root.position.set(NPC_POSITION.x, NPC_POSITION.y, 0.01);
-    scene.add(sparky.root);
+    outdoorGroup.add(sparky.root);
+
+    const workshopFloor = new THREE.Mesh(
+      new THREE.BoxGeometry(6.2, 6.2, 0.24),
+      createLitMaterial(0xf8fafc, 0.86, 0.03)
+    );
+    workshopFloor.position.set(0, 0, 0.12);
+    workshopRoomGroup.add(workshopFloor);
+
+    const workshopWalls = [
+      new THREE.Vector3(0, 3.1, 1.1),
+      new THREE.Vector3(0, -3.1, 1.1),
+      new THREE.Vector3(-3.1, 0, 1.1),
+      new THREE.Vector3(3.1, 0, 1.1),
+    ];
+    workshopWalls.forEach((position, index) => {
+      const horizontal = index < 2;
+      const wall = new THREE.Mesh(
+        new THREE.BoxGeometry(horizontal ? 6.2 : 0.26, horizontal ? 0.26 : 6.2, 2.2),
+        createLitMaterial(0x334155, 0.72, 0.05)
+      );
+      wall.position.copy(position);
+      workshopRoomGroup.add(wall);
+    });
+
+    const shelf = new THREE.Mesh(
+      new THREE.BoxGeometry(1.65, 0.45, 1.45),
+      createLitMaterial(0x8b5a2b, 0.7, 0.08)
+    );
+    shelf.position.set(-1.75, 1.95, 0.82);
+    workshopRoomGroup.add(shelf);
+
+    const petBed = new THREE.Mesh(
+      new THREE.BoxGeometry(1.25, 0.82, 0.2),
+      createLitMaterial(0xf59e0b, 0.64, 0.07)
+    );
+    petBed.position.set(1.75, -1.3, 0.21);
+    workshopRoomGroup.add(petBed);
+
+    const desk = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 0.7, 0.75),
+      createLitMaterial(0x7c3aed, 0.62, 0.08)
+    );
+    desk.position.set(1.45, 1.65, 0.48);
+    workshopRoomGroup.add(desk);
+
+    const owner = createRobotVisual(new THREE.Color(0x14b8a6), 'Rafiq');
+    owner.root.position.set(ROOM_OWNER_POS.x, ROOM_OWNER_POS.y, 0.05);
+    workshopRoomGroup.add(owner.root);
 
     const handleResize = () => {
       if (!mountRef.current || !cameraRef.current || !rendererRef.current) return;
@@ -1016,6 +1077,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (atWorkshopDoor) {
             setInWorkshopRoom(true);
             setShowWorkshopNpcTalk(true);
+            localPositionRef.current.copy(ROOM_SPAWN);
+            localRobot.root.position.set(ROOM_SPAWN.x, ROOM_SPAWN.y, 0.01);
             keyStateRef.current.clear();
             moved = false;
           } else if (!hitsObstacle) {
@@ -1060,8 +1123,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const bob = Math.sin(now * 0.006) * 0.04;
       sparky.root.position.z = 0.01 + bob;
       animateRobotVisual(sparky, worldTime, 0.35, -0.3, 0.15);
+      animateRobotVisual(owner, worldTime * 0.9, 0.12, -0.2, -0.1);
 
       for (const avatar of Object.values(remoteAvatarsRef.current)) {
+        avatar.visual.root.visible = !inWorkshopRoomRef.current;
         const prevX = avatar.visual.root.position.x;
         const prevY = avatar.visual.root.position.y;
         avatar.visual.root.position.x += (avatar.target.x - avatar.visual.root.position.x) * REMOTE_LERP;
@@ -1084,16 +1149,29 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         petShopMarker.position.y = -3.8 + Math.sin(worldTime * 3.8) * 0.22;
       }
 
-      const cameraTargetX = localPositionRef.current.x * 0.1;
-      const cameraTargetY = localPositionRef.current.y * 0.1;
-      camera.position.x += (cameraTargetX + CAMERA_OFFSET.x - camera.position.x) * 0.065;
-      camera.position.y += (cameraTargetY + CAMERA_OFFSET.y - camera.position.y) * 0.065;
-      camera.position.z += (CAMERA_OFFSET.z - camera.position.z) * 0.065;
-      camera.lookAt(
-        cameraTargetX + CAMERA_LOOK_AHEAD.x,
-        cameraTargetY + CAMERA_LOOK_AHEAD.y,
-        CAMERA_LOOK_AHEAD.z
-      );
+      if (inWorkshopRoomRef.current) {
+        outdoorGroup.visible = false;
+        workshopRoomGroup.visible = true;
+        scene.background = new THREE.Color(0x030712);
+        camera.position.x += (ROOM_SPAWN.x - camera.position.x) * 0.08;
+        camera.position.y += (ROOM_SPAWN.y - 4.6 - camera.position.y) * 0.08;
+        camera.position.z += (11.6 - camera.position.z) * 0.08;
+        camera.lookAt(0, 0, 0);
+      } else {
+        outdoorGroup.visible = true;
+        workshopRoomGroup.visible = false;
+        scene.background = new THREE.Color(0x8ed6ff);
+        const cameraTargetX = localPositionRef.current.x * 0.1;
+        const cameraTargetY = localPositionRef.current.y * 0.1;
+        camera.position.x += (cameraTargetX + CAMERA_OFFSET.x - camera.position.x) * 0.065;
+        camera.position.y += (cameraTargetY + CAMERA_OFFSET.y - camera.position.y) * 0.065;
+        camera.position.z += (CAMERA_OFFSET.z - camera.position.z) * 0.065;
+        camera.lookAt(
+          cameraTargetX + CAMERA_LOOK_AHEAD.x,
+          cameraTargetY + CAMERA_LOOK_AHEAD.y,
+          CAMERA_LOOK_AHEAD.z
+        );
+      }
 
       renderer.render(scene, camera);
       rafRef.current = window.requestAnimationFrame(animate);
@@ -1120,6 +1198,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       disposeObject(rangoli);
       disposeObject(petShop);
       disposeObject(petShopMarker);
+      disposeObject(owner.root);
+      outdoorGroupRef.current = null;
+      workshopRoomGroupRef.current = null;
       obstacleHitboxesRef.current = [];
       workshopDoorHitboxRef.current = null;
       scene.clear();
@@ -1130,7 +1211,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   }, [sendPosition, userId]);
 
   useEffect(() => {
-    if (petShopRef.current) petShopRef.current.visible = shopUnlocked;
+    if (petShopRef.current) petShopRef.current.visible = true;
     if (petShopMarkerRef.current) petShopMarkerRef.current.visible = shopUnlocked && !inWorkshopRoom;
   }, [shopUnlocked, inWorkshopRoom]);
 
@@ -1145,7 +1226,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const color = hashColor(remoteUserId);
         const visual = createRobotVisual(color, name);
         visual.root.position.set(data.x, data.y, 0.01);
-        scene.add(visual.root);
+        if (outdoorGroupRef.current) {
+          outdoorGroupRef.current.add(visual.root);
+        } else {
+          scene.add(visual.root);
+        }
         remoteAvatarsRef.current[remoteUserId] = {
           visual,
           target: new THREE.Vector2(data.x, data.y),
@@ -1168,7 +1253,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     for (const existingId of Object.keys(remoteAvatarsRef.current)) {
       if (activeIds.has(existingId)) continue;
       const avatar = remoteAvatarsRef.current[existingId];
-      scene.remove(avatar.visual.root);
+      if (outdoorGroupRef.current) {
+        outdoorGroupRef.current.remove(avatar.visual.root);
+      } else {
+        scene.remove(avatar.visual.root);
+      }
       disposeObject(avatar.visual.root);
       delete remoteAvatarsRef.current[existingId];
     }
@@ -1241,37 +1330,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   return (
     <div className="relative">
       {inWorkshopRoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
-          <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-slate-600 bg-slate-900 shadow-2xl">
-            <div className="h-16 bg-gradient-to-r from-slate-700 to-slate-500" />
-            <div className="h-56 bg-gradient-to-b from-slate-100 to-slate-300 p-6">
-              <div className="mx-auto flex h-full max-w-2xl items-end justify-between rounded-2xl border border-slate-400 bg-amber-50 px-6 pb-6">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pet Workshop</div>
-                  <div className="mt-1 text-2xl font-bold text-slate-900">Inside the Workshop</div>
-                </div>
-                <div className="text-6xl">🧑‍🔧</div>
+        <div className="absolute right-4 top-20 z-40 max-w-sm rounded-2xl border border-amber-200/40 bg-slate-900/90 px-4 py-3 text-sm text-slate-100 shadow-2xl">
+          {showWorkshopNpcTalk && (
+            <>
+              <div className="font-semibold text-amber-300">Workshop Owner (Rafiq)</div>
+              <div className="mt-1">
+                Hey! You can work here and name and age my pets when I get a new one and get money for it.
               </div>
-            </div>
-            {showWorkshopNpcTalk && (
-              <div className="border-t border-slate-700 bg-slate-950/90 px-6 py-4 text-sm text-slate-100">
-                <div className="font-semibold text-amber-300">Workshop Owner</div>
-                <div className="mt-1">
-                  Hey! You can work here and name and age my pets when I get a new one and get money for it.
-                </div>
-              </div>
-            )}
-            <div className="flex items-center justify-between border-t border-slate-700 bg-slate-900 px-6 py-3">
-              <div className="text-xs text-slate-300">Walked through the door ✅</div>
-              <button
-                type="button"
-                className="rounded bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-400"
-                onClick={leaveWorkshopRoom}
-              >
-                Leave shop
-              </button>
-            </div>
-          </div>
+            </>
+          )}
+          <button
+            type="button"
+            className="mt-3 rounded bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-400"
+            onClick={leaveWorkshopRoom}
+          >
+            Exit workshop
+          </button>
         </div>
       )}
 
@@ -1282,7 +1356,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       </div>
 
       <div className="absolute bottom-4 left-4 bg-black/40 text-white text-xs md:text-sm px-3 py-2 rounded-lg">
-        Arrow Keys / WASD to move • Meet Sparky 🤖 • Learn name, color, age • Walk into PET WORKSHOP door
+        Arrow Keys / WASD to move • PET WORKSHOP is always open • Look for ❗ then enter the door
       </div>
 
       {showTutorial && (
