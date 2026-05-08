@@ -19,8 +19,11 @@ const WALK_BOB_SPEED = 14;
 const REMOTE_LERP = 0.18;
 const CAMERA_OFFSET = new THREE.Vector3(0, -11.6, 15.4);
 const CAMERA_LOOK_AHEAD = new THREE.Vector3(0, 2.2, 0);
-const ROOM_SPAWN = new THREE.Vector2(0, -2.2);
-const ROOM_OWNER_POS = new THREE.Vector2(0.85, 0.9);
+const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
+const ROOM_OWNER_POS = new THREE.Vector2(2.35, 1.95);
+const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
+const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
+const PET_COLORS = ['red', 'blue', 'green', 'gold', 'teal', 'violet', 'orange', 'silver'];
 
 type RobotVisual = {
   root: THREE.Group;
@@ -37,6 +40,28 @@ type RemoteAvatar = {
   target: THREE.Vector2;
   name: string;
   walkTime: number;
+};
+
+type HumanVisual = {
+  root: THREE.Group;
+  nameSprite: THREE.Sprite;
+};
+
+type CustomerRequest = {
+  customerName: string;
+  petName: string;
+  petColor: string;
+  petSize: number;
+};
+
+type CustomerNpc = {
+  id: string;
+  visual: HumanVisual;
+  position: THREE.Vector2;
+  target: THREE.Vector2;
+  speed: number;
+  request: CustomerRequest;
+  isLeaving: boolean;
 };
 
 type TutorialChallenge = {
@@ -555,6 +580,86 @@ function createBigPetShop(x: number, y: number) {
   return shop;
 }
 
+function pickRandom<T>(items: T[]) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function createHumanVisual(name: string) {
+  const group = new THREE.Group();
+
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.42, 18),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18 })
+  );
+  shadow.scale.set(1.08, 0.62, 1);
+  shadow.position.set(0, -0.1, 0.15);
+  group.add(shadow);
+
+  const legs = new THREE.Mesh(
+    new THREE.BoxGeometry(0.34, 0.2, 0.18),
+    createLitMaterial(0x1e293b, 0.72, 0.08)
+  );
+  legs.position.set(0, -0.35, 0.24);
+  group.add(legs);
+
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.56, 0.66, 0.26),
+    createLitMaterial(0x2563eb, 0.6, 0.1)
+  );
+  body.position.set(0, 0.02, 0.42);
+  group.add(body);
+
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.22, 16, 16),
+    createLitMaterial(0xfccca5, 0.5, 0.08)
+  );
+  head.position.set(0, 0.48, 0.55);
+  group.add(head);
+
+  const hair = new THREE.Mesh(
+    new THREE.SphereGeometry(0.24, 16, 16),
+    createLitMaterial(0x1f2937, 0.7, 0.06)
+  );
+  hair.scale.set(1, 0.72, 0.8);
+  hair.position.set(0, 0.58, 0.62);
+  group.add(hair);
+
+  const eyeLeft = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 10), createLitMaterial(0x0f172a, 0.5, 0.2));
+  eyeLeft.position.set(-0.07, 0.5, 0.74);
+  group.add(eyeLeft);
+
+  const eyeRight = eyeLeft.clone();
+  eyeRight.position.x = 0.07;
+  group.add(eyeRight);
+
+  const nameSprite = createNameSprite(name, new THREE.Color(0x22c55e));
+  group.add(nameSprite);
+
+  applyShadows(group, true, true);
+  return { root: group, nameSprite };
+}
+
+function validateWorkshopCode(input: string, request: CustomerRequest) {
+  const normalized = input.replace(/\s+/g, ' ').trim();
+  const escapedName = request.petName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedColor = request.petColor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const namePattern = new RegExp(`String\\s+[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*"${escapedName}"\\s*;`, 'i');
+  const colorPattern = new RegExp(`String\\s+[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*"${escapedColor}"\\s*;`, 'i');
+  const sizePattern = new RegExp(`int\\s+[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*${request.petSize}\\s*;`);
+
+  if (!namePattern.test(normalized)) {
+    return { valid: false, error: `Need a String line for pet name "${request.petName}".` };
+  }
+  if (!colorPattern.test(normalized)) {
+    return { valid: false, error: `Need a String line for pet color "${request.petColor}".` };
+  }
+  if (!sizePattern.test(normalized)) {
+    return { valid: false, error: `Need an int line for pet size ${request.petSize}.` };
+  }
+
+  return { valid: true, error: '' };
+}
+
 function animateRobotVisual(visual: RobotVisual, time: number, speedFactor: number, lookX: number, lookY: number) {
   const walkAmount = Math.min(1, speedFactor);
   const bob = Math.sin(time * WALK_BOB_SPEED) * 0.035 * walkAmount;
@@ -599,6 +704,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const obstacleHitboxesRef = useRef<Hitbox[]>([]);
   const roomObstacleHitboxesRef = useRef<Hitbox[]>([]);
   const workshopDoorHitboxRef = useRef<CircleHitbox | null>(null);
+  const workshopDoorArmedRef = useRef(true);
+  const workshopCustomersRef = useRef<CustomerNpc[]>([]);
+  const customerSpawnTimerRef = useRef(0);
+  const currentCustomerIdRef = useRef<string | null>(null);
+  const roomOwnerVisualRef = useRef<RobotVisual | null>(null);
+  const roomPetVisualRef = useRef<RobotVisual | null>(null);
+  const roomCustomerGroupRef = useRef<THREE.Group | null>(null);
+  const roomEntryFlashTimeoutRef = useRef<number | null>(null);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
@@ -613,7 +726,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [tutorialComplete, setTutorialComplete] = useState(false);
   const [shopUnlocked, setShopUnlocked] = useState(false);
   const [inWorkshopRoom, setInWorkshopRoom] = useState(false);
-  const [showWorkshopNpcTalk, setShowWorkshopNpcTalk] = useState(false);
+  const [roomEntryFlash, setRoomEntryFlash] = useState(false);
+  const [money, setMoney] = useState(0);
+  const [activeCustomer, setActiveCustomer] = useState<CustomerRequest | null>(null);
+  const [workshopCode, setWorkshopCode] = useState('');
+  const [workshopOutput, setWorkshopOutput] = useState('');
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
 
@@ -935,10 +1052,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
 
     roomObstacleHitboxesRef.current = [
-      { shape: 'box', center: new THREE.Vector2(-1.75, 1.95), halfWidth: 0.9, halfHeight: 0.34 },
-      { shape: 'box', center: new THREE.Vector2(1.45, 1.65), halfWidth: 0.82, halfHeight: 0.44 },
-      { shape: 'box', center: new THREE.Vector2(1.75, -1.3), halfWidth: 0.72, halfHeight: 0.5 },
+      { shape: 'box', center: new THREE.Vector2(-3.2, 3.25), halfWidth: 0.9, halfHeight: 0.34 },
+      { shape: 'box', center: new THREE.Vector2(2.9, 3.05), halfWidth: 0.82, halfHeight: 0.44 },
+      { shape: 'box', center: new THREE.Vector2(3.4, -2.4), halfWidth: 0.72, halfHeight: 0.5 },
       { shape: 'box', center: new THREE.Vector2(ROOM_OWNER_POS.x, ROOM_OWNER_POS.y), halfWidth: 0.7, halfHeight: 0.7 },
+      { shape: 'box', center: new THREE.Vector2(-1.9, 0.5), halfWidth: 0.7, halfHeight: 0.7 },
     ];
 
     const clouds: THREE.Group[] = [];
@@ -972,22 +1090,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(sparky.root);
 
     const workshopFloor = new THREE.Mesh(
-      new THREE.BoxGeometry(6.2, 6.2, 0.24),
+      new THREE.BoxGeometry(10.6, 10.6, 0.24),
       createLitMaterial(0xf8fafc, 0.86, 0.03)
     );
     workshopFloor.position.set(0, 0, 0.12);
     workshopRoomGroup.add(workshopFloor);
 
     const workshopWalls = [
-      new THREE.Vector3(0, 3.1, 1.1),
-      new THREE.Vector3(0, -3.1, 1.1),
-      new THREE.Vector3(-3.1, 0, 1.1),
-      new THREE.Vector3(3.1, 0, 1.1),
+      new THREE.Vector3(0, 5.3, 1.2),
+      new THREE.Vector3(0, -5.3, 1.2),
+      new THREE.Vector3(-5.3, 0, 1.2),
+      new THREE.Vector3(5.3, 0, 1.2),
     ];
     workshopWalls.forEach((position, index) => {
       const horizontal = index < 2;
       const wall = new THREE.Mesh(
-        new THREE.BoxGeometry(horizontal ? 6.2 : 0.26, horizontal ? 0.26 : 6.2, 2.2),
+        new THREE.BoxGeometry(horizontal ? 10.6 : 0.3, horizontal ? 0.3 : 10.6, 2.4),
         createLitMaterial(0x334155, 0.72, 0.05)
       );
       wall.position.copy(position);
@@ -998,26 +1116,36 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       new THREE.BoxGeometry(1.65, 0.45, 1.45),
       createLitMaterial(0x8b5a2b, 0.7, 0.08)
     );
-    shelf.position.set(-1.75, 1.95, 0.82);
+    shelf.position.set(-3.2, 3.25, 0.82);
     workshopRoomGroup.add(shelf);
 
     const petBed = new THREE.Mesh(
       new THREE.BoxGeometry(1.25, 0.82, 0.2),
       createLitMaterial(0xf59e0b, 0.64, 0.07)
     );
-    petBed.position.set(1.75, -1.3, 0.21);
+    petBed.position.set(3.4, -2.4, 0.21);
     workshopRoomGroup.add(petBed);
 
     const desk = new THREE.Mesh(
       new THREE.BoxGeometry(1.5, 0.7, 0.75),
       createLitMaterial(0x7c3aed, 0.62, 0.08)
     );
-    desk.position.set(1.45, 1.65, 0.48);
+    desk.position.set(2.9, 3.05, 0.48);
     workshopRoomGroup.add(desk);
 
     const owner = createRobotVisual(new THREE.Color(0x14b8a6), 'Rafiq');
     owner.root.position.set(ROOM_OWNER_POS.x, ROOM_OWNER_POS.y, 0.05);
     workshopRoomGroup.add(owner.root);
+    roomOwnerVisualRef.current = owner;
+
+    const petDisplay = createRobotVisual(new THREE.Color(0x60a5fa), 'Shop Pet');
+    petDisplay.root.position.set(-1.9, 0.5, 0.05);
+    workshopRoomGroup.add(petDisplay.root);
+    roomPetVisualRef.current = petDisplay;
+
+    const customerGroup = new THREE.Group();
+    workshopRoomGroup.add(customerGroup);
+    roomCustomerGroupRef.current = customerGroup;
 
     const handleResize = () => {
       if (!mountRef.current || !cameraRef.current || !rendererRef.current) return;
@@ -1047,6 +1175,42 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
+    const createCustomerRequest = (customerName: string): CustomerRequest => ({
+      customerName,
+      petName: pickRandom(PET_NAMES),
+      petColor: pickRandom(PET_COLORS),
+      petSize: 2 + Math.floor(Math.random() * 5),
+    });
+
+    const randomRoomTarget = () =>
+      new THREE.Vector2((Math.random() - 0.5) * 7.6, -0.4 + (Math.random() - 0.5) * 5.8);
+
+    const spawnCustomer = () => {
+      const customerGroupCurrent = roomCustomerGroupRef.current;
+      if (!customerGroupCurrent || workshopCustomersRef.current.length >= 4) return;
+      const customerName = pickRandom(CUSTOMER_NAMES);
+      const request = createCustomerRequest(customerName);
+      const visual = createHumanVisual(customerName);
+      const start = new THREE.Vector2(-4.8, -4.2 + Math.random() * 1.8);
+      visual.root.position.set(start.x, start.y, 0.04);
+      customerGroupCurrent.add(visual.root);
+      const npc: CustomerNpc = {
+        id: `${customerName}-${Math.random().toString(36).slice(2, 8)}`,
+        visual,
+        position: start,
+        target: randomRoomTarget(),
+        speed: 1.2 + Math.random() * 0.35,
+        request,
+        isLeaving: false,
+      };
+      workshopCustomersRef.current.push(npc);
+      if (!currentCustomerIdRef.current) {
+        currentCustomerIdRef.current = npc.id;
+        setActiveCustomer(request);
+        setWorkshopOutput(`${request.customerName}: I want a pet named ${request.petName}!`);
+      }
+    };
+
     let lastTime = performance.now();
     const animate = (now: number) => {
       const delta = Math.min((now - lastTime) / 1000, 0.05);
@@ -1072,8 +1236,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             .clone()
             .add(direction.multiplyScalar(MOVE_SPEED * delta));
           if (inWorkshopRoomRef.current) {
-            candidate.x = Math.max(-2.72, Math.min(2.72, candidate.x));
-            candidate.y = Math.max(-2.72, Math.min(2.72, candidate.y));
+            candidate.x = Math.max(-4.82, Math.min(4.82, candidate.x));
+            candidate.y = Math.max(-4.82, Math.min(4.82, candidate.y));
             const hitsRoomObstacle = collidesWithAny(candidate, roomObstacleHitboxesRef.current);
             if (!hitsRoomObstacle) {
               localPositionRef.current.copy(candidate);
@@ -1089,13 +1253,26 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const atWorkshopDoor =
               Boolean(shopUnlockedRef.current) &&
               workshopDoor !== null &&
+              workshopDoorArmedRef.current &&
               isInsideHitbox(candidate, workshopDoor);
 
+            if (workshopDoor !== null && !isInsideHitbox(candidate, workshopDoor)) {
+              workshopDoorArmedRef.current = true;
+            }
+
             if (atWorkshopDoor) {
+              workshopDoorArmedRef.current = false;
               setInWorkshopRoom(true);
-              setShowWorkshopNpcTalk(true);
+              setRoomEntryFlash(true);
+              if (roomEntryFlashTimeoutRef.current !== null) {
+                window.clearTimeout(roomEntryFlashTimeoutRef.current);
+              }
+              roomEntryFlashTimeoutRef.current = window.setTimeout(() => setRoomEntryFlash(false), 460);
               localPositionRef.current.copy(ROOM_SPAWN);
               localRobot.root.position.set(ROOM_SPAWN.x, ROOM_SPAWN.y, 0.01);
+              if (workshopCustomersRef.current.length === 0) {
+                spawnCustomer();
+              }
               keyStateRef.current.clear();
               moved = false;
             } else if (!hitsObstacle) {
@@ -1142,6 +1319,62 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       sparky.root.position.z = 0.01 + bob;
       animateRobotVisual(sparky, worldTime, 0.35, -0.3, 0.15);
       animateRobotVisual(owner, worldTime * 0.9, 0.12, -0.2, -0.1);
+      if (roomOwnerVisualRef.current) {
+        animateRobotVisual(roomOwnerVisualRef.current, worldTime * 0.92, 0.14, -0.28, -0.2);
+      }
+      if (roomPetVisualRef.current) {
+        animateRobotVisual(roomPetVisualRef.current, worldTime * 1.35, 0.28, 0.5, -0.2);
+      }
+
+      if (inWorkshopRoomRef.current) {
+        customerSpawnTimerRef.current += delta;
+        if (
+          customerSpawnTimerRef.current > 3.8 &&
+          workshopCustomersRef.current.length < 4 &&
+          Math.random() > 0.55
+        ) {
+          spawnCustomer();
+          customerSpawnTimerRef.current = 0;
+        }
+
+        workshopCustomersRef.current = workshopCustomersRef.current.filter((npc) => {
+          const toTarget = npc.target.clone().sub(npc.position);
+          const dist = toTarget.length();
+          if (dist < 0.12) {
+            if (npc.isLeaving) {
+              if (roomCustomerGroupRef.current) {
+                roomCustomerGroupRef.current.remove(npc.visual.root);
+              }
+              disposeObject(npc.visual.root);
+              if (currentCustomerIdRef.current === npc.id) {
+                currentCustomerIdRef.current = null;
+                setActiveCustomer(null);
+              }
+              return false;
+            }
+            npc.target = Math.random() > 0.8 ? new THREE.Vector2(-5.3, -4.5) : randomRoomTarget();
+            npc.isLeaving = npc.target.x < -5;
+          } else {
+            const step = Math.min(dist, npc.speed * delta);
+            toTarget.normalize().multiplyScalar(step);
+            npc.position.add(toTarget);
+          }
+
+          const moving = dist > 0.06;
+          const sway = moving ? Math.sin(worldTime * 8 + npc.position.x * 0.5) * 0.05 : 0;
+          npc.visual.root.rotation.z = sway;
+          npc.visual.nameSprite.position.y = 1.15 + Math.sin(worldTime * 2 + npc.position.y) * 0.03;
+          npc.visual.root.position.set(npc.position.x, npc.position.y, 0.04);
+          return true;
+        });
+
+        if (!currentCustomerIdRef.current && workshopCustomersRef.current.length > 0) {
+          const nextCustomer = workshopCustomersRef.current[0];
+          currentCustomerIdRef.current = nextCustomer.id;
+          setActiveCustomer(nextCustomer.request);
+          setWorkshopOutput(`${nextCustomer.request.customerName}: I want a pet with these settings!`);
+        }
+      }
 
       for (const avatar of Object.values(remoteAvatarsRef.current)) {
         avatar.visual.root.visible = !inWorkshopRoomRef.current;
@@ -1217,11 +1450,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       disposeObject(petShop);
       disposeObject(petShopMarker);
       disposeObject(owner.root);
+      if (roomPetVisualRef.current) {
+        disposeObject(roomPetVisualRef.current.root);
+        roomPetVisualRef.current = null;
+      }
+      workshopCustomersRef.current.forEach((npc) => disposeObject(npc.visual.root));
+      workshopCustomersRef.current = [];
+      roomCustomerGroupRef.current = null;
+      roomOwnerVisualRef.current = null;
       outdoorGroupRef.current = null;
       workshopRoomGroupRef.current = null;
       obstacleHitboxesRef.current = [];
       roomObstacleHitboxesRef.current = [];
       workshopDoorHitboxRef.current = null;
+      if (roomEntryFlashTimeoutRef.current !== null) {
+        window.clearTimeout(roomEntryFlashTimeoutRef.current);
+        roomEntryFlashTimeoutRef.current = null;
+      }
       scene.clear();
       renderer.dispose();
       mountElement.removeChild(renderer.domElement);
@@ -1338,7 +1583,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const leaveWorkshopRoom = () => {
     setInWorkshopRoom(false);
-    setShowWorkshopNpcTalk(false);
+    workshopDoorArmedRef.current = false;
     const outsideDoor = new THREE.Vector2(-9.6, -9.7);
     localPositionRef.current.copy(outsideDoor);
     if (localRobotRef.current) {
@@ -1346,27 +1591,98 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
   };
 
+  const runWorkshopCode = () => {
+    if (!activeCustomer) {
+      setWorkshopOutput('No customer request yet — wait for someone to walk in.');
+      return;
+    }
+
+    const result = validateWorkshopCode(workshopCode, activeCustomer);
+    if (!result.valid) {
+      setWorkshopOutput(`❌ ${result.error}`);
+      return;
+    }
+
+    setMoney((prev) => prev + 25);
+    setWorkshopOutput(`✅ Great work! ${activeCustomer.customerName} is happy. +$25`);
+    setWorkshopCode('');
+
+    const selectedId = currentCustomerIdRef.current;
+    if (selectedId) {
+      workshopCustomersRef.current = workshopCustomersRef.current.map((npc) =>
+        npc.id === selectedId ? { ...npc, isLeaving: true, target: new THREE.Vector2(-5.35, -4.55) } : npc
+      );
+      currentCustomerIdRef.current = null;
+      setActiveCustomer(null);
+    }
+  };
+
   return (
     <div className="relative">
       {inWorkshopRoom && (
-        <div className="absolute right-4 top-20 z-40 max-w-md rounded-2xl border border-amber-200/40 bg-slate-900/90 px-5 py-4 text-base text-slate-100 shadow-2xl">
-          {showWorkshopNpcTalk && (
-            <>
-              <div className="font-semibold text-amber-300">Workshop Owner (Rafiq)</div>
-              <div className="mt-1">
-                Hey! You can work here and name and age my pets when I get a new one and get money for it.
+        <>
+          <div className="absolute right-4 top-20 z-40 w-[min(92vw,38rem)] rounded-2xl border border-amber-200/40 bg-slate-900/92 px-5 py-4 text-base text-slate-100 shadow-2xl">
+            <div className="font-semibold text-amber-300 text-lg">Rafiq&apos;s Pet Workshop</div>
+            <div className="mt-1 text-slate-100">
+              I&apos;ll pay you to name robo pets, set their color, and set size with an <span className="font-semibold">int</span>.
+              Customers walk in and ask for custom pets.
+            </div>
+            {activeCustomer ? (
+              <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2">
+                <div className="text-sky-300 text-lg font-semibold">{activeCustomer.customerName}&apos;s Request</div>
+                <div className="mt-1">
+                  Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span> • Color:{' '}
+                  <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span> • Size (int):{' '}
+                  <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span>
+                </div>
+                <div className="mt-1 text-slate-300">&quot;I want a pet with these settings!&quot;</div>
               </div>
-            </>
-          )}
-          <button
-            type="button"
-            className="mt-4 rounded bg-blue-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-blue-400"
-            onClick={leaveWorkshopRoom}
-          >
-            Exit workshop
-          </button>
-        </div>
+            ) : (
+              <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-300">
+                Waiting for the next customer...
+              </div>
+            )}
+
+            <div className="mt-3 rounded-xl border border-slate-700 bg-slate-950 overflow-hidden">
+              <div className="px-4 py-2 text-base text-slate-200 border-b border-slate-800">Java Workshop Editor</div>
+              <textarea
+                value={workshopCode}
+                onChange={(event) => setWorkshopCode(event.target.value)}
+                spellCheck={false}
+                wrap="off"
+                className="h-36 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 font-mono text-base leading-7 text-slate-100 [font-variant-ligatures:none]"
+                placeholder={'String petName = "Bolt";\nString petColor = "blue";\nint petSize = 4;'}
+              />
+            </div>
+            {workshopOutput && (
+              <div className="mt-3 rounded-lg bg-emerald-900/30 px-4 py-2 text-base text-emerald-100">{workshopOutput}</div>
+            )}
+
+            <div className="mt-4 flex gap-3">
+              <button
+                type="button"
+                className="rounded bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400"
+                onClick={runWorkshopCode}
+              >
+                Submit Java Code
+              </button>
+              <button
+                type="button"
+                className="rounded bg-blue-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-blue-400"
+                onClick={leaveWorkshopRoom}
+              >
+                Exit workshop
+              </button>
+            </div>
+          </div>
+
+          <div className="absolute bottom-6 right-6 z-40 rounded-xl border border-emerald-300/50 bg-emerald-500/20 px-6 py-3 text-3xl font-black text-emerald-300 shadow-xl md:text-4xl">
+            ${money}
+          </div>
+        </>
       )}
+
+      {roomEntryFlash && <div className="pointer-events-none fixed inset-0 z-[70] animate-pulse bg-cyan-200/35 backdrop-blur-[1px]" />}
 
       <div className="w-full h-screen" ref={mountRef} />
 
