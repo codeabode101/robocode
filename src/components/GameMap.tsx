@@ -507,12 +507,40 @@ function createBigPetShop(x: number, y: number) {
   roof.position.set(x, y + 1.6, 2.25);
   shop.add(roof);
 
-  const door = new THREE.Mesh(
-    new THREE.BoxGeometry(1.05, 1.55, 0.34),
-    createLitMaterial(0x1f2937, 0.45, 0.3)
+  const doorFrame = new THREE.Mesh(
+    new THREE.BoxGeometry(1.35, 0.28, 1.88),
+    createLitMaterial(0xfde68a, 0.55, 0.14)
   );
-  door.position.set(x, y - 0.52, 1.26);
+  doorFrame.position.set(x, y - 1.33, 1.18);
+  shop.add(doorFrame);
+
+  const door = new THREE.Mesh(
+    new THREE.BoxGeometry(1.02, 0.18, 1.62),
+    createLitMaterial(0x0f172a, 0.36, 0.35)
+  );
+  door.position.set(x, y - 1.36, 1.16);
   shop.add(door);
+
+  const doorWindow = new THREE.Mesh(
+    new THREE.BoxGeometry(0.48, 0.1, 0.38),
+    createLitMaterial(0x93c5fd, 0.2, 0.45)
+  );
+  doorWindow.position.set(x, y - 1.43, 1.6);
+  shop.add(doorWindow);
+
+  const doormat = new THREE.Mesh(
+    new THREE.BoxGeometry(1.26, 0.6, 0.08),
+    createLitMaterial(0x7c3aed, 0.7, 0.08)
+  );
+  doormat.position.set(x, y - 2.02, 0.18);
+  shop.add(doormat);
+
+  const doorLabel = createLabelSprite('ENTER', '#0f172a', 'rgba(253,224,71,0.95)', '#f8fafc', 160, 74);
+  doorLabel.scale.set(1.55, 0.56, 1);
+  doorLabel.center.set(0.5, 0);
+  doorLabel.position.set(x, y - 1.35, 2.18);
+  doorLabel.renderOrder = 36;
+  shop.add(doorLabel);
 
   const sign = createLabelSprite('PET WORKSHOP', '#f8fafc', 'rgba(15,23,42,0.92)', '#fde68a', 360, 90);
   sign.scale.set(3.5, 0.95, 1);
@@ -890,8 +918,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     obstacleHitboxesRef.current = obstacleHitboxes;
     workshopDoorHitboxRef.current = {
       shape: 'circle',
-      center: new THREE.Vector2(-9.6, -7.22),
-      radius: 0.56,
+      center: new THREE.Vector2(-9.6, -8.12),
+      radius: 0.72,
     };
 
     const clouds: THREE.Group[] = [];
