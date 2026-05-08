@@ -95,6 +95,7 @@ type CustomerNpc = {
   visual: HumanVisual;
   position: THREE.Vector2;
   target: THREE.Vector2;
+  spotIndex: number;
   browseSpot: THREE.Vector2;
   petLookTarget: THREE.Vector2;
   speed: number;
@@ -700,6 +701,10 @@ function validateWorkshopCode(input: string, request: CustomerRequest) {
   return { valid: true, error: '' };
 }
 
+function getWorkshopRequestSignature(request: CustomerRequest) {
+  return `${request.required.slice().sort().join('+')}|${request.petName}|${request.petColor}|${request.petSize}`;
+}
+
 function animateRobotVisual(visual: RobotVisual, time: number, speedFactor: number, lookX: number, lookY: number) {
   const walkAmount = Math.min(1, speedFactor);
   const bob = Math.sin(time * WALK_BOB_SPEED) * 0.035 * walkAmount;
@@ -746,6 +751,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const workshopDoorHitboxRef = useRef<CircleHitbox | null>(null);
   const workshopDoorArmedRef = useRef(true);
   const workshopCustomersRef = useRef<CustomerNpc[]>([]);
+  const lastWorkshopRequestSigRef = useRef<string | null>(null);
   const customerSpawnTimerRef = useRef(0);
   const currentCustomerIdRef = useRef<string | null>(null);
   const interactionRequestedRef = useRef(false);
@@ -1230,37 +1236,65 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     window.addEventListener('keyup', handleKeyUp);
 
     const createCustomerRequest = (customerName: string): CustomerRequest => {
-      const requestPattern = REQUEST_PATTERNS[Math.floor(Math.random() * REQUEST_PATTERNS.length)];
-      return {
+      const blockedSignature = lastWorkshopRequestSigRef.current;
+      let nextRequest: CustomerRequest = {
         customerName,
         petName: pickRandom(PET_NAMES),
         petColor: pickRandom(PET_COLORS),
         petSize: 2 + Math.floor(Math.random() * 5),
-        required: [...requestPattern],
+        required: [...REQUEST_PATTERNS[Math.floor(Math.random() * REQUEST_PATTERNS.length)]],
       };
+
+      let tries = 0;
+      while (blockedSignature && getWorkshopRequestSignature(nextRequest) === blockedSignature && tries < 8) {
+        nextRequest = {
+          customerName,
+          petName: pickRandom(PET_NAMES),
+          petColor: pickRandom(PET_COLORS),
+          petSize: 2 + Math.floor(Math.random() * 5),
+          required: [...REQUEST_PATTERNS[Math.floor(Math.random() * REQUEST_PATTERNS.length)]],
+        };
+        tries += 1;
+      }
+
+      return nextRequest;
     };
 
     const spawnCustomer = () => {
       const customerGroupCurrent = roomCustomerGroupRef.current;
       if (!customerGroupCurrent || workshopCustomersRef.current.length >= 4) return;
-      const customerName = pickRandom(CUSTOMER_NAMES);
+      const occupiedSpots = new Set(
+        workshopCustomersRef.current.filter((npc) => npc.stage !== 'leaving').map((npc) => npc.spotIndex)
+      );
+      const availableSpotIndexes = ROOM_PET_BROWSE_POINTS.map((_, index) => index).filter(
+        (index) => !occupiedSpots.has(index)
+      );
+      if (availableSpotIndexes.length === 0) return;
+
+      const usedNames = new Set(
+        workshopCustomersRef.current.filter((npc) => npc.stage !== 'leaving').map((npc) => npc.request.customerName)
+      );
+      const availableNames = CUSTOMER_NAMES.filter((name) => !usedNames.has(name));
+      const customerName = pickRandom(availableNames.length > 0 ? availableNames : CUSTOMER_NAMES);
       const request = createCustomerRequest(customerName);
       const visual = createHumanVisual(customerName);
       const start = new THREE.Vector2(-4.8, -4.2 + Math.random() * 1.8);
       visual.root.position.set(start.x, start.y, 0.04);
       customerGroupCurrent.add(visual.root);
+      const spotIndex = pickRandom(availableSpotIndexes);
+      const chosenPoint = ROOM_PET_BROWSE_POINTS[spotIndex];
       const npc: CustomerNpc = {
         id: `${customerName}-${Math.random().toString(36).slice(2, 8)}`,
         visual,
         position: start,
         target: new THREE.Vector2(0, 0),
+        spotIndex,
         browseSpot: new THREE.Vector2(0, 0),
         petLookTarget: new THREE.Vector2(0, 0),
         speed: 1.2 + Math.random() * 0.35,
         request,
         stage: 'walking-to-browse',
       };
-      const chosenPoint = pickRandom(ROOM_PET_BROWSE_POINTS);
       npc.browseSpot.copy(chosenPoint.stand);
       npc.petLookTarget.copy(chosenPoint.look);
       npc.target.copy(npc.browseSpot);
@@ -1415,11 +1449,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
         if (interactionRequestedRef.current && closestCandidate) {
           interactionRequestedRef.current = false;
+          let nextRequest = closestCandidate.request;
+          if (
+            lastWorkshopRequestSigRef.current &&
+            getWorkshopRequestSignature(nextRequest) === lastWorkshopRequestSigRef.current
+          ) {
+            nextRequest = createCustomerRequest(closestCandidate.request.customerName);
+            closestCandidate.request = nextRequest;
+          }
           closestCandidate.stage = 'awaiting-code';
           currentCustomerIdRef.current = closestCandidate.id;
-          setActiveCustomer(closestCandidate.request);
+          setActiveCustomer(nextRequest);
+          lastWorkshopRequestSigRef.current = getWorkshopRequestSignature(nextRequest);
           setWorkshopOutput(
-            `${closestCandidate.request.customerName}: Here is my request. Do the code, then lead me to the register for $2.`
+            `${nextRequest.customerName}: Here is my request. Do the code, then lead me to the register for $2.`
           );
           interactionCandidateIdRef.current = null;
           setInteractionPromptName(null);
