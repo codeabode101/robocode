@@ -24,6 +24,13 @@ const ROOM_OWNER_POS = new THREE.Vector2(2.35, 1.95);
 const ROOM_COUNTER_POS = new THREE.Vector2(2.35, 2.25);
 const CUSTOMER_TALK_DISTANCE = 1.25;
 const COUNTER_PAYOUT_DISTANCE = 1.15;
+const ROOM_CUSTOMER_EXIT_POS = new THREE.Vector2(-5.35, -4.55);
+const ROOM_PET_BROWSE_POINTS = [
+  { stand: new THREE.Vector2(-2.35, 1.2), look: new THREE.Vector2(-1.9, 0.5) },
+  { stand: new THREE.Vector2(-2.9, 3.7), look: new THREE.Vector2(-3.2, 3.25) },
+  { stand: new THREE.Vector2(2.7, -1.75), look: new THREE.Vector2(3.4, -2.4) },
+  { stand: new THREE.Vector2(-1.3, -0.2), look: new THREE.Vector2(-1.9, 0.5) },
+];
 const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
 const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
 const PET_COLORS = ['red', 'blue', 'green', 'gold', 'teal', 'violet', 'orange', 'silver'];
@@ -73,9 +80,11 @@ type CustomerNpc = {
   visual: HumanVisual;
   position: THREE.Vector2;
   target: THREE.Vector2;
+  browseSpot: THREE.Vector2;
+  petLookTarget: THREE.Vector2;
   speed: number;
   request: CustomerRequest;
-  stage: 'wandering' | 'awaiting-code' | 'follow-to-counter' | 'leaving';
+  stage: 'walking-to-browse' | 'browsing' | 'awaiting-code' | 'follow-to-counter' | 'leaving';
 };
 
 type TutorialChallenge = {
@@ -724,6 +733,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const workshopCustomersRef = useRef<CustomerNpc[]>([]);
   const customerSpawnTimerRef = useRef(0);
   const currentCustomerIdRef = useRef<string | null>(null);
+  const interactionRequestedRef = useRef(false);
+  const interactionCandidateIdRef = useRef<string | null>(null);
   const roomOwnerVisualRef = useRef<RobotVisual | null>(null);
   const roomPetVisualRef = useRef<RobotVisual | null>(null);
   const roomCustomerGroupRef = useRef<THREE.Group | null>(null);
@@ -747,6 +758,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [activeCustomer, setActiveCustomer] = useState<CustomerRequest | null>(null);
   const [workshopCode, setWorkshopCode] = useState('');
   const [workshopOutput, setWorkshopOutput] = useState('');
+  const [interactionPromptName, setInteractionPromptName] = useState<string | null>(null);
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
 
@@ -1180,6 +1192,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.isContentEditable)) {
         return;
       }
+      if (event.code === 'Space' && inWorkshopRoomRef.current) {
+        event.preventDefault();
+        interactionRequestedRef.current = true;
+        return;
+      }
       const key = event.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
         event.preventDefault();
@@ -1206,9 +1223,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       };
     };
 
-    const randomRoomTarget = () =>
-      new THREE.Vector2((Math.random() - 0.5) * 7.6, -0.4 + (Math.random() - 0.5) * 5.8);
-
     const spawnCustomer = () => {
       const customerGroupCurrent = roomCustomerGroupRef.current;
       if (!customerGroupCurrent || workshopCustomersRef.current.length >= 4) return;
@@ -1222,11 +1236,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         id: `${customerName}-${Math.random().toString(36).slice(2, 8)}`,
         visual,
         position: start,
-        target: randomRoomTarget(),
+        target: new THREE.Vector2(0, 0),
+        browseSpot: new THREE.Vector2(0, 0),
+        petLookTarget: new THREE.Vector2(0, 0),
         speed: 1.2 + Math.random() * 0.35,
         request,
-        stage: 'wandering',
+        stage: 'walking-to-browse',
       };
+      const chosenPoint = pickRandom(ROOM_PET_BROWSE_POINTS);
+      npc.browseSpot.copy(chosenPoint.stand);
+      npc.petLookTarget.copy(chosenPoint.look);
+      npc.target.copy(npc.browseSpot);
       workshopCustomersRef.current.push(npc);
     };
 
@@ -1356,24 +1376,48 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           customerSpawnTimerRef.current = 0;
         }
 
+        let closestCandidate: CustomerNpc | null = null;
         if (!currentCustomerIdRef.current) {
-          const availableNpc = workshopCustomersRef.current.find(
-            (npc) => npc.stage === 'wandering' && npc.position.distanceTo(localPositionRef.current) < CUSTOMER_TALK_DISTANCE
-          );
-          if (availableNpc) {
-            availableNpc.stage = 'awaiting-code';
-            currentCustomerIdRef.current = availableNpc.id;
-            setActiveCustomer(availableNpc.request);
-            setWorkshopOutput(
-              `${availableNpc.request.customerName}: Hi! Talked to you first — now make the code, then walk me to the counter.`
-            );
+          for (const npc of workshopCustomersRef.current) {
+            if (npc.stage !== 'browsing') continue;
+            const distance = npc.position.distanceTo(localPositionRef.current);
+            if (distance > CUSTOMER_TALK_DISTANCE) continue;
+            if (!closestCandidate || distance < closestCandidate.position.distanceTo(localPositionRef.current)) {
+              closestCandidate = npc;
+            }
           }
+        }
+
+        const nextCandidateId = closestCandidate?.id ?? null;
+        if (interactionCandidateIdRef.current !== nextCandidateId) {
+          interactionCandidateIdRef.current = nextCandidateId;
+          setInteractionPromptName(closestCandidate ? closestCandidate.request.customerName : null);
+        }
+
+        if (interactionRequestedRef.current && closestCandidate) {
+          interactionRequestedRef.current = false;
+          closestCandidate.stage = 'awaiting-code';
+          currentCustomerIdRef.current = closestCandidate.id;
+          setActiveCustomer(closestCandidate.request);
+          setWorkshopOutput(
+            `${closestCandidate.request.customerName}: Here is my request. Do the code, then lead me to the register for $2.`
+          );
+          interactionCandidateIdRef.current = null;
+          setInteractionPromptName(null);
+        } else if (interactionRequestedRef.current) {
+          interactionRequestedRef.current = false;
         }
 
         workshopCustomersRef.current = workshopCustomersRef.current.filter((npc) => {
           if (npc.stage === 'follow-to-counter') {
             const followPoint = localPositionRef.current.clone().add(new THREE.Vector2(-0.45, -0.35));
             npc.target.copy(followPoint);
+          } else if (npc.stage === 'walking-to-browse') {
+            npc.target.copy(npc.browseSpot);
+          } else if (npc.stage === 'browsing' || npc.stage === 'awaiting-code') {
+            npc.target.copy(npc.position);
+          } else if (npc.stage === 'leaving') {
+            npc.target.copy(ROOM_CUSTOMER_EXIT_POS);
           }
 
           const toTarget = npc.target.clone().sub(npc.position);
@@ -1390,8 +1434,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
               return false;
             }
-            if (npc.stage === 'wandering') {
-              npc.target = randomRoomTarget();
+            if (npc.stage === 'walking-to-browse') {
+              npc.stage = 'browsing';
             }
           } else {
             const step = Math.min(dist, npc.speed * delta);
@@ -1405,18 +1449,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             npc.position.distanceTo(ROOM_COUNTER_POS) < COUNTER_PAYOUT_DISTANCE
           ) {
             npc.stage = 'leaving';
-            npc.target = new THREE.Vector2(-5.35, -4.55);
-            setMoney((prev) => prev + 1);
-            setWorkshopOutput(`✅ ${npc.request.customerName} reached the counter. You earned $1.`);
+            npc.target.copy(ROOM_CUSTOMER_EXIT_POS);
+            setMoney((prev) => prev + 2);
+            setWorkshopOutput(`✅ ${npc.request.customerName} reached the register. You earned $2.`);
             if (currentCustomerIdRef.current === npc.id) {
               currentCustomerIdRef.current = null;
               setActiveCustomer(null);
             }
           }
 
-          const moving = dist > 0.06;
+          const moving = dist > 0.06 && npc.stage !== 'browsing' && npc.stage !== 'awaiting-code';
           const sway = moving ? Math.sin(worldTime * 8 + npc.position.x * 0.5) * 0.05 : 0;
-          npc.visual.root.rotation.z = sway;
+          if (npc.stage === 'browsing' || npc.stage === 'awaiting-code') {
+            const petLook = npc.petLookTarget.clone().sub(npc.position);
+            npc.visual.root.rotation.z = Math.atan2(petLook.y, petLook.x) - Math.PI / 2;
+          } else {
+            npc.visual.root.rotation.z = sway;
+          }
           npc.visual.nameSprite.position.y = 1.15 + Math.sin(worldTime * 2 + npc.position.y) * 0.03;
           npc.visual.root.position.set(npc.position.x, npc.position.y, 0.04);
           return true;
@@ -1632,7 +1681,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setInWorkshopRoom(false);
     workshopDoorArmedRef.current = false;
     currentCustomerIdRef.current = null;
+    interactionCandidateIdRef.current = null;
+    interactionRequestedRef.current = false;
     setActiveCustomer(null);
+    setInteractionPromptName(null);
     setWorkshopCode('');
     const outsideDoor = new THREE.Vector2(-9.6, -9.7);
     localPositionRef.current.copy(outsideDoor);
@@ -1643,7 +1695,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const runWorkshopCode = () => {
     if (!activeCustomer) {
-      setWorkshopOutput('Walk to a customer in the shop first so they can tell you what they want.');
+      setWorkshopOutput('Get close to a customer and press Space to interact first.');
       return;
     }
 
@@ -1661,7 +1713,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       return;
     }
 
-    setWorkshopOutput(`✅ Nice. ${activeCustomer.customerName} will follow you now — lead them to the counter for $1.`);
+    setWorkshopOutput(`✅ Nice. ${activeCustomer.customerName} will follow you now — lead them to the register for $2.`);
     setWorkshopCode('');
     workshopCustomersRef.current = workshopCustomersRef.current.map((npc) =>
       npc.id === selectedId ? { ...npc, stage: 'follow-to-counter' } : npc
@@ -1676,7 +1728,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             <div className="font-semibold text-amber-300 text-lg">Rafiq&apos;s Pet Workshop</div>
             <div className="mt-1 text-slate-100">
               I&apos;ll pay you to name robo pets, set their color, and set size with an <span className="font-semibold">int</span>.
-              Talk to a customer first, then lead them to the counter. Payout is <span className="font-semibold text-emerald-300">$1</span>.
+              Talk to a customer first, then lead them to the register. Payout is <span className="font-semibold text-emerald-300">$2</span>.
             </div>
             {activeCustomer ? (
               <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2">
@@ -1700,7 +1752,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               </div>
             ) : (
               <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-100">
-                Walk up to any customer to hear their request first.
+                Walk up to a customer and press Space to interact.
               </div>
             )}
 
@@ -1742,6 +1794,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       {roomEntryFlash && <div className="pointer-events-none fixed inset-0 z-[70] animate-pulse bg-cyan-200/35 backdrop-blur-[1px]" />}
 
       <div className="w-full h-screen" ref={mountRef} />
+
+      {inWorkshopRoom && interactionPromptName && (
+        <div className="absolute bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full border border-cyan-300/70 bg-slate-900/90 px-6 py-2 text-lg font-semibold text-cyan-100 shadow-xl">
+          Press space to interact!
+        </div>
+      )}
 
       <div className="fixed bottom-6 right-6 z-40 rounded-xl border border-emerald-300/50 bg-emerald-500/20 px-6 py-3 text-3xl font-black text-emerald-300 shadow-xl md:text-4xl">
         ${money}
