@@ -23,7 +23,8 @@ const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
 const ROOM_OWNER_POS = new THREE.Vector2(2.35, 1.95);
 const ROOM_COUNTER_POS = new THREE.Vector2(2.35, 2.25);
 const CUSTOMER_TALK_DISTANCE = 1.25;
-const COUNTER_PAYOUT_DISTANCE = 1.15;
+const REGISTER_ZONE_RADIUS = 2.1;
+const REGISTER_NPC_RADIUS = 1.35;
 const ROOM_CUSTOMER_EXIT_POS = new THREE.Vector2(-5.35, -4.55);
 const ROOM_PET_BROWSE_POINTS = [
   { stand: new THREE.Vector2(-2.35, 1.2), look: new THREE.Vector2(-1.9, 0.5) },
@@ -1429,7 +1430,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
         workshopCustomersRef.current = workshopCustomersRef.current.filter((npc) => {
           if (npc.stage === 'follow-to-counter') {
-            const playerAtRegister = localPositionRef.current.distanceTo(ROOM_COUNTER_POS) < COUNTER_PAYOUT_DISTANCE;
+            const playerAtRegister = localPositionRef.current.distanceTo(ROOM_COUNTER_POS) < REGISTER_ZONE_RADIUS;
             if (playerAtRegister) {
               npc.target.copy(ROOM_COUNTER_POS);
             } else {
@@ -1469,7 +1470,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
           if (
             npc.stage === 'follow-to-counter' &&
-            npc.position.distanceTo(ROOM_COUNTER_POS) < 0.75
+            localPositionRef.current.distanceTo(ROOM_COUNTER_POS) < REGISTER_ZONE_RADIUS &&
+            npc.position.distanceTo(ROOM_COUNTER_POS) < REGISTER_NPC_RADIUS
           ) {
             npc.stage = 'leaving';
             npc.target.copy(ROOM_CUSTOMER_EXIT_POS);
