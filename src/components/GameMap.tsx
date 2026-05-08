@@ -746,7 +746,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const workshopDoorHitboxRef = useRef<CircleHitbox | null>(null);
   const workshopDoorArmedRef = useRef(true);
   const workshopCustomersRef = useRef<CustomerNpc[]>([]);
-  const registerArrivalStartedAtRef = useRef<Record<string, number>>({});
   const customerSpawnTimerRef = useRef(0);
   const currentCustomerIdRef = useRef<string | null>(null);
   const interactionRequestedRef = useRef(false);
@@ -1430,13 +1429,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
         workshopCustomersRef.current = workshopCustomersRef.current.filter((npc) => {
           if (npc.stage === 'follow-to-counter') {
-            const playerAtRegister = localPositionRef.current.distanceTo(ROOM_COUNTER_POS) < REGISTER_ZONE_RADIUS;
-            if (playerAtRegister) {
-              npc.target.copy(ROOM_COUNTER_POS);
-            } else {
-              const followPoint = localPositionRef.current.clone().add(new THREE.Vector2(-0.45, -0.35));
-              npc.target.copy(followPoint);
-            }
+            npc.target.copy(ROOM_COUNTER_POS);
           } else if (npc.stage === 'walking-to-browse') {
             npc.target.copy(npc.browseSpot);
           } else if (npc.stage === 'browsing' || npc.stage === 'awaiting-code') {
@@ -1464,8 +1457,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else {
             const step = Math.min(dist, npc.speed * delta);
-            toTarget.normalize().multiplyScalar(step);
-            npc.position.add(toTarget);
+            const stepVector = toTarget.normalize().multiplyScalar(step);
+            const candidate = npc.position.clone().add(stepVector);
+            if (!collidesWithAny(candidate, roomObstacleHitboxesRef.current)) {
+              npc.position.copy(candidate);
+            } else {
+              const slideX = npc.position.clone().add(new THREE.Vector2(stepVector.x, 0));
+              const slideY = npc.position.clone().add(new THREE.Vector2(0, stepVector.y));
+              if (!collidesWithAny(slideX, roomObstacleHitboxesRef.current)) {
+                npc.position.copy(slideX);
+              } else if (!collidesWithAny(slideY, roomObstacleHitboxesRef.current)) {
+                npc.position.copy(slideY);
+              }
+            }
           }
 
           if (
@@ -1473,21 +1477,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             localPositionRef.current.distanceTo(ROOM_COUNTER_POS) < REGISTER_ZONE_RADIUS &&
             npc.position.distanceTo(ROOM_COUNTER_POS) < REGISTER_NPC_RADIUS
           ) {
-            const startedAt = registerArrivalStartedAtRef.current[npc.id] ?? now;
-            registerArrivalStartedAtRef.current[npc.id] = startedAt;
-            if (now - startedAt >= 1000) {
-              npc.stage = 'leaving';
-              npc.target.copy(ROOM_CUSTOMER_EXIT_POS);
-              delete registerArrivalStartedAtRef.current[npc.id];
-              setMoney((prev) => prev + 2);
-              setWorkshopOutput(`✅ ${npc.request.customerName} reached the register. You earned $2.`);
-              if (currentCustomerIdRef.current === npc.id) {
-                currentCustomerIdRef.current = null;
-                setActiveCustomer(null);
-              }
+            npc.stage = 'leaving';
+            npc.target.copy(ROOM_CUSTOMER_EXIT_POS);
+            setMoney((prev) => prev + 2);
+            setWorkshopOutput(`✅ ${npc.request.customerName} reached the register. You earned $2.`);
+            if (currentCustomerIdRef.current === npc.id) {
+              currentCustomerIdRef.current = null;
+              setActiveCustomer(null);
             }
-          } else if (npc.stage !== 'follow-to-counter') {
-            delete registerArrivalStartedAtRef.current[npc.id];
           }
 
           const moving = dist > 0.06 && npc.stage !== 'browsing' && npc.stage !== 'awaiting-code';
@@ -1719,7 +1716,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setInteractionPromptName(null);
     setWorkshopCode('');
     setWorkshopOutput('');
-    registerArrivalStartedAtRef.current = {};
     const outsideDoor = new THREE.Vector2(-9.6, -9.7);
     localPositionRef.current.copy(outsideDoor);
     if (localRobotRef.current) {
@@ -1747,12 +1743,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       return;
     }
 
-    setWorkshopOutput(`✅ Nice. ${activeCustomer.customerName} will follow you now — lead them to the register for $2.`);
+    setWorkshopOutput(`✅ Nice. ${activeCustomer.customerName} is walking to the register now — meet them there for $2.`);
     setWorkshopCode('');
     setActiveCustomer(null);
-    if (selectedId) {
-      delete registerArrivalStartedAtRef.current[selectedId];
-    }
     workshopCustomersRef.current = workshopCustomersRef.current.map((npc) =>
       npc.id === selectedId ? { ...npc, stage: 'follow-to-counter' } : npc
     );
