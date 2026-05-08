@@ -21,9 +21,20 @@ const CAMERA_OFFSET = new THREE.Vector3(0, -11.6, 15.4);
 const CAMERA_LOOK_AHEAD = new THREE.Vector3(0, 2.2, 0);
 const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
 const ROOM_OWNER_POS = new THREE.Vector2(2.35, 1.95);
+const ROOM_COUNTER_POS = new THREE.Vector2(2.35, 2.25);
+const CUSTOMER_TALK_DISTANCE = 1.25;
+const COUNTER_PAYOUT_DISTANCE = 1.15;
 const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
 const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
 const PET_COLORS = ['red', 'blue', 'green', 'gold', 'teal', 'violet', 'orange', 'silver'];
+const REQUEST_PATTERNS = [
+  ['name'],
+  ['color'],
+  ['size'],
+  ['name', 'color'],
+  ['name', 'size'],
+  ['color', 'size'],
+] as const;
 
 type RobotVisual = {
   root: THREE.Group;
@@ -47,11 +58,14 @@ type HumanVisual = {
   nameSprite: THREE.Sprite;
 };
 
+type CustomerProperty = 'name' | 'color' | 'size';
+
 type CustomerRequest = {
   customerName: string;
   petName: string;
   petColor: string;
   petSize: number;
+  required: CustomerProperty[];
 };
 
 type CustomerNpc = {
@@ -61,7 +75,7 @@ type CustomerNpc = {
   target: THREE.Vector2;
   speed: number;
   request: CustomerRequest;
-  isLeaving: boolean;
+  stage: 'wandering' | 'awaiting-code' | 'follow-to-counter' | 'leaving';
 };
 
 type TutorialChallenge = {
@@ -647,14 +661,16 @@ function validateWorkshopCode(input: string, request: CustomerRequest) {
   const colorPattern = new RegExp(`String\\s+[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*"${escapedColor}"\\s*;`, 'i');
   const sizePattern = new RegExp(`int\\s+[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*${request.petSize}\\s*;`);
 
-  if (!namePattern.test(normalized)) {
-    return { valid: false, error: `Need a String line for pet name "${request.petName}".` };
-  }
-  if (!colorPattern.test(normalized)) {
-    return { valid: false, error: `Need a String line for pet color "${request.petColor}".` };
-  }
-  if (!sizePattern.test(normalized)) {
-    return { valid: false, error: `Need an int line for pet size ${request.petSize}.` };
+  for (const requirement of request.required) {
+    if (requirement === 'name' && !namePattern.test(normalized)) {
+      return { valid: false, error: `Need a String line for pet name "${request.petName}".` };
+    }
+    if (requirement === 'color' && !colorPattern.test(normalized)) {
+      return { valid: false, error: `Need a String line for pet color "${request.petColor}".` };
+    }
+    if (requirement === 'size' && !sizePattern.test(normalized)) {
+      return { valid: false, error: `Need an int line for pet size ${request.petSize}.` };
+    }
   }
 
   return { valid: true, error: '' };
@@ -1179,12 +1195,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
-    const createCustomerRequest = (customerName: string): CustomerRequest => ({
-      customerName,
-      petName: pickRandom(PET_NAMES),
-      petColor: pickRandom(PET_COLORS),
-      petSize: 2 + Math.floor(Math.random() * 5),
-    });
+    const createCustomerRequest = (customerName: string): CustomerRequest => {
+      const requestPattern = REQUEST_PATTERNS[Math.floor(Math.random() * REQUEST_PATTERNS.length)];
+      return {
+        customerName,
+        petName: pickRandom(PET_NAMES),
+        petColor: pickRandom(PET_COLORS),
+        petSize: 2 + Math.floor(Math.random() * 5),
+        required: [...requestPattern],
+      };
+    };
 
     const randomRoomTarget = () =>
       new THREE.Vector2((Math.random() - 0.5) * 7.6, -0.4 + (Math.random() - 0.5) * 5.8);
@@ -1205,14 +1225,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         target: randomRoomTarget(),
         speed: 1.2 + Math.random() * 0.35,
         request,
-        isLeaving: false,
+        stage: 'wandering',
       };
       workshopCustomersRef.current.push(npc);
-      if (!currentCustomerIdRef.current) {
-        currentCustomerIdRef.current = npc.id;
-        setActiveCustomer(request);
-        setWorkshopOutput(`${request.customerName}: I want a pet named ${request.petName}!`);
-      }
     };
 
     let lastTime = performance.now();
@@ -1341,11 +1356,30 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           customerSpawnTimerRef.current = 0;
         }
 
+        if (!currentCustomerIdRef.current) {
+          const availableNpc = workshopCustomersRef.current.find(
+            (npc) => npc.stage === 'wandering' && npc.position.distanceTo(localPositionRef.current) < CUSTOMER_TALK_DISTANCE
+          );
+          if (availableNpc) {
+            availableNpc.stage = 'awaiting-code';
+            currentCustomerIdRef.current = availableNpc.id;
+            setActiveCustomer(availableNpc.request);
+            setWorkshopOutput(
+              `${availableNpc.request.customerName}: Hi! Talked to you first — now make the code, then walk me to the counter.`
+            );
+          }
+        }
+
         workshopCustomersRef.current = workshopCustomersRef.current.filter((npc) => {
+          if (npc.stage === 'follow-to-counter') {
+            const followPoint = localPositionRef.current.clone().add(new THREE.Vector2(-0.45, -0.35));
+            npc.target.copy(followPoint);
+          }
+
           const toTarget = npc.target.clone().sub(npc.position);
           const dist = toTarget.length();
           if (dist < 0.12) {
-            if (npc.isLeaving) {
+            if (npc.stage === 'leaving') {
               if (roomCustomerGroupRef.current) {
                 roomCustomerGroupRef.current.remove(npc.visual.root);
               }
@@ -1356,12 +1390,28 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
               return false;
             }
-            npc.target = Math.random() > 0.8 ? new THREE.Vector2(-5.3, -4.5) : randomRoomTarget();
-            npc.isLeaving = npc.target.x < -5;
+            if (npc.stage === 'wandering') {
+              npc.target = randomRoomTarget();
+            }
           } else {
             const step = Math.min(dist, npc.speed * delta);
             toTarget.normalize().multiplyScalar(step);
             npc.position.add(toTarget);
+          }
+
+          if (
+            npc.stage === 'follow-to-counter' &&
+            localPositionRef.current.distanceTo(ROOM_COUNTER_POS) < COUNTER_PAYOUT_DISTANCE &&
+            npc.position.distanceTo(ROOM_COUNTER_POS) < COUNTER_PAYOUT_DISTANCE
+          ) {
+            npc.stage = 'leaving';
+            npc.target = new THREE.Vector2(-5.35, -4.55);
+            setMoney((prev) => prev + 1);
+            setWorkshopOutput(`✅ ${npc.request.customerName} reached the counter. You earned $1.`);
+            if (currentCustomerIdRef.current === npc.id) {
+              currentCustomerIdRef.current = null;
+              setActiveCustomer(null);
+            }
           }
 
           const moving = dist > 0.06;
@@ -1371,13 +1421,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           npc.visual.root.position.set(npc.position.x, npc.position.y, 0.04);
           return true;
         });
-
-        if (!currentCustomerIdRef.current && workshopCustomersRef.current.length > 0) {
-          const nextCustomer = workshopCustomersRef.current[0];
-          currentCustomerIdRef.current = nextCustomer.id;
-          setActiveCustomer(nextCustomer.request);
-          setWorkshopOutput(`${nextCustomer.request.customerName}: I want a pet with these settings!`);
-        }
       }
 
       for (const avatar of Object.values(remoteAvatarsRef.current)) {
@@ -1588,6 +1631,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const leaveWorkshopRoom = () => {
     setInWorkshopRoom(false);
     workshopDoorArmedRef.current = false;
+    currentCustomerIdRef.current = null;
+    setActiveCustomer(null);
+    setWorkshopCode('');
     const outsideDoor = new THREE.Vector2(-9.6, -9.7);
     localPositionRef.current.copy(outsideDoor);
     if (localRobotRef.current) {
@@ -1597,7 +1643,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const runWorkshopCode = () => {
     if (!activeCustomer) {
-      setWorkshopOutput('No customer request yet — wait for someone to walk in.');
+      setWorkshopOutput('Walk to a customer in the shop first so they can tell you what they want.');
+      return;
+    }
+
+    const selectedId = currentCustomerIdRef.current;
+    const selectedNpc =
+      selectedId === null ? undefined : workshopCustomersRef.current.find((npc) => npc.id === selectedId);
+    if (!selectedNpc || selectedNpc.stage !== 'awaiting-code') {
+      setWorkshopOutput('Talk to a customer first, then submit code for their specific request.');
       return;
     }
 
@@ -1607,18 +1661,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       return;
     }
 
-    setMoney((prev) => prev + 25);
-    setWorkshopOutput(`✅ Great work! ${activeCustomer.customerName} is happy. +$25`);
+    setWorkshopOutput(`✅ Nice. ${activeCustomer.customerName} will follow you now — lead them to the counter for $1.`);
     setWorkshopCode('');
-
-    const selectedId = currentCustomerIdRef.current;
-    if (selectedId) {
-      workshopCustomersRef.current = workshopCustomersRef.current.map((npc) =>
-        npc.id === selectedId ? { ...npc, isLeaving: true, target: new THREE.Vector2(-5.35, -4.55) } : npc
-      );
-      currentCustomerIdRef.current = null;
-      setActiveCustomer(null);
-    }
+    workshopCustomersRef.current = workshopCustomersRef.current.map((npc) =>
+      npc.id === selectedId ? { ...npc, stage: 'follow-to-counter' } : npc
+    );
   };
 
   return (
@@ -1629,21 +1676,31 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             <div className="font-semibold text-amber-300 text-lg">Rafiq&apos;s Pet Workshop</div>
             <div className="mt-1 text-slate-100">
               I&apos;ll pay you to name robo pets, set their color, and set size with an <span className="font-semibold">int</span>.
-              Customers walk in and ask for custom pets.
+              Talk to a customer first, then lead them to the counter. Payout is <span className="font-semibold text-emerald-300">$1</span>.
             </div>
             {activeCustomer ? (
               <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2">
                 <div className="text-sky-300 text-lg font-semibold">{activeCustomer.customerName}&apos;s Request</div>
-                <div className="mt-1">
-                  Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span> • Color:{' '}
-                  <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span> • Size (int):{' '}
-                  <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span>
-                </div>
+                {activeCustomer.required.includes('name') && (
+                  <div className="mt-1">
+                    Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span>
+                  </div>
+                )}
+                {activeCustomer.required.includes('color') && (
+                  <div className="mt-1">
+                    Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span>
+                  </div>
+                )}
+                {activeCustomer.required.includes('size') && (
+                  <div className="mt-1">
+                    Size (int): <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span>
+                  </div>
+                )}
                 <div className="mt-1 text-sky-100">&quot;I want a pet with these settings!&quot;</div>
               </div>
             ) : (
               <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-100">
-                Waiting for the next customer...
+                Walk up to any customer to hear their request first.
               </div>
             )}
 
