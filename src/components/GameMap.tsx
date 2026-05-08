@@ -43,7 +43,6 @@ const REQUEST_PATTERNS = [
   ['name', 'size'],
   ['color', 'size'],
 ] as const;
-const WORKSHOP_INTRO_STORAGE_KEY = 'robocode-workshop-intro-v1';
 const WORKSHOP_INTRO_PAGES = [
   {
     title: "Welcome to Rafiq's Workshop",
@@ -776,9 +775,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [workshopCode, setWorkshopCode] = useState('');
   const [workshopOutput, setWorkshopOutput] = useState('');
   const [interactionPromptName, setInteractionPromptName] = useState<string | null>(null);
-  const [workshopIntroSeen, setWorkshopIntroSeen] = useState(
-    () => typeof window !== 'undefined' && window.localStorage.getItem(WORKSHOP_INTRO_STORAGE_KEY) === 'seen'
-  );
+  const [workshopIntroSeen, setWorkshopIntroSeen] = useState(false);
   const [workshopIntroStep, setWorkshopIntroStep] = useState(0);
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
@@ -1323,6 +1320,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (atWorkshopDoor) {
               workshopDoorArmedRef.current = false;
               setInWorkshopRoom(true);
+              setWorkshopIntroStep(0);
+              setWorkshopIntroSeen(false);
               setRoomEntryFlash(true);
               if (roomEntryFlashTimeoutRef.current !== null) {
                 window.clearTimeout(roomEntryFlashTimeoutRef.current);
@@ -1762,7 +1761,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const finishWorkshopIntro = () => {
     setWorkshopIntroSeen(true);
     setWorkshopIntroStep(0);
-    window.localStorage.setItem(WORKSHOP_INTRO_STORAGE_KEY, 'seen');
   };
 
   const nextWorkshopIntroStep = () => {
