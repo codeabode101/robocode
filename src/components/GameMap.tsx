@@ -1349,7 +1349,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   return (
     <div className="relative">
       {inWorkshopRoom && (
-        <div className="absolute right-4 top-20 z-40 max-w-sm rounded-2xl border border-amber-200/40 bg-slate-900/90 px-4 py-3 text-sm text-slate-100 shadow-2xl">
+        <div className="absolute right-4 top-20 z-40 max-w-md rounded-2xl border border-amber-200/40 bg-slate-900/90 px-5 py-4 text-base text-slate-100 shadow-2xl">
           {showWorkshopNpcTalk && (
             <>
               <div className="font-semibold text-amber-300">Workshop Owner (Rafiq)</div>
@@ -1360,7 +1360,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           )}
           <button
             type="button"
-            className="mt-3 rounded bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-400"
+            className="mt-4 rounded bg-blue-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-blue-400"
             onClick={leaveWorkshopRoom}
           >
             Exit workshop
@@ -1370,11 +1370,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       <div className="w-full h-screen" ref={mountRef} />
 
-      <div className="absolute top-4 left-4 bg-black/45 text-white text-sm px-3 py-1 rounded-full">
+      <div className="absolute top-4 left-4 bg-black/45 text-white text-base md:text-lg px-4 py-2 rounded-full">
         {connected ? `🟢 Live island • ${Object.keys(players).length + 1} robots` : '🟡 Connecting to island...'}
       </div>
 
-      <div className="absolute bottom-4 left-4 bg-black/40 text-white text-xs md:text-sm px-3 py-2 rounded-lg">
+      <div className="absolute bottom-4 left-4 bg-black/40 text-white text-sm md:text-base px-4 py-3 rounded-lg">
         Arrow Keys / WASD to move • PET WORKSHOP is always open • Look for ❗ then enter the door
       </div>
 
@@ -1392,9 +1392,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             <div className="flex items-start gap-4 mb-5">
               <div className={`text-4xl ${success ? 'animate-bounce' : ''}`}>🤖</div>
               <div className="flex-1">
-                <h2 className="text-white text-xl font-bold">Sparky</h2>
+                <h2 className="text-white text-2xl font-bold">Sparky</h2>
                 <p
-                  className="text-slate-200 mt-1"
+                  className="mt-2 text-lg text-slate-100"
                   dangerouslySetInnerHTML={{ __html: tutorialPhases[tutorialStep].npcText }}
                 />
               </div>
@@ -1402,19 +1402,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
             {tutorialPhases[tutorialStep].kind === 'challenge' && (
               <div className="mb-4">
-                <div className="mb-3 rounded-lg border border-slate-700/70 bg-slate-800/70 px-3 py-2 text-sm text-slate-200">
-                  <div className="font-semibold text-slate-100">{tutorialPhases[tutorialStep].title}</div>
+                <div className="mb-3 rounded-lg border border-slate-700/70 bg-slate-800/70 px-4 py-3 text-base text-slate-100">
+                  <div className="font-semibold text-slate-100 text-lg">{tutorialPhases[tutorialStep].title}</div>
                   <div className="mt-1">{tutorialPhases[tutorialStep].prompt}</div>
-                  <div className="mt-1 text-sky-300" dangerouslySetInnerHTML={{ __html: tutorialPhases[tutorialStep].hint }} />
+                  <div className="mt-2 text-sky-300" dangerouslySetInnerHTML={{ __html: tutorialPhases[tutorialStep].hint }} />
                 </div>
                 <div className="rounded-xl border border-slate-700 bg-slate-950 overflow-hidden">
-                  <div className="px-3 py-2 text-xs text-slate-300 border-b border-slate-800">
+                  <div className="px-4 py-2 text-sm text-slate-200 border-b border-slate-800">
                     Java Editor
                   </div>
-                  <div className="relative h-32">
+                  <div className="relative h-40">
                     <pre
                       ref={codePreviewRef}
-                      className="pointer-events-none absolute inset-0 m-0 p-3 overflow-auto whitespace-pre font-mono text-sm leading-6 text-slate-100 [font-variant-ligatures:none]"
+                      className="pointer-events-none absolute inset-0 m-0 p-4 overflow-auto whitespace-pre font-mono text-base leading-7 text-slate-100 [font-variant-ligatures:none]"
                       dangerouslySetInnerHTML={{ __html: `${highlightedCode}\n` }}
                     />
                     <textarea
@@ -1424,13 +1424,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                       onScroll={onEditorScroll}
                       spellCheck={false}
                       wrap="off"
-                      className="absolute inset-0 h-full w-full resize-none overflow-auto whitespace-pre bg-transparent p-3 font-mono text-sm leading-6 text-transparent caret-green-300 [font-variant-ligatures:none]"
+                      className="absolute inset-0 h-full w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 font-mono text-base leading-7 text-transparent caret-green-300 [font-variant-ligatures:none]"
                     />
                   </div>
                 </div>
                 {output && (
                   <div
-                    className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+                    className={`mt-3 rounded-lg px-4 py-3 text-base ${
                       success ? 'bg-emerald-900/70 text-emerald-100' : 'bg-rose-900/70 text-rose-100'
                     }`}
                   >
@@ -1455,7 +1455,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               {tutorialPhases[tutorialStep].kind === 'dialogue' ? (
                 <button
                   onClick={() => setTutorialStep((step) => step + 1)}
-                  className="rounded-lg bg-blue-600 px-5 py-2 text-white font-semibold hover:bg-blue-500"
+                  className="rounded-lg bg-blue-600 px-6 py-3 text-base text-white font-semibold hover:bg-blue-500"
                 >
                   Next
                 </button>
@@ -1463,7 +1463,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 <button
                   onClick={checkAnswer}
                   disabled={success}
-                  className={`rounded-lg px-5 py-2 font-semibold ${
+                  className={`rounded-lg px-6 py-3 text-base font-semibold ${
                     success
                       ? 'bg-emerald-600 text-white cursor-not-allowed'
                       : 'bg-amber-500 text-slate-900 hover:bg-amber-400'
