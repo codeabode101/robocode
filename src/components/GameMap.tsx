@@ -55,6 +55,34 @@ type TutorialPhase =
       npcText: string;
     } & TutorialChallenge);
 
+type CircleHitbox = {
+  shape: 'circle';
+  center: THREE.Vector2;
+  radius: number;
+};
+
+type BoxHitbox = {
+  shape: 'box';
+  center: THREE.Vector2;
+  halfWidth: number;
+  halfHeight: number;
+};
+
+type Hitbox = CircleHitbox | BoxHitbox;
+
+function isInsideHitbox(point: THREE.Vector2, hitbox: Hitbox) {
+  if (hitbox.shape === 'circle') {
+    return point.distanceTo(hitbox.center) <= hitbox.radius;
+  }
+  const dx = Math.abs(point.x - hitbox.center.x);
+  const dy = Math.abs(point.y - hitbox.center.y);
+  return dx <= hitbox.halfWidth && dy <= hitbox.halfHeight;
+}
+
+function collidesWithAny(point: THREE.Vector2, hitboxes: Hitbox[]) {
+  return hitboxes.some((hitbox) => isInsideHitbox(point, hitbox));
+}
+
 function escapeHtml(input: string) {
   return input
     .replaceAll('&', '&amp;')
@@ -529,12 +557,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const showTutorialRef = useRef(false);
   const tutorialCompleteRef = useRef(false);
   const shopUnlockedRef = useRef(false);
+  const inWorkshopRoomRef = useRef(false);
   const sendAtRef = useRef(0);
   const lastStepAtRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const petShopRef = useRef<THREE.Group | null>(null);
   const petShopMarkerRef = useRef<THREE.Sprite | null>(null);
+  const obstacleHitboxesRef = useRef<Hitbox[]>([]);
+  const workshopDoorHitboxRef = useRef<CircleHitbox | null>(null);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
@@ -548,7 +579,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [sparkleBurst, setSparkleBurst] = useState(false);
   const [tutorialComplete, setTutorialComplete] = useState(false);
   const [shopUnlocked, setShopUnlocked] = useState(false);
-  const [showShopIntro, setShowShopIntro] = useState(false);
+  const [inWorkshopRoom, setInWorkshopRoom] = useState(false);
+  const [showWorkshopNpcTalk, setShowWorkshopNpcTalk] = useState(false);
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
 
@@ -646,6 +678,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   useEffect(() => {
     shopUnlockedRef.current = shopUnlocked;
   }, [shopUnlocked]);
+
+  useEffect(() => {
+    inWorkshopRoomRef.current = inWorkshopRoom;
+  }, [inWorkshopRoom]);
 
   useEffect(() => {
     if (connected) {
@@ -820,6 +856,44 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.add(petShopMarker);
     petShopMarkerRef.current = petShopMarker;
 
+    const obstacleHitboxes: Hitbox[] = [
+      { shape: 'box', center: new THREE.Vector2(0.65, -1.75), halfWidth: 3.3, halfHeight: 1.72 },
+      { shape: 'box', center: new THREE.Vector2(1.7, 0.15), halfWidth: 0.58, halfHeight: 2.92 },
+      { shape: 'circle', center: new THREE.Vector2(3.98, -2.02), radius: 0.42 },
+      { shape: 'circle', center: new THREE.Vector2(3.6, 1.8), radius: 0.95 },
+      { shape: 'circle', center: new THREE.Vector2(-1.55, -1.8), radius: 1.02 },
+      { shape: 'circle', center: new THREE.Vector2(0.78, -1.8), radius: 1.02 },
+      { shape: 'circle', center: new THREE.Vector2(3.1, -1.8), radius: 1.02 },
+      { shape: 'box', center: new THREE.Vector2(-10.95, -6.4), halfWidth: 1.05, halfHeight: 1.52 },
+      { shape: 'box', center: new THREE.Vector2(-8.25, -6.4), halfWidth: 1.05, halfHeight: 1.52 },
+      { shape: 'box', center: new THREE.Vector2(-9.6, -5.2), halfWidth: 1.25, halfHeight: 0.68 },
+    ];
+    const palmTreePositions = [
+      new THREE.Vector2(-8.5, 4.6),
+      new THREE.Vector2(8.1, 4.9),
+      new THREE.Vector2(-6.8, -5.6),
+      new THREE.Vector2(7.2, -6),
+      new THREE.Vector2(-16.5, 12),
+      new THREE.Vector2(17.8, 11.4),
+      new THREE.Vector2(-18.7, -9.8),
+      new THREE.Vector2(16.1, -12.2),
+      new THREE.Vector2(-3.2, 20.8),
+      new THREE.Vector2(5.1, -21.2),
+      new THREE.Vector2(21.7, -1.9),
+      new THREE.Vector2(-22.3, 1.3),
+      new THREE.Vector2(12.4, 17.1),
+      new THREE.Vector2(-13.5, 16.4),
+    ];
+    palmTreePositions.forEach((position) => {
+      obstacleHitboxes.push({ shape: 'circle', center: position, radius: 0.88 });
+    });
+    obstacleHitboxesRef.current = obstacleHitboxes;
+    workshopDoorHitboxRef.current = {
+      shape: 'circle',
+      center: new THREE.Vector2(-9.6, -7.22),
+      radius: 0.56,
+    };
+
     const clouds: THREE.Group[] = [];
     for (let i = 0; i < 7; i += 1) {
       const cloud = new THREE.Group();
@@ -886,7 +960,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       let moved = false;
       let moveDirection = new THREE.Vector2(0, 0);
-      if (!showTutorialRef.current) {
+      if (!showTutorialRef.current && !inWorkshopRoomRef.current) {
         let dx = 0;
         let dy = 0;
         const keys = keyStateRef.current;
@@ -904,8 +978,24 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             .add(direction.multiplyScalar(MOVE_SPEED * delta));
           const maxRadius = ISLAND_RADIUS - PLAYER_RADIUS - 0.35;
           if (candidate.length() > maxRadius) candidate.setLength(maxRadius);
-          localPositionRef.current.copy(candidate);
-          localRobot.root.position.set(candidate.x, candidate.y, 0.01);
+          const hitsObstacle = collidesWithAny(candidate, obstacleHitboxesRef.current);
+          const workshopDoor = workshopDoorHitboxRef.current;
+          const atWorkshopDoor =
+            Boolean(shopUnlockedRef.current) &&
+            workshopDoor !== null &&
+            isInsideHitbox(candidate, workshopDoor);
+
+          if (atWorkshopDoor) {
+            setInWorkshopRoom(true);
+            setShowWorkshopNpcTalk(true);
+            keyStateRef.current.clear();
+            moved = false;
+          } else if (!hitsObstacle) {
+            localPositionRef.current.copy(candidate);
+            localRobot.root.position.set(candidate.x, candidate.y, 0.01);
+          } else {
+            moved = false;
+          }
         }
       }
 
@@ -923,18 +1013,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const lookDirection = moved ? moveDirection : new THREE.Vector2(0.3, 0);
       animateRobotVisual(localRobot, worldTime, moved ? 1 : 0, lookDirection.x, lookDirection.y);
 
-      const distanceToSparky = localPositionRef.current.distanceTo(NPC_POSITION);
-      if (distanceToSparky < 1.7 && !showTutorialRef.current && !tutorialCompleteRef.current) {
-        setShowTutorial(true);
-        setTutorialStep(0);
-        setCode('String petName = "Milo";');
-        setOutput('');
-        setSuccess(false);
-      } else if (distanceToSparky > 2.25 && showTutorialRef.current) {
-        setShowTutorial(false);
-        setTutorialStep(0);
-        setSuccess(false);
-        setOutput('');
+      if (!inWorkshopRoomRef.current) {
+        const distanceToSparky = localPositionRef.current.distanceTo(NPC_POSITION);
+        if (distanceToSparky < 1.7 && !showTutorialRef.current && !tutorialCompleteRef.current) {
+          setShowTutorial(true);
+          setTutorialStep(0);
+          setCode('String petName = "Milo";');
+          setOutput('');
+          setSuccess(false);
+        } else if (distanceToSparky > 2.25 && showTutorialRef.current) {
+          setShowTutorial(false);
+          setTutorialStep(0);
+          setSuccess(false);
+          setOutput('');
+        }
       }
 
       const bob = Math.sin(now * 0.006) * 0.04;
@@ -1000,6 +1092,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       disposeObject(rangoli);
       disposeObject(petShop);
       disposeObject(petShopMarker);
+      obstacleHitboxesRef.current = [];
+      workshopDoorHitboxRef.current = null;
       scene.clear();
       renderer.dispose();
       mountElement.removeChild(renderer.domElement);
@@ -1009,8 +1103,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   useEffect(() => {
     if (petShopRef.current) petShopRef.current.visible = shopUnlocked;
-    if (petShopMarkerRef.current) petShopMarkerRef.current.visible = shopUnlocked;
-  }, [shopUnlocked]);
+    if (petShopMarkerRef.current) petShopMarkerRef.current.visible = shopUnlocked && !inWorkshopRoom;
+  }, [shopUnlocked, inWorkshopRoom]);
 
   useEffect(() => {
     if (!sceneRef.current) return;
@@ -1091,7 +1185,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setOutput('✅ Amazing! You finished name, color, and age variables.');
           setTutorialComplete(true);
           setShopUnlocked(true);
-          setShowShopIntro(true);
           setTimeout(() => setSparkleBurst(false), 900);
           setTimeout(() => {
             setShowTutorial(false);
@@ -1107,21 +1200,50 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
   };
 
+  const leaveWorkshopRoom = () => {
+    setInWorkshopRoom(false);
+    setShowWorkshopNpcTalk(false);
+    const outsideDoor = new THREE.Vector2(-9.6, -8.35);
+    localPositionRef.current.copy(outsideDoor);
+    if (localRobotRef.current) {
+      localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.01);
+    }
+  };
+
   return (
     <div className="relative">
-      {showShopIntro && (
-        <div className="pointer-events-none absolute top-20 right-4 z-40 max-w-sm rounded-2xl border border-amber-200/50 bg-slate-900/90 px-4 py-3 text-sm text-amber-50 shadow-2xl">
-          <div className="font-bold text-amber-300">New Job Unlocked! ❗</div>
-          <div className="mt-1">
-            Hey! You can work here and name and age my pets when I get a new one and get money for it.
+      {inWorkshopRoom && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-slate-600 bg-slate-900 shadow-2xl">
+            <div className="h-16 bg-gradient-to-r from-slate-700 to-slate-500" />
+            <div className="h-56 bg-gradient-to-b from-slate-100 to-slate-300 p-6">
+              <div className="mx-auto flex h-full max-w-2xl items-end justify-between rounded-2xl border border-slate-400 bg-amber-50 px-6 pb-6">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pet Workshop</div>
+                  <div className="mt-1 text-2xl font-bold text-slate-900">Inside the Workshop</div>
+                </div>
+                <div className="text-6xl">🧑‍🔧</div>
+              </div>
+            </div>
+            {showWorkshopNpcTalk && (
+              <div className="border-t border-slate-700 bg-slate-950/90 px-6 py-4 text-sm text-slate-100">
+                <div className="font-semibold text-amber-300">Workshop Owner</div>
+                <div className="mt-1">
+                  Hey! You can work here and name and age my pets when I get a new one and get money for it.
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-between border-t border-slate-700 bg-slate-900 px-6 py-3">
+              <div className="text-xs text-slate-300">Walked through the door ✅</div>
+              <button
+                type="button"
+                className="rounded bg-blue-500 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-400"
+                onClick={leaveWorkshopRoom}
+              >
+                Leave shop
+              </button>
+            </div>
           </div>
-          <button
-            type="button"
-            className="pointer-events-auto mt-3 rounded bg-amber-400 px-3 py-1 text-xs font-semibold text-slate-900"
-            onClick={() => setShowShopIntro(false)}
-          >
-            Got it
-          </button>
         </div>
       )}
 
@@ -1132,7 +1254,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       </div>
 
       <div className="absolute bottom-4 left-4 bg-black/40 text-white text-xs md:text-sm px-3 py-2 rounded-lg">
-        Arrow Keys / WASD to move • Meet Sparky 🤖 • Learn name, color, and age variables
+        Arrow Keys / WASD to move • Meet Sparky 🤖 • Learn name, color, age • Walk into PET WORKSHOP door
       </div>
 
       {showTutorial && (
