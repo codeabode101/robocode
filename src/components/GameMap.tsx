@@ -496,58 +496,58 @@ function createBigPetShop(x: number, y: number) {
   const shop = new THREE.Group();
 
   const base = new THREE.Mesh(
-    new THREE.BoxGeometry(4.6, 2.9, 1.5),
+    new THREE.BoxGeometry(5.4, 3.4, 1.7),
     createLitMaterial(0xf8bbd0, 0.7, 0.06)
   );
-  base.position.set(x, y, 1.05);
+  base.position.set(x, y, 1.15);
   shop.add(base);
 
   const roof = new THREE.Mesh(
-    new THREE.BoxGeometry(5.1, 1.2, 1.7),
+    new THREE.BoxGeometry(6, 1.35, 1.9),
     createLitMaterial(0x2563eb, 0.62, 0.08)
   );
-  roof.position.set(x, y + 1.6, 2.25);
+  roof.position.set(x, y + 1.95, 2.55);
   shop.add(roof);
 
   const doorFrame = new THREE.Mesh(
-    new THREE.BoxGeometry(1.35, 0.28, 1.88),
+    new THREE.BoxGeometry(1.55, 0.28, 2.1),
     createLitMaterial(0xfde68a, 0.55, 0.14)
   );
-  doorFrame.position.set(x, y - 1.33, 1.18);
+  doorFrame.position.set(x, y - 1.56, 1.28);
   shop.add(doorFrame);
 
   const door = new THREE.Mesh(
-    new THREE.BoxGeometry(1.02, 0.18, 1.62),
+    new THREE.BoxGeometry(1.2, 0.18, 1.8),
     createLitMaterial(0x0f172a, 0.36, 0.35)
   );
-  door.position.set(x, y - 1.36, 1.16);
+  door.position.set(x, y - 1.59, 1.25);
   shop.add(door);
 
   const doorWindow = new THREE.Mesh(
     new THREE.BoxGeometry(0.48, 0.1, 0.38),
     createLitMaterial(0x93c5fd, 0.2, 0.45)
   );
-  doorWindow.position.set(x, y - 1.43, 1.6);
+  doorWindow.position.set(x, y - 1.66, 1.72);
   shop.add(doorWindow);
 
   const doormat = new THREE.Mesh(
-    new THREE.BoxGeometry(1.26, 0.6, 0.08),
+    new THREE.BoxGeometry(1.45, 0.74, 0.08),
     createLitMaterial(0x7c3aed, 0.7, 0.08)
   );
-  doormat.position.set(x, y - 2.02, 0.18);
+  doormat.position.set(x, y - 2.36, 0.18);
   shop.add(doormat);
 
   const doorLabel = createLabelSprite('ENTER', '#0f172a', 'rgba(253,224,71,0.95)', '#f8fafc', 160, 74);
   doorLabel.scale.set(1.55, 0.56, 1);
   doorLabel.center.set(0.5, 0);
-  doorLabel.position.set(x, y - 1.35, 2.18);
+  doorLabel.position.set(x, y - 1.59, 2.38);
   doorLabel.renderOrder = 36;
   shop.add(doorLabel);
 
   const sign = createLabelSprite('PET WORKSHOP', '#f8fafc', 'rgba(15,23,42,0.92)', '#fde68a', 360, 90);
-  sign.scale.set(3.5, 0.95, 1);
+  sign.scale.set(3.85, 1.05, 1);
   sign.center.set(0.5, 0);
-  sign.position.set(x, y + 1.55, 3.25);
+  sign.position.set(x, y + 1.9, 3.55);
   sign.renderOrder = 32;
   shop.add(sign);
 
@@ -597,6 +597,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const outdoorGroupRef = useRef<THREE.Group | null>(null);
   const workshopRoomGroupRef = useRef<THREE.Group | null>(null);
   const obstacleHitboxesRef = useRef<Hitbox[]>([]);
+  const roomObstacleHitboxesRef = useRef<Hitbox[]>([]);
   const workshopDoorHitboxRef = useRef<CircleHitbox | null>(null);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -898,16 +899,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     petShopMarkerRef.current = petShopMarker;
 
     const obstacleHitboxes: Hitbox[] = [
-      { shape: 'box', center: new THREE.Vector2(0.65, -1.75), halfWidth: 3.3, halfHeight: 1.72 },
-      { shape: 'box', center: new THREE.Vector2(1.7, 0.15), halfWidth: 0.58, halfHeight: 2.92 },
       { shape: 'circle', center: new THREE.Vector2(3.98, -2.02), radius: 0.42 },
       { shape: 'circle', center: new THREE.Vector2(3.6, 1.8), radius: 0.95 },
       { shape: 'circle', center: new THREE.Vector2(-1.55, -1.8), radius: 1.02 },
       { shape: 'circle', center: new THREE.Vector2(0.78, -1.8), radius: 1.02 },
       { shape: 'circle', center: new THREE.Vector2(3.1, -1.8), radius: 1.02 },
-      { shape: 'box', center: new THREE.Vector2(-10.95, -6.4), halfWidth: 1.05, halfHeight: 1.52 },
-      { shape: 'box', center: new THREE.Vector2(-8.25, -6.4), halfWidth: 1.05, halfHeight: 1.52 },
-      { shape: 'box', center: new THREE.Vector2(-9.6, -5.2), halfWidth: 1.25, halfHeight: 0.68 },
+      { shape: 'box', center: new THREE.Vector2(-11.3, -6.4), halfWidth: 1.3, halfHeight: 1.85 },
+      { shape: 'box', center: new THREE.Vector2(-7.9, -6.4), halfWidth: 1.3, halfHeight: 1.85 },
+      { shape: 'box', center: new THREE.Vector2(-9.6, -4.95), halfWidth: 1.55, halfHeight: 0.92 },
     ];
     const palmTreePositions = [
       new THREE.Vector2(-8.5, 4.6),
@@ -931,9 +930,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     obstacleHitboxesRef.current = obstacleHitboxes;
     workshopDoorHitboxRef.current = {
       shape: 'circle',
-      center: new THREE.Vector2(-9.6, -8.12),
-      radius: 0.72,
+      center: new THREE.Vector2(-9.6, -8.82),
+      radius: 0.95,
     };
+
+    roomObstacleHitboxesRef.current = [
+      { shape: 'box', center: new THREE.Vector2(-1.75, 1.95), halfWidth: 0.9, halfHeight: 0.34 },
+      { shape: 'box', center: new THREE.Vector2(1.45, 1.65), halfWidth: 0.82, halfHeight: 0.44 },
+      { shape: 'box', center: new THREE.Vector2(1.75, -1.3), halfWidth: 0.72, halfHeight: 0.5 },
+      { shape: 'box', center: new THREE.Vector2(ROOM_OWNER_POS.x, ROOM_OWNER_POS.y), halfWidth: 0.7, halfHeight: 0.7 },
+    ];
 
     const clouds: THREE.Group[] = [];
     for (let i = 0; i < 7; i += 1) {
@@ -1049,7 +1055,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       let moved = false;
       let moveDirection = new THREE.Vector2(0, 0);
-      if (!showTutorialRef.current && !inWorkshopRoomRef.current) {
+      if (!showTutorialRef.current) {
         let dx = 0;
         let dy = 0;
         const keys = keyStateRef.current;
@@ -1065,27 +1071,39 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const candidate = localPositionRef.current
             .clone()
             .add(direction.multiplyScalar(MOVE_SPEED * delta));
-          const maxRadius = ISLAND_RADIUS - PLAYER_RADIUS - 0.35;
-          if (candidate.length() > maxRadius) candidate.setLength(maxRadius);
-          const hitsObstacle = collidesWithAny(candidate, obstacleHitboxesRef.current);
-          const workshopDoor = workshopDoorHitboxRef.current;
-          const atWorkshopDoor =
-            Boolean(shopUnlockedRef.current) &&
-            workshopDoor !== null &&
-            isInsideHitbox(candidate, workshopDoor);
-
-          if (atWorkshopDoor) {
-            setInWorkshopRoom(true);
-            setShowWorkshopNpcTalk(true);
-            localPositionRef.current.copy(ROOM_SPAWN);
-            localRobot.root.position.set(ROOM_SPAWN.x, ROOM_SPAWN.y, 0.01);
-            keyStateRef.current.clear();
-            moved = false;
-          } else if (!hitsObstacle) {
-            localPositionRef.current.copy(candidate);
-            localRobot.root.position.set(candidate.x, candidate.y, 0.01);
+          if (inWorkshopRoomRef.current) {
+            candidate.x = Math.max(-2.72, Math.min(2.72, candidate.x));
+            candidate.y = Math.max(-2.72, Math.min(2.72, candidate.y));
+            const hitsRoomObstacle = collidesWithAny(candidate, roomObstacleHitboxesRef.current);
+            if (!hitsRoomObstacle) {
+              localPositionRef.current.copy(candidate);
+              localRobot.root.position.set(candidate.x, candidate.y, 0.01);
+            } else {
+              moved = false;
+            }
           } else {
-            moved = false;
+            const maxRadius = ISLAND_RADIUS - PLAYER_RADIUS - 0.35;
+            if (candidate.length() > maxRadius) candidate.setLength(maxRadius);
+            const hitsObstacle = collidesWithAny(candidate, obstacleHitboxesRef.current);
+            const workshopDoor = workshopDoorHitboxRef.current;
+            const atWorkshopDoor =
+              Boolean(shopUnlockedRef.current) &&
+              workshopDoor !== null &&
+              isInsideHitbox(candidate, workshopDoor);
+
+            if (atWorkshopDoor) {
+              setInWorkshopRoom(true);
+              setShowWorkshopNpcTalk(true);
+              localPositionRef.current.copy(ROOM_SPAWN);
+              localRobot.root.position.set(ROOM_SPAWN.x, ROOM_SPAWN.y, 0.01);
+              keyStateRef.current.clear();
+              moved = false;
+            } else if (!hitsObstacle) {
+              localPositionRef.current.copy(candidate);
+              localRobot.root.position.set(candidate.x, candidate.y, 0.01);
+            } else {
+              moved = false;
+            }
           }
         }
       }
@@ -1153,10 +1171,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         outdoorGroup.visible = false;
         workshopRoomGroup.visible = true;
         scene.background = new THREE.Color(0x030712);
-        camera.position.x += (ROOM_SPAWN.x - camera.position.x) * 0.08;
-        camera.position.y += (ROOM_SPAWN.y - 4.6 - camera.position.y) * 0.08;
+        camera.position.x += (localPositionRef.current.x - camera.position.x) * 0.08;
+        camera.position.y += (localPositionRef.current.y - 4.6 - camera.position.y) * 0.08;
         camera.position.z += (11.6 - camera.position.z) * 0.08;
-        camera.lookAt(0, 0, 0);
+        camera.lookAt(localPositionRef.current.x, localPositionRef.current.y, 0);
       } else {
         outdoorGroup.visible = true;
         workshopRoomGroup.visible = false;
@@ -1202,6 +1220,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       outdoorGroupRef.current = null;
       workshopRoomGroupRef.current = null;
       obstacleHitboxesRef.current = [];
+      roomObstacleHitboxesRef.current = [];
       workshopDoorHitboxRef.current = null;
       scene.clear();
       renderer.dispose();
@@ -1320,7 +1339,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const leaveWorkshopRoom = () => {
     setInWorkshopRoom(false);
     setShowWorkshopNpcTalk(false);
-    const outsideDoor = new THREE.Vector2(-9.6, -8.35);
+    const outsideDoor = new THREE.Vector2(-9.6, -9.7);
     localPositionRef.current.copy(outsideDoor);
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.01);
