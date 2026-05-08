@@ -1160,6 +1160,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.isContentEditable)) {
+        return;
+      }
       const key = event.key.toLowerCase();
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
         event.preventDefault();
@@ -1635,10 +1639,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span> • Size (int):{' '}
                   <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span>
                 </div>
-                <div className="mt-1 text-slate-300">&quot;I want a pet with these settings!&quot;</div>
+                <div className="mt-1 text-sky-100">&quot;I want a pet with these settings!&quot;</div>
               </div>
             ) : (
-              <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-300">
+              <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-100">
                 Waiting for the next customer...
               </div>
             )}
@@ -1651,7 +1655,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 spellCheck={false}
                 wrap="off"
                 className="h-36 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 font-mono text-base leading-7 text-slate-100 [font-variant-ligatures:none]"
-                placeholder={'String petName = "Bolt";\nString petColor = "blue";\nint petSize = 4;'}
               />
             </div>
             {workshopOutput && (
@@ -1676,15 +1679,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             </div>
           </div>
 
-          <div className="absolute bottom-6 right-6 z-40 rounded-xl border border-emerald-300/50 bg-emerald-500/20 px-6 py-3 text-3xl font-black text-emerald-300 shadow-xl md:text-4xl">
-            ${money}
-          </div>
         </>
       )}
 
       {roomEntryFlash && <div className="pointer-events-none fixed inset-0 z-[70] animate-pulse bg-cyan-200/35 backdrop-blur-[1px]" />}
 
       <div className="w-full h-screen" ref={mountRef} />
+
+      <div className="fixed bottom-6 right-6 z-40 rounded-xl border border-emerald-300/50 bg-emerald-500/20 px-6 py-3 text-3xl font-black text-emerald-300 shadow-xl md:text-4xl">
+        ${money}
+      </div>
 
       <div className="absolute top-4 left-4 bg-black/45 text-white text-base md:text-lg px-4 py-2 rounded-full">
         {connected ? `🟢 Live island • ${Object.keys(players).length + 1} robots` : '🟡 Connecting to island...'}
