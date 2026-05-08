@@ -42,6 +42,21 @@ const REQUEST_PATTERNS = [
   ['name', 'size'],
   ['color', 'size'],
 ] as const;
+const WORKSHOP_INTRO_STORAGE_KEY = 'robocode-workshop-intro-v1';
+const WORKSHOP_INTRO_PAGES = [
+  {
+    title: "Welcome to Rafiq's Workshop",
+    body: 'Customers browse robo-pets here. Walk up to one and press Space to start a job.',
+  },
+  {
+    title: 'Do the Java task',
+    body: 'Each customer asks for different properties (name, color, size). Write code that matches exactly.',
+  },
+  {
+    title: 'Get paid at register',
+    body: 'After correct code, they follow you. Lead them to the register to collect your money.',
+  },
+] as const;
 
 type RobotVisual = {
   root: THREE.Group;
@@ -759,6 +774,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [workshopCode, setWorkshopCode] = useState('');
   const [workshopOutput, setWorkshopOutput] = useState('');
   const [interactionPromptName, setInteractionPromptName] = useState<string | null>(null);
+  const [workshopIntroSeen, setWorkshopIntroSeen] = useState(
+    () => typeof window !== 'undefined' && window.localStorage.getItem(WORKSHOP_INTRO_STORAGE_KEY) === 'seen'
+  );
+  const [workshopIntroStep, setWorkshopIntroStep] = useState(0);
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
 
@@ -1720,82 +1739,108 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     );
   };
 
+  const finishWorkshopIntro = () => {
+    setWorkshopIntroSeen(true);
+    setWorkshopIntroStep(0);
+    window.localStorage.setItem(WORKSHOP_INTRO_STORAGE_KEY, 'seen');
+  };
+
+  const nextWorkshopIntroStep = () => {
+    if (workshopIntroStep >= WORKSHOP_INTRO_PAGES.length - 1) {
+      finishWorkshopIntro();
+      return;
+    }
+    setWorkshopIntroStep((prev) => prev + 1);
+  };
+
   return (
     <div className="relative">
-      {inWorkshopRoom && (
+      {inWorkshopRoom && !workshopIntroSeen && (
         <>
-          <div className="absolute right-4 top-20 z-40 w-[min(92vw,38rem)] rounded-2xl border border-amber-200/40 bg-slate-900/92 px-5 py-4 text-base text-slate-100 shadow-2xl">
-            <div className="font-semibold text-amber-300 text-lg">Rafiq&apos;s Pet Workshop</div>
-            <div className="mt-1 text-slate-100">
-              I&apos;ll pay you to name robo pets, set their color, and set size with an <span className="font-semibold">int</span>.
-              Talk to a customer first, then lead them to the register. Payout is <span className="font-semibold text-emerald-300">$2</span>.
-            </div>
-            {activeCustomer ? (
-              <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2">
-                <div className="text-sky-300 text-lg font-semibold">{activeCustomer.customerName}&apos;s Request</div>
-                {activeCustomer.required.includes('name') && (
-                  <div className="mt-1">
-                    Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span>
-                  </div>
-                )}
-                {activeCustomer.required.includes('color') && (
-                  <div className="mt-1">
-                    Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span>
-                  </div>
-                )}
-                {activeCustomer.required.includes('size') && (
-                  <div className="mt-1">
-                    Size (int): <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span>
-                  </div>
-                )}
-                <div className="mt-1 text-sky-100">&quot;I want a pet with these settings!&quot;</div>
-              </div>
-            ) : (
-              <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-slate-100">
-                Walk up to a customer and press Space to interact.
-              </div>
-            )}
-
-            <div className="mt-3 rounded-xl border border-slate-700 bg-slate-950 overflow-hidden">
-              <div className="px-4 py-2 text-base text-slate-200 border-b border-slate-800">Java Workshop Editor</div>
-              <textarea
-                value={workshopCode}
-                onChange={(event) => setWorkshopCode(event.target.value)}
-                spellCheck={false}
-                wrap="off"
-                className="h-36 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 font-mono text-base leading-7 text-slate-100 [font-variant-ligatures:none]"
-              />
-            </div>
-            {workshopOutput && (
-              <div className="mt-3 rounded-lg bg-emerald-900/30 px-4 py-2 text-base text-emerald-100">{workshopOutput}</div>
-            )}
-
+          <div className="absolute left-4 top-20 z-40 w-[min(90vw,24rem)] rounded-2xl border border-amber-200/50 bg-slate-900/94 px-5 py-4 text-base text-slate-100 shadow-2xl">
+            <div className="font-semibold text-amber-300 text-lg">{WORKSHOP_INTRO_PAGES[workshopIntroStep].title}</div>
+            <div className="mt-2 text-slate-100">{WORKSHOP_INTRO_PAGES[workshopIntroStep].body}</div>
             <div className="mt-4 flex gap-3">
               <button
                 type="button"
                 className="rounded bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400"
-                onClick={runWorkshopCode}
+                onClick={nextWorkshopIntroStep}
               >
-                Submit Java Code
+                {workshopIntroStep >= WORKSHOP_INTRO_PAGES.length - 1 ? 'Start jobs' : 'Next'}
               </button>
               <button
                 type="button"
-                className="rounded bg-blue-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-blue-400"
-                onClick={leaveWorkshopRoom}
+                className="rounded bg-slate-700 px-4 py-2.5 text-base font-semibold text-white hover:bg-slate-600"
+                onClick={finishWorkshopIntro}
               >
-                Exit workshop
+                Close
               </button>
             </div>
           </div>
-
         </>
+      )}
+
+      {inWorkshopRoom && workshopIntroSeen && activeCustomer && (
+        <div className="absolute left-4 top-20 z-40 w-[min(90vw,24rem)] rounded-2xl border border-cyan-200/50 bg-slate-900/94 px-5 py-4 text-base text-slate-100 shadow-2xl">
+          <div className="text-sky-300 text-lg font-semibold">{activeCustomer.customerName}&apos;s Request</div>
+          {activeCustomer.required.includes('name') && (
+            <div className="mt-1">
+              Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span>
+            </div>
+          )}
+          {activeCustomer.required.includes('color') && (
+            <div className="mt-1">
+              Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span>
+            </div>
+          )}
+          {activeCustomer.required.includes('size') && (
+            <div className="mt-1">
+              Size (int): <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span>
+            </div>
+          )}
+          <div className="mt-1 text-sky-100">&quot;I want a pet with these settings!&quot;</div>
+
+          <div className="mt-3 rounded-xl border border-slate-700 bg-slate-950 overflow-hidden">
+            <div className="px-4 py-2 text-base text-slate-200 border-b border-slate-800">Java Workshop Editor</div>
+            <textarea
+              value={workshopCode}
+              onChange={(event) => setWorkshopCode(event.target.value)}
+              spellCheck={false}
+              wrap="off"
+              className="h-28 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 font-mono text-base leading-7 text-slate-100 [font-variant-ligatures:none]"
+            />
+          </div>
+          {workshopOutput && (
+            <div className="mt-3 rounded-lg bg-emerald-900/30 px-4 py-2 text-base text-emerald-100">{workshopOutput}</div>
+          )}
+
+          <div className="mt-4 flex gap-3">
+            <button
+              type="button"
+              className="rounded bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400"
+              onClick={runWorkshopCode}
+            >
+              Submit Java Code
+            </button>
+          </div>
+        </div>
+      )}
+
+      {inWorkshopRoom && (
+        <button
+          type="button"
+          className="absolute right-4 top-20 z-40 rounded bg-blue-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-blue-400"
+          onClick={leaveWorkshopRoom}
+        >
+          Exit workshop
+        </button>
       )}
 
       {roomEntryFlash && <div className="pointer-events-none fixed inset-0 z-[70] animate-pulse bg-cyan-200/35 backdrop-blur-[1px]" />}
 
       <div className="w-full h-screen" ref={mountRef} />
 
-      {inWorkshopRoom && interactionPromptName && (
+      {inWorkshopRoom && workshopIntroSeen && interactionPromptName && (
         <div className="absolute bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full border border-cyan-300/70 bg-slate-900/90 px-6 py-2 text-lg font-semibold text-cyan-100 shadow-xl">
           Press space to interact!
         </div>
