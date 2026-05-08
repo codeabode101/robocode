@@ -19,6 +19,7 @@ export function useMultiplayer(
   const [players, setPlayers] = useState<Record<string, PlayerPosition>>({});
   const [connected, setConnected] = useState(false);
   const apinatorRef = useRef<Apinator | null>(null);
+  const connectedRef = useRef(false);
 
   useEffect(() => {
     if (!apinatorAppKey) {
@@ -57,12 +58,23 @@ export function useMultiplayer(
       }));
     };
 
+    const tryReconnect = () => {
+      if (connectedRef.current) return;
+      try {
+        apinator.connect();
+      } catch (error) {
+        console.error('Reconnect attempt failed:', error);
+      }
+    };
+
     // Monitor connection state
     apinator.bind('state_change', (state: unknown) => {
       const statePayload = state as { current?: string } | string | null;
       const current = typeof statePayload === 'string' ? statePayload : statePayload?.current;
       console.log('Apinator state:', current);
-      setConnected(current === 'connected');
+      const isConnected = current === 'connected';
+      connectedRef.current = isConnected;
+      setConnected(isConnected);
     });
 
     // Subscribe to the shared game channel
@@ -103,8 +115,27 @@ export function useMultiplayer(
     // Connect to Apinator
     apinator.connect();
 
+    const reconnectInterval = window.setInterval(() => {
+      tryReconnect();
+    }, 4000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        tryReconnect();
+      }
+    };
+    const handleWindowFocus = () => {
+      tryReconnect();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleWindowFocus);
+
     return () => {
       setConnected(false);
+      connectedRef.current = false;
+      window.clearInterval(reconnectInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleWindowFocus);
       apinator.unsubscribe('robocode-live');
       apinator.disconnect();
     };

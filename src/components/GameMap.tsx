@@ -747,6 +747,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const workshopDoorHitboxRef = useRef<CircleHitbox | null>(null);
   const workshopDoorArmedRef = useRef(true);
   const workshopCustomersRef = useRef<CustomerNpc[]>([]);
+  const registerArrivalStartedAtRef = useRef<Record<string, number>>({});
   const customerSpawnTimerRef = useRef(0);
   const currentCustomerIdRef = useRef<string | null>(null);
   const interactionRequestedRef = useRef(false);
@@ -1473,14 +1474,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             localPositionRef.current.distanceTo(ROOM_COUNTER_POS) < REGISTER_ZONE_RADIUS &&
             npc.position.distanceTo(ROOM_COUNTER_POS) < REGISTER_NPC_RADIUS
           ) {
-            npc.stage = 'leaving';
-            npc.target.copy(ROOM_CUSTOMER_EXIT_POS);
-            setMoney((prev) => prev + 2);
-            setWorkshopOutput(`✅ ${npc.request.customerName} reached the register. You earned $2.`);
-            if (currentCustomerIdRef.current === npc.id) {
-              currentCustomerIdRef.current = null;
-              setActiveCustomer(null);
+            const startedAt = registerArrivalStartedAtRef.current[npc.id] ?? now;
+            registerArrivalStartedAtRef.current[npc.id] = startedAt;
+            if (now - startedAt >= 1000) {
+              npc.stage = 'leaving';
+              npc.target.copy(ROOM_CUSTOMER_EXIT_POS);
+              delete registerArrivalStartedAtRef.current[npc.id];
+              setMoney((prev) => prev + 2);
+              setWorkshopOutput(`✅ ${npc.request.customerName} reached the register. You earned $2.`);
+              if (currentCustomerIdRef.current === npc.id) {
+                currentCustomerIdRef.current = null;
+                setActiveCustomer(null);
+              }
             }
+          } else if (npc.stage !== 'follow-to-counter') {
+            delete registerArrivalStartedAtRef.current[npc.id];
           }
 
           const moving = dist > 0.06 && npc.stage !== 'browsing' && npc.stage !== 'awaiting-code';
@@ -1712,6 +1720,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setInteractionPromptName(null);
     setWorkshopCode('');
     setWorkshopOutput('');
+    registerArrivalStartedAtRef.current = {};
     const outsideDoor = new THREE.Vector2(-9.6, -9.7);
     localPositionRef.current.copy(outsideDoor);
     if (localRobotRef.current) {
@@ -1742,6 +1751,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setWorkshopOutput(`✅ Nice. ${activeCustomer.customerName} will follow you now — lead them to the register for $2.`);
     setWorkshopCode('');
     setActiveCustomer(null);
+    if (selectedId) {
+      delete registerArrivalStartedAtRef.current[selectedId];
+    }
     workshopCustomersRef.current = workshopCustomersRef.current.map((npc) =>
       npc.id === selectedId ? { ...npc, stage: 'follow-to-counter' } : npc
     );
@@ -1759,6 +1771,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       return;
     }
     setWorkshopIntroStep((prev) => prev + 1);
+  };
+
+  const reopenWorkshopIntro = () => {
+    setWorkshopIntroStep(0);
+    setWorkshopIntroSeen(false);
   };
 
   return (
@@ -1837,13 +1854,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       )}
 
       {inWorkshopRoom && (
-        <button
-          type="button"
-          className="absolute right-4 top-20 z-40 rounded bg-blue-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-blue-400"
-          onClick={leaveWorkshopRoom}
-        >
-          Exit workshop
-        </button>
+        <div className="absolute right-4 top-20 z-40 flex gap-3">
+          <button
+            type="button"
+            className="rounded bg-slate-700 px-4 py-2.5 text-base font-semibold text-white hover:bg-slate-600"
+            onClick={reopenWorkshopIntro}
+          >
+            Workshop guide
+          </button>
+          <button
+            type="button"
+            className="rounded bg-blue-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-blue-400"
+            onClick={leaveWorkshopRoom}
+          >
+            Exit workshop
+          </button>
+        </div>
       )}
 
       {roomEntryFlash && <div className="pointer-events-none fixed inset-0 z-[70] animate-pulse bg-cyan-200/35 backdrop-blur-[1px]" />}
