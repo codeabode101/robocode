@@ -66,6 +66,23 @@ export function useMultiplayer(
         console.error('Reconnect attempt failed:', error);
       }
     };
+    let reconnectTimeout: number | null = null;
+    let reconnectDelayMs = 1200;
+    const clearReconnectTimeout = () => {
+      if (reconnectTimeout !== null) {
+        window.clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
+    };
+    const scheduleReconnect = () => {
+      if (connectedRef.current || reconnectTimeout !== null) return;
+      reconnectTimeout = window.setTimeout(() => {
+        reconnectTimeout = null;
+        tryReconnect();
+        reconnectDelayMs = Math.min(10000, Math.floor(reconnectDelayMs * 1.5));
+        scheduleReconnect();
+      }, reconnectDelayMs);
+    };
 
     // Monitor connection state
     apinator.bind('state_change', (state: unknown) => {
@@ -75,6 +92,12 @@ export function useMultiplayer(
       const isConnected = current === 'connected';
       connectedRef.current = isConnected;
       setConnected(isConnected);
+      if (isConnected) {
+        reconnectDelayMs = 1200;
+        clearReconnectTimeout();
+      } else {
+        scheduleReconnect();
+      }
     });
 
     // Subscribe to the shared game channel
@@ -127,15 +150,21 @@ export function useMultiplayer(
     const handleWindowFocus = () => {
       tryReconnect();
     };
+    const handleOnline = () => {
+      tryReconnect();
+    };
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('online', handleOnline);
 
     return () => {
       setConnected(false);
       connectedRef.current = false;
+      clearReconnectTimeout();
       window.clearInterval(reconnectInterval);
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('online', handleOnline);
       apinator.unsubscribe('robocode-live');
       apinator.disconnect();
     };
