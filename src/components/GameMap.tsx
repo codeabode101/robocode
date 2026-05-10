@@ -10,15 +10,15 @@ interface GameMapProps {
   apinatorCluster: 'us' | 'eu';
 }
 
-const ISLAND_RADIUS = 28;
+const ISLAND_RADIUS = 40;
 const PLAYER_RADIUS = 0.48;
 const MOVE_SPEED = 7.4;
 const NETWORK_SYNC_MS = 90;
 const NPC_POSITION = new THREE.Vector2(3.6, 1.8);
 const WALK_BOB_SPEED = 14;
 const REMOTE_LERP = 0.18;
-const CAMERA_OFFSET = new THREE.Vector3(0, -11.6, 15.4);
-const CAMERA_LOOK_AHEAD = new THREE.Vector3(0, 2.2, 0);
+const CAMERA_OFFSET = new THREE.Vector3(0, -22, 34);
+const CAMERA_LOOK_AHEAD = new THREE.Vector3(0, 4.0, 0);
 const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
 const ROOM_OWNER_POS = new THREE.Vector2(2.35, 1.95);
 const ROOM_COUNTER_POS = new THREE.Vector2(2.35, 2.25);
@@ -63,8 +63,8 @@ type RobotVisual = {
   nameSprite: THREE.Sprite;
   body: THREE.Mesh;
   shadow: THREE.Mesh;
-  leftPupil: THREE.Mesh;
-  rightPupil: THREE.Mesh;
+  leftPupil: THREE.Object3D; // sprite or mesh
+  rightPupil: THREE.Object3D;
   antennaTip: THREE.Mesh;
 };
 
@@ -262,7 +262,7 @@ function createNameSprite(label: string, color: THREE.Color) {
   );
   sprite.scale.set(2.9, 0.82, 1);
   sprite.center.set(0.5, 0.05);
-  sprite.position.set(0, 1.24, 0.96);
+  sprite.position.set(0, 2.22, 0.96);
   sprite.renderOrder = 40;
   return sprite;
 }
@@ -319,105 +319,111 @@ function createRobotVisual(color: THREE.Color, name: string) {
   const group = new THREE.Group();
 
   const shadow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.58, 24),
+    new THREE.CircleGeometry(0.78, 24),
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18 })
   );
-  shadow.scale.set(1.08, 0.62, 1);
-  shadow.position.set(0, -0.1, 0.19);
+  shadow.scale.set(1.3, 0.8, 1);
+  shadow.position.set(0, -0.12, 0.25);
   group.add(shadow);
 
   const feet = new THREE.Mesh(
-    new THREE.BoxGeometry(0.52, 0.18, 0.23),
+    new THREE.BoxGeometry(0.66, 0.22, 0.28),
     createLitMaterial(0x1f2937, 0.62, 0.2)
   );
-  feet.position.set(0, -0.42, 0.33);
+  feet.position.set(0, -0.5, 0.38);
   group.add(feet);
 
   const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.95, 0.94, 0.42),
+    new THREE.BoxGeometry(0.54, 1.3, 0.3),
     createLitMaterial(color, 0.7, 0.07)
   );
-  body.position.set(0, 0.02, 0.47);
+  body.position.set(0, 0.1, 0.5);
   group.add(body);
 
-  const facePanel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.62, 0.5, 0.08),
-    createLitMaterial(0xe2e8f0, 0.5, 0.15)
-  );
-  facePanel.position.set(0, 0.12, 0.72);
-  group.add(facePanel);
-
-  const belly = new THREE.Mesh(
-    new THREE.BoxGeometry(0.45, 0.25, 0.06),
-    createLitMaterial(0xf8fafc, 0.52, 0.1)
-  );
-  belly.position.set(0, -0.18, 0.71);
-  group.add(belly);
-
   const armLeft = new THREE.Mesh(
-    new THREE.BoxGeometry(0.14, 0.36, 0.2),
+    new THREE.BoxGeometry(0.12, 0.42, 0.14),
     createLitMaterial(color, 0.72, 0.06)
   );
-  armLeft.position.set(-0.58, -0.03, 0.45);
-  armLeft.rotation.z = 0.15;
+  armLeft.position.set(-0.44, 0.18, 0.36);
+  armLeft.rotation.z = 0.08;
   group.add(armLeft);
 
   const armRight = armLeft.clone();
-  armRight.position.x = 0.58;
-  armRight.rotation.z = -0.15;
+  armRight.position.x = 0.44;
+  armRight.rotation.z = -0.08;
   group.add(armRight);
 
-  const cheekLeft = new THREE.Mesh(
-    new THREE.SphereGeometry(0.06, 12, 12),
-    createLitMaterial(0xfda4af, 0.65, 0.03)
+  const facePanel = new THREE.Mesh(
+    new THREE.BoxGeometry(0.44, 0.42, 0.08),
+    createLitMaterial(0xe2e8f0, 0.5, 0.15)
   );
-  cheekLeft.position.set(-0.2, -0.01, 0.76);
-  group.add(cheekLeft);
+  facePanel.position.set(0, 0.93, 0.15);
+  group.add(facePanel);
 
-  const cheekRight = cheekLeft.clone();
-  cheekRight.position.x = 0.2;
-  group.add(cheekRight);
-
+  // build each eye as a small group so pupil movement is local to the eye
+  const leftEyeGroup = new THREE.Group();
+  leftEyeGroup.position.set(-0.11, 0.97, 0.26);
   const eyeLeft = new THREE.Mesh(
-    new THREE.SphereGeometry(0.1, 14, 14),
-    createLitMaterial(0xffffff, 0.4, 0.2)
+    new THREE.SphereGeometry(0.08, 12, 12),
+    new THREE.MeshBasicMaterial({ color: 0xd1d5db })
   );
-  eyeLeft.position.set(-0.15, 0.16, 0.8);
-  group.add(eyeLeft);
+  eyeLeft.position.set(0, 0, 0);
+  leftEyeGroup.add(eyeLeft);
 
-  const eyeRight = eyeLeft.clone();
-  eyeRight.position.x = 0.15;
-  group.add(eyeRight);
+  // create small mesh pupils (mesh is simpler and avoids sprite depth/layer issues)
+  const createPupilMesh = () => {
+    const geom = new THREE.SphereGeometry(0.024, 10, 10);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x050505,
+      depthTest: false,
+      depthWrite: false,
+    });
+    const pupil = new THREE.Mesh(geom, mat);
+    pupil.renderOrder = 50;
+    return pupil;
+  };
 
-  const leftPupil = new THREE.Mesh(
-    new THREE.SphereGeometry(0.034, 12, 12),
-    createLitMaterial(0x0f172a, 0.6, 0.25)
+  const leftPupil = createPupilMesh();
+  // place slightly in front of the eye sphere so it reads as a pupil
+  leftPupil.position.set(0, 0, 0.06);
+  leftEyeGroup.add(leftPupil);
+  group.add(leftEyeGroup);
+
+  // build right eye separately (avoid clone and shared references)
+  const rightEyeGroup = new THREE.Group();
+  rightEyeGroup.position.set(0.11, 0.97, 0.26);
+  const eyeRight = new THREE.Mesh(
+    new THREE.SphereGeometry(0.08, 12, 12),
+    new THREE.MeshBasicMaterial({ color: 0xd1d5db })
   );
-  leftPupil.position.set(-0.15, 0.16, 0.88);
-  group.add(leftPupil);
-
-  const rightPupil = leftPupil.clone();
-  rightPupil.position.x = 0.15;
-  group.add(rightPupil);
+  eyeRight.position.set(0, 0, 0);
+  rightEyeGroup.add(eyeRight);
+  const rightPupil = createPupilMesh();
+  rightPupil.position.set(0, 0, 0.06);
+  rightEyeGroup.add(rightPupil);
+  group.add(rightEyeGroup);
 
   const antennaStem = new THREE.Mesh(
     new THREE.CylinderGeometry(0.02, 0.02, 0.18, 10),
     createLitMaterial(0x64748b, 0.4, 0.45)
   );
-  antennaStem.position.set(0, 0.58, 0.78);
+  antennaStem.position.set(0, 1.32, 0.18);
   group.add(antennaStem);
 
   const antennaTip = new THREE.Mesh(
     new THREE.SphereGeometry(0.06, 12, 12),
     createLitMaterial(0xf43f5e, 0.5, 0.18)
   );
-  antennaTip.position.set(0, 0.7, 0.82);
+  antennaTip.position.set(0, 1.44, 0.18);
   group.add(antennaTip);
 
   const nameSprite = createNameSprite(name, color);
   group.add(nameSprite);
   applyShadows(group, true, true);
 
+  // Rotate y-up geometry into the world's z-up orientation.
+  group.rotation.set(Math.PI / 2, 0, 0);
+  group.scale.set(2.35, 2.35, 2.35);
   return { root: group, nameSprite, body, shadow, leftPupil, rightPupil, antennaTip };
 }
 
@@ -435,22 +441,27 @@ function createGrid(size: number, step: number, color: number) {
 
 function createPalmTree(x: number, y: number) {
   const tree = new THREE.Group();
+  tree.position.set(x, y, 0);
   const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.14, 0.19, 1.25, 9),
+    new THREE.CylinderGeometry(0.22, 0.26, 2.6, 12),
     createLitMaterial(0x8b5a2b, 0.85, 0.05)
   );
-  trunk.position.set(x, y, 0.65);
+  trunk.position.set(0, 0, 1.4);
+  trunk.rotation.set(Math.PI / 2, 0, 0);
   tree.add(trunk);
 
   const leafMaterial = createLitMaterial(0x2e9f59, 0.9, 0.02);
-  for (let i = 0; i < 5; i += 1) {
-    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), leafMaterial);
-    const angle = (Math.PI * 2 * i) / 5;
-    leaf.scale.set(1.5, 0.65, 0.42);
-    leaf.position.set(x + Math.cos(angle) * 0.26, y + 0.7 + Math.sin(angle) * 0.22, 1.33);
-    leaf.rotation.z = angle;
+  for (let i = 0; i < 6; i += 1) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 12), leafMaterial);
+    const angle = (Math.PI * 2 * i) / 6;
+    // position leaves higher and make them sweep upward so trees read as vertical
+    leaf.scale.set(2.4, 1.1, 0.9);
+    leaf.position.set(Math.cos(angle) * 0.5, Math.sin(angle) * 0.35, 2.85);
+    leaf.rotation.set(Math.PI / 2 - 0.3, 0, angle);
     tree.add(leaf);
   }
+  // ensure tree group is upright
+  tree.rotation.set(0, 0, 0);
   applyShadows(tree, true, true);
   return tree;
 }
@@ -525,6 +536,8 @@ function createBazaarShop(
   lampRight.position.x = x + 0.58;
   stall.add(lampRight);
 
+  // make bazaar stalls visibly larger to match avatar scale
+  stall.scale.set(2.8, 2.8, 2.8);
   applyShadows(stall, true, true);
   return stall;
 }
@@ -560,58 +573,58 @@ function createBigPetShop(x: number, y: number) {
   const shop = new THREE.Group();
 
   const base = new THREE.Mesh(
-    new THREE.BoxGeometry(5.4, 3.4, 1.7),
+    new THREE.BoxGeometry(8.1, 5.1, 2.55),
     createLitMaterial(0xf8bbd0, 0.7, 0.06)
   );
-  base.position.set(x, y, 1.15);
+  base.position.set(x, y, 1.8);
   shop.add(base);
 
   const roof = new THREE.Mesh(
-    new THREE.BoxGeometry(6, 1.35, 1.9),
+    new THREE.BoxGeometry(9, 2.025, 2.85),
     createLitMaterial(0x2563eb, 0.62, 0.08)
   );
-  roof.position.set(x, y + 1.95, 2.55);
+  roof.position.set(x, y + 2.9, 3.4);
   shop.add(roof);
 
   const doorFrame = new THREE.Mesh(
-    new THREE.BoxGeometry(1.55, 0.28, 2.1),
+    new THREE.BoxGeometry(2.325, 0.42, 3.15),
     createLitMaterial(0xfde68a, 0.55, 0.14)
   );
-  doorFrame.position.set(x, y - 1.56, 1.28);
+  doorFrame.position.set(x, y - 2.34, 1.9);
   shop.add(doorFrame);
 
   const door = new THREE.Mesh(
-    new THREE.BoxGeometry(1.2, 0.18, 1.8),
+    new THREE.BoxGeometry(1.8, 0.27, 2.7),
     createLitMaterial(0x0f172a, 0.36, 0.35)
   );
-  door.position.set(x, y - 1.59, 1.25);
+  door.position.set(x, y - 2.38, 1.9);
   shop.add(door);
 
   const doorWindow = new THREE.Mesh(
-    new THREE.BoxGeometry(0.48, 0.1, 0.38),
+    new THREE.BoxGeometry(0.72, 0.15, 0.57),
     createLitMaterial(0x93c5fd, 0.2, 0.45)
   );
-  doorWindow.position.set(x, y - 1.66, 1.72);
+  doorWindow.position.set(x, y - 2.48, 2.6);
   shop.add(doorWindow);
 
   const doormat = new THREE.Mesh(
-    new THREE.BoxGeometry(1.45, 0.74, 0.08),
+    new THREE.BoxGeometry(2.175, 1.11, 0.12),
     createLitMaterial(0x7c3aed, 0.7, 0.08)
   );
-  doormat.position.set(x, y - 2.36, 0.18);
+  doormat.position.set(x, y - 3.54, 0.28);
   shop.add(doormat);
 
   const doorLabel = createLabelSprite('ENTER', '#0f172a', 'rgba(253,224,71,0.95)', '#f8fafc', 160, 74);
-  doorLabel.scale.set(1.55, 0.56, 1);
+  doorLabel.scale.set(2.4, 0.9, 1);
   doorLabel.center.set(0.5, 0);
-  doorLabel.position.set(x, y - 1.59, 2.38);
+  doorLabel.position.set(x, y - 2.38, 3.25);
   doorLabel.renderOrder = 36;
   shop.add(doorLabel);
 
   const sign = createLabelSprite('PET WORKSHOP', '#f8fafc', 'rgba(15,23,42,0.92)', '#fde68a', 360, 90);
-  sign.scale.set(3.85, 1.05, 1);
+  sign.scale.set(5.78, 1.6, 1);
   sign.center.set(0.5, 0);
-  sign.position.set(x, y + 1.9, 3.55);
+  sign.position.set(x, y + 2.9, 4.5);
   sign.renderOrder = 32;
   shop.add(sign);
 
@@ -675,6 +688,8 @@ function createHumanVisual(name: string) {
   group.add(nameSprite);
 
   applyShadows(group, true, true);
+  group.rotation.set(Math.PI / 2, 0, 0);
+  group.scale.set(3.0, 3.0, 3.0);
   return { root: group, nameSprite };
 }
 
@@ -710,18 +725,18 @@ function animateRobotVisual(visual: RobotVisual, time: number, speedFactor: numb
   const bob = Math.sin(time * WALK_BOB_SPEED) * 0.035 * walkAmount;
   visual.body.position.y = 0.02 + bob;
   visual.shadow.scale.set(1.08 + walkAmount * 0.06, 0.62 - walkAmount * 0.07, 1);
-  visual.antennaTip.position.y = 0.7 + Math.sin(time * 9) * 0.02;
+  // keep antenna around its original head height and bob slightly (use original create height 1.44)
+  if (visual.antennaTip) visual.antennaTip.position.y = 1.44 + Math.sin(time * 9) * 0.02;
 
-  const blink = Math.max(0.12, Math.abs(Math.sin(time * 0.7)) > 0.98 ? 0.25 : 1);
-  visual.leftPupil.scale.y = blink;
-  visual.rightPupil.scale.y = blink;
+  // ensure pupils have steady scale (sprites won't pulse)
+  if (visual.leftPupil.scale) visual.leftPupil.scale.set(1, 1, 1);
+  if (visual.rightPupil.scale) visual.rightPupil.scale.set(1, 1, 1);
 
-  const eyeX = Math.max(-0.02, Math.min(0.02, lookX * 0.018));
-  const eyeY = Math.max(-0.02, Math.min(0.02, lookY * 0.018));
-  visual.leftPupil.position.x = -0.15 + eyeX;
-  visual.rightPupil.position.x = 0.15 + eyeX;
-  visual.leftPupil.position.y = 0.16 + eyeY;
-  visual.rightPupil.position.y = 0.16 + eyeY;
+  const eyeX = Math.max(-0.035, Math.min(0.035, lookX * 0.03));
+  const eyeY = Math.max(-0.02, Math.min(0.02, lookY * 0.02));
+  // Pupils are sprites attached to their eye groups; move them locally so each eye keeps its own pupil.
+  visual.leftPupil.position.set(eyeX, eyeY, 0.035);
+  visual.rightPupil.position.set(eyeX, eyeY, 0.035);
 }
 
 export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: GameMapProps) {
@@ -1053,7 +1068,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const rangoli = createRangoli(3.98, -2.02);
     outdoorGroup.add(rangoli);
 
-    const petShop = createBigPetShop(-9.6, -6.4);
+    const petShop = createBigPetShop(-14, -10);
     petShop.visible = true;
     outdoorGroup.add(petShop);
     petShopRef.current = petShop;
@@ -1072,9 +1087,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { shape: 'circle', center: new THREE.Vector2(-1.55, -1.8), radius: 1.02 },
       { shape: 'circle', center: new THREE.Vector2(0.78, -1.8), radius: 1.02 },
       { shape: 'circle', center: new THREE.Vector2(3.1, -1.8), radius: 1.02 },
-      { shape: 'box', center: new THREE.Vector2(-11.3, -6.4), halfWidth: 1.3, halfHeight: 1.85 },
-      { shape: 'box', center: new THREE.Vector2(-7.9, -6.4), halfWidth: 1.3, halfHeight: 1.85 },
-      { shape: 'box', center: new THREE.Vector2(-9.6, -4.95), halfWidth: 1.55, halfHeight: 0.92 },
+      // Pet workshop footprint (centered at shop) - reduced slightly so door area remains reachable
+      { shape: 'box', center: new THREE.Vector2(-14, -10), halfWidth: 3.8, halfHeight: 2.2 },
     ];
     const palmTreePositions = [
       new THREE.Vector2(-8.5, 4.6),
@@ -1098,8 +1112,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     obstacleHitboxesRef.current = obstacleHitboxes;
     workshopDoorHitboxRef.current = {
       shape: 'circle',
-      center: new THREE.Vector2(-9.6, -8.82),
-      radius: 0.95,
+      center: new THREE.Vector2(-14, -12.38),
+      radius: 1.8,
     };
 
     roomObstacleHitboxesRef.current = [
@@ -1137,8 +1151,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     localRobotRef.current = localRobot;
 
     const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
-    sparky.root.position.set(NPC_POSITION.x, NPC_POSITION.y, 0.01);
+    // nudge Sparky a bit further 'up' on the map (y axis) and raise slightly so body isn't clipped
+    sparky.root.position.set(NPC_POSITION.x, NPC_POSITION.y + 1.02, 0.22);
     outdoorGroup.add(sparky.root);
+    // ensure Sparky's body is visible (sometimes geometry/materials can be toggled during hot edits)
+    if (sparky.body) sparky.body.visible = true;
 
     const workshopFloor = new THREE.Mesh(
       new THREE.BoxGeometry(10.6, 10.6, 0.24),
@@ -1534,9 +1551,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const sway = moving ? Math.sin(worldTime * 8 + npc.position.x * 0.5) * 0.05 : 0;
           if (npc.stage === 'browsing' || npc.stage === 'awaiting-code') {
             const petLook = npc.petLookTarget.clone().sub(npc.position);
-            npc.visual.root.rotation.z = Math.atan2(petLook.y, petLook.x) - Math.PI / 2;
+            const angle = Math.atan2(petLook.y, petLook.x) - Math.PI / 2;
+            const clamped = Math.max(-0.6, Math.min(0.6, angle));
+            npc.visual.root.rotation.z += (clamped - npc.visual.root.rotation.z) * 0.25;
           } else {
-            npc.visual.root.rotation.z = sway;
+            npc.visual.root.rotation.z += (sway - npc.visual.root.rotation.z) * 0.25;
           }
           npc.visual.nameSprite.position.y = 1.15 + Math.sin(worldTime * 2 + npc.position.y) * 0.03;
           npc.visual.root.position.set(npc.position.x, npc.position.y, 0.04);
@@ -1580,11 +1599,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         outdoorGroup.visible = true;
         workshopRoomGroup.visible = false;
         scene.background = new THREE.Color(0x8ed6ff);
-        const cameraTargetX = localPositionRef.current.x * 0.1;
-        const cameraTargetY = localPositionRef.current.y * 0.1;
-        camera.position.x += (cameraTargetX + CAMERA_OFFSET.x - camera.position.x) * 0.065;
-        camera.position.y += (cameraTargetY + CAMERA_OFFSET.y - camera.position.y) * 0.065;
-        camera.position.z += (CAMERA_OFFSET.z - camera.position.z) * 0.065;
+        const cameraTargetX = localPositionRef.current.x * 0.5;
+        const cameraTargetY = localPositionRef.current.y * 0.5;
+        camera.position.x += (cameraTargetX + CAMERA_OFFSET.x - camera.position.x) * 0.14;
+        camera.position.y += (cameraTargetY + CAMERA_OFFSET.y - camera.position.y) * 0.14;
+        camera.position.z += (CAMERA_OFFSET.z - camera.position.z) * 0.14;
         camera.lookAt(
           cameraTargetX + CAMERA_LOOK_AHEAD.x,
           cameraTargetY + CAMERA_LOOK_AHEAD.y,
