@@ -206,8 +206,8 @@ function createLabelSprite(
   borderColor: string,
   canvasWidth = 256,
   canvasHeight = 72,
-  paddingX = 10,
-  paddingY = 10,
+  paddingX = 2,
+  paddingY = 8,
   fontSize = 26
 ) {
   const canvas = document.createElement('canvas');
