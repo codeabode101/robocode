@@ -32,7 +32,7 @@ const ROOM_PET_BROWSE_POINTS = [
   { stand: new THREE.Vector2(2.7, -1.75), look: new THREE.Vector2(3.4, -2.4) },
   { stand: new THREE.Vector2(-1.3, -0.2), look: new THREE.Vector2(-1.9, 0.5) },
 ];
-const MASALA_CHAI_SHOP_POS = new THREE.Vector2(-1.55, -1.8);
+const MASALA_CHAI_SHOP_POS = new THREE.Vector2(-3.85, -1.8);
 const SPARKY_INTERACTION_DISTANCE = 1.7;
 const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
 const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
@@ -262,9 +262,11 @@ function createNameSprite(label: string, color: THREE.Color) {
     label,
     '#f8fafc',
     'rgba(8, 15, 30, 0.72)',
-    `#${color.getHexString()}`
+    `#${color.getHexString()}`,
+    192,
+    64
   );
-  sprite.scale.set(2.9, 0.82, 1);
+  sprite.scale.set(2.45, 0.78, 1);
   sprite.center.set(0.5, 0.05);
   sprite.position.set(0, 2.22, 0.96);
   sprite.renderOrder = 40;
@@ -540,8 +542,8 @@ function createBazaarShop(
   lampRight.position.x = x + 0.58;
   stall.add(lampRight);
 
-  // make bazaar stalls visibly larger to match avatar scale
-  stall.scale.set(2.8, 2.8, 2.8);
+  // make bazaar stalls feel like separate storefronts instead of a tight row
+  stall.scale.set(3.12, 3.12, 3.12);
   applyShadows(stall, true, true);
   return stall;
 }
@@ -1078,9 +1080,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(flowers);
 
     const shops = [
-      createBazaarShop(-1.55, -1.8, 0xe879f9, 0xf97316, 'Masala Chai'),
-      createBazaarShop(0.78, -1.8, 0x60a5fa, 0xfb7185, 'Code Bazaar'),
-      createBazaarShop(3.1, -1.8, 0x34d399, 0xfacc15, 'Snack Stop'),
+      createBazaarShop(-3.85, -1.8, 0xe879f9, 0xf97316, 'Masala Chai'),
+      createBazaarShop(0.9, -1.8, 0x60a5fa, 0xfb7185, 'Code Bazaar'),
+      createBazaarShop(5.65, -1.8, 0x34d399, 0xfacc15, 'Snack Stop'),
     ];
     shops.forEach((shop) => outdoorGroup.add(shop));
 
@@ -1121,9 +1123,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const obstacleHitboxes: Hitbox[] = [
       { shape: 'circle', center: new THREE.Vector2(3.98, -2.02), radius: 0.42 },
       { shape: 'circle', center: new THREE.Vector2(3.6, 1.8), radius: 0.95 },
-      { shape: 'circle', center: new THREE.Vector2(-1.55, -1.8), radius: 1.02 },
-      { shape: 'circle', center: new THREE.Vector2(0.78, -1.8), radius: 1.02 },
-      { shape: 'circle', center: new THREE.Vector2(3.1, -1.8), radius: 1.02 },
+      { shape: 'circle', center: new THREE.Vector2(-3.85, -1.8), radius: 1.08 },
+      { shape: 'circle', center: new THREE.Vector2(0.9, -1.8), radius: 1.08 },
+      { shape: 'circle', center: new THREE.Vector2(5.65, -1.8), radius: 1.08 },
       // Pet workshop footprint (centered at shop) - reduced slightly so door area remains reachable
       { shape: 'box', center: new THREE.Vector2(-14, -10), halfWidth: 3.8, halfHeight: 2.2 },
     ];
