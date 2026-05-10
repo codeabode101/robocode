@@ -286,7 +286,8 @@ function createLabelSprite(
   const measuredTextWidth = Math.ceil(leftBound + rightBound);
   const desiredCanvasWidth = Math.max(18, measuredTextWidth + paddingX * 2);
 
-  if (desiredCanvasWidth !== canvas.width) {
+  // Only auto-crop when caller didn't provide a specific canvasWidth (default 256)
+  if (canvasWidth === 256 && desiredCanvasWidth !== canvas.width) {
     canvas.width = desiredCanvasWidth;
     // resizing clears context — reacquire and set font again
     context = canvas.getContext('2d') as CanvasRenderingContext2D;
@@ -360,8 +361,9 @@ function createNameSprite(label: string, color: THREE.Color) {
     paddingY,
     20
   );
-  // tighten horizontal scale slightly so short labels appear snug
-  sprite.scale.set((canvasWidth / canvasHeight) * 0.72, 0.56, 1);
+  // set scale so sprite preserves texture aspect ratio and avoid stretching
+  const baseScaleY = 0.6;
+  sprite.scale.set((canvasWidth / canvasHeight) * baseScaleY, baseScaleY, 1);
   sprite.center.set(0.5, 0.05);
   sprite.position.set(0, 2.22, 0.96);
   sprite.renderOrder = 40;
