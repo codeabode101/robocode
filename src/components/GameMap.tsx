@@ -4,6 +4,35 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useMultiplayer } from '@/hooks/useMultiplayer';
 
+// If URL contains ?nocache=1 and no cache-bust, unregister service workers and reload
+if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('nocache') && !params.has('cb')) {
+      // unregister existing service workers then reload with cache-bust param
+      navigator.serviceWorker
+        ?.getRegistrations()
+        .then((regs) => {
+          regs.forEach((r) => r.unregister());
+          console.log('Robocode: unregistered service workers to bypass cache');
+          params.set('cb', String(Date.now()));
+          const newUrl = window.location.pathname + '?' + params.toString();
+          window.location.replace(newUrl);
+        })
+        .catch((err) => {
+          console.warn('Robocode: failed to unregister service worker', err);
+          params.set('cb', String(Date.now()));
+          const newUrl = window.location.pathname + '?' + params.toString();
+          window.location.replace(newUrl);
+        });
+    }
+  } catch (e) {
+    // ignore parsing errors
+    // eslint-disable-next-line no-console
+    console.warn('Robocode: nocache handler error', e);
+  }
+}
+
 interface GameMapProps {
   userId: string;
   apinatorAppKey: string;
