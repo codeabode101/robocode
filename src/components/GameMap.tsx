@@ -245,9 +245,11 @@ function createLabelSprite(
   context.stroke();
   context.fillStyle = textColor;
   context.font = `700 ${fontSize}px system-ui, sans-serif`;
-  context.textAlign = 'center';
+  context.textAlign = 'left';
   context.textBaseline = 'middle';
-  context.fillText(label, canvas.width / 2, canvas.height / 2 + 2);
+  const textMetrics = context.measureText(label);
+  const textLeft = paddingX - (textMetrics.actualBoundingBoxLeft || 0);
+  context.fillText(label, textLeft, canvas.height / 2 + 2);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
@@ -264,14 +266,17 @@ function createNameSprite(label: string, color: THREE.Color) {
   const measureCanvas = document.createElement('canvas');
   const measureContext = measureCanvas.getContext('2d');
   let textWidth = 48;
+  let textBoundsWidth = 48;
   if (measureContext) {
     measureContext.font = '700 26px system-ui, sans-serif';
-    textWidth = Math.ceil(measureContext.measureText(label).width);
+    const metrics = measureContext.measureText(label);
+    textWidth = Math.ceil(metrics.width);
+    textBoundsWidth = Math.ceil((metrics.actualBoundingBoxLeft || 0) + (metrics.actualBoundingBoxRight || metrics.width));
   }
-  const paddingX = 6;
-  const paddingY = 6;
-  const canvasWidth = Math.max(44, Math.min(180, textWidth + paddingX * 2));
-  const canvasHeight = 46;
+  const paddingX = 4;
+  const paddingY = 4;
+  const canvasWidth = Math.max(38, Math.min(150, Math.max(textWidth, textBoundsWidth) + paddingX * 2));
+  const canvasHeight = 40;
   const sprite = createLabelSprite(
     label,
     '#f8fafc',
@@ -281,9 +286,9 @@ function createNameSprite(label: string, color: THREE.Color) {
     canvasHeight,
     paddingX,
     paddingY,
-    24
+    22
   );
-  sprite.scale.set((canvasWidth / canvasHeight) * 0.9, 0.7, 1);
+  sprite.scale.set((canvasWidth / canvasHeight) * 0.82, 0.6, 1);
   sprite.center.set(0.5, 0.05);
   sprite.position.set(0, 2.22, 0.96);
   sprite.renderOrder = 40;
