@@ -210,10 +210,11 @@ function createLabelSprite(
   paddingY = 8,
   fontSize = 26
 ) {
+  // create canvas and measure text, then crop canvas width to text bounds for tight labels
   const canvas = document.createElement('canvas');
   canvas.width = canvasWidth;
   canvas.height = canvasHeight;
-  const context = canvas.getContext('2d');
+  let context = canvas.getContext('2d');
   if (!context) {
     const texture = new THREE.Texture(canvas);
     texture.needsUpdate = true;
@@ -221,6 +222,22 @@ function createLabelSprite(
     return new THREE.Sprite(material);
   }
 
+  // set font to measure text
+  context.font = `700 ${fontSize}px system-ui, sans-serif`;
+  const metrics = context.measureText(label);
+  const leftBound = typeof metrics.actualBoundingBoxLeft === 'number' ? Math.abs(metrics.actualBoundingBoxLeft) : 0;
+  const rightBound = typeof metrics.actualBoundingBoxRight === 'number' ? metrics.actualBoundingBoxRight : metrics.width;
+  const measuredTextWidth = Math.ceil(leftBound + rightBound);
+  const desiredCanvasWidth = Math.max(18, measuredTextWidth + paddingX * 2);
+
+  if (desiredCanvasWidth !== canvas.width) {
+    canvas.width = desiredCanvasWidth;
+    // resizing clears context — reacquire and set font again
+    context = canvas.getContext('2d') as CanvasRenderingContext2D;
+    context.font = `700 ${fontSize}px system-ui, sans-serif`;
+  }
+
+  // clear and draw background box sized to measured text
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = backgroundColor;
   context.strokeStyle = borderColor;
@@ -243,13 +260,12 @@ function createLabelSprite(
   context.closePath();
   context.fill();
   context.stroke();
+
+  // draw text centered horizontally for consistent trimming
   context.fillStyle = textColor;
-  context.font = `700 ${fontSize}px system-ui, sans-serif`;
-  context.textAlign = 'left';
+  context.textAlign = 'center';
   context.textBaseline = 'middle';
-  const textMetrics = context.measureText(label);
-  const textLeft = paddingX - (textMetrics.actualBoundingBoxLeft || 0);
-  context.fillText(label, textLeft, canvas.height / 2 + 2);
+  context.fillText(label, canvas.width / 2, canvas.height / 2 + 2);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.minFilter = THREE.LinearFilter;
