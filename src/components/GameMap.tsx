@@ -258,15 +258,23 @@ function createLabelSprite(
 }
 
 function createNameSprite(label: string, color: THREE.Color) {
+  const measureCanvas = document.createElement('canvas');
+  const measureContext = measureCanvas.getContext('2d');
+  let canvasWidth = 160;
+  if (measureContext) {
+    measureContext.font = '700 26px system-ui, sans-serif';
+    canvasWidth = Math.ceil(measureContext.measureText(label).width + 28);
+  }
+  canvasWidth = Math.max(72, Math.min(220, canvasWidth));
   const sprite = createLabelSprite(
     label,
     '#f8fafc',
     'rgba(8, 15, 30, 0.72)',
     `#${color.getHexString()}`,
-    192,
+    canvasWidth,
     64
   );
-  sprite.scale.set(2.45, 0.78, 1);
+  sprite.scale.set((canvasWidth / 64) * 0.82, 0.78, 1);
   sprite.center.set(0.5, 0.05);
   sprite.position.set(0, 2.22, 0.96);
   sprite.renderOrder = 40;
