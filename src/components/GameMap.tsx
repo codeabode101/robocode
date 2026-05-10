@@ -32,6 +32,8 @@ const ROOM_PET_BROWSE_POINTS = [
   { stand: new THREE.Vector2(2.7, -1.75), look: new THREE.Vector2(3.4, -2.4) },
   { stand: new THREE.Vector2(-1.3, -0.2), look: new THREE.Vector2(-1.9, 0.5) },
 ];
+const MASALA_CHAI_SHOP_POS = new THREE.Vector2(-1.55, -1.8);
+const SPARKY_INTERACTION_DISTANCE = 1.7;
 const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
 const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
 const PET_COLORS = ['red', 'blue', 'green', 'gold', 'teal', 'violet', 'orange', 'silver'];
@@ -89,6 +91,8 @@ type CustomerRequest = {
   petSize: number;
   required: CustomerProperty[];
 };
+
+type SparkyQuestStage = 'intro' | 'earn-money' | 'buy-chai' | 'gift-ready' | 'done';
 
 type CustomerNpc = {
   id: string;
@@ -770,11 +774,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const customerSpawnTimerRef = useRef(0);
   const currentCustomerIdRef = useRef<string | null>(null);
   const interactionRequestedRef = useRef(false);
+  const worldInteractionRequestedRef = useRef(false);
   const interactionCandidateIdRef = useRef<string | null>(null);
   const roomOwnerVisualRef = useRef<RobotVisual | null>(null);
   const roomPetVisualRef = useRef<RobotVisual | null>(null);
   const roomCustomerGroupRef = useRef<THREE.Group | null>(null);
   const roomEntryFlashTimeoutRef = useRef<number | null>(null);
+  const sparkyQuestMarkerRef = useRef<THREE.Sprite | null>(null);
+  const chaiShopHitboxRef = useRef<CircleHitbox | null>(null);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
@@ -791,6 +798,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [inWorkshopRoom, setInWorkshopRoom] = useState(false);
   const [roomEntryFlash, setRoomEntryFlash] = useState(false);
   const [money, setMoney] = useState(0);
+  const [sparkyQuestStage, setSparkyQuestStage] = useState<SparkyQuestStage>('intro');
   const [activeCustomer, setActiveCustomer] = useState<CustomerRequest | null>(null);
   const [workshopCode, setWorkshopCode] = useState('');
   const [workshopOutput, setWorkshopOutput] = useState('');
@@ -799,6 +807,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [workshopIntroStep, setWorkshopIntroStep] = useState(0);
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
+  const missionText = useMemo(() => {
+    if (sparkyQuestStage === 'intro') return 'Mission: Talk to Sparky to begin.';
+    if (sparkyQuestStage === 'earn-money') return `Mission: Earn $10 at the Pet Workshop. ($${money}/10)`;
+    if (sparkyQuestStage === 'buy-chai') return 'Mission: Buy Sparky masala chai.';
+    if (sparkyQuestStage === 'gift-ready') return 'Mission: Return to Sparky for your gift.';
+    return 'Mission complete: Sparky gave you a gift.';
+  }, [sparkyQuestStage, money]);
+  const moneyRef = useRef(0);
+  const sparkyQuestStageRef = useRef<SparkyQuestStage>('intro');
 
   const tutorialPhases: TutorialPhase[] = [
     {
@@ -898,6 +915,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   useEffect(() => {
     inWorkshopRoomRef.current = inWorkshopRoom;
   }, [inWorkshopRoom]);
+
+  useEffect(() => {
+    moneyRef.current = money;
+  }, [money]);
+
+  useEffect(() => {
+    sparkyQuestStageRef.current = sparkyQuestStage;
+  }, [sparkyQuestStage]);
+
+  useEffect(() => {
+    if (sparkyQuestMarkerRef.current) {
+      sparkyQuestMarkerRef.current.visible = sparkyQuestStage !== 'done';
+    }
+  }, [sparkyQuestStage]);
 
   useEffect(() => {
     if (connected) {
@@ -1073,6 +1104,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(petShop);
     petShopRef.current = petShop;
 
+    chaiShopHitboxRef.current = {
+      shape: 'circle',
+      center: MASALA_CHAI_SHOP_POS.clone(),
+      radius: 1.15,
+    };
+
     const petShopMarker = createLabelSprite('!', '#ffffff', 'rgba(220,38,38,0.95)', '#fee2e2', 120, 120);
     petShopMarker.scale.set(1.02, 1.02, 1);
     petShopMarker.position.set(-9.6, -3.8, 4.1);
@@ -1156,6 +1193,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(sparky.root);
     // ensure Sparky's body is visible (sometimes geometry/materials can be toggled during hot edits)
     if (sparky.body) sparky.body.visible = true;
+    const sparkyQuestMarker = createLabelSprite('!', '#ffffff', 'rgba(220,38,38,0.95)', '#fee2e2', 120, 120);
+    sparkyQuestMarker.scale.set(1.02, 1.02, 1);
+    sparkyQuestMarker.center.set(0.5, 0);
+    sparkyQuestMarker.position.set(0, 2.72, 1.02);
+    sparkyQuestMarker.renderOrder = 61;
+    sparky.root.add(sparkyQuestMarker);
+    sparkyQuestMarkerRef.current = sparkyQuestMarker;
 
     const workshopFloor = new THREE.Mesh(
       new THREE.BoxGeometry(10.6, 10.6, 0.24),
@@ -1235,6 +1279,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (event.code === 'Space' && inWorkshopRoomRef.current) {
         event.preventDefault();
         interactionRequestedRef.current = true;
+        return;
+      }
+      if (event.code === 'Space' && !inWorkshopRoomRef.current) {
+        event.preventDefault();
+        worldInteractionRequestedRef.current = true;
         return;
       }
       const key = event.key.toLowerCase();
@@ -1410,7 +1459,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       if (!inWorkshopRoomRef.current) {
         const distanceToSparky = localPositionRef.current.distanceTo(NPC_POSITION);
-        if (distanceToSparky < 1.7 && !showTutorialRef.current && !tutorialCompleteRef.current) {
+        const chaiHitbox = chaiShopHitboxRef.current;
+        let outsidePrompt: string | null = null;
+
+        if (distanceToSparky < SPARKY_INTERACTION_DISTANCE && !showTutorialRef.current && !tutorialCompleteRef.current) {
           setShowTutorial(true);
           setTutorialStep(0);
           setCode('String petName = "Milo";');
@@ -1422,11 +1474,59 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setSuccess(false);
           setOutput('');
         }
+
+        if (
+          sparkyQuestStageRef.current === 'buy-chai' &&
+          chaiHitbox &&
+          isInsideHitbox(localPositionRef.current, chaiHitbox)
+        ) {
+          outsidePrompt = 'Masala Chai';
+        } else if (
+          sparkyQuestStageRef.current === 'gift-ready' &&
+          distanceToSparky < SPARKY_INTERACTION_DISTANCE
+        ) {
+          outsidePrompt = 'Sparky';
+        } else if (
+          sparkyQuestStageRef.current !== 'done' &&
+          distanceToSparky < SPARKY_INTERACTION_DISTANCE &&
+          tutorialCompleteRef.current
+        ) {
+          outsidePrompt = 'Sparky';
+        }
+
+        if (worldInteractionRequestedRef.current) {
+          worldInteractionRequestedRef.current = false;
+          if (
+            sparkyQuestStageRef.current === 'buy-chai' &&
+            chaiHitbox &&
+            isInsideHitbox(localPositionRef.current, chaiHitbox)
+          ) {
+            if (moneyRef.current >= 10) {
+              setMoney((prev) => prev - 10);
+              setSparkyQuestStage('gift-ready');
+            } else {
+              setWorkshopOutput('You need $10 before you can buy Sparky masala chai.');
+            }
+          } else if (
+            sparkyQuestStageRef.current === 'gift-ready' &&
+            distanceToSparky < SPARKY_INTERACTION_DISTANCE
+          ) {
+            setMoney((prev) => prev + 5);
+            setSparkyQuestStage('done');
+            setWorkshopOutput('🎁 Sparky: Thanks! You got a gift.');
+          }
+        }
+
+        setInteractionPromptName(outsidePrompt);
+        interactionCandidateIdRef.current = null;
       }
 
       const bob = Math.sin(now * 0.006) * 0.04;
       sparky.root.position.z = 0.01 + bob;
       animateRobotVisual(sparky, worldTime, 0.35, -0.3, 0.15);
+      if (sparkyQuestMarkerRef.current) {
+        sparkyQuestMarkerRef.current.position.y = 2.72 + Math.sin(worldTime * 5.2) * 0.08;
+      }
       animateRobotVisual(owner, worldTime * 0.9, 0.12, -0.2, -0.1);
       if (roomOwnerVisualRef.current) {
         animateRobotVisual(roomOwnerVisualRef.current, worldTime * 0.92, 0.14, -0.28, -0.2);
@@ -1750,9 +1850,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             setOutput('');
           }, 850);
         } else {
-          setOutput('✅ Amazing! You finished name, color, and age variables.');
+          setOutput('✅ Amazing! You finished name, color, and age variables. Get $10 to buy me masala chai and I\'ll get you a gift.');
           setTutorialComplete(true);
           setShopUnlocked(true);
+          setSparkyQuestStage('earn-money');
           setTimeout(() => setSparkleBurst(false), 900);
           setTimeout(() => {
             setShowTutorial(false);
@@ -1774,6 +1875,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     currentCustomerIdRef.current = null;
     interactionCandidateIdRef.current = null;
     interactionRequestedRef.current = false;
+    worldInteractionRequestedRef.current = false;
     setActiveCustomer(null);
     setInteractionPromptName(null);
     setWorkshopCode('');
@@ -1782,6 +1884,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     localPositionRef.current.copy(outsideDoor);
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.01);
+    }
+    if (sparkyQuestStageRef.current === 'earn-money' && moneyRef.current >= 10) {
+      setSparkyQuestStage('buy-chai');
     }
   };
 
@@ -1929,9 +2034,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       <div className="w-full h-screen" ref={mountRef} />
 
-      {inWorkshopRoom && workshopIntroSeen && interactionPromptName && (
+      {interactionPromptName && (
         <div className="absolute bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full border border-cyan-300/70 bg-slate-900/90 px-6 py-2 text-lg font-semibold text-cyan-100 shadow-xl">
-          Press space to interact!
+          Press space to interact with {interactionPromptName}!
         </div>
       )}
 
@@ -1941,6 +2046,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       <div className="absolute top-4 left-4 bg-black/45 text-white text-base md:text-lg px-4 py-2 rounded-full">
         {connected ? `🟢 Live island • ${Object.keys(players).length + 1} robots` : '🟡 Connecting to island...'}
+      </div>
+
+      <div className="absolute bottom-16 left-4 max-w-[min(90vw,24rem)] rounded-lg border border-amber-300/40 bg-slate-950/80 px-4 py-3 text-sm md:text-base text-amber-100 shadow-lg">
+        <div className="font-semibold text-amber-300">Mission</div>
+        <div className="mt-1">{missionText}</div>
       </div>
 
       <div className="absolute bottom-4 left-4 bg-black/40 text-white text-sm md:text-base px-4 py-3 rounded-lg">
