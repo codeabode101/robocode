@@ -11,6 +11,8 @@ interface GameMapProps {
 }
 
 const ISLAND_RADIUS = 40;
+// Build tag to force new client bundles and help cache-bust service workers
+const LABEL_BUILD_TAG = 'label-build-20260510-0342';
 const PLAYER_RADIUS = 0.48;
 const MOVE_SPEED = 7.4;
 const NETWORK_SYNC_MS = 90;
@@ -309,6 +311,8 @@ function createNameSprite(label: string, color: THREE.Color) {
   sprite.center.set(0.5, 0.05);
   sprite.position.set(0, 2.22, 0.96);
   sprite.renderOrder = 40;
+  // embed build tag on sprite so new bundles are distinguishable in runtime
+  sprite.name = LABEL_BUILD_TAG;
   return sprite;
 }
 
