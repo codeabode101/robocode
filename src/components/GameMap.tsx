@@ -205,7 +205,10 @@ function createLabelSprite(
   backgroundColor: string,
   borderColor: string,
   canvasWidth = 256,
-  canvasHeight = 72
+  canvasHeight = 72,
+  paddingX = 10,
+  paddingY = 10,
+  fontSize = 26
 ) {
   const canvas = document.createElement('canvas');
   canvas.width = canvasWidth;
@@ -222,11 +225,11 @@ function createLabelSprite(
   context.fillStyle = backgroundColor;
   context.strokeStyle = borderColor;
   context.lineWidth = 3;
-  const radius = 14;
-  const boxWidth = canvas.width - 20;
-  const boxHeight = canvas.height - 20;
-  const x = 10;
-  const y = 10;
+  const radius = Math.min(14, Math.max(6, Math.min(canvas.width, canvas.height) * 0.18));
+  const boxWidth = canvas.width - paddingX * 2;
+  const boxHeight = canvas.height - paddingY * 2;
+  const x = paddingX;
+  const y = paddingY;
   context.beginPath();
   context.moveTo(x + radius, y);
   context.lineTo(x + boxWidth - radius, y);
@@ -241,7 +244,7 @@ function createLabelSprite(
   context.fill();
   context.stroke();
   context.fillStyle = textColor;
-  context.font = '700 26px system-ui, sans-serif';
+  context.font = `700 ${fontSize}px system-ui, sans-serif`;
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillText(label, canvas.width / 2, canvas.height / 2 + 2);
@@ -260,21 +263,27 @@ function createLabelSprite(
 function createNameSprite(label: string, color: THREE.Color) {
   const measureCanvas = document.createElement('canvas');
   const measureContext = measureCanvas.getContext('2d');
-  let canvasWidth = 160;
+  let textWidth = 48;
   if (measureContext) {
     measureContext.font = '700 26px system-ui, sans-serif';
-    canvasWidth = Math.ceil(measureContext.measureText(label).width + 28);
+    textWidth = Math.ceil(measureContext.measureText(label).width);
   }
-  canvasWidth = Math.max(72, Math.min(220, canvasWidth));
+  const paddingX = 6;
+  const paddingY = 6;
+  const canvasWidth = Math.max(44, Math.min(180, textWidth + paddingX * 2));
+  const canvasHeight = 46;
   const sprite = createLabelSprite(
     label,
     '#f8fafc',
     'rgba(8, 15, 30, 0.72)',
     `#${color.getHexString()}`,
     canvasWidth,
-    64
+    canvasHeight,
+    paddingX,
+    paddingY,
+    24
   );
-  sprite.scale.set((canvasWidth / 64) * 0.82, 0.78, 1);
+  sprite.scale.set((canvasWidth / canvasHeight) * 0.9, 0.7, 1);
   sprite.center.set(0.5, 0.05);
   sprite.position.set(0, 2.22, 0.96);
   sprite.renderOrder = 40;
