@@ -31,6 +31,31 @@ if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
     // eslint-disable-next-line no-console
     console.warn('Robocode: nocache handler error', e);
   }
+
+  // show a small build banner so users can verify bundle version visually
+  try {
+    const bannerId = 'label-build-banner';
+    let banner = document.getElementById(bannerId);
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = bannerId;
+      banner.style.position = 'fixed';
+      banner.style.right = '8px';
+      banner.style.bottom = '8px';
+      banner.style.padding = '6px 8px';
+      banner.style.background = 'rgba(0,0,0,0.7)';
+      banner.style.color = '#fff';
+      banner.style.fontSize = '12px';
+      banner.style.zIndex = '2147483647';
+      banner.style.borderRadius = '6px';
+      document.body.appendChild(banner);
+    }
+    // LABEL_BUILD_TAG is inserted elsewhere in this file
+    // @ts-ignore
+    banner.textContent = (typeof LABEL_BUILD_TAG !== 'undefined' ? LABEL_BUILD_TAG : 'no-tag') + ' — ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    // ignore
+  }
 }
 
 interface GameMapProps {
