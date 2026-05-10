@@ -273,10 +273,10 @@ function createNameSprite(label: string, color: THREE.Color) {
     textWidth = Math.ceil(metrics.width);
     textBoundsWidth = Math.ceil((metrics.actualBoundingBoxLeft || 0) + (metrics.actualBoundingBoxRight || metrics.width));
   }
-  const paddingX = 1;
+  const paddingX = 0;
   const paddingY = 2;
-  const canvasWidth = Math.max(24, Math.min(150, Math.max(textWidth, textBoundsWidth) + paddingX * 2));
-  const canvasHeight = 40;
+  const canvasWidth = Math.max(18, Math.min(150, Math.max(textWidth, textBoundsWidth) + paddingX * 2));
+  const canvasHeight = 34;
   const sprite = createLabelSprite(
     label,
     '#f8fafc',
@@ -286,9 +286,10 @@ function createNameSprite(label: string, color: THREE.Color) {
     canvasHeight,
     paddingX,
     paddingY,
-    22
+    20
   );
-  sprite.scale.set((canvasWidth / canvasHeight) * 0.82, 0.6, 1);
+  // tighten horizontal scale slightly so short labels appear snug
+  sprite.scale.set((canvasWidth / canvasHeight) * 0.72, 0.56, 1);
   sprite.center.set(0.5, 0.05);
   sprite.position.set(0, 2.22, 0.96);
   sprite.renderOrder = 40;
