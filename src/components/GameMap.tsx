@@ -273,9 +273,9 @@ function createNameSprite(label: string, color: THREE.Color) {
     textWidth = Math.ceil(metrics.width);
     textBoundsWidth = Math.ceil((metrics.actualBoundingBoxLeft || 0) + (metrics.actualBoundingBoxRight || metrics.width));
   }
-  const paddingX = 2;
+  const paddingX = 1;
   const paddingY = 2;
-  const canvasWidth = Math.max(38, Math.min(150, Math.max(textWidth, textBoundsWidth) + paddingX * 2));
+  const canvasWidth = Math.max(24, Math.min(150, Math.max(textWidth, textBoundsWidth) + paddingX * 2));
   const canvasHeight = 40;
   const sprite = createLabelSprite(
     label,
