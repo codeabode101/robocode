@@ -3,21 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "opennextjs-cloudflare build",
+    "build": "next build",
     "dev": "next dev",
     "start": "next start",
-    "lint": "eslint",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "npm run build && npx wrangler deploy",
-    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+    "lint": "eslint"
   },
   "dependencies": {
     "@apinator/client": "^2.0.0",
     "@apinator/server": "^2.0.0",
     "@libsql/client": "^0.17.3",
     "@neondatabase/serverless": "^1.1.0",
-    "@opennextjs/cloudflare": "^1.19.9",
     "@types/three": "^0.184.0",
     "axios": "^1.16.0",
     "bcryptjs": "^3.0.3",
@@ -36,7 +31,6 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260503.1",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
@@ -50,7 +44,6 @@
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5",
-    "wrangler": "^4.87.0"
+    "typescript": "^5"
   }
 }
