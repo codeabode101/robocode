@@ -20,7 +20,6 @@ export default function TutorialPage() {
     if (data.valid) {
       setSuccess(true);
       setOutput('✅ Correct! You declared a String variable named robotName with value "Sparky".');
-      setTimeout(() => router.push('/game'), 2000);
     } else {
       setOutput(`❌ ${data.error || 'Try again!'}`);
     }
@@ -70,7 +69,15 @@ export default function TutorialPage() {
           <div className={`p-4 rounded-lg ${
             success ? 'bg-green-900 text-green-200' : 'bg-red-900 text-red-200'
           }`}>
-            {output}
+            <p>{output}</p>
+            {success && (
+              <button
+                onClick={() => router.push('/game')}
+                className="mt-4 px-6 py-2 bg-green-600 hover:bg-green-700 rounded font-semibold"
+              >
+                Continue to Game →
+              </button>
+            )}
           </div>
         )}
       </div>
