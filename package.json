@@ -17,7 +17,7 @@
     "@apinator/server": "^2.0.0",
     "@libsql/client": "^0.17.3",
     "@neondatabase/serverless": "^1.1.0",
-    "@opennextjs/cloudflare": "^1.19.5",
+    "@opennextjs/cloudflare": "^1.19.9",
     "@types/three": "^0.184.0",
     "axios": "^1.16.0",
     "bcryptjs": "^3.0.3",
