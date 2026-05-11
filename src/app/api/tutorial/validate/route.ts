@@ -1,16 +1,7 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
-
-type PreparedStatement = {
-  bind: (...params: unknown[]) => {
-    run: () => Promise<unknown>;
-  };
-};
-
-type D1DatabaseLike = {
-  prepare: (query: string) => PreparedStatement;
-};
+import { db } from '@/db';
+import { sql } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
@@ -74,14 +65,11 @@ export async function POST(request: NextRequest) {
 
     if (valid) {
       // Mark concept as completed
-      const { env } = (await getCloudflareContext({ async: true })) as unknown as { env: { DB: D1DatabaseLike } };
-      const db = env.DB;
-      
-      await db.prepare(`
+      await db.execute(sql`
         INSERT INTO tutorial_progress (user_id, concept, completed, completed_at)
-        VALUES (?, ?, 1, ?)
-        ON CONFLICT(user_id, concept) DO UPDATE SET completed=1, completed_at=?
-      `).bind(userId, concept, new Date().toISOString(), new Date().toISOString()).run();
+        VALUES (${userId}, ${concept}, 1, ${new Date().toISOString()})
+        ON CONFLICT(user_id, concept) DO UPDATE SET completed=1, completed_at=${new Date().toISOString()}
+      `);
     }
 
     return NextResponse.json({ valid, error });

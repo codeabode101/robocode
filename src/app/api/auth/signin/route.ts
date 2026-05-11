@@ -1,7 +1,9 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,10 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
 
-    const { env } = await getCloudflareContext({ async: true }) as any;
-    const db = env.DB;
-
-    const user = await db.prepare('SELECT * FROM users WHERE email = ?').bind(email).first();
+    const user = await db.select().from(users).where(eq(users.email, email)).limit(1).then(rows => rows[0]);
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
