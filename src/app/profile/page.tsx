@@ -3,14 +3,21 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+type XpData = { level: number; xp: number; xpToNext: number; progress: number };
+
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<{ name?: string; email?: string; currency?: number } | null>(null);
+  const [xp, setXp] = useState<XpData | null>(null);
 
   useEffect(() => {
     fetch('/api/profile')
       .then((r) => { if (r.status === 401) router.push('/login'); return r.json(); })
       .then((d) => setUser(d))
+      .catch(() => {});
+    fetch('/api/xp')
+      .then((r) => r.json())
+      .then((d) => setXp(d))
       .catch(() => {});
   }, [router]);
 
@@ -29,6 +36,15 @@ export default function ProfilePage() {
                 <p className="text-gray-400">{user.email}</p>
               </div>
             </div>
+            {xp && (
+              <div className="border-t border-gray-700 pt-4">
+                <p className="text-gray-400">Level {xp.level}</p>
+                <div className="w-full bg-gray-700 rounded-full h-3 mt-2">
+                  <div className="bg-amber-500 h-3 rounded-full transition-all" style={{ width: `${xp.progress * 100}%` }} />
+                </div>
+                <p className="text-gray-500 text-sm mt-1">{xp.xp} XP • {xp.xpToNext} XP to next level</p>
+              </div>
+            )}
             <div className="border-t border-gray-700 pt-4">
               <p className="text-gray-400">Currency</p>
               <p className="text-2xl font-bold text-emerald-400">${user.currency ?? 0}</p>

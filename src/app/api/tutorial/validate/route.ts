@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import { db } from '@/db';
-import { sql } from 'drizzle-orm';
+import { userXp } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
@@ -70,6 +71,9 @@ export async function POST(request: NextRequest) {
         VALUES (${userId}, ${concept}, 1, ${new Date().toISOString()})
         ON CONFLICT(user_id, concept) DO UPDATE SET completed=1, completed_at=${new Date().toISOString()}
       `);
+
+      await db.insert(userXp).values({ user_id: userId, xp: 25 })
+        .onConflictDoUpdate({ target: userXp.user_id, set: { xp: sql`user_xp.xp + 25`, updated_at: new Date() } });
     }
 
     return NextResponse.json({ valid, error });
