@@ -1973,24 +1973,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
         if (nextPhase && nextPhase.kind === 'challenge') {
           setOutput(`✅ Nice! ${activePhase.title} complete.`);
-          setTimeout(() => {
-            setSparkleBurst(false);
-            setSuccess(false);
-            setTutorialStep(nextStep);
-            setCode(nextPhase.starterCode);
-            setOutput('');
-          }, 850);
+          setSparkleBurst(false);
         } else {
           setOutput('✅ Amazing! You finished name, color, and age variables. Get $10 to buy me masala chai and I\'ll get you a gift.');
           setTutorialComplete(true);
           setShopUnlocked(true);
           setSparkyQuestStage('earn-money');
-          setTimeout(() => setSparkleBurst(false), 900);
-          setTimeout(() => {
-            setShowTutorial(false);
-            setTutorialStep(0);
-            setOutput('');
-          }, 1600);
+          setSparkleBurst(false);
         }
       } else {
         setOutput(`❌ ${data.error || 'Almost there — try again!'}`);
@@ -2269,17 +2258,31 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 >
                   Next
                 </button>
+              ) : success ? (
+                <button
+                  onClick={() => {
+                    const nextStep = tutorialStep + 1;
+                    const nextPhase = tutorialPhases[nextStep];
+                    setSuccess(false);
+                    setOutput('');
+                    if (nextPhase && nextPhase.kind === 'challenge') {
+                      setTutorialStep(nextStep);
+                      setCode(nextPhase.starterCode);
+                    } else {
+                      setShowTutorial(false);
+                      setTutorialStep(0);
+                    }
+                  }}
+                  className="rounded-lg bg-emerald-600 px-6 py-3 text-base text-white font-semibold hover:bg-emerald-500"
+                >
+                  Next →
+                </button>
               ) : (
                 <button
                   onClick={checkAnswer}
-                  disabled={success}
-                  className={`rounded-lg px-6 py-3 text-base font-semibold ${
-                    success
-                      ? 'bg-emerald-600 text-white cursor-not-allowed'
-                      : 'bg-amber-500 text-slate-900 hover:bg-amber-400'
-                  }`}
+                  className="rounded-lg px-6 py-3 text-base font-semibold bg-amber-500 text-slate-900 hover:bg-amber-400"
                 >
-                  {success ? 'Great! ✨' : 'Run Code'}
+                  Run Code
                 </button>
               )}
             </div>
