@@ -76,6 +76,7 @@ const REMOTE_LERP = 0.18;
 const CAMERA_OFFSET = new THREE.Vector3(0, -18, 42);
 const CAMERA_LOOK_AHEAD = new THREE.Vector3(0, 3.0, 0);
 const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
+const ARENA_ROOM_SPAWN = new THREE.Vector2(0, -3.7);
 const ROOM_OWNER_POS = new THREE.Vector2(2.35, 1.95);
 const ROOM_COUNTER_POS = new THREE.Vector2(2.35, 2.25);
 const CUSTOMER_TALK_DISTANCE = 1.25;
@@ -161,6 +162,11 @@ type CustomerNpc = {
   speed: number;
   request: CustomerRequest;
   stage: 'walking-to-browse' | 'browsing' | 'awaiting-code' | 'follow-to-counter' | 'leaving';
+};
+
+type ArenaPlayer = {
+  id: string;
+  name: string;
 };
 
 type TutorialChallenge = {
@@ -886,6 +892,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const tutorialCompleteRef = useRef(false);
   const shopUnlockedRef = useRef(false);
   const inWorkshopRoomRef = useRef(false);
+  const inArenaRoomRef = useRef(false);
   const sendAtRef = useRef(0);
   const lastStepAtRef = useRef(0);
   const rafRef = useRef<number | null>(null);
@@ -911,6 +918,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const roomEntryFlashTimeoutRef = useRef<number | null>(null);
   const sparkyQuestMarkerRef = useRef<THREE.Sprite | null>(null);
   const chaiShopHitboxRef = useRef<CircleHitbox | null>(null);
+  const arenaBuildingRef = useRef<THREE.Group | null>(null);
+  const arenaMarkerRef = useRef<THREE.Sprite | null>(null);
+  const arenaRoomGroupRef = useRef<THREE.Group | null>(null);
+  const arenaDoorHitboxRef = useRef<CircleHitbox | null>(null);
+  const arenaDoorArmedRef = useRef(true);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
@@ -934,6 +946,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [interactionPromptName, setInteractionPromptName] = useState<string | null>(null);
   const [workshopIntroSeen, setWorkshopIntroSeen] = useState(false);
   const [workshopIntroStep, setWorkshopIntroStep] = useState(0);
+  const [inArenaRoom, setInArenaRoom] = useState(false);
+  const [arenaPlayers, setArenaPlayers] = useState<ArenaPlayer[]>([]);
+  const [arenaChallenge, setArenaChallenge] = useState<{
+    fromId?: string;
+    fromName?: string;
+    toId?: string;
+    toName?: string;
+    status: 'pending' | 'active' | 'accepted' | 'declined';
+  } | null>(null);
+  const [arenaCode, setArenaCode] = useState('');
+  const [arenaOutput, setArenaOutput] = useState('');
+  const [arenaBattleActive, setArenaBattleActive] = useState(false);
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
   const missionText = useMemo(() => {
@@ -1085,6 +1109,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     workshopRoomGroup.visible = false;
     scene.add(workshopRoomGroup);
     workshopRoomGroupRef.current = workshopRoomGroup;
+
+    const arenaRoomGroup = new THREE.Group();
+    arenaRoomGroup.visible = false;
+    scene.add(arenaRoomGroup);
+    arenaRoomGroupRef.current = arenaRoomGroup;
 
     const aspect = mountElement.clientWidth / mountElement.clientHeight;
     const viewHeight = 26;
@@ -1247,6 +1276,48 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     petShop.add(petShopMarker);
     petShopMarkerRef.current = petShopMarker;
 
+    const arenaBuilding = new THREE.Group();
+    const arenaBase = new THREE.Mesh(
+      new THREE.BoxGeometry(8, 6, 3),
+      createLitMaterial(0xdc2626, 0.7, 0.06)
+    );
+    arenaBase.position.set(20, -14, 2);
+    arenaBuilding.add(arenaBase);
+    const arenaRoof = new THREE.Mesh(
+      new THREE.BoxGeometry(9, 6.5, 0.5),
+      createLitMaterial(0x1e293b, 0.6, 0.1)
+    );
+    arenaRoof.position.set(20, -14, 4.5);
+    arenaBuilding.add(arenaRoof);
+    const arenaDoorArch = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 0.4, 3.5),
+      createLitMaterial(0xfde68a, 0.55, 0.14)
+    );
+    arenaDoorArch.position.set(20, -16.7, 2.2);
+    arenaBuilding.add(arenaDoorArch);
+    const arenaDoorMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(1.8, 0.3, 3),
+      createLitMaterial(0x0f172a, 0.36, 0.35)
+    );
+    arenaDoorMesh.position.set(20, -16.7, 2.2);
+    arenaBuilding.add(arenaDoorMesh);
+    const arenaSign = createLabelSprite('ARENA', '#f8fafc', 'rgba(220,38,38,0.92)', '#fca5a5', 280, 90);
+    arenaSign.scale.set(5, 1.4, 1);
+    arenaSign.center.set(0.5, 0);
+    arenaSign.position.set(20, -11.2, 4.8);
+    arenaSign.renderOrder = 32;
+    arenaBuilding.add(arenaSign);
+    applyShadows(arenaBuilding, true, true);
+    outdoorGroup.add(arenaBuilding);
+    arenaBuildingRef.current = arenaBuilding;
+
+    const arenaMarker = createExclamationMarker();
+    arenaMarker.position.set(0, 4, 4.8);
+    arenaMarker.renderOrder = 60;
+    arenaMarker.visible = true;
+    arenaBuilding.add(arenaMarker);
+    arenaMarkerRef.current = arenaMarker;
+
     const obstacleHitboxes: Hitbox[] = [
       { shape: 'circle', center: new THREE.Vector2(3.98, -2.02), radius: 0.42 },
       { shape: 'circle', center: new THREE.Vector2(3.6, 1.8), radius: 0.95 },
@@ -1255,6 +1326,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { shape: 'circle', center: new THREE.Vector2(5.65, -1.8), radius: 1.08 },
       // Pet workshop footprint (centered at shop) - reduced slightly so door area remains reachable
       { shape: 'box', center: new THREE.Vector2(-14, -10), halfWidth: 3.8, halfHeight: 2.2 },
+      // Arena footprint
+      { shape: 'box', center: new THREE.Vector2(20, -14), halfWidth: 4.2, halfHeight: 3.2 },
     ];
     const palmTreePositions = [
       new THREE.Vector2(-8.5, 4.6),
@@ -1279,6 +1352,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     workshopDoorHitboxRef.current = {
       shape: 'circle',
       center: new THREE.Vector2(-14, -12.38),
+      radius: 1.8,
+    };
+
+    arenaDoorHitboxRef.current = {
+      shape: 'circle',
+      center: new THREE.Vector2(20, -14),
       radius: 1.8,
     };
 
@@ -1386,6 +1465,42 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     workshopRoomGroup.add(customerGroup);
     roomCustomerGroupRef.current = customerGroup;
 
+    {
+      const arenaFloor = new THREE.Mesh(
+        new THREE.BoxGeometry(12, 12, 0.24),
+        createLitMaterial(0x1e293b, 0.86, 0.03)
+      );
+      arenaFloor.position.set(0, 0, 0.12);
+      arenaRoomGroup.add(arenaFloor);
+
+      const arenaGrid = createGrid(5.8, 1, 0x334155);
+      arenaGrid.position.z = 0.2;
+      arenaRoomGroup.add(arenaGrid);
+
+      const arenaWallPositions = [
+        new THREE.Vector3(0, 6.3, 1.2),
+        new THREE.Vector3(0, -6.3, 1.2),
+        new THREE.Vector3(-6.3, 0, 1.2),
+        new THREE.Vector3(6.3, 0, 1.2),
+      ];
+      arenaWallPositions.forEach((pos, i) => {
+        const horizontal = i < 2;
+        const wall = new THREE.Mesh(
+          new THREE.BoxGeometry(horizontal ? 12.6 : 0.3, horizontal ? 0.3 : 12.6, 2.4),
+          createLitMaterial(0x475569, 0.72, 0.05)
+        );
+        wall.position.copy(pos);
+        arenaRoomGroup.add(wall);
+      });
+
+      const arenaCenterLight = new THREE.Mesh(
+        new THREE.CircleGeometry(0.6, 20),
+        createLitMaterial(0xfef08a, 0.2, 0.1)
+      );
+      arenaCenterLight.position.set(0, 0, 0.25);
+      arenaRoomGroup.add(arenaCenterLight);
+    }
+
     const handleResize = () => {
       if (!mountRef.current || !cameraRef.current || !rendererRef.current) return;
       const nextAspect = mountElement.clientWidth / mountElement.clientHeight;
@@ -1408,7 +1523,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         interactionRequestedRef.current = true;
         return;
       }
-      if (event.code === 'Space' && !inWorkshopRoomRef.current) {
+      if (event.code === 'Space' && !inWorkshopRoomRef.current && !inArenaRoomRef.current) {
         event.preventDefault();
         worldInteractionRequestedRef.current = true;
         return;
@@ -1528,6 +1643,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             } else {
               moved = false;
             }
+          } else if (inArenaRoomRef.current) {
+            candidate.x = Math.max(-5.8, Math.min(5.8, candidate.x));
+            candidate.y = Math.max(-5.8, Math.min(5.8, candidate.y));
+            localPositionRef.current.copy(candidate);
+            localRobot.root.position.set(candidate.x, candidate.y, 0.01);
           } else {
             const maxRadius = ISLAND_RADIUS - PLAYER_RADIUS - 0.35;
             if (candidate.length() > maxRadius) candidate.setLength(maxRadius);
@@ -1541,6 +1661,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
             if (workshopDoor !== null && !isInsideHitbox(candidate, workshopDoor)) {
               workshopDoorArmedRef.current = true;
+            }
+
+            const arenaDoor = arenaDoorHitboxRef.current;
+            const atArenaDoor =
+              arenaDoor !== null &&
+              arenaDoorArmedRef.current &&
+              isInsideHitbox(candidate, arenaDoor);
+
+            if (arenaDoor !== null && !isInsideHitbox(candidate, arenaDoor)) {
+              arenaDoorArmedRef.current = true;
             }
 
             if (atWorkshopDoor) {
@@ -1558,6 +1688,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (workshopCustomersRef.current.length === 0) {
                 spawnCustomer();
               }
+              keyStateRef.current.clear();
+              moved = false;
+            } else if (atArenaDoor) {
+              arenaDoorArmedRef.current = false;
+              setInArenaRoom(true);
+              inArenaRoomRef.current = true;
+              fetch('/api/arena/join', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'join' }),
+              }).catch(() => {});
+              localPositionRef.current.copy(ARENA_ROOM_SPAWN);
+              localRobot.root.position.set(ARENA_ROOM_SPAWN.x, ARENA_ROOM_SPAWN.y, 0.01);
               keyStateRef.current.clear();
               moved = false;
             } else if (!hitsObstacle) {
@@ -1584,7 +1727,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const lookDirection = moved ? moveDirection : new THREE.Vector2(0.3, 0);
       animateRobotVisual(localRobot, worldTime, moved ? 1 : 0, lookDirection.x, lookDirection.y);
 
-      if (!inWorkshopRoomRef.current) {
+      if (!inWorkshopRoomRef.current && !inArenaRoomRef.current) {
         const distanceToSparky = localPositionRef.current.distanceTo(NPC_POSITION);
         const chaiHitbox = chaiShopHitboxRef.current;
         let outsidePrompt: string | null = null;
@@ -1817,11 +1960,24 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (petShopMarkerRef.current && petShopMarkerRef.current.visible) {
         petShopMarkerRef.current.position.y = 3.6 + Math.sin(worldTime * 3.8) * 0.22;
       }
+      if (arenaMarkerRef.current && arenaMarkerRef.current.visible) {
+        arenaMarkerRef.current.position.y = 4 + Math.sin(worldTime * 3.5) * 0.22;
+      }
 
       if (inWorkshopRoomRef.current) {
         outdoorGroup.visible = false;
         workshopRoomGroup.visible = true;
+        arenaRoomGroup.visible = false;
         scene.background = new THREE.Color(0x030712);
+        camera.position.x += (localPositionRef.current.x - camera.position.x) * 0.08;
+        camera.position.y += (localPositionRef.current.y - 4.6 - camera.position.y) * 0.08;
+        camera.position.z += (11.6 - camera.position.z) * 0.08;
+        camera.lookAt(localPositionRef.current.x, localPositionRef.current.y, 0);
+      } else if (inArenaRoomRef.current) {
+        outdoorGroup.visible = false;
+        workshopRoomGroup.visible = false;
+        arenaRoomGroup.visible = true;
+        scene.background = new THREE.Color(0x0f172a);
         camera.position.x += (localPositionRef.current.x - camera.position.x) * 0.08;
         camera.position.y += (localPositionRef.current.y - 4.6 - camera.position.y) * 0.08;
         camera.position.z += (11.6 - camera.position.z) * 0.08;
@@ -1829,6 +1985,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       } else {
         outdoorGroup.visible = true;
         workshopRoomGroup.visible = false;
+        arenaRoomGroup.visible = false;
         scene.background = new THREE.Color(0x8ed6ff);
         const cameraTargetX = localPositionRef.current.x;
         const cameraTargetY = localPositionRef.current.y;
@@ -1878,9 +2035,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       roomOwnerVisualRef.current = null;
       outdoorGroupRef.current = null;
       workshopRoomGroupRef.current = null;
+      arenaRoomGroupRef.current = null;
+      arenaBuildingRef.current = null;
+      arenaMarkerRef.current = null;
       obstacleHitboxesRef.current = [];
       roomObstacleHitboxesRef.current = [];
       workshopDoorHitboxRef.current = null;
+      arenaDoorHitboxRef.current = null;
       if (roomEntryFlashTimeoutRef.current !== null) {
         window.clearTimeout(roomEntryFlashTimeoutRef.current);
         roomEntryFlashTimeoutRef.current = null;
@@ -1895,7 +2056,28 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   useEffect(() => {
     if (petShopRef.current) petShopRef.current.visible = true;
     if (petShopMarkerRef.current) petShopMarkerRef.current.visible = shopUnlocked && !inWorkshopRoom;
-  }, [shopUnlocked, inWorkshopRoom]);
+    if (arenaMarkerRef.current) arenaMarkerRef.current.visible = !inArenaRoom;
+  }, [shopUnlocked, inWorkshopRoom, inArenaRoom]);
+
+  useEffect(() => {
+    if (!inArenaRoom) return;
+    const interval = window.setInterval(async () => {
+      try {
+        const res = await fetch('/api/arena?action=players');
+        const data = await res.json();
+        if (data.players) setArenaPlayers(data.players);
+      } catch {
+        // ignore
+      }
+    }, 3000);
+    fetch('/api/arena?action=players')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.players) setArenaPlayers(data.players);
+      })
+      .catch(() => {});
+    return () => window.clearInterval(interval);
+  }, [inArenaRoom]);
 
   useEffect(() => {
     if (!sceneRef.current) return;
@@ -2007,6 +2189,98 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
     if (sparkyQuestStageRef.current === 'earn-money' && moneyRef.current >= 10) {
       setSparkyQuestStage('buy-chai');
+    }
+  };
+
+  const leaveArenaRoom = () => {
+    setInArenaRoom(false);
+    inArenaRoomRef.current = false;
+    arenaDoorArmedRef.current = false;
+    setArenaPlayers([]);
+    setArenaChallenge(null);
+    setArenaCode('');
+    setArenaOutput('');
+    setArenaBattleActive(false);
+    fetch('/api/arena/leave').catch(() => {});
+    const outsideArena = new THREE.Vector2(20, -16.5);
+    localPositionRef.current.copy(outsideArena);
+    if (localRobotRef.current) {
+      localRobotRef.current.root.position.set(outsideArena.x, outsideArena.y, 0.01);
+    }
+  };
+
+  const challengePlayer = async (targetId: string, targetName: string) => {
+    try {
+      const res = await fetch('/api/arena/challenge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetId, targetName }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setArenaOutput(`❌ ${data.error}`);
+      } else {
+        setArenaChallenge({ toId: targetId, toName: targetName, status: 'pending' });
+        setArenaOutput(`Challenge sent to ${targetName}!`);
+      }
+    } catch {
+      setArenaOutput('❌ Failed to send challenge.');
+    }
+  };
+
+  const acceptChallenge = async (fromId: string) => {
+    try {
+      const res = await fetch('/api/arena/challenge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'accept', fromId }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setArenaOutput(`❌ ${data.error}`);
+      } else {
+        setArenaBattleActive(true);
+        setArenaChallenge(null);
+        setArenaOutput('Battle started! Write your code and submit.');
+      }
+    } catch {
+      setArenaOutput('❌ Failed to accept challenge.');
+    }
+  };
+
+  const declineChallenge = () => {
+    fetch('/api/arena/challenge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'decline' }),
+    }).catch(() => {});
+    setArenaChallenge(null);
+    setArenaOutput('Challenge declined.');
+  };
+
+  const submitArenaCode = async () => {
+    if (!arenaCode.trim()) {
+      setArenaOutput('Write some code first.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/arena/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: arenaCode }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setArenaOutput(`❌ ${data.error}`);
+      } else {
+        setArenaOutput(data.output || 'Code submitted!');
+        if (data.winner) {
+          setArenaOutput(`🏆 ${data.winner} wins!`);
+          setArenaBattleActive(false);
+        }
+      }
+    } catch {
+      setArenaOutput('❌ Failed to submit code.');
     }
   };
 
@@ -2146,6 +2420,99 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             onClick={leaveWorkshopRoom}
           >
             Exit workshop
+          </button>
+        </div>
+      )}
+
+      {inArenaRoom && (
+        <div className="absolute left-4 top-20 z-40 w-[min(90vw,24rem)] rounded-2xl border border-red-200/50 bg-slate-900/94 px-5 py-4 text-base text-slate-100 shadow-2xl">
+          <div className="font-semibold text-red-400 text-lg">Arena PvP</div>
+          <div className="mt-2 text-slate-300">Players in arena:</div>
+          <div className="mt-1 space-y-1">
+            {arenaPlayers.length === 0 && <div className="text-slate-500 italic">No other players yet.</div>}
+            {arenaPlayers.map((p) => (
+              <div key={p.id} className="flex items-center justify-between rounded bg-slate-800 px-3 py-2">
+                <span className="text-slate-100">{p.name}</span>
+                <button
+                  type="button"
+                  className="rounded bg-red-500 px-3 py-1 text-sm font-semibold text-white hover:bg-red-400 disabled:opacity-40"
+                  disabled={arenaBattleActive}
+                  onClick={() => challengePlayer(p.id, p.name)}
+                >
+                  Challenge
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {arenaChallenge && arenaChallenge.status === 'pending' && arenaChallenge.fromId && (
+            <div className="mt-4 rounded-lg border border-amber-400/40 bg-amber-950/60 px-4 py-3">
+              <div className="text-amber-200 font-semibold">
+                {arenaChallenge.fromName} challenges you!
+              </div>
+              <div className="mt-2 flex gap-3">
+                <button
+                  type="button"
+                  className="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400"
+                  onClick={() => acceptChallenge(arenaChallenge.fromId!)}
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  className="rounded bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-500"
+                  onClick={declineChallenge}
+                >
+                  Decline
+                </button>
+              </div>
+            </div>
+          )}
+
+          {arenaChallenge && arenaChallenge.status === 'pending' && arenaChallenge.toId && !arenaChallenge.fromId && (
+            <div className="mt-3 text-sky-300">Challenge sent to {arenaChallenge.toName}. Waiting for response...</div>
+          )}
+
+          {arenaBattleActive && (
+            <div className="mt-4">
+              <div className="rounded-xl border border-red-700 bg-slate-950 overflow-hidden">
+                <div className="px-4 py-2 text-base text-slate-200 border-b border-slate-800">Arena Code Editor</div>
+                <textarea
+                  value={arenaCode}
+                  onChange={(event) => setArenaCode(event.target.value)}
+                  spellCheck={false}
+                  wrap="off"
+                  className="h-28 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 font-mono text-base leading-7 text-slate-100 [font-variant-ligatures:none]"
+                />
+              </div>
+              <div className="mt-3 flex gap-3">
+                <button
+                  type="button"
+                  className="rounded bg-red-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-red-400"
+                  onClick={submitArenaCode}
+                >
+                  Submit Code
+                </button>
+              </div>
+            </div>
+          )}
+
+          {arenaOutput && (
+            <div className="mt-3 rounded-lg border border-red-300/40 bg-red-950/70 px-4 py-3 text-base text-red-100">
+              {arenaOutput}
+            </div>
+          )}
+        </div>
+      )}
+
+      {inArenaRoom && (
+        <div className="absolute right-4 top-20 z-40">
+          <button
+            type="button"
+            className="rounded bg-blue-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-blue-400"
+            onClick={leaveArenaRoom}
+          >
+            Exit arena
           </button>
         </div>
       )}
