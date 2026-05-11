@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, integer, timestamp, numeric, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, integer, timestamp, numeric, primaryKey, index } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -49,6 +49,22 @@ export const conceptsUnlocked = pgTable('concepts_unlocked', {
   unlocked_at: timestamp('unlocked_at').notNull().defaultNow(),
 }, (table) => ({
   pk: primaryKey(table.user_id, table.concept),
+}));
+
+export const friendRequests = pgTable('friend_requests', {
+  sender_id: varchar('sender_id', { length: 36 })
+    .notNull()
+    .references(() => users.id),
+  receiver_id: varchar('receiver_id', { length: 36 })
+    .notNull()
+    .references(() => users.id),
+  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.sender_id, table.receiver_id] }),
+  receiverIdx: index().on(table.receiver_id),
+  senderIdx: index().on(table.sender_id),
 }));
 
 export const tutorialProgress = pgTable('tutorial_progress', {
