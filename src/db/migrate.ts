@@ -66,6 +66,16 @@ async function migrate() {
     );
   `);
 
+  await db.execute(sql`
+    CREATE TABLE tutorial_progress (
+      user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+      concept VARCHAR(255) NOT NULL,
+      completed INTEGER NOT NULL DEFAULT 1,
+      completed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, concept)
+    );
+  `);
+
   console.log('Migration complete');
   await sqlClient.end();
 }
