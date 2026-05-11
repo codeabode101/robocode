@@ -949,6 +949,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [inArenaRoom, setInArenaRoom] = useState(false);
   const [arenaPlayers, setArenaPlayers] = useState<ArenaPlayer[]>([]);
   const [arenaChallenge, setArenaChallenge] = useState<{
+    id?: string;
     fromId?: string;
     fromName?: string;
     toId?: string;
@@ -1357,8 +1358,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     arenaDoorHitboxRef.current = {
       shape: 'circle',
-      center: new THREE.Vector2(20, -14),
-      radius: 1.8,
+      center: new THREE.Vector2(20, -17.5),
+      radius: 1.6,
     };
 
     roomObstacleHitboxesRef.current = [
@@ -2211,10 +2212,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const challengePlayer = async (targetId: string, targetName: string) => {
     try {
-      const res = await fetch('/api/arena/challenge', {
+      const res = await fetch('/api/arena', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetId, targetName }),
+        body: JSON.stringify({ action: 'challenge', opponentId: targetId }),
       });
       const data = await res.json();
       if (data.error) {
@@ -2230,17 +2231,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const acceptChallenge = async (fromId: string) => {
     try {
-      const res = await fetch('/api/arena/challenge', {
+      const res = await fetch('/api/arena', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'accept', fromId }),
+        body: JSON.stringify({ action: 'accept', opponentId: fromId }),
       });
       const data = await res.json();
       if (data.error) {
         setArenaOutput(`❌ ${data.error}`);
       } else {
         setArenaBattleActive(true);
-        setArenaChallenge(null);
+        setArenaChallenge(data.challenge ? { id: data.challenge.id, status: 'active' } : null);
         setArenaOutput('Battle started! Write your code and submit.');
       }
     } catch {
@@ -2249,7 +2250,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   };
 
   const declineChallenge = () => {
-    fetch('/api/arena/challenge', {
+    fetch('/api/arena', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'decline' }),
@@ -2267,7 +2268,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const res = await fetch('/api/arena/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: arenaCode }),
+        body: JSON.stringify({ challengeId: arenaChallenge?.id, code: arenaCode }),
       });
       const data = await res.json();
       if (data.error) {
