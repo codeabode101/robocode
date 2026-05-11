@@ -89,6 +89,51 @@ export const arenaChallenges = pgTable('arena_challenges', {
   completed_at: timestamp('completed_at'),
 });
 
+export const userXp = pgTable('user_xp', {
+  user_id: varchar('user_id', { length: 36 })
+    .primaryKey()
+    .references(() => users.id),
+  xp: integer('xp').notNull().default(0),
+  level: integer('level').notNull().default(1),
+  updated_at: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const guilds = pgTable('guilds', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: varchar('name', { length: 100 }).notNull().unique(),
+  owner_id: varchar('owner_id', { length: 36 })
+    .notNull()
+    .references(() => users.id),
+  description: text('description'),
+  min_level: integer('min_level').notNull().default(1),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const guildMembers = pgTable('guild_members', {
+  guild_id: varchar('guild_id', { length: 36 })
+    .notNull()
+    .references(() => guilds.id),
+  user_id: varchar('user_id', { length: 36 })
+    .notNull()
+    .references(() => users.id),
+  role: varchar('role', { length: 20 }).notNull().default('member'),
+  joined_at: timestamp('joined_at').notNull().defaultNow(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.guild_id, table.user_id] }),
+}));
+
+export const guildChat = pgTable('guild_chat', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  guild_id: varchar('guild_id', { length: 36 })
+    .notNull()
+    .references(() => guilds.id),
+  user_id: varchar('user_id', { length: 36 })
+    .notNull()
+    .references(() => users.id),
+  message: text('message').notNull(),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+});
+
 export const tutorialProgress = pgTable('tutorial_progress', {
   user_id: varchar('user_id', { length: 36 })
     .notNull()

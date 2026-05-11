@@ -2523,6 +2523,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       <div className="w-full h-screen" ref={mountRef} />
 
       <div className="fixed top-4 right-4 z-50 flex gap-3">
+        <a href="/guilds" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Guilds">⚔️</a>
         <a href="/friends" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Friends">👥</a>
         <a href="/profile" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Profile">👤</a>
         <a href="/settings" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Settings">⚙️</a>

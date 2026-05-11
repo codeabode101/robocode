@@ -10,6 +10,10 @@ async function migrate() {
     DROP TABLE IF EXISTS player_positions CASCADE;
     DROP TABLE IF EXISTS houses CASCADE;
     DROP TABLE IF EXISTS inventory CASCADE;
+    DROP TABLE IF EXISTS guild_chat CASCADE;
+    DROP TABLE IF EXISTS guild_members CASCADE;
+    DROP TABLE IF EXISTS guilds CASCADE;
+    DROP TABLE IF EXISTS user_xp CASCADE;
     DROP TABLE IF EXISTS arena_challenges CASCADE;
     DROP TABLE IF EXISTS arena_presence CASCADE;
     DROP TABLE IF EXISTS friend_requests CASCADE;
@@ -84,6 +88,38 @@ async function migrate() {
       winner_id VARCHAR(36) REFERENCES users(id),
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       completed_at TIMESTAMP
+    );
+
+    CREATE TABLE user_xp (
+      user_id VARCHAR(36) PRIMARY KEY REFERENCES users(id),
+      xp INTEGER NOT NULL DEFAULT 0,
+      level INTEGER NOT NULL DEFAULT 1,
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE guilds (
+      id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(100) NOT NULL UNIQUE,
+      owner_id VARCHAR(36) NOT NULL REFERENCES users(id),
+      description TEXT,
+      min_level INTEGER NOT NULL DEFAULT 1,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE guild_members (
+      guild_id VARCHAR(36) NOT NULL REFERENCES guilds(id),
+      user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+      role VARCHAR(20) NOT NULL DEFAULT 'member',
+      joined_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (guild_id, user_id)
+    );
+
+    CREATE TABLE guild_chat (
+      id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+      guild_id VARCHAR(36) NOT NULL REFERENCES guilds(id),
+      user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+      message TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
 
     CREATE TABLE friend_requests (
