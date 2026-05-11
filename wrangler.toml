@@ -1,7 +1,0 @@
-name = "robocode"
-compatibility_date = "2024-01-01"
-pages_build_output_dir = "apps/web/out"
-account_id = "0bfab51e8cc50b91033dc21005e8cabc"
-
-[env.production]
-  vars = { APP_ENV = "production" }
