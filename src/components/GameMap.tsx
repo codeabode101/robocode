@@ -2154,6 +2154,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       <div className="w-full h-screen" ref={mountRef} />
 
+      <div className="fixed top-4 right-4 z-50 flex gap-3">
+        <a href="/friends" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Friends">👥</a>
+        <a href="/profile" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Profile">👤</a>
+        <a href="/settings" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Settings">⚙️</a>
+      </div>
+
       {interactionPromptName && (
         <div className="absolute bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full border border-cyan-300/70 bg-slate-900/90 px-6 py-2 text-lg font-semibold text-cyan-100 shadow-xl">
           Press space to interact with {interactionPromptName}!
