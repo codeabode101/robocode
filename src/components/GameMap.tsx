@@ -335,34 +335,56 @@ function createLabelSprite(
   return new THREE.Sprite(material);
 }
 
+// Create a standardized exclamation marker sprite used for quest markers.
+// Keeps size, padding and font consistent across usages (DRY).
+function createExclamationMarker() {
+  // small square canvas tightly fitted to a single exclamation mark
+  return createLabelSprite('!', '#ffffff', 'rgba(220,38,38,0.95)', '#fee2e2', 64, 64, 6, 6, 48);
+}
+
 function createNameSprite(label: string, color: THREE.Color) {
   const measureCanvas = document.createElement('canvas');
   const measureContext = measureCanvas.getContext('2d');
+  const paddingX = 10;
+  const paddingY = 5;
+  const baseFontSize = 20;
+  const minCanvasWidth = 56;
+  const maxCanvasWidth = 132;
+  let fontSize = baseFontSize;
   let textWidth = 48;
   let textBoundsWidth = 48;
+
   if (measureContext) {
-    measureContext.font = '700 26px system-ui, sans-serif';
-    const metrics = measureContext.measureText(label);
-    textWidth = Math.ceil(metrics.width);
-    textBoundsWidth = Math.ceil((metrics.actualBoundingBoxLeft || 0) + (metrics.actualBoundingBoxRight || metrics.width));
+    const measureAtSize = (size: number) => {
+      measureContext.font = `700 ${size}px system-ui, sans-serif`;
+      const metrics = measureContext.measureText(label);
+      return Math.ceil((metrics.actualBoundingBoxLeft || 0) + (metrics.actualBoundingBoxRight || metrics.width));
+    };
+
+    textBoundsWidth = measureAtSize(baseFontSize);
+    if (textBoundsWidth + paddingX * 2 > maxCanvasWidth) {
+      fontSize = Math.max(16, Math.floor(baseFontSize * ((maxCanvasWidth - paddingX * 2) / textBoundsWidth)));
+      textBoundsWidth = measureAtSize(fontSize);
+    }
+
+    textWidth = textBoundsWidth;
   }
-  const paddingX = 0;
-  const paddingY = 2;
-  const canvasWidth = Math.max(18, Math.min(150, Math.max(textWidth, textBoundsWidth) + paddingX * 2));
+
+  const canvasWidth = Math.max(minCanvasWidth, Math.min(maxCanvasWidth, Math.ceil(textWidth) + paddingX * 2));
   const canvasHeight = 34;
   const sprite = createLabelSprite(
     label,
     '#f8fafc',
-    'rgba(8, 15, 30, 0.72)',
+    'rgba(8, 15, 30, 0.5)',
     `#${color.getHexString()}`,
     canvasWidth,
     canvasHeight,
     paddingX,
     paddingY,
-    20
+    fontSize
   );
   // set scale so sprite preserves texture aspect ratio and avoid stretching
-  const baseScaleY = 0.6;
+  const baseScaleY = 0.5;
   sprite.scale.set((canvasWidth / canvasHeight) * baseScaleY, baseScaleY, 1);
   sprite.center.set(0.5, 0.05);
   sprite.position.set(0, 2.22, 0.96);
@@ -624,9 +646,15 @@ function createBazaarShop(
     280,
     78
   );
-  sign.scale.set(2.45, 0.72, 1);
+  // tighter label for Masala Chai to avoid visual overlap with the Pet Workshop sign
   sign.center.set(0.5, 0);
-  sign.position.set(x, y + 0.96, 1.1);
+  if (label === 'Masala Chai') {
+    sign.scale.set(1.9, 0.6, 1);
+    sign.position.set(x, y + 1.06, 1.18);
+  } else {
+    sign.scale.set(2.45, 0.72, 1);
+    sign.position.set(x, y + 0.96, 1.1);
+  }
   sign.renderOrder = 30;
   stall.add(sign);
 
@@ -1211,12 +1239,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       radius: 1.15,
     };
 
-    const petShopMarker = createLabelSprite('!', '#ffffff', 'rgba(220,38,38,0.95)', '#fee2e2', 120, 120);
-    petShopMarker.scale.set(1.02, 1.02, 1);
-    petShopMarker.position.set(-9.6, -3.8, 4.1);
+    const petShopMarker = createExclamationMarker();
+    // attach to the big pet shop so it stays positioned correctly above the sign
+    petShopMarker.position.set(0, 3.6, 4.8);
     petShopMarker.renderOrder = 60;
     petShopMarker.visible = shopUnlockedRef.current;
-    outdoorGroup.add(petShopMarker);
+    petShop.add(petShopMarker);
     petShopMarkerRef.current = petShopMarker;
 
     const obstacleHitboxes: Hitbox[] = [
@@ -1294,9 +1322,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(sparky.root);
     // ensure Sparky's body is visible (sometimes geometry/materials can be toggled during hot edits)
     if (sparky.body) sparky.body.visible = true;
-    const sparkyQuestMarker = createLabelSprite('!', '#ffffff', 'rgba(220,38,38,0.95)', '#fee2e2', 120, 120);
-    sparkyQuestMarker.scale.set(1.02, 1.02, 1);
-    sparkyQuestMarker.center.set(0.5, 0);
+    const sparkyQuestMarker = createExclamationMarker();
     sparkyQuestMarker.position.set(0, 2.72, 1.02);
     sparkyQuestMarker.renderOrder = 61;
     sparky.root.add(sparkyQuestMarker);
@@ -1605,6 +1631,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (moneyRef.current >= 10) {
               setMoney((prev) => prev - 10);
               setSparkyQuestStage('gift-ready');
+              // ensure the sparky marker is visible immediately when gift becomes ready
+              if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = true;
             } else {
               setWorkshopOutput('You need $10 before you can buy Sparky masala chai.');
             }
@@ -1614,6 +1642,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           ) {
             setMoney((prev) => prev + 5);
             setSparkyQuestStage('done');
+            // hide the sparky quest marker immediately when quest completes
+            if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
             setWorkshopOutput('🎁 Sparky: Thanks! You got a gift.');
           }
         }
@@ -1784,8 +1814,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       marketLamps.children.forEach((lamp, i) => {
         lamp.scale.setScalar(0.95 + Math.sin(worldTime * 3 + i * 0.4) * 0.08);
       });
-      if (petShopMarker.visible) {
-        petShopMarker.position.y = -3.8 + Math.sin(worldTime * 3.8) * 0.22;
+      if (petShopMarkerRef.current && petShopMarkerRef.current.visible) {
+        petShopMarkerRef.current.position.y = 3.6 + Math.sin(worldTime * 3.8) * 0.22;
       }
 
       if (inWorkshopRoomRef.current) {
