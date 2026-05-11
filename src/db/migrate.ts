@@ -10,6 +10,8 @@ async function migrate() {
     DROP TABLE IF EXISTS player_positions CASCADE;
     DROP TABLE IF EXISTS houses CASCADE;
     DROP TABLE IF EXISTS inventory CASCADE;
+    DROP TABLE IF EXISTS arena_challenges CASCADE;
+    DROP TABLE IF EXISTS arena_presence CASCADE;
     DROP TABLE IF EXISTS friend_requests CASCADE;
     DROP TABLE IF EXISTS concepts_unlocked CASCADE;
     DROP TABLE IF EXISTS users CASCADE;
@@ -68,6 +70,22 @@ async function migrate() {
   `);
 
   await db.execute(sql`
+    CREATE TABLE arena_presence (
+      user_id VARCHAR(36) PRIMARY KEY REFERENCES users(id),
+      joined_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE arena_challenges (
+      id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+      challenger_id VARCHAR(36) NOT NULL REFERENCES users(id),
+      opponent_id VARCHAR(36) NOT NULL REFERENCES users(id),
+      status VARCHAR(20) NOT NULL DEFAULT 'pending',
+      problem TEXT,
+      winner_id VARCHAR(36) REFERENCES users(id),
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      completed_at TIMESTAMP
+    );
+
     CREATE TABLE friend_requests (
       sender_id VARCHAR(36) NOT NULL REFERENCES users(id),
       receiver_id VARCHAR(36) NOT NULL REFERENCES users(id),
