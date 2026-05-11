@@ -10,6 +10,7 @@ async function migrate() {
     DROP TABLE IF EXISTS player_positions CASCADE;
     DROP TABLE IF EXISTS houses CASCADE;
     DROP TABLE IF EXISTS inventory CASCADE;
+    DROP TABLE IF EXISTS friend_requests CASCADE;
     DROP TABLE IF EXISTS concepts_unlocked CASCADE;
     DROP TABLE IF EXISTS users CASCADE;
   `);
@@ -67,6 +68,17 @@ async function migrate() {
   `);
 
   await db.execute(sql`
+    CREATE TABLE friend_requests (
+      sender_id VARCHAR(36) NOT NULL REFERENCES users(id),
+      receiver_id VARCHAR(36) NOT NULL REFERENCES users(id),
+      status VARCHAR(20) NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (sender_id, receiver_id)
+    );
+    CREATE INDEX IF NOT EXISTS friend_requests_receiver_idx ON friend_requests(receiver_id);
+    CREATE INDEX IF NOT EXISTS friend_requests_sender_idx ON friend_requests(sender_id);
+
     CREATE TABLE tutorial_progress (
       user_id VARCHAR(36) NOT NULL REFERENCES users(id),
       concept VARCHAR(255) NOT NULL,
