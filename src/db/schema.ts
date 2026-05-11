@@ -50,3 +50,14 @@ export const conceptsUnlocked = pgTable('concepts_unlocked', {
 }, (table) => ({
   pk: primaryKey(table.user_id, table.concept),
 }));
+
+export const tutorialProgress = pgTable('tutorial_progress', {
+  user_id: varchar('user_id', { length: 36 })
+    .notNull()
+    .references(() => users.id),
+  concept: varchar('concept', { length: 255 }).notNull(),
+  completed: integer('completed').notNull().default(1),
+  completed_at: timestamp('completed_at').notNull().defaultNow(),
+}, (table) => ({
+  pk: primaryKey(table.user_id, table.concept),
+}));
