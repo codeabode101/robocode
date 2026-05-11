@@ -152,6 +152,11 @@ export default function GuildDetailPage() {
             </div>
           </div>
         </div>
+        <div className="mt-8 text-center">
+          <button onClick={() => router.push('/game')} className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg">
+            Back to Game
+          </button>
+        </div>
       </div>
     </div>
   );

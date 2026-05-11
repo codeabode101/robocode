@@ -122,6 +122,11 @@ export default function FriendsPage() {
         {friends.length === 0 && incoming.length === 0 && outgoing.length === 0 && (
           <p className="text-gray-500 text-center mt-12">No friends yet. Search for users above to add them!</p>
         )}
+        <div className="mt-8 text-center">
+          <button onClick={() => router.push('/game')} className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg">
+            Back to Game
+          </button>
+        </div>
       </div>
     </div>
   );
