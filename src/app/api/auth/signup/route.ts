@@ -1,7 +1,9 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,11 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
 
-    // @ts-ignore - DB binding is available at runtime
-    const { env } = await getCloudflareContext({ async: true }) as any;
-    const db = env.DB;
-
-    const existing = await db.prepare('SELECT * FROM users WHERE email = ?').bind(email).first();
+    const existing = await db.select().from(users).where(eq(users.email, email)).limit(1).then(rows => rows[0]);
     if (existing) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 });
     }
@@ -23,9 +21,14 @@ export async function POST(request: NextRequest) {
     const userId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    await db.prepare(
-      'INSERT INTO users (id, email, name, password_hash, currency, created_at) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(userId, email, name || '', password_hash, 0, now).run();
+    await db.insert(users).values({
+      id: userId,
+      email,
+      name: name || '',
+      password_hash,
+      currency: 0,
+      created_at: new Date(now),
+    });
 
     const token = await new SignJWT({ sub: userId, email })
       .setProtectedHeader({ alg: 'HS256' })

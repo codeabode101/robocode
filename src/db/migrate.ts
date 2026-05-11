@@ -2,15 +2,8 @@ import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { sql } from 'drizzle-orm';
 
-function getConnectionString() {
-  if (process.env.HYPERDRIVE) {
-    return (process.env.HYPERDRIVE as any).connectionString;
-  }
-  return process.env.DATABASE_URL!;
-}
-
 async function migrate() {
-  const sqlClient = postgres(getConnectionString(), { max: 1 });
+  const sqlClient = postgres(process.env.DATABASE_URL!, { max: 1 });
   const db = drizzle(sqlClient);
 
   await db.execute(sql`

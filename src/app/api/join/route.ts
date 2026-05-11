@@ -1,6 +1,8 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
+import { db } from '@/db';
+import { users, playerPositions } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
@@ -21,22 +23,17 @@ export async function POST(request: NextRequest) {
 
   try {
     const { x, y } = await request.json();
-    const { env } = await getCloudflareContext({ async: true }) as any;
-    const db = env.DB;
     const now = new Date().toISOString();
     const safeX = Number(x) || 0;
     const safeY = Number(y) || 0;
 
-    const user = await db
-      .prepare('SELECT name FROM users WHERE id = ?')
-      .bind(userId)
-      .first();
+    const user = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1).then(rows => rows[0]);
 
-    await db.prepare(`
+    await db.execute(sql`
       INSERT INTO player_positions (user_id, x, y, map, updated_at)
-      VALUES (?, ?, ?, 'default', ?)
-      ON CONFLICT(user_id) DO UPDATE SET x=?, y=?, updated_at=?
-    `).bind(userId, safeX, safeY, now, safeX, safeY, now).run();
+      VALUES (${userId}, ${safeX}, ${safeY}, 'default', ${new Date(now).toISOString()})
+      ON CONFLICT (user_id) DO UPDATE SET x = ${safeX}, y = ${safeY}, updated_at = ${new Date(now).toISOString()}
+    `);
 
     const publishResponse = await fetch('https://api.apinator.io/v1/publish', {
       method: 'POST',
