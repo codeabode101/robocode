@@ -968,7 +968,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const mountRef = useRef<HTMLDivElement>(null);
   const codeInputRef = useRef<HTMLTextAreaElement>(null);
   const codePreviewRef = useRef<HTMLPreElement>(null);
-  const { players, connected, sendPosition } = useMultiplayer(userId, apinatorAppKey, apinatorCluster);
+  const { players, connected, sendPosition, triggerEvent } = useMultiplayer(userId, apinatorAppKey, apinatorCluster);
 
   const localPositionRef = useRef(new THREE.Vector2(0, 0));
   const localRobotRef = useRef<RobotVisual | null>(null);
@@ -1172,13 +1172,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   useEffect(() => {
     if (connected) {
+      triggerEvent('client-player-join', { x: localPositionRef.current.x, y: localPositionRef.current.y });
       fetch('/api/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ x: localPositionRef.current.x, y: localPositionRef.current.y }),
       }).catch(() => {});
     }
-  }, [connected]);
+  }, [connected, triggerEvent]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -2063,7 +2064,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               arenaDoorArmedRef.current = false;
               setInArenaRoom(true);
               inArenaRoomRef.current = true;
-              fetch('/api/arena/join', {
+              fetch('/api/arena', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'join' }),
@@ -2570,7 +2571,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setArenaCode('');
     setArenaOutput('');
     setArenaBattleActive(false);
-    fetch('/api/arena/leave').catch(() => {});
+    fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'leave' }) }).catch(() => {});
     const outsideArena = new THREE.Vector2(20, -16.5);
     localPositionRef.current.copy(outsideArena);
     if (localRobotRef.current) {
