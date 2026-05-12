@@ -1214,7 +1214,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     );
     camera.position.copy(CAMERA_OFFSET);
     camera.lookAt(CAMERA_LOOK_AHEAD);
+    // Cache the camera quaternion to keep angle static during movement
+    const cachedQuaternion = camera.quaternion.clone();
     cameraRef.current = camera;
+    // Store quaternion in camera object for use during animation loop
+    (camera as any).cachedQuaternion = cachedQuaternion;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -2334,7 +2338,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         camera.position.x += (localPositionRef.current.x - camera.position.x) * 0.08;
         camera.position.y += (localPositionRef.current.y - 4.6 - camera.position.y) * 0.08;
         camera.position.z += (11.6 - camera.position.z) * 0.08;
-        camera.lookAt(localPositionRef.current.x, localPositionRef.current.y, 0);
+        // Restore cached quaternion to keep camera angle static
+        camera.quaternion.copy((camera as any).cachedQuaternion);
       } else if (inArenaRoomRef.current) {
         outdoorGroup.visible = false;
         workshopRoomGroup.visible = false;
@@ -2343,22 +2348,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         camera.position.x += (localPositionRef.current.x - camera.position.x) * 0.08;
         camera.position.y += (localPositionRef.current.y - 4.6 - camera.position.y) * 0.08;
         camera.position.z += (11.6 - camera.position.z) * 0.08;
-        camera.lookAt(localPositionRef.current.x, localPositionRef.current.y, 0);
+        // Restore cached quaternion to keep camera angle static
+        camera.quaternion.copy((camera as any).cachedQuaternion);
       } else {
         outdoorGroup.visible = true;
         workshopRoomGroup.visible = false;
         arenaRoomGroup.visible = false;
-scene.background = new THREE.Color(0xd4e8f7);
+        scene.background = new THREE.Color(0xd4e8f7);
         const cameraTargetX = localPositionRef.current.x;
         const cameraTargetY = localPositionRef.current.y;
         camera.position.x += (cameraTargetX + CAMERA_OFFSET.x - camera.position.x) * 0.14;
         camera.position.y += (cameraTargetY + CAMERA_OFFSET.y - camera.position.y) * 0.14;
         camera.position.z += (CAMERA_OFFSET.z - camera.position.z) * 0.14;
-        camera.lookAt(
-          cameraTargetX + CAMERA_LOOK_AHEAD.x,
-          cameraTargetY + CAMERA_LOOK_AHEAD.y,
-          CAMERA_LOOK_AHEAD.z
-        );
+        // Restore cached quaternion to keep camera angle static
+        camera.quaternion.copy((camera as any).cachedQuaternion);
       }
 
       renderer.render(scene, camera);
