@@ -968,7 +968,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const mountRef = useRef<HTMLDivElement>(null);
   const codeInputRef = useRef<HTMLTextAreaElement>(null);
   const codePreviewRef = useRef<HTMLPreElement>(null);
-  const { players, connected, sendPosition, triggerEvent } = useMultiplayer(userId, apinatorAppKey, apinatorCluster);
+  const mp = useMultiplayer(userId, apinatorAppKey, apinatorCluster);
+  const { players, connected, sendPosition, triggerEvent } = mp;
 
   const localPositionRef = useRef(new THREE.Vector2(0, 0));
   const localRobotRef = useRef<RobotVisual | null>(null);
@@ -2430,35 +2431,41 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   }, [shopUnlocked, inWorkshopRoom, inArenaRoom]);
 
   useEffect(() => {
-    if (!inArenaRoom) return;
-    const pollArena = async () => {
-      try {
-        const [playersRes, challengeRes] = await Promise.all([
-          fetch('/api/arena?action=players'),
-          fetch('/api/arena?action=my-challenge'),
-        ]);
-        const playersData = await playersRes.json();
-        if (playersData.players) setArenaPlayers(playersData.players);
-        const challengeData = await challengeRes.json();
-        if (challengeData.challenge) {
-          const c = challengeData.challenge;
-          if (c.status === 'pending' && c.challenger_id && c.challenger_id !== userId) {
-            fetch('/api/arena?action=players').then(r => r.json()).then(d => {
-              const p = d.players?.find((p: any) => p.id === c.challenger_id);
-              setArenaChallenge({ id: c.id, fromId: c.challenger_id, fromName: p?.name || 'Unknown', status: 'pending' });
-            }).catch(() => setArenaChallenge({ id: c.id, fromId: c.challenger_id, fromName: 'Unknown', status: 'pending' }));
-          } else if (c.status === 'active') {
-            setArenaBattleActive(true);
-            setArenaChallenge({ id: c.id, status: 'active' });
-            setArenaOutput('Battle started! Write your code.');
-          }
-        }
-      } catch { /* ignore */ }
+    if (!inArenaRoom) {
+      setArenaPlayers([]);
+      setArenaChallenge(null);
+      setArenaBattleActive(false);
+      setArenaOutput('');
+      return;
+    }
+    mp.onArenaEventRef.current = (event) => {
+      if (event.type === 'arena-join') {
+        setArenaPlayers((prev) => {
+          if (prev.find(p => p.id === event.fromId)) return prev;
+          return [...prev, { id: event.fromId, name: event.fromName }];
+        });
+      } else if (event.type === 'arena-leave') {
+        setArenaPlayers((prev) => prev.filter(p => p.id !== event.fromId));
+      } else if (event.type === 'arena-challenge') {
+        setArenaChallenge({ id: '', fromId: event.fromId, fromName: event.fromName, status: 'pending' });
+      } else if (event.type === 'arena-accept') {
+        setArenaBattleActive(true);
+        setArenaChallenge({ id: event.challengeId || '', status: 'active' });
+        setArenaOutput('Battle started! Write your code.');
+      } else if (event.type === 'arena-decline') {
+        setArenaChallenge(null);
+        setArenaOutput('Challenge declined.');
+      }
     };
-    const interval = window.setInterval(pollArena, 2000);
-    pollArena();
-    return () => window.clearInterval(interval);
-  }, [inArenaRoom, userId]);
+    fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join' }) }).catch(() => {});
+    triggerEvent('client-arena-join', {});
+    fetch('/api/arena?action=players').then(r => r.json()).then(d => { if (d.players) setArenaPlayers(d.players); }).catch(() => {});
+    return () => {
+      mp.onArenaEventRef.current = null;
+      fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'leave' }) }).catch(() => {});
+      triggerEvent('client-arena-leave', {});
+    };
+  }, [inArenaRoom]);
 
   useEffect(() => {
     if (!sceneRef.current) return;
@@ -2598,12 +2605,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         body: JSON.stringify({ action: 'challenge', opponentId: targetId }),
       });
       const data = await res.json();
-      if (data.error) {
-        setArenaOutput(`❌ ${data.error}`);
-      } else {
-        setArenaChallenge({ toId: targetId, toName: targetName, status: 'pending' });
-        setArenaOutput(`Challenge sent to ${targetName}!`);
-      }
+      if (data.error) { setArenaOutput(`❌ ${data.error}`); return; }
+      triggerEvent('client-arena-challenge', { targetId });
+      setArenaOutput(`Challenge sent to ${targetName}!`);
     } catch {
       setArenaOutput('❌ Failed to send challenge.');
     }
@@ -2617,13 +2621,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         body: JSON.stringify({ action: 'accept', opponentId: fromId }),
       });
       const data = await res.json();
-      if (data.error) {
-        setArenaOutput(`❌ ${data.error}`);
-      } else {
-        setArenaBattleActive(true);
-        setArenaChallenge(data.challenge ? { id: data.challenge.id, status: 'active' } : null);
-        setArenaOutput('Battle started! Write your code and submit.');
-      }
+      if (data.error) { setArenaOutput(`❌ ${data.error}`); return; }
+      setArenaBattleActive(true);
+      setArenaChallenge(null);
+      setArenaOutput('Battle started! Write your code and submit.');
+      triggerEvent('client-arena-accept', { challengeId: data.challenge?.id });
     } catch {
       setArenaOutput('❌ Failed to accept challenge.');
     }
