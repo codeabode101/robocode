@@ -22,6 +22,7 @@ export function useMultiplayer(
   const connectedRef = useRef(false);
   const userIdRef = useRef(userId);
   userIdRef.current = userId;
+  const playerNameRef = useRef('');
 
   useEffect(() => {
     if (!apinatorAppKey) {
@@ -146,22 +147,25 @@ export function useMultiplayer(
     };
   }, [apinatorAppKey, apinatorCluster]);
 
-  const sendPosition = useCallback((x: number, y: number) => {
+  useEffect(() => {
+    if (!userId) return;
+    fetch('/api/profile')
+      .then(r => r.json())
+      .then(d => { if (d.name) playerNameRef.current = d.name; })
+      .catch(() => {});
+  }, [userId]);
+
+  function triggerEvent(event: string, data: Record<string, unknown>) {
     const apinator = apinatorRef.current;
-    if (apinator && connectedRef.current) {
-      const channel = apinator.channel('private-robocode-live');
-      if (channel && (channel as any).subscribed) {
-        try {
-          apinator.trigger('private-robocode-live', 'client-player-move', {
-            userId: userIdRef.current,
-            x,
-            y,
-          });
-        } catch (e) {
-          console.error('Failed to send position:', e);
-        }
-      }
+    if (!apinator || !connectedRef.current) return;
+    const channel = apinator.channel('private-robocode-live');
+    if (channel && (channel as any).subscribed) {
+      try { apinator.trigger('private-robocode-live', event, { ...data, userId: userIdRef.current, name: playerNameRef.current }); } catch { /* ignore */ }
     }
+  }
+
+  const sendPosition = useCallback((x: number, y: number) => {
+    triggerEvent('client-player-move', { x, y });
     fetch('/api/move', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -169,5 +173,5 @@ export function useMultiplayer(
     }).catch(() => {});
   }, []);
 
-  return { players, connected, sendPosition };
+  return { players, connected, sendPosition, triggerEvent };
 }
