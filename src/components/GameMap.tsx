@@ -459,6 +459,70 @@ function createToonMaterial(color: number | THREE.Color, _lightness = 0.7, _roug
   });
 }
 
+const tileLoader = new THREE.TextureLoader();
+const tileCache: Record<string, THREE.Texture> = {};
+
+function getTileTexture(tileName: string) {
+  if (!tileCache[tileName]) {
+    tileCache[tileName] = tileLoader.load(`/kenney-topdown/PNG/Tiles/${tileName}`);
+    tileCache[tileName].magFilter = THREE.NearestFilter;
+    tileCache[tileName].minFilter = THREE.NearestFilter;
+  }
+  return tileCache[tileName];
+}
+
+function createTexturedToonMaterial(tileName: string, repeatX: number, repeatY: number, color?: number | THREE.Color) {
+  const texture = getTileTexture(tileName);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeatX, repeatY);
+  const mat = new THREE.MeshToonMaterial({
+    map: texture,
+    gradientMap: createGradientTexture(3),
+  });
+  if (color !== undefined) mat.color = new THREE.Color(color);
+  return mat;
+}
+
+function createCharacterSprite(imagePath: string, scale = 1) {
+  const map = tileLoader.load(imagePath);
+  map.magFilter = THREE.NearestFilter;
+  map.minFilter = THREE.NearestFilter;
+  const material = new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(scale, scale, 1);
+  return sprite;
+}
+
+function createPlayerSprite(imagePath: string, color: THREE.Color, name: string): RobotVisual {
+  const group = new THREE.Group();
+
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(0.42, 18),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18 })
+  );
+  shadow.scale.set(1.08, 0.62, 1);
+  shadow.position.set(0, 0, 0.01);
+  group.add(shadow);
+
+  const sprite = createCharacterSprite(imagePath, 0.7);
+  sprite.position.set(0, 0, 0.55);
+  group.add(sprite);
+
+  const nameSprite = createNameSprite(name, color);
+  group.add(nameSprite);
+
+  const dummyBody = new THREE.Object3D();
+  dummyBody.position.set(0, 0.02, 0);
+  const antennaTip = new THREE.Object3D();
+  const leftPupil = new THREE.Object3D();
+  const rightPupil = new THREE.Object3D();
+
+  applyShadows(group, true, true);
+  group.scale.set(2.35, 2.35, 2.35);
+  return { root: group, nameSprite, body: dummyBody as unknown as THREE.Mesh, shadow, leftPupil, rightPupil, antennaTip: antennaTip as unknown as THREE.Mesh };
+}
+
 function addOutline(mesh: THREE.Mesh, color = 0x2d2d3d) {
   const edges = new THREE.EdgesGeometry(mesh.geometry);
   const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.3 }));
@@ -644,7 +708,7 @@ function createBazaarShop(
 
   const wall = new THREE.Mesh(
     new THREE.BoxGeometry(1.45, 1.06, 0.56),
-    createToonMaterial(baseColor, 0.74, 0.06)
+    createTexturedToonMaterial('tile_21.png', 3, 1.2, baseColor)
   );
   wall.position.set(x, y, 0.42);
   stall.add(wall);
@@ -659,7 +723,7 @@ function createBazaarShop(
 
   const awning = new THREE.Mesh(
     new THREE.BoxGeometry(1.72, 0.44, 0.24),
-    createToonMaterial(awningColor, 0.68, 0.1)
+    createTexturedToonMaterial('tile_33.png', 3, 1, awningColor)
   );
   awning.position.set(x, y + 0.52, 0.7);
   stall.add(awning);
@@ -766,7 +830,7 @@ function createBigPetShop(x: number, y: number) {
 
   const base = new THREE.Mesh(
     new THREE.BoxGeometry(8.1, 5.1, 2.55),
-    createToonMaterial(0xf8bbd0, 0.7, 0.06)
+    createTexturedToonMaterial('tile_23.png', 16, 5, 0xf8bbd0)
   );
   base.position.set(x, y, 1.8);
   shop.add(base);
@@ -774,7 +838,7 @@ function createBigPetShop(x: number, y: number) {
 
   const roof = new THREE.Mesh(
     new THREE.BoxGeometry(9, 2.025, 2.85),
-    createToonMaterial(0x2563eb, 0.62, 0.08)
+    createTexturedToonMaterial('tile_25.png', 18, 6, 0x2563eb)
   );
   roof.position.set(x, y + 2.9, 3.4);
   shop.add(roof);
@@ -829,7 +893,7 @@ function pickRandom<T>(items: T[]) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-function createHumanVisual(name: string) {
+function createHumanVisual(name: string, spritePath: string) {
   const group = new THREE.Group();
 
   const shadow = new THREE.Mesh(
@@ -840,42 +904,10 @@ function createHumanVisual(name: string) {
   shadow.position.set(0, -0.1, 0.15);
   group.add(shadow);
 
-  const legs = new THREE.Mesh(
-    new THREE.BoxGeometry(0.34, 0.2, 0.18),
-    createToonMaterial(0x1e293b, 0.72, 0.08)
-  );
-  legs.position.set(0, -0.35, 0.24);
-  group.add(legs);
-
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.56, 0.66, 0.26),
-    createToonMaterial(0x2563eb, 0.6, 0.1)
-  );
-  body.position.set(0, 0.02, 0.42);
-  group.add(body);
-
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.22, 16, 16),
-    createToonMaterial(0xfccca5, 0.5, 0.08)
-  );
-  head.position.set(0, 0.48, 0.55);
-  group.add(head);
-
-  const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(0.24, 16, 16),
-    createToonMaterial(0x1f2937, 0.7, 0.06)
-  );
-  hair.scale.set(1, 0.72, 0.8);
-  hair.position.set(0, 0.58, 0.62);
-  group.add(hair);
-
-  const eyeLeft = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 10), createToonMaterial(0x0f172a, 0.5, 0.2));
-  eyeLeft.position.set(-0.07, 0.5, 0.74);
-  group.add(eyeLeft);
-
-  const eyeRight = eyeLeft.clone();
-  eyeRight.position.x = 0.07;
-  group.add(eyeRight);
+  const sprite = createCharacterSprite(spritePath);
+  sprite.scale.set(0.65, 0.65, 1);
+  sprite.position.set(0, 0, 0.55);
+  group.add(sprite);
 
   const nameSprite = createNameSprite(name, new THREE.Color(0x22c55e));
   group.add(nameSprite);
@@ -1224,27 +1256,32 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     water.receiveShadow = true;
     outdoorGroup.add(water);
 
+    const grassTex = getTileTexture('tile_01.png');
+    grassTex.wrapS = THREE.RepeatWrapping;
+    grassTex.wrapT = THREE.RepeatWrapping;
+    grassTex.repeat.set(80, 80);
     const cityGround = new THREE.Mesh(
       new THREE.CircleGeometry(ISLAND_RADIUS, 120),
-      createToonMaterial(0x8bb87a)
+      new THREE.MeshToonMaterial({
+        map: grassTex,
+        gradientMap: createGradientTexture(3),
+      })
     );
     cityGround.position.z = 0.13;
     cityGround.receiveShadow = true;
     outdoorGroup.add(cityGround);
 
-    const streetMat = createToonMaterial(0x7a7a8a);
-    const sidewalkMat = createToonMaterial(0xc4b89a);
     const streetW = 3;
     const sw = 0.5;
 
     const makeStreet = (x: number, y: number, w: number, h: number) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.04), streetMat);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.04), createTexturedToonMaterial('tile_31.png', w * 2, h * 2));
       m.position.set(x, y, 0.14);
       m.receiveShadow = true;
       outdoorGroup.add(m);
     };
     const makeSidewalk = (x: number, y: number, w: number, h: number) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), sidewalkMat);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), createTexturedToonMaterial('tile_17.png', w * 2, h * 2));
       m.position.set(x, y, 0.15);
       m.receiveShadow = true;
       outdoorGroup.add(m);
@@ -1315,7 +1352,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Plaza with decorative paving and fountain
     const plazaBase = new THREE.Mesh(
       new THREE.CircleGeometry(2.8, 32),
-      createToonMaterial(0x4a5568, 0.82, 0.03)
+      createTexturedToonMaterial('tile_43.png', 6, 6, 0x4a5568)
     );
     plazaBase.position.set(0, 0, 0.15);
     plazaBase.receiveShadow = true;
@@ -1325,7 +1362,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     for (let i = 0; i < 4; i++) {
       const ring = new THREE.Mesh(
         new THREE.RingGeometry(0.4 + i * 0.55, 0.55 + i * 0.55, 32),
-        createToonMaterial(paveColors[i], 0.78, 0.03)
+        createTexturedToonMaterial('tile_43.png', 2, 2, paveColors[i])
       );
       ring.position.set(0, 0, 0.16);
       outdoorGroup.add(ring);
@@ -1426,7 +1463,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     ];
     buildingData.forEach(([bx, by, bw, bh, bd, ci]) => {
       const bldg = new THREE.Group();
-      const base = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), createToonMaterial(buildingColors[ci], 0.72, 0.06));
+      const wallTile = ci % 2 === 0 ? 'tile_21.png' : 'tile_22.png';
+      const base = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), createTexturedToonMaterial(wallTile, bw * 2, bd * 2, buildingColors[ci]));
       base.position.set(bx, by, bd / 2);
       base.castShadow = true;
       base.receiveShadow = true;
@@ -1533,6 +1571,37 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const rangoli = createRangoli(0, 0);
     outdoorGroup.add(rangoli);
 
+    // Scatter props from Kenney tiles (furniture, plants, decorations)
+    interface PropDef { tile: string; x: number; y: number; scale?: number; rotation?: number; }
+    const propTiles: PropDef[] = [
+      { tile: 'tile_131.png', x: -1.2, y: 4.8, scale: 0.6 },    // desk/table
+      { tile: 'tile_132.png', x: 1.3, y: 4.8, scale: 0.5 },     // chair
+      { tile: 'tile_156.png', x: -4.5, y: 2.2, scale: 0.7 },    // plant
+      { tile: 'tile_157.png', x: 4.5, y: 2.2, scale: 0.7 },     // plant
+      { tile: 'tile_134.png', x: -4.5, y: -6.8, scale: 0.6 },   // barrel/object
+      { tile: 'tile_197.png', x: 4.2, y: -10.2, scale: 0.5 },   // shelf/rack
+      { tile: 'tile_206.png', x: -3.8, y: -14.8, scale: 0.5 },  // counter
+      { tile: 'tile_213.png', x: -8.5, y: 6.2, scale: 0.5 },    // desk
+      { tile: 'tile_235.png', x: 7.8, y: 5.8, scale: 0.5 },     // furniture
+      { tile: 'tile_242.png', x: 7.5, y: -6.5, scale: 0.5 },    // furniture
+      { tile: 'tile_262.png', x: -11.5, y: -6.5, scale: 0.5 },  // object
+      { tile: 'tile_289.png', x: 14, y: 5.5, scale: 0.5 },      // decoration
+      { tile: 'tile_292.png', x: 14, y: -5.5, scale: 0.5 },     // decoration
+      { tile: 'tile_316.png', x: 18, y: -10.5, scale: 0.45 },   // object
+      { tile: 'tile_359.png', x: -5.5, y: -16.5, scale: 0.5 },  // object
+    ];
+    propTiles.forEach(({ tile, x, y, scale = 0.5, rotation = 0 }) => {
+      const propTex = getTileTexture(tile);
+      const propMat = new THREE.MeshToonMaterial({ map: propTex, gradientMap: createGradientTexture(3), transparent: true });
+      const aspect = 1;
+      const prop = new THREE.Mesh(new THREE.PlaneGeometry(1 * scale, 1 * scale), propMat);
+      prop.position.set(x, y, 0.2);
+      prop.rotation.z = rotation;
+      prop.castShadow = true;
+      prop.receiveShadow = true;
+      outdoorGroup.add(prop);
+    });
+
     const petShop = createBigPetShop(-14, -10);
     petShop.visible = true;
     outdoorGroup.add(petShop);
@@ -1555,14 +1624,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const arenaBuilding = new THREE.Group();
     const arenaBase = new THREE.Mesh(
       new THREE.BoxGeometry(8, 6, 3),
-      createToonMaterial(0xa53843)
+      createTexturedToonMaterial('tile_25.png', 16, 6, 0xa53843)
     );
     arenaBase.position.set(20, -14, 2);
     arenaBuilding.add(arenaBase);
     addOutline(arenaBase);
     const arenaRoof = new THREE.Mesh(
       new THREE.BoxGeometry(9, 6.5, 0.5),
-      createToonMaterial(0x1e293b, 0.6, 0.1)
+      createTexturedToonMaterial('tile_23.png', 18, 13, 0x1e293b)
     );
     arenaRoof.position.set(20, -14, 4.5);
     arenaBuilding.add(arenaRoof);
@@ -1674,7 +1743,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
 
     const localColor = hashColor(userId || 'local-user');
-    const localRobot = createRobotVisual(localColor, 'You');
+    const localRobot = createPlayerSprite('/kenney-topdown/PNG/Man Blue/manBlue_stand.png', localColor, 'You');
     localRobot.root.position.set(0, 0, 0);
     localPositionRef.current.set(0, 0);
     scene.add(localRobot.root);
@@ -1694,7 +1763,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const workshopFloor = new THREE.Mesh(
       new THREE.BoxGeometry(10.6, 10.6, 0.24),
-      createToonMaterial(0xf8fafc, 0.86, 0.03)
+      createTexturedToonMaterial('tile_41.png', 20, 20)
     );
     workshopFloor.position.set(0, 0, 0.12);
     workshopRoomGroup.add(workshopFloor);
@@ -1709,7 +1778,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const horizontal = index < 2;
       const wall = new THREE.Mesh(
         new THREE.BoxGeometry(horizontal ? 10.6 : 0.3, horizontal ? 0.3 : 10.6, 2.4),
-        createToonMaterial(0x334155, 0.72, 0.05)
+        createTexturedToonMaterial('tile_24.png', horizontal ? 10 : 1, 5, 0x334155)
       );
       wall.position.copy(position);
       workshopRoomGroup.add(wall);
@@ -1753,7 +1822,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     {
       const arenaFloor = new THREE.Mesh(
         new THREE.BoxGeometry(12, 12, 0.24),
-        createToonMaterial(0x1e293b, 0.86, 0.03)
+        createTexturedToonMaterial('tile_42.png', 24, 24, 0x1e293b)
       );
       arenaFloor.position.set(0, 0, 0.12);
       arenaRoomGroup.add(arenaFloor);
@@ -1772,7 +1841,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const horizontal = i < 2;
         const wall = new THREE.Mesh(
           new THREE.BoxGeometry(horizontal ? 12.6 : 0.3, horizontal ? 0.3 : 12.6, 2.4),
-          createToonMaterial(0x475569, 0.72, 0.05)
+          createTexturedToonMaterial('tile_26.png', horizontal ? 12 : 1, 5, 0x475569)
         );
         wall.position.copy(pos);
         arenaRoomGroup.add(wall);
@@ -1870,7 +1939,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const availableNames = CUSTOMER_NAMES.filter((name) => !usedNames.has(name));
       const customerName = pickRandom(availableNames.length > 0 ? availableNames : CUSTOMER_NAMES);
       const request = createCustomerRequest(customerName);
-      const visual = createHumanVisual(customerName);
+      const npcSpritePaths = [
+        '/kenney-topdown/PNG/Man Brown/manBrown_stand.png',
+        '/kenney-topdown/PNG/Man Old/manOld_stand.png',
+        '/kenney-topdown/PNG/Soldier 1/soldier1_stand.png',
+        '/kenney-topdown/PNG/Survivor 1/survivor1_stand.png',
+        '/kenney-topdown/PNG/Woman Green/womanGreen_stand.png',
+        '/kenney-topdown/PNG/Hitman 1/hitman1_stand.png',
+      ];
+      const visual = createHumanVisual(customerName, pickRandom(npcSpritePaths));
       const start = new THREE.Vector2(-4.8, -4.2 + Math.random() * 1.8);
       visual.root.position.set(start.x, start.y, 0.04);
       customerGroupCurrent.add(visual.root);
