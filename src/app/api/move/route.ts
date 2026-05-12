@@ -33,23 +33,26 @@ export async function POST(request: NextRequest) {
       ON CONFLICT (user_id) DO UPDATE SET x = ${safeX}, y = ${safeY}, updated_at = ${new Date(now).toISOString()}
     `);
 
-    // Publish to Apinator via server SDK
-    const apinator = new Apinator({
-      appId: '6f9eb36b9dd488e2fef9ddf0cee08a2d4db8026f',
-      key: process.env.NEXT_PUBLIC_APINATOR_APP_KEY!,
-      secret: process.env.APINATOR_SECRET!,
-      cluster: process.env.NEXT_PUBLIC_APINATOR_CLUSTER || 'us',
-    });
-    await apinator.trigger({
-      name: 'player-move',
-      channel: 'robocode-live',
-      data: JSON.stringify({
-        userId,
-        x: safeX,
-        y: safeY,
-        name: (user as { name?: string } | null)?.name || 'Robot',
-      }),
-    });
+    try {
+      const apinator = new Apinator({
+        appId: '6f9eb36b9dd488e2fef9ddf0cee08a2d4db8026f',
+        key: process.env.NEXT_PUBLIC_APINATOR_APP_KEY!,
+        secret: process.env.APINATOR_SECRET!,
+        cluster: process.env.NEXT_PUBLIC_APINATOR_CLUSTER || 'us',
+      });
+      await apinator.trigger({
+        name: 'player-move',
+        channel: 'robocode-live',
+        data: JSON.stringify({
+          userId,
+          x: safeX,
+          y: safeY,
+          name: (user as { name?: string } | null)?.name || 'Robot',
+        }),
+      });
+    } catch (e) {
+      console.error('Apinator publish error:', e);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
