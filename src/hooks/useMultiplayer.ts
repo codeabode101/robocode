@@ -149,14 +149,17 @@ export function useMultiplayer(
   const sendPosition = useCallback((x: number, y: number) => {
     const apinator = apinatorRef.current;
     if (apinator && connectedRef.current) {
-      try {
-        apinator.trigger('private-robocode-live', 'client-player-move', {
-          userId: userIdRef.current,
-          x,
-          y,
-        });
-      } catch (e) {
-        console.error('Failed to send position:', e);
+      const channel = apinator.channel('private-robocode-live');
+      if (channel && (channel as any).subscribed) {
+        try {
+          apinator.trigger('private-robocode-live', 'client-player-move', {
+            userId: userIdRef.current,
+            x,
+            y,
+          });
+        } catch (e) {
+          console.error('Failed to send position:', e);
+        }
       }
     }
     fetch('/api/move', {
