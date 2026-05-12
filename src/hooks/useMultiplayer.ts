@@ -225,8 +225,21 @@ export function useMultiplayer(
     return () => window.clearInterval(prune);
   }, []);
 
+  const apinatorApiKeyRef = useRef(apinatorAppKey);
+
   const sendPosition = useCallback(async (x: number, y: number) => {
-    // Send move to server route for publication
+    const apinator = apinatorRef.current;
+    if (apinator && connectedRef.current) {
+      try {
+        apinator.trigger('robocode-live', 'player-move', {
+          userId,
+          x,
+          y,
+        });
+      } catch (e) {
+        console.error('Failed to publish move via Apinator:', e);
+      }
+    }
     try {
       await fetch('/api/move', {
         method: 'POST',
@@ -234,9 +247,9 @@ export function useMultiplayer(
         body: JSON.stringify({ x, y }),
       });
     } catch (e) {
-      console.error('Failed to send move:', e);
+      console.error('Failed to save move:', e);
     }
-  }, []);
+  }, [userId]);
 
   return { players, connected, sendPosition };
 }
