@@ -2431,23 +2431,34 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   useEffect(() => {
     if (!inArenaRoom) return;
-    const interval = window.setInterval(async () => {
+    const pollArena = async () => {
       try {
-        const res = await fetch('/api/arena?action=players');
-        const data = await res.json();
-        if (data.players) setArenaPlayers(data.players);
-      } catch {
-        // ignore
-      }
-    }, 3000);
-    fetch('/api/arena?action=players')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.players) setArenaPlayers(data.players);
-      })
-      .catch(() => {});
+        const [playersRes, challengeRes] = await Promise.all([
+          fetch('/api/arena?action=players'),
+          fetch('/api/arena?action=my-challenge'),
+        ]);
+        const playersData = await playersRes.json();
+        if (playersData.players) setArenaPlayers(playersData.players);
+        const challengeData = await challengeRes.json();
+        if (challengeData.challenge) {
+          const c = challengeData.challenge;
+          if (c.status === 'pending' && c.challenger_id && c.challenger_id !== userId) {
+            fetch('/api/arena?action=players').then(r => r.json()).then(d => {
+              const p = d.players?.find((p: any) => p.id === c.challenger_id);
+              setArenaChallenge({ id: c.id, fromId: c.challenger_id, fromName: p?.name || 'Unknown', status: 'pending' });
+            }).catch(() => setArenaChallenge({ id: c.id, fromId: c.challenger_id, fromName: 'Unknown', status: 'pending' }));
+          } else if (c.status === 'active') {
+            setArenaBattleActive(true);
+            setArenaChallenge({ id: c.id, status: 'active' });
+            setArenaOutput('Battle started! Write your code.');
+          }
+        }
+      } catch { /* ignore */ }
+    };
+    const interval = window.setInterval(pollArena, 2000);
+    pollArena();
     return () => window.clearInterval(interval);
-  }, [inArenaRoom]);
+  }, [inArenaRoom, userId]);
 
   useEffect(() => {
     if (!sceneRef.current) return;
@@ -2592,6 +2603,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       } else {
         setArenaChallenge({ toId: targetId, toName: targetName, status: 'pending' });
         setArenaOutput(`Challenge sent to ${targetName}!`);
+        triggerEvent('client-arena-challenge', { targetId });
       }
     } catch {
       setArenaOutput('❌ Failed to send challenge.');
@@ -2612,6 +2624,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         setArenaBattleActive(true);
         setArenaChallenge(data.challenge ? { id: data.challenge.id, status: 'active' } : null);
         setArenaOutput('Battle started! Write your code and submit.');
+        triggerEvent('client-arena-accept', { challengeId: data.challenge?.id });
       }
     } catch {
       setArenaOutput('❌ Failed to accept challenge.');
