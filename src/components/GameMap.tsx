@@ -1164,77 +1164,150 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const water = new THREE.Mesh(
       new THREE.CircleGeometry(ISLAND_RADIUS + 10, 120),
-      createLitMaterial(0x4aa6ff, 0.15, 0.2)
+      createLitMaterial(0x0a1628, 0.15, 0.2)
     );
     water.position.z = 0.02;
     water.receiveShadow = true;
     outdoorGroup.add(water);
 
-    const beach = new THREE.Mesh(
-      new THREE.RingGeometry(ISLAND_RADIUS - 1, ISLAND_RADIUS + 1.4, 120),
-      createLitMaterial(0xf5d17c, 0.92, 0.02)
-    );
-    beach.position.z = 0.09;
-    beach.receiveShadow = true;
-    outdoorGroup.add(beach);
-
-    const island = new THREE.Mesh(
+    const cityGround = new THREE.Mesh(
       new THREE.CircleGeometry(ISLAND_RADIUS, 120),
-      createLitMaterial(0x5ac66f, 0.88, 0.02)
+      createLitMaterial(0x1a1a2e, 0.88, 0.02)
     );
-    island.position.z = 0.13;
-    island.receiveShadow = true;
-    outdoorGroup.add(island);
-    outdoorGroup.add(createGrid(ISLAND_RADIUS - 1, 1, 0x2b7a38));
+    cityGround.position.z = 0.13;
+    cityGround.receiveShadow = true;
+    outdoorGroup.add(cityGround);
 
-    const bazaarPad = new THREE.Mesh(
-      createRoundedRectGeometry(6.5, 3.4, 0.44),
-      createLitMaterial(0xd8b47b, 0.86, 0.03)
+    const streetMat = createLitMaterial(0x2d2d44, 0.82, 0.03);
+    const sidewalkMat = createLitMaterial(0x4a4a6a, 0.78, 0.03);
+    const streetW = 3;
+    const sw = 0.5;
+
+    const makeStreet = (x: number, y: number, w: number, h: number) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.04), streetMat);
+      m.position.set(x, y, 0.14);
+      m.receiveShadow = true;
+      outdoorGroup.add(m);
+    };
+    const makeSidewalk = (x: number, y: number, w: number, h: number) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), sidewalkMat);
+      m.position.set(x, y, 0.15);
+      m.receiveShadow = true;
+      outdoorGroup.add(m);
+    };
+
+    makeStreet(0, 0, 48, streetW);
+    makeStreet(0, -8, 48, streetW);
+    makeStreet(0, 8, 48, streetW);
+    makeStreet(0, -16, 48, streetW);
+    makeStreet(0, -8, streetW, 28);
+    makeStreet(-12, -8, streetW, 28);
+    makeStreet(12, -8, streetW, 28);
+    makeStreet(20, -8, streetW, 28);
+
+    makeSidewalk(0, 1.75, 48, sw);
+    makeSidewalk(0, -1.75, 48, sw);
+    makeSidewalk(0, -6.25, 48, sw);
+    makeSidewalk(0, -9.75, 48, sw);
+    makeSidewalk(0, 6.25, 48, sw);
+    makeSidewalk(0, 9.75, 48, sw);
+    makeSidewalk(0, -14.25, 48, sw);
+    makeSidewalk(0, -17.75, 48, sw);
+    makeSidewalk(-1.75, -8, sw, 28);
+    makeSidewalk(1.75, -8, sw, 28);
+    makeSidewalk(-13.75, -8, sw, 28);
+    makeSidewalk(-10.25, -8, sw, 28);
+    makeSidewalk(10.25, -8, sw, 28);
+    makeSidewalk(13.75, -8, sw, 28);
+    makeSidewalk(18.25, -8, sw, 28);
+    makeSidewalk(21.75, -8, sw, 28);
+
+    const plaza = new THREE.Mesh(
+      new THREE.CircleGeometry(2.8, 32),
+      createLitMaterial(0x4a5568, 0.82, 0.03)
     );
-    bazaarPad.position.set(0.65, -1.75, 0.22);
-    bazaarPad.receiveShadow = true;
-    outdoorGroup.add(bazaarPad);
+    plaza.position.set(0, 0, 0.15);
+    plaza.receiveShadow = true;
+    outdoorGroup.add(plaza);
 
-    const stonePath = new THREE.Mesh(
-      createRoundedRectGeometry(1.15, 5.8, 0.2),
-      createLitMaterial(0xe2cf9e, 0.82, 0.03)
-    );
-    stonePath.position.set(1.7, 0.15, 0.23);
-    stonePath.rotation.z = -0.38;
-    stonePath.receiveShadow = true;
-    outdoorGroup.add(stonePath);
-
-    const palmTrees = [
-      createPalmTree(-8.5, 4.6),
-      createPalmTree(8.1, 4.9),
-      createPalmTree(-6.8, -5.6),
-      createPalmTree(7.2, -6),
-      createPalmTree(-16.5, 12),
-      createPalmTree(17.8, 11.4),
-      createPalmTree(-18.7, -9.8),
-      createPalmTree(16.1, -12.2),
-      createPalmTree(-3.2, 20.8),
-      createPalmTree(5.1, -21.2),
-      createPalmTree(21.7, -1.9),
-      createPalmTree(-22.3, 1.3),
-      createPalmTree(12.4, 17.1),
-      createPalmTree(-13.5, 16.4),
+    const buildingColors = [0x475569, 0x6b7280, 0x374151, 0x4f46e5, 0x78716c, 0x64748b, 0x991b1b, 0x57534e, 0x6366f1, 0x525252, 0x44403c, 0x3b82f6, 0x1e40af, 0x065f46, 0x854d0e];
+    const winMat = createLitMaterial(0xfef08a, 0.2, 0.3);
+    const buildingData: [number, number, number, number, number, number][] = [
+      [-6, 4, 5, 4, 4, 0],
+      [-2.2, 5.8, 3.8, 3.5, 3.5, 1],
+      [-9.2, 4.5, 4.5, 5, 3.5, 2],
+      [-8, 7.8, 3.5, 3.5, 4, 3],
+      [6, 4.5, 5.5, 5, 4, 4],
+      [4, 6.8, 4, 4, 3.5, 5],
+      [9.2, 5, 4.5, 4.5, 4, 6],
+      [-6, -4, 5, 4.5, 4, 7],
+      [-2.2, -5.5, 4, 4, 3.5, 8],
+      [-9.2, -4, 4.5, 5, 3.5, 0],
+      [6, -4.5, 5.5, 5, 4, 1],
+      [9.2, -4, 4, 4, 3.5, 2],
+      [4, -6.8, 3.5, 4.5, 4, 8],
+      [-7, -12, 5, 4, 4, 9],
+      [-2.5, -12.5, 4, 5, 3.5, 10],
+      [16, -4, 5, 4.5, 4, 11],
+      [16, 4, 4.5, 4, 4, 4],
+      [23, -4, 4, 5, 3.5, 12],
+      [-4, -20.5, 4.5, 4, 3.5, 13],
+      [6, -20.5, 5, 4, 4, 14],
+      [12, -19.5, 4, 4, 3.5, 6],
+      [24, -8, 4, 5, 3.5, 0],
     ];
-    palmTrees.forEach((tree) => outdoorGroup.add(tree));
+    buildingData.forEach(([bx, by, bw, bh, bd, ci]) => {
+      const bldg = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), createLitMaterial(buildingColors[ci], 0.72, 0.06));
+      base.position.set(bx, by, bd / 2);
+      base.castShadow = true;
+      base.receiveShadow = true;
+      bldg.add(base);
+      const winRows = Math.max(1, Math.floor((bd - 0.6) / 1.2));
+      const winCols = Math.max(1, Math.floor((bw - 1) / 1.4));
+      for (let row = 0; row < winRows; row += 1) {
+        for (let col = 0; col < winCols; col += 1) {
+          const win = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.04), winMat);
+          win.position.set(bx - bw / 2 + 0.8 + col * 1.4, by - bh / 2 + 0.7 + row * 1.2, bd / 2 + 0.03);
+          bldg.add(win);
+        }
+      }
+      applyShadows(bldg, true, true);
+      outdoorGroup.add(bldg);
+    });
 
-    const flowers = new THREE.Group();
-    for (let i = 0; i < 72; i += 1) {
-      const flower = new THREE.Mesh(
-        new THREE.CircleGeometry(0.08, 10),
-        createLitMaterial([0xff7ab6, 0xfff06a, 0x7ee6ff][i % 3], 0.65, 0.03)
-      );
-      const angle = (Math.PI * 2 * i) / 72;
-      const radius = 7 + (i % 9) * 2;
-      flower.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.16);
-      flowers.add(flower);
-    }
-    applyShadows(flowers, true, true);
-    outdoorGroup.add(flowers);
+    const poleMat = createLitMaterial(0x475569, 0.6, 0.2);
+    const lampMat = createLitMaterial(0xfef08a, 0.2, 0.3);
+    const lightPositions: [number, number][] = [
+      [-1.75, -1.75], [1.75, -1.75], [-1.75, 1.75], [1.75, 1.75],
+      [-1.75, -6.25], [1.75, -6.25], [-13.75, -1.75], [-10.25, -1.75],
+      [10.25, -1.75], [13.75, -1.75], [-13.75, -9.75], [-10.25, -9.75],
+      [10.25, -9.75], [13.75, -9.75], [-1.75, -14.25], [1.75, -14.25],
+      [18.25, -14.25], [21.75, -14.25],
+    ];
+    lightPositions.forEach(([lx, ly]) => {
+      const pole = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 1), poleMat);
+      pole.position.set(lx, ly, 0.5);
+      pole.castShadow = true;
+      outdoorGroup.add(pole);
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), lampMat);
+      lamp.position.set(lx, ly, 1.1);
+      outdoorGroup.add(lamp);
+    });
+
+    const treeTrunkMat = createLitMaterial(0x5c3a1e, 0.8, 0.05);
+    const treeCrownMat = createLitMaterial(0x2d6a4f, 0.85, 0.02);
+    const treePositions: [number, number][] = [[-1.2, 1.2], [1.2, 1.2], [-1.2, -1.2], [1.2, -1.2], [0, 1.8], [0, -1.8]];
+    treePositions.forEach(([tx, ty]) => {
+      const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.4), treeTrunkMat);
+      trunk.position.set(tx, ty, 0.2);
+      trunk.castShadow = true;
+      outdoorGroup.add(trunk);
+      const crown = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), treeCrownMat);
+      crown.position.set(tx, ty, 0.7);
+      crown.castShadow = true;
+      outdoorGroup.add(crown);
+    });
 
     const shops = [
       createBazaarShop(-3.85, -1.8, 0xe879f9, 0xf97316, 'Masala Chai'),
@@ -1244,18 +1317,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     shops.forEach((shop) => outdoorGroup.add(shop));
 
     const marketLamps = new THREE.Group();
-    for (let i = 0; i < 9; i += 1) {
+    for (let i = 0; i < 7; i += 1) {
       const lamp = new THREE.Mesh(
         new THREE.SphereGeometry(0.06, 12, 12),
         createLitMaterial(0xfef08a, 0.28, 0.3)
       );
-      lamp.position.set(-2.1 + i * 0.8, -0.66 + Math.sin(i * 0.5) * 0.08, 1.12);
+      lamp.position.set(-1.8 + i * 0.6, 0.8, 1.12);
       marketLamps.add(lamp);
     }
     applyShadows(marketLamps, true, true);
     outdoorGroup.add(marketLamps);
 
-    const rangoli = createRangoli(3.98, -2.02);
+    outdoorGroup.add(createGrid(ISLAND_RADIUS - 1, 2, 0x1e293b));
+
+    const rangoli = createRangoli(0, 0);
     outdoorGroup.add(rangoli);
 
     const petShop = createBigPetShop(-14, -10);
@@ -1330,24 +1405,32 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Arena footprint
       { shape: 'box', center: new THREE.Vector2(20, -14), halfWidth: 4.2, halfHeight: 3.2 },
     ];
-    const palmTreePositions = [
-      new THREE.Vector2(-8.5, 4.6),
-      new THREE.Vector2(8.1, 4.9),
-      new THREE.Vector2(-6.8, -5.6),
-      new THREE.Vector2(7.2, -6),
-      new THREE.Vector2(-16.5, 12),
-      new THREE.Vector2(17.8, 11.4),
-      new THREE.Vector2(-18.7, -9.8),
-      new THREE.Vector2(16.1, -12.2),
-      new THREE.Vector2(-3.2, 20.8),
-      new THREE.Vector2(5.1, -21.2),
-      new THREE.Vector2(21.7, -1.9),
-      new THREE.Vector2(-22.3, 1.3),
-      new THREE.Vector2(12.4, 17.1),
-      new THREE.Vector2(-13.5, 16.4),
+    const buildingObstaclePositions: { x: number; y: number; hw: number; hh: number }[] = [
+      { x: -6, y: 4, hw: 2.5, hh: 2 },
+      { x: -2.2, y: 5.8, hw: 1.9, hh: 1.75 },
+      { x: -9.2, y: 4.5, hw: 2.25, hh: 2.5 },
+      { x: -8, y: 7.8, hw: 1.75, hh: 1.75 },
+      { x: 6, y: 4.5, hw: 2.75, hh: 2.5 },
+      { x: 4, y: 6.8, hw: 2, hh: 2 },
+      { x: 9.2, y: 5, hw: 2.25, hh: 2.25 },
+      { x: -6, y: -4, hw: 2.5, hh: 2.25 },
+      { x: -2.2, y: -5.5, hw: 2, hh: 2 },
+      { x: -9.2, y: -4, hw: 2.25, hh: 2.5 },
+      { x: 6, y: -4.5, hw: 2.75, hh: 2.5 },
+      { x: 9.2, y: -4, hw: 2, hh: 2 },
+      { x: 4, y: -6.8, hw: 1.75, hh: 2.25 },
+      { x: -7, y: -12, hw: 2.5, hh: 2 },
+      { x: -2.5, y: -12.5, hw: 2, hh: 2.5 },
+      { x: 16, y: -4, hw: 2.5, hh: 2.25 },
+      { x: 16, y: 4, hw: 2.25, hh: 2 },
+      { x: 23, y: -4, hw: 2, hh: 2.5 },
+      { x: -4, y: -20.5, hw: 2.25, hh: 2 },
+      { x: 6, y: -20.5, hw: 2.5, hh: 2 },
+      { x: 12, y: -19.5, hw: 2, hh: 2 },
+      { x: 24, y: -8, hw: 2, hh: 2.5 },
     ];
-    palmTreePositions.forEach((position) => {
-      obstacleHitboxes.push({ shape: 'circle', center: position, radius: 0.88 });
+    buildingObstaclePositions.forEach((bp) => {
+      obstacleHitboxes.push({ shape: 'box' as const, center: new THREE.Vector2(bp.x, bp.y), halfWidth: bp.hw, halfHeight: bp.hh });
     });
     obstacleHitboxesRef.current = obstacleHitboxes;
     workshopDoorHitboxRef.current = {
@@ -2015,13 +2098,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       remoteAvatarsRef.current = {};
       disposeObject(localRobot.root);
       disposeObject(sparky.root);
-      palmTrees.forEach((tree) => disposeObject(tree));
-      disposeObject(flowers);
       clouds.forEach((cloud) => disposeObject(cloud));
       shops.forEach((shop) => disposeObject(shop));
       disposeObject(marketLamps);
-      disposeObject(bazaarPad);
-      disposeObject(stonePath);
       disposeObject(rangoli);
       disposeObject(petShop);
       disposeObject(petShopMarker);
