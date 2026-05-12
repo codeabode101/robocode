@@ -225,30 +225,16 @@ export function useMultiplayer(
     return () => window.clearInterval(prune);
   }, []);
 
-  const apinatorApiKeyRef = useRef(apinatorAppKey);
-
-  const sendPosition = useCallback(async (x: number, y: number) => {
+  const sendPosition = useCallback((x: number, y: number) => {
     const apinator = apinatorRef.current;
     if (apinator && connectedRef.current) {
-      try {
-        apinator.trigger('robocode-live', 'player-move', {
-          userId,
-          x,
-          y,
-        });
-      } catch (e) {
-        console.error('Failed to publish move via Apinator:', e);
-      }
+      apinator.trigger('robocode-live', 'player-move', { userId, x, y });
     }
-    try {
-      await fetch('/api/move', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x, y }),
-      });
-    } catch (e) {
-      console.error('Failed to save move:', e);
-    }
+    fetch('/api/move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ x, y }),
+    }).catch(() => {});
   }, [userId]);
 
   return { players, connected, sendPosition };
