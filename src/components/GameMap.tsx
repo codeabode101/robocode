@@ -435,8 +435,34 @@ function createRoundedRectGeometry(width: number, height: number, radius: number
   return new THREE.ShapeGeometry(shape);
 }
 
-function createLitMaterial(color: number | THREE.Color, roughness = 0.78, metalness = 0.06) {
-  return new THREE.MeshStandardMaterial({ color, roughness, metalness });
+function createGradientTexture(steps = 3) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 8;
+  canvas.height = steps;
+  const ctx = canvas.getContext('2d')!;
+  for (let i = 0; i < steps; i++) {
+    const t = i / (steps - 1);
+    const v = Math.floor(30 + t * 200);
+    ctx.fillStyle = `rgb(${v},${v},${v})`;
+    ctx.fillRect(0, i, 8, 1);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.NearestFilter;
+  return texture;
+}
+
+function createToonMaterial(color: number | THREE.Color, _lightness = 0.7, _roughness = 0.05) {
+  return new THREE.MeshToonMaterial({
+    color: color,
+    gradientMap: createGradientTexture(3),
+  });
+}
+
+function addOutline(mesh: THREE.Mesh, color = 0x2d2d3d) {
+  const edges = new THREE.EdgesGeometry(mesh.geometry);
+  const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.3 }));
+  mesh.parent?.add(line);
 }
 
 function applyShadows(object: THREE.Object3D, cast = true, receive = true) {
@@ -461,21 +487,21 @@ function createRobotVisual(color: THREE.Color, name: string) {
 
   const feet = new THREE.Mesh(
     new THREE.BoxGeometry(0.66, 0.22, 0.28),
-    createLitMaterial(0x1f2937, 0.62, 0.2)
+    createToonMaterial(0x1f2937, 0.62, 0.2)
   );
   feet.position.set(0, -0.5, 0.38);
   group.add(feet);
 
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(0.54, 1.3, 0.3),
-    createLitMaterial(color, 0.7, 0.07)
+    createToonMaterial(color, 0.7, 0.07)
   );
   body.position.set(0, 0.1, 0.5);
   group.add(body);
 
   const armLeft = new THREE.Mesh(
     new THREE.BoxGeometry(0.12, 0.42, 0.14),
-    createLitMaterial(color, 0.72, 0.06)
+    createToonMaterial(color, 0.72, 0.06)
   );
   armLeft.position.set(-0.44, 0.18, 0.36);
   armLeft.rotation.z = 0.08;
@@ -488,7 +514,7 @@ function createRobotVisual(color: THREE.Color, name: string) {
 
   const facePanel = new THREE.Mesh(
     new THREE.BoxGeometry(0.44, 0.42, 0.08),
-    createLitMaterial(0xe2e8f0, 0.5, 0.15)
+    createToonMaterial(0xe2e8f0, 0.5, 0.15)
   );
   facePanel.position.set(0, 0.93, 0.15);
   group.add(facePanel);
@@ -538,14 +564,14 @@ function createRobotVisual(color: THREE.Color, name: string) {
 
   const antennaStem = new THREE.Mesh(
     new THREE.CylinderGeometry(0.02, 0.02, 0.18, 10),
-    createLitMaterial(0x64748b, 0.4, 0.45)
+    createToonMaterial(0x64748b, 0.4, 0.45)
   );
   antennaStem.position.set(0, 1.32, 0.18);
   group.add(antennaStem);
 
   const antennaTip = new THREE.Mesh(
     new THREE.SphereGeometry(0.06, 12, 12),
-    createLitMaterial(0xf43f5e, 0.5, 0.18)
+    createToonMaterial(0xf43f5e, 0.5, 0.18)
   );
   antennaTip.position.set(0, 1.44, 0.18);
   group.add(antennaTip);
@@ -577,13 +603,13 @@ function createPalmTree(x: number, y: number) {
   tree.position.set(x, y, 0);
   const trunk = new THREE.Mesh(
     new THREE.CylinderGeometry(0.22, 0.26, 2.6, 12),
-    createLitMaterial(0x8b5a2b, 0.85, 0.05)
+    createToonMaterial(0x8b5a2b)
   );
   trunk.position.set(0, 0, 1.4);
   trunk.rotation.set(Math.PI / 2, 0, 0);
   tree.add(trunk);
 
-  const leafMaterial = createLitMaterial(0x2e9f59, 0.9, 0.02);
+  const leafMaterial = createToonMaterial(0x5a9e5a);
   for (let i = 0; i < 6; i += 1) {
     const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 12), leafMaterial);
     const angle = (Math.PI * 2 * i) / 6;
@@ -618,28 +644,29 @@ function createBazaarShop(
 
   const wall = new THREE.Mesh(
     new THREE.BoxGeometry(1.45, 1.06, 0.56),
-    createLitMaterial(baseColor, 0.74, 0.06)
+    createToonMaterial(baseColor, 0.74, 0.06)
   );
   wall.position.set(x, y, 0.42);
   stall.add(wall);
+  addOutline(wall, 0x1a1a2a);
 
   const doorway = new THREE.Mesh(
     createRoundedRectGeometry(0.5, 0.66, 0.1),
-    createLitMaterial(0x111827, 0.4, 0.3)
+    createToonMaterial(0x111827, 0.4, 0.3)
   );
   doorway.position.set(x, y - 0.13, 0.71);
   stall.add(doorway);
 
   const awning = new THREE.Mesh(
     new THREE.BoxGeometry(1.72, 0.44, 0.24),
-    createLitMaterial(awningColor, 0.68, 0.1)
+    createToonMaterial(awningColor, 0.68, 0.1)
   );
   awning.position.set(x, y + 0.52, 0.7);
   stall.add(awning);
 
   const trim = new THREE.Mesh(
     new THREE.BoxGeometry(1.72, 0.08, 0.25),
-    createLitMaterial(0xf8fafc, 0.55, 0.12)
+    createToonMaterial(0xf8fafc, 0.55, 0.12)
   );
   trim.position.set(x, y + 0.33, 0.7);
   stall.add(trim);
@@ -666,7 +693,7 @@ function createBazaarShop(
 
   const lampLeft = new THREE.Mesh(
     new THREE.SphereGeometry(0.07, 12, 12),
-    createLitMaterial(0xfef08a, 0.3, 0.3)
+    createToonMaterial(0xfef08a, 0.3, 0.3)
   );
   lampLeft.position.set(x - 0.58, y + 0.32, 0.89);
   stall.add(lampLeft);
@@ -687,7 +714,7 @@ function createRangoli(x: number, y: number) {
 
   const center = new THREE.Mesh(
     new THREE.SphereGeometry(0.11, 14, 14),
-    createLitMaterial(0xffffff, 0.42, 0.15)
+    createToonMaterial(0xffffff, 0.42, 0.15)
   );
   center.position.set(x, y, 0.2);
   rangoli.add(center);
@@ -695,7 +722,7 @@ function createRangoli(x: number, y: number) {
   for (let i = 0; i < 8; i += 1) {
     const petal = new THREE.Mesh(
       new THREE.SphereGeometry(0.09, 12, 12),
-      createLitMaterial(colors[i % colors.length], 0.68, 0.06)
+      createToonMaterial(colors[i % colors.length], 0.68, 0.06)
     );
     const angle = (Math.PI * 2 * i) / 8;
     petal.position.set(x + Math.cos(angle) * 0.24, y + Math.sin(angle) * 0.24, 0.2);
@@ -739,42 +766,43 @@ function createBigPetShop(x: number, y: number) {
 
   const base = new THREE.Mesh(
     new THREE.BoxGeometry(8.1, 5.1, 2.55),
-    createLitMaterial(0xf8bbd0, 0.7, 0.06)
+    createToonMaterial(0xf8bbd0, 0.7, 0.06)
   );
   base.position.set(x, y, 1.8);
   shop.add(base);
+  addOutline(base);
 
   const roof = new THREE.Mesh(
     new THREE.BoxGeometry(9, 2.025, 2.85),
-    createLitMaterial(0x2563eb, 0.62, 0.08)
+    createToonMaterial(0x2563eb, 0.62, 0.08)
   );
   roof.position.set(x, y + 2.9, 3.4);
   shop.add(roof);
 
   const doorFrame = new THREE.Mesh(
     new THREE.BoxGeometry(2.325, 0.42, 3.15),
-    createLitMaterial(0xfde68a, 0.55, 0.14)
+    createToonMaterial(0xfde68a, 0.55, 0.14)
   );
   doorFrame.position.set(x, y - 2.34, 1.9);
   shop.add(doorFrame);
 
   const door = new THREE.Mesh(
     new THREE.BoxGeometry(1.8, 0.27, 2.7),
-    createLitMaterial(0x0f172a, 0.36, 0.35)
+    createToonMaterial(0x0f172a, 0.36, 0.35)
   );
   door.position.set(x, y - 2.38, 1.9);
   shop.add(door);
 
   const doorWindow = new THREE.Mesh(
     new THREE.BoxGeometry(0.72, 0.15, 0.57),
-    createLitMaterial(0x93c5fd, 0.2, 0.45)
+    createToonMaterial(0x93c5fd, 0.2, 0.45)
   );
   doorWindow.position.set(x, y - 2.48, 2.6);
   shop.add(doorWindow);
 
   const doormat = new THREE.Mesh(
     new THREE.BoxGeometry(2.175, 1.11, 0.12),
-    createLitMaterial(0x7c3aed, 0.7, 0.08)
+    createToonMaterial(0x7c3aed, 0.7, 0.08)
   );
   doormat.position.set(x, y - 3.54, 0.28);
   shop.add(doormat);
@@ -814,34 +842,34 @@ function createHumanVisual(name: string) {
 
   const legs = new THREE.Mesh(
     new THREE.BoxGeometry(0.34, 0.2, 0.18),
-    createLitMaterial(0x1e293b, 0.72, 0.08)
+    createToonMaterial(0x1e293b, 0.72, 0.08)
   );
   legs.position.set(0, -0.35, 0.24);
   group.add(legs);
 
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(0.56, 0.66, 0.26),
-    createLitMaterial(0x2563eb, 0.6, 0.1)
+    createToonMaterial(0x2563eb, 0.6, 0.1)
   );
   body.position.set(0, 0.02, 0.42);
   group.add(body);
 
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(0.22, 16, 16),
-    createLitMaterial(0xfccca5, 0.5, 0.08)
+    createToonMaterial(0xfccca5, 0.5, 0.08)
   );
   head.position.set(0, 0.48, 0.55);
   group.add(head);
 
   const hair = new THREE.Mesh(
     new THREE.SphereGeometry(0.24, 16, 16),
-    createLitMaterial(0x1f2937, 0.7, 0.06)
+    createToonMaterial(0x1f2937, 0.7, 0.06)
   );
   hair.scale.set(1, 0.72, 0.8);
   hair.position.set(0, 0.58, 0.62);
   group.add(hair);
 
-  const eyeLeft = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 10), createLitMaterial(0x0f172a, 0.5, 0.2));
+  const eyeLeft = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 10), createToonMaterial(0x0f172a, 0.5, 0.2));
   eyeLeft.position.set(-0.07, 0.5, 0.74);
   group.add(eyeLeft);
 
@@ -1125,7 +1153,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const mountElement = mountRef.current;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x8ed6ff);
+    scene.background = new THREE.Color(0xd4e8f7);
     sceneRef.current = scene;
 
     const outdoorGroup = new THREE.Group();
@@ -1162,14 +1190,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 1.2;
     mountElement.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    const hemiLight = new THREE.HemisphereLight(0xfff7d1, 0x345b2a, 0.8);
-    scene.add(hemiLight);
+    const ambientLight = new THREE.AmbientLight(0xffeedd, 0.6);
+    scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfff1b6, 1.15);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
     sunLight.position.set(-10, -8, 20);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(1024, 1024);
@@ -1183,14 +1211,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const sun = new THREE.Mesh(
       new THREE.CircleGeometry(1.1, 30),
-      createLitMaterial(0xffe066, 0.2, 0.05)
+      createToonMaterial(0xffe066, 0.2, 0.05)
     );
     sun.position.set(8.5, 6.8, 5.2);
     outdoorGroup.add(sun);
 
     const water = new THREE.Mesh(
       new THREE.CircleGeometry(ISLAND_RADIUS + 10, 120),
-      createLitMaterial(0x0a1628, 0.15, 0.2)
+      createToonMaterial(0x4a7a9a)
     );
     water.position.z = 0.02;
     water.receiveShadow = true;
@@ -1198,14 +1226,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const cityGround = new THREE.Mesh(
       new THREE.CircleGeometry(ISLAND_RADIUS, 120),
-      createLitMaterial(0x1a1a2e, 0.88, 0.02)
+      createToonMaterial(0x8bb87a)
     );
     cityGround.position.z = 0.13;
     cityGround.receiveShadow = true;
     outdoorGroup.add(cityGround);
 
-    const streetMat = createLitMaterial(0x2d2d44, 0.82, 0.03);
-    const sidewalkMat = createLitMaterial(0x4a4a6a, 0.78, 0.03);
+    const streetMat = createToonMaterial(0x7a7a8a);
+    const sidewalkMat = createToonMaterial(0xc4b89a);
     const streetW = 3;
     const sw = 0.5;
 
@@ -1287,7 +1315,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Plaza with decorative paving and fountain
     const plazaBase = new THREE.Mesh(
       new THREE.CircleGeometry(2.8, 32),
-      createLitMaterial(0x4a5568, 0.82, 0.03)
+      createToonMaterial(0x4a5568, 0.82, 0.03)
     );
     plazaBase.position.set(0, 0, 0.15);
     plazaBase.receiveShadow = true;
@@ -1297,7 +1325,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     for (let i = 0; i < 4; i++) {
       const ring = new THREE.Mesh(
         new THREE.RingGeometry(0.4 + i * 0.55, 0.55 + i * 0.55, 32),
-        createLitMaterial(paveColors[i], 0.78, 0.03)
+        createToonMaterial(paveColors[i], 0.78, 0.03)
       );
       ring.position.set(0, 0, 0.16);
       outdoorGroup.add(ring);
@@ -1305,34 +1333,34 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const fountainPool = new THREE.Mesh(
       new THREE.CylinderGeometry(0.7, 0.85, 0.18, 24),
-      createLitMaterial(0x64748b, 0.6, 0.15)
+      createToonMaterial(0x64748b, 0.6, 0.15)
     );
     fountainPool.position.set(0, 0, 0.09);
     outdoorGroup.add(fountainPool);
 
     const fountainWater = new THREE.Mesh(
       new THREE.CircleGeometry(0.65, 24),
-      createLitMaterial(0x38bdf8, 0.2, 0.3)
+      createToonMaterial(0x38bdf8, 0.2, 0.3)
     );
     fountainWater.position.set(0, 0, 0.28);
     outdoorGroup.add(fountainWater);
 
     const fountainCenter = new THREE.Mesh(
       new THREE.CylinderGeometry(0.06, 0.1, 0.25, 12),
-      createLitMaterial(0x94a3b8, 0.5, 0.2)
+      createToonMaterial(0x94a3b8, 0.5, 0.2)
     );
     fountainCenter.position.set(0, 0, 0.35);
     outdoorGroup.add(fountainCenter);
 
     const fountainTop = new THREE.Mesh(
       new THREE.SphereGeometry(0.08, 12, 12),
-      createLitMaterial(0x93c5fd, 0.2, 0.3)
+      createToonMaterial(0x93c5fd, 0.2, 0.3)
     );
     fountainTop.position.set(0, 0, 0.5);
     outdoorGroup.add(fountainTop);
 
     // Decorative bushes along sidewalks
-    const bushMat = createLitMaterial(0x2d6a4f, 0.85, 0.02);
+    const bushMat = createToonMaterial(0x5a9e5a);
     const bushPositions: [number, number][] = [
       [-4, 2.8], [4, 2.8], [-4, -2.8], [4, -2.8],
       [-4, -7.3], [4, -7.3], [-4, -10.8], [4, -10.8],
@@ -1346,7 +1374,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     });
 
     // Park benches
-    const benchMat = createLitMaterial(0x5c3a1e, 0.7, 0.08);
+    const benchMat = createToonMaterial(0x8b6b4a);
     const benchPositions: [number, number][] = [[-3, 6.5], [3, 6.5], [-3, -13.5], [3, -13.5]];
     benchPositions.forEach(([benchX, benchY]) => {
       const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.12), benchMat);
@@ -1362,7 +1390,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     });
 
     // Trash cans
-    const canMat = createLitMaterial(0x475569, 0.6, 0.15);
+    const canMat = createToonMaterial(0x6a6a7a);
     const canPositions: [number, number][] = [[-5.2, 4.2], [5.2, 4.2], [-5.2, -4.2], [5.2, -4.2], [-5.2, -12.2], [5.2, -12.2]];
     canPositions.forEach(([canX, canY]) => {
       const can = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.25, 10), canMat);
@@ -1371,7 +1399,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       outdoorGroup.add(can);
     });
 
-    const buildingColors = [0x475569, 0x6b7280, 0x374151, 0x4f46e5, 0x78716c, 0x64748b, 0x991b1b, 0x57534e, 0x6366f1, 0x525252, 0x44403c, 0x3b82f6, 0x1e40af, 0x065f46, 0x854d0e];
+    const buildingColors = [0xd4a373, 0xcc8b65, 0xbc6c25, 0xe9c46a, 0x6b8cae, 0x4a6fa5, 0x3d5a80, 0xa53843, 0x5a7a5a, 0x7a5a5a, 0xd4a373, 0xcc8b65, 0xbc6c25, 0xe9c46a, 0x6b8cae];
     const buildingData: [number, number, number, number, number, number][] = [
       [-6, 4, 5, 4, 4, 0],
       [-2.2, 5.8, 3.8, 3.5, 3.5, 1],
@@ -1398,25 +1426,26 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     ];
     buildingData.forEach(([bx, by, bw, bh, bd, ci]) => {
       const bldg = new THREE.Group();
-      const base = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), createLitMaterial(buildingColors[ci], 0.72, 0.06));
+      const base = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), createToonMaterial(buildingColors[ci], 0.72, 0.06));
       base.position.set(bx, by, bd / 2);
       base.castShadow = true;
       base.receiveShadow = true;
       bldg.add(base);
+      addOutline(base);
 
       addWindows(bldg, bx, by, bw, bh, bd);
 
-      const roofColor = ci === 1 || ci === 3 || ci === 6 ? 0x1e293b : 0x334155;
-      const parapet = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.12, bh + 0.12, 0.06), createLitMaterial(roofColor, 0.6, 0.08));
+      const roofColor = ci % 2 === 0 ? 0x3a3a4a : 0x2a2a3a;
+      const parapet = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.12, bh + 0.12, 0.06), createToonMaterial(roofColor, 0.6, 0.08));
       parapet.position.set(bx, by, bd + 0.03);
       bldg.add(parapet);
 
-      const baseTrim = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.06, bh + 0.06, 0.08), createLitMaterial(0x1e293b, 0.72, 0.08));
+      const baseTrim = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.06, bh + 0.06, 0.08), createToonMaterial(0x1e293b, 0.72, 0.08));
       baseTrim.position.set(bx, by, 0.04);
       bldg.add(baseTrim);
 
       if (ci % 4 === 0 || ci % 4 === 2) {
-        const cornice = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.08, 0.08, 0.06), createLitMaterial(0x94a3b8, 0.5, 0.12));
+        const cornice = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.08, 0.08, 0.06), createToonMaterial(0x94a3b8, 0.5, 0.12));
         cornice.position.set(bx, by + bh / 2 - 0.04, bd / 2);
         bldg.add(cornice);
         const corniceBot = cornice.clone();
@@ -1425,20 +1454,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
 
       if (ci % 3 === 0) {
-        const ac = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.25, 0.2), createLitMaterial(0x64748b, 0.6, 0.15));
+        const ac = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.25, 0.2), createToonMaterial(0x64748b, 0.6, 0.15));
         ac.position.set(bx + bw * 0.15, by + bh / 2 + 0.12, bd + 0.12);
         bldg.add(ac);
       } else if (ci % 3 === 1 && bh > 3.5) {
-        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.3, 6), createLitMaterial(0x94a3b8, 0.5, 0.2));
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.3, 6), createToonMaterial(0x94a3b8, 0.5, 0.2));
         pole.position.set(bx + bw * 0.2, by + bh / 2 + 0.15, bd + 0.2);
         pole.rotation.x = Math.PI / 2;
         bldg.add(pole);
-        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), createLitMaterial(0xfca5a5, 0.3, 0.15));
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), createToonMaterial(0xfca5a5, 0.3, 0.15));
         tip.position.set(bx + bw * 0.2, by + bh / 2 + 0.15, bd + 0.34);
         bldg.add(tip);
       } else if (ci % 3 === 2 && bh > 3.5) {
         const awningColor = [0xf97316, 0x3b82f6, 0x22c55e, 0xa855f7][ci % 4];
-        const awning = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.5, 0.22, 0.2), createLitMaterial(awningColor, 0.65, 0.08));
+        const awning = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.5, 0.22, 0.2), createToonMaterial(awningColor, 0.65, 0.08));
         awning.position.set(bx, by - bh / 2 + 0.6, bd / 2 + 0.1);
         bldg.add(awning);
       }
@@ -1447,8 +1476,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       outdoorGroup.add(bldg);
     });
 
-    const poleMat = createLitMaterial(0x475569, 0.6, 0.2);
-    const lampMat = createLitMaterial(0xfef08a, 0.2, 0.3);
+    const poleMat = createToonMaterial(0x6a6a7a);
+    const lampMat = createToonMaterial(0xfef08a);
     const lightPositions: [number, number][] = [
       [-1.75, -1.75], [1.75, -1.75], [-1.75, 1.75], [1.75, 1.75],
       [-1.75, -6.25], [1.75, -6.25], [-13.75, -1.75], [-10.25, -1.75],
@@ -1466,8 +1495,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       outdoorGroup.add(lamp);
     });
 
-    const treeTrunkMat = createLitMaterial(0x5c3a1e, 0.8, 0.05);
-    const treeCrownMat = createLitMaterial(0x2d6a4f, 0.85, 0.02);
+    const treeTrunkMat = createToonMaterial(0x8b5a2b);
+    const treeCrownMat = createToonMaterial(0x5a9e5a);
     const treePositions: [number, number][] = [[-1.2, 1.2], [1.2, 1.2], [-1.2, -1.2], [1.2, -1.2], [0, 1.8], [0, -1.8]];
     treePositions.forEach(([tx, ty]) => {
       const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.4), treeTrunkMat);
@@ -1491,7 +1520,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     for (let i = 0; i < 7; i += 1) {
       const lamp = new THREE.Mesh(
         new THREE.SphereGeometry(0.06, 12, 12),
-        createLitMaterial(0xfef08a, 0.28, 0.3)
+        createToonMaterial(0xfef08a, 0.28, 0.3)
       );
       lamp.position.set(-1.8 + i * 0.6, 0.8, 1.12);
       marketLamps.add(lamp);
@@ -1526,25 +1555,26 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const arenaBuilding = new THREE.Group();
     const arenaBase = new THREE.Mesh(
       new THREE.BoxGeometry(8, 6, 3),
-      createLitMaterial(0xdc2626, 0.7, 0.06)
+      createToonMaterial(0xa53843)
     );
     arenaBase.position.set(20, -14, 2);
     arenaBuilding.add(arenaBase);
+    addOutline(arenaBase);
     const arenaRoof = new THREE.Mesh(
       new THREE.BoxGeometry(9, 6.5, 0.5),
-      createLitMaterial(0x1e293b, 0.6, 0.1)
+      createToonMaterial(0x1e293b, 0.6, 0.1)
     );
     arenaRoof.position.set(20, -14, 4.5);
     arenaBuilding.add(arenaRoof);
     const arenaDoorArch = new THREE.Mesh(
       new THREE.BoxGeometry(2, 0.4, 3.5),
-      createLitMaterial(0xfde68a, 0.55, 0.14)
+      createToonMaterial(0xfde68a, 0.55, 0.14)
     );
     arenaDoorArch.position.set(20, -16.7, 2.2);
     arenaBuilding.add(arenaDoorArch);
     const arenaDoorMesh = new THREE.Mesh(
       new THREE.BoxGeometry(1.8, 0.3, 3),
-      createLitMaterial(0x0f172a, 0.36, 0.35)
+      createToonMaterial(0x0f172a, 0.36, 0.35)
     );
     arenaDoorMesh.position.set(20, -16.7, 2.2);
     arenaBuilding.add(arenaDoorMesh);
@@ -1664,7 +1694,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const workshopFloor = new THREE.Mesh(
       new THREE.BoxGeometry(10.6, 10.6, 0.24),
-      createLitMaterial(0xf8fafc, 0.86, 0.03)
+      createToonMaterial(0xf8fafc, 0.86, 0.03)
     );
     workshopFloor.position.set(0, 0, 0.12);
     workshopRoomGroup.add(workshopFloor);
@@ -1679,7 +1709,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const horizontal = index < 2;
       const wall = new THREE.Mesh(
         new THREE.BoxGeometry(horizontal ? 10.6 : 0.3, horizontal ? 0.3 : 10.6, 2.4),
-        createLitMaterial(0x334155, 0.72, 0.05)
+        createToonMaterial(0x334155, 0.72, 0.05)
       );
       wall.position.copy(position);
       workshopRoomGroup.add(wall);
@@ -1687,21 +1717,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const shelf = new THREE.Mesh(
       new THREE.BoxGeometry(1.65, 0.45, 1.45),
-      createLitMaterial(0x8b5a2b, 0.7, 0.08)
+      createToonMaterial(0x8b5a2b, 0.7, 0.08)
     );
     shelf.position.set(-3.2, 3.25, 0.82);
     workshopRoomGroup.add(shelf);
 
     const petBed = new THREE.Mesh(
       new THREE.BoxGeometry(1.25, 0.82, 0.2),
-      createLitMaterial(0xf59e0b, 0.64, 0.07)
+      createToonMaterial(0xf59e0b, 0.64, 0.07)
     );
     petBed.position.set(3.4, -2.4, 0.21);
     workshopRoomGroup.add(petBed);
 
     const desk = new THREE.Mesh(
       new THREE.BoxGeometry(1.5, 0.7, 0.75),
-      createLitMaterial(0x7c3aed, 0.62, 0.08)
+      createToonMaterial(0x7c3aed, 0.62, 0.08)
     );
     desk.position.set(2.9, 3.05, 0.48);
     workshopRoomGroup.add(desk);
@@ -1723,7 +1753,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     {
       const arenaFloor = new THREE.Mesh(
         new THREE.BoxGeometry(12, 12, 0.24),
-        createLitMaterial(0x1e293b, 0.86, 0.03)
+        createToonMaterial(0x1e293b, 0.86, 0.03)
       );
       arenaFloor.position.set(0, 0, 0.12);
       arenaRoomGroup.add(arenaFloor);
@@ -1742,7 +1772,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const horizontal = i < 2;
         const wall = new THREE.Mesh(
           new THREE.BoxGeometry(horizontal ? 12.6 : 0.3, horizontal ? 0.3 : 12.6, 2.4),
-          createLitMaterial(0x475569, 0.72, 0.05)
+          createToonMaterial(0x475569, 0.72, 0.05)
         );
         wall.position.copy(pos);
         arenaRoomGroup.add(wall);
@@ -1750,7 +1780,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       const arenaCenterLight = new THREE.Mesh(
         new THREE.CircleGeometry(0.6, 20),
-        createLitMaterial(0xfef08a, 0.2, 0.1)
+        createToonMaterial(0xfef08a, 0.2, 0.1)
       );
       arenaCenterLight.position.set(0, 0, 0.25);
       arenaRoomGroup.add(arenaCenterLight);
@@ -2241,7 +2271,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         outdoorGroup.visible = true;
         workshopRoomGroup.visible = false;
         arenaRoomGroup.visible = false;
-        scene.background = new THREE.Color(0x8ed6ff);
+scene.background = new THREE.Color(0xd4e8f7);
         const cameraTargetX = localPositionRef.current.x;
         const cameraTargetY = localPositionRef.current.y;
         camera.position.x += (cameraTargetX + CAMERA_OFFSET.x - camera.position.x) * 0.14;
