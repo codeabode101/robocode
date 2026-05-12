@@ -1930,8 +1930,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
 
     window.addEventListener('resize', handleResize);
+    const handleFocusClick = () => window.focus();
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    mountElement.addEventListener('mousedown', handleFocusClick);
 
     const createCustomerRequest = (customerName: string): CustomerRequest => {
       const blockedSignature = lastWorkshopRequestSigRef.current;
@@ -2009,6 +2011,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     let lastTime = performance.now();
     const animate = (now: number) => {
+      try {
       const delta = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
       const worldTime = now / 1000;
@@ -2398,6 +2401,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       renderer.render(scene, camera);
       rafRef.current = window.requestAnimationFrame(animate);
+    } catch (e) {
+      console.error('Animation loop error:', e);
+      rafRef.current = window.requestAnimationFrame(animate);
+    }
     };
 
     rafRef.current = window.requestAnimationFrame(animate);
@@ -2407,6 +2414,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      mountElement.removeEventListener('mousedown', handleFocusClick);
       Object.values(remoteAvatarsRef.current).forEach((avatar) => disposeObject(avatar.visual.root));
       remoteAvatarsRef.current = {};
       disposeObject(localRobot.root);
