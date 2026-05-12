@@ -708,6 +708,32 @@ function createRangoli(x: number, y: number) {
   return rangoli;
 }
 
+function addWindows(building: THREE.Group, bx: number, by: number, bw: number, bh: number, bd: number) {
+  const winW = 0.3;
+  const winH = 0.4;
+  const gapX = 0.65;
+  const gapY = 0.75;
+  const rows = Math.max(1, Math.floor((bh - 0.4) / gapY));
+  const cols = Math.max(1, Math.floor((bw - 0.4) / gapX));
+  const startX = -bw / 2 + 0.45;
+  const startY = -bh / 2 + 0.5;
+  const group = new THREE.Group();
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const lit = Math.random() < 0.65;
+      const opacity = lit ? 0.35 + Math.random() * 0.5 : 0.08 + Math.random() * 0.1;
+      const winColor = lit ? 0xfef08a : 0x1a1a2e;
+      const win = new THREE.Mesh(
+        new THREE.PlaneGeometry(winW, winH),
+        new THREE.MeshBasicMaterial({ color: winColor, transparent: true, opacity })
+      );
+      win.position.set(startX + c * gapX, startY + r * gapY, bd / 2 + 0.01);
+      group.add(win);
+    }
+  }
+  building.add(group);
+}
+
 function createBigPetShop(x: number, y: number) {
   const shop = new THREE.Group();
 
@@ -1222,16 +1248,130 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     makeSidewalk(18.25, -8, sw, 28);
     makeSidewalk(21.75, -8, sw, 28);
 
-    const plaza = new THREE.Mesh(
+    // Street markings - dashed yellow center lines
+    const dashMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
+    const makeDashedLine = (x: number, y: number, len: number, horiz: boolean) => {
+      const dashLen = 0.4, gapLen = 0.3, step = dashLen + gapLen;
+      const count = Math.floor(len / step);
+      for (let i = 0; i < count; i++) {
+        const d = new THREE.Mesh(new THREE.PlaneGeometry(horiz ? dashLen : 0.06, horiz ? 0.06 : dashLen), dashMat);
+        d.position.set(horiz ? x - len / 2 + i * step + dashLen / 2 : x, horiz ? y : y - len / 2 + i * step + dashLen / 2, 0.16);
+        outdoorGroup.add(d);
+      }
+    };
+    // Crosswalks
+    const crossMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const makeCrosswalk = (x: number, y: number, horiz: boolean) => {
+      for (let i = -1; i <= 1; i++) {
+        const s = new THREE.Mesh(new THREE.PlaneGeometry(horiz ? 0.15 : 0.8, horiz ? 0.8 : 0.15), crossMat);
+        s.position.set(horiz ? x + i * 0.3 : x, horiz ? y : y + i * 0.3, 0.16);
+        outdoorGroup.add(s);
+      }
+    };
+    makeDashedLine(0, 0, 48, true);
+    makeDashedLine(0, -8, 48, true);
+    makeDashedLine(0, 8, 48, true);
+    makeDashedLine(0, -16, 48, true);
+    makeDashedLine(0, -8, 28, false);
+    makeDashedLine(-12, -8, 28, false);
+    makeDashedLine(12, -8, 28, false);
+    makeDashedLine(20, -8, 28, false);
+    makeCrosswalk(0, 0, true);
+    makeCrosswalk(0, -8, true);
+    makeCrosswalk(0, 8, true);
+    makeCrosswalk(0, -16, true);
+    makeCrosswalk(-12, -8, false);
+    makeCrosswalk(12, -8, false);
+    makeCrosswalk(20, -8, false);
+
+    // Plaza with decorative paving and fountain
+    const plazaBase = new THREE.Mesh(
       new THREE.CircleGeometry(2.8, 32),
       createLitMaterial(0x4a5568, 0.82, 0.03)
     );
-    plaza.position.set(0, 0, 0.15);
-    plaza.receiveShadow = true;
-    outdoorGroup.add(plaza);
+    plazaBase.position.set(0, 0, 0.15);
+    plazaBase.receiveShadow = true;
+    outdoorGroup.add(plazaBase);
+
+    const paveColors = [0x475569, 0x4a5568, 0x3d4a5c, 0x5a6a7e];
+    for (let i = 0; i < 4; i++) {
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.4 + i * 0.55, 0.55 + i * 0.55, 32),
+        createLitMaterial(paveColors[i], 0.78, 0.03)
+      );
+      ring.position.set(0, 0, 0.16);
+      outdoorGroup.add(ring);
+    }
+
+    const fountainPool = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.7, 0.85, 0.18, 24),
+      createLitMaterial(0x64748b, 0.6, 0.15)
+    );
+    fountainPool.position.set(0, 0, 0.09);
+    outdoorGroup.add(fountainPool);
+
+    const fountainWater = new THREE.Mesh(
+      new THREE.CircleGeometry(0.65, 24),
+      createLitMaterial(0x38bdf8, 0.2, 0.3)
+    );
+    fountainWater.position.set(0, 0, 0.28);
+    outdoorGroup.add(fountainWater);
+
+    const fountainCenter = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.1, 0.25, 12),
+      createLitMaterial(0x94a3b8, 0.5, 0.2)
+    );
+    fountainCenter.position.set(0, 0, 0.35);
+    outdoorGroup.add(fountainCenter);
+
+    const fountainTop = new THREE.Mesh(
+      new THREE.SphereGeometry(0.08, 12, 12),
+      createLitMaterial(0x93c5fd, 0.2, 0.3)
+    );
+    fountainTop.position.set(0, 0, 0.5);
+    outdoorGroup.add(fountainTop);
+
+    // Decorative bushes along sidewalks
+    const bushMat = createLitMaterial(0x2d6a4f, 0.85, 0.02);
+    const bushPositions: [number, number][] = [
+      [-4, 2.8], [4, 2.8], [-4, -2.8], [4, -2.8],
+      [-4, -7.3], [4, -7.3], [-4, -10.8], [4, -10.8],
+      [-14.5, -5.5], [-14.5, -14.5],
+    ];
+    bushPositions.forEach(([bushX, bushY]) => {
+      const bush = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), bushMat);
+      bush.position.set(bushX, bushY, 0.2);
+      bush.castShadow = true;
+      outdoorGroup.add(bush);
+    });
+
+    // Park benches
+    const benchMat = createLitMaterial(0x5c3a1e, 0.7, 0.08);
+    const benchPositions: [number, number][] = [[-3, 6.5], [3, 6.5], [-3, -13.5], [3, -13.5]];
+    benchPositions.forEach(([benchX, benchY]) => {
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.12), benchMat);
+      seat.position.set(benchX, benchY, 0.16);
+      seat.castShadow = true;
+      outdoorGroup.add(seat);
+      const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.04), benchMat);
+      leg1.position.set(benchX - 0.18, benchY - 0.04, 0.1);
+      outdoorGroup.add(leg1);
+      const leg2 = leg1.clone();
+      leg2.position.x = benchX + 0.18;
+      outdoorGroup.add(leg2);
+    });
+
+    // Trash cans
+    const canMat = createLitMaterial(0x475569, 0.6, 0.15);
+    const canPositions: [number, number][] = [[-5.2, 4.2], [5.2, 4.2], [-5.2, -4.2], [5.2, -4.2], [-5.2, -12.2], [5.2, -12.2]];
+    canPositions.forEach(([canX, canY]) => {
+      const can = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.25, 10), canMat);
+      can.position.set(canX, canY, 0.12);
+      can.castShadow = true;
+      outdoorGroup.add(can);
+    });
 
     const buildingColors = [0x475569, 0x6b7280, 0x374151, 0x4f46e5, 0x78716c, 0x64748b, 0x991b1b, 0x57534e, 0x6366f1, 0x525252, 0x44403c, 0x3b82f6, 0x1e40af, 0x065f46, 0x854d0e];
-    const winMat = createLitMaterial(0xfef08a, 0.2, 0.3);
     const buildingData: [number, number, number, number, number, number][] = [
       [-6, 4, 5, 4, 4, 0],
       [-2.2, 5.8, 3.8, 3.5, 3.5, 1],
@@ -1263,15 +1403,46 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       base.castShadow = true;
       base.receiveShadow = true;
       bldg.add(base);
-      const winRows = Math.max(1, Math.floor((bd - 0.6) / 1.2));
-      const winCols = Math.max(1, Math.floor((bw - 1) / 1.4));
-      for (let row = 0; row < winRows; row += 1) {
-        for (let col = 0; col < winCols; col += 1) {
-          const win = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.04), winMat);
-          win.position.set(bx - bw / 2 + 0.8 + col * 1.4, by - bh / 2 + 0.7 + row * 1.2, bd / 2 + 0.03);
-          bldg.add(win);
-        }
+
+      addWindows(bldg, bx, by, bw, bh, bd);
+
+      const roofColor = ci === 1 || ci === 3 || ci === 6 ? 0x1e293b : 0x334155;
+      const parapet = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.12, bh + 0.12, 0.06), createLitMaterial(roofColor, 0.6, 0.08));
+      parapet.position.set(bx, by, bd + 0.03);
+      bldg.add(parapet);
+
+      const baseTrim = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.06, bh + 0.06, 0.08), createLitMaterial(0x1e293b, 0.72, 0.08));
+      baseTrim.position.set(bx, by, 0.04);
+      bldg.add(baseTrim);
+
+      if (ci % 4 === 0 || ci % 4 === 2) {
+        const cornice = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.08, 0.08, 0.06), createLitMaterial(0x94a3b8, 0.5, 0.12));
+        cornice.position.set(bx, by + bh / 2 - 0.04, bd / 2);
+        bldg.add(cornice);
+        const corniceBot = cornice.clone();
+        corniceBot.position.set(bx, by - bh / 2 + 0.04, bd / 2);
+        bldg.add(corniceBot);
       }
+
+      if (ci % 3 === 0) {
+        const ac = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.25, 0.2), createLitMaterial(0x64748b, 0.6, 0.15));
+        ac.position.set(bx + bw * 0.15, by + bh / 2 + 0.12, bd + 0.12);
+        bldg.add(ac);
+      } else if (ci % 3 === 1 && bh > 3.5) {
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.3, 6), createLitMaterial(0x94a3b8, 0.5, 0.2));
+        pole.position.set(bx + bw * 0.2, by + bh / 2 + 0.15, bd + 0.2);
+        pole.rotation.x = Math.PI / 2;
+        bldg.add(pole);
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), createLitMaterial(0xfca5a5, 0.3, 0.15));
+        tip.position.set(bx + bw * 0.2, by + bh / 2 + 0.15, bd + 0.34);
+        bldg.add(tip);
+      } else if (ci % 3 === 2 && bh > 3.5) {
+        const awningColor = [0xf97316, 0x3b82f6, 0x22c55e, 0xa855f7][ci % 4];
+        const awning = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.5, 0.22, 0.2), createLitMaterial(awningColor, 0.65, 0.08));
+        awning.position.set(bx, by - bh / 2 + 0.6, bd / 2 + 0.1);
+        bldg.add(awning);
+      }
+
       applyShadows(bldg, true, true);
       outdoorGroup.add(bldg);
     });
