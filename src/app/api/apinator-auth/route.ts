@@ -14,9 +14,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
   }
 
-  const formData = await request.formData();
-  const socketId = formData.get('socket_id') as string;
-  const channelName = formData.get('channel_name') as string;
+  const { socket_id: socketId, channel_name: channelName } = await request.json();
 
   if (!socketId || !channelName) {
     return NextResponse.json({ error: 'Missing socket_id or channel_name' }, { status: 400 });
