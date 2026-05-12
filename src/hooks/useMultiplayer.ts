@@ -226,16 +226,12 @@ export function useMultiplayer(
   }, []);
 
   const sendPosition = useCallback((x: number, y: number) => {
-    const apinator = apinatorRef.current;
-    if (apinator && connectedRef.current) {
-      apinator.trigger('robocode-live', 'player-move', { userId, x, y });
-    }
     fetch('/api/move', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ x, y }),
     }).catch(() => {});
-  }, [userId]);
+  }, []);
 
   return { players, connected, sendPosition };
 }
