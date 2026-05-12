@@ -11,6 +11,13 @@ interface PlayerPosition {
   lastSeenAt: number;
 }
 
+export type ArenaEvent = {
+  type: 'arena-challenge' | 'arena-accept' | 'arena-decline' | 'arena-join' | 'arena-leave';
+  fromId: string;
+  fromName: string;
+  challengeId?: string;
+};
+
 export function useMultiplayer(
   userId: string,
   apinatorAppKey: string,
@@ -18,11 +25,15 @@ export function useMultiplayer(
 ) {
   const [players, setPlayers] = useState<Record<string, PlayerPosition>>({});
   const [connected, setConnected] = useState(false);
+  const [arenaPlayers, setArenaPlayers] = useState<{ id: string; name: string | null }[]>([]);
+  const [arenaChallenge, setArenaChallenge] = useState<{ fromId: string; fromName: string } | null>(null);
   const apinatorRef = useRef<Apinator | null>(null);
   const connectedRef = useRef(false);
   const userIdRef = useRef(userId);
   userIdRef.current = userId;
   const playerNameRef = useRef('');
+  const arenaPlayersRef = useRef<{ id: string; name: string }[]>([]);
+  const onArenaEventRef = useRef<((event: ArenaEvent) => void) | null>(null);
 
   useEffect(() => {
     if (!apinatorAppKey) {
@@ -38,28 +49,34 @@ export function useMultiplayer(
     apinatorRef.current = apinator;
 
     const upsertRemotePlayer = (payload: unknown) => {
-      const parsed =
-        typeof payload === 'string' ? (JSON.parse(payload) as Record<string, unknown>) : (payload as Record<string, unknown> | null);
+      const parsed = typeof payload === 'string' ? JSON.parse(payload) : (payload as Record<string, unknown> | null);
       const remoteUserId = parsed?.userId ?? parsed?.user_id;
       if (typeof remoteUserId !== 'string' || remoteUserId === userIdRef.current) return;
-
-      const rawX = Number(parsed?.x);
-      const rawY = Number(parsed?.y);
-      const nextX = Number.isFinite(rawX) ? rawX : 0;
-      const nextY = Number.isFinite(rawY) ? rawY : 0;
-      const nextName = typeof parsed?.name === 'string' ? parsed.name : undefined;
-
       setPlayers((prev) => ({
         ...prev,
         [remoteUserId]: {
-          ...(prev[remoteUserId] || {}),
           userId: remoteUserId,
-          x: nextX,
-          y: nextY,
-          name: nextName ?? prev[remoteUserId]?.name,
+          x: Number(parsed?.x) || 0,
+          y: Number(parsed?.y) || 0,
+          name: typeof parsed?.name === 'string' ? parsed.name : prev[remoteUserId]?.name,
           lastSeenAt: Date.now(),
         },
       }));
+    };
+
+    const handleArenaEvent = (eventName: string, data: unknown) => {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : (data as Record<string, unknown> | null);
+      const fromId = parsed?.userId as string;
+      if (!fromId || fromId === userIdRef.current) return;
+      const fromName = (parsed?.name as string) || 'Unknown';
+      const challengeId = parsed?.challengeId as string;
+      const event: ArenaEvent = {
+        type: eventName.replace('client-', '') as ArenaEvent['type'],
+        fromId,
+        fromName,
+        challengeId,
+      };
+      onArenaEventRef.current?.(event);
     };
 
     const tryReconnect = () => {
@@ -70,10 +87,7 @@ export function useMultiplayer(
     let reconnectTimeout: number | null = null;
     let reconnectDelayMs = 1200;
     const clearReconnectTimeout = () => {
-      if (reconnectTimeout !== null) {
-        window.clearTimeout(reconnectTimeout);
-        reconnectTimeout = null;
-      }
+      if (reconnectTimeout !== null) { window.clearTimeout(reconnectTimeout); reconnectTimeout = null; }
     };
     const scheduleReconnect = () => {
       if (connectedRef.current || reconnectTimeout !== null) return;
@@ -86,53 +100,38 @@ export function useMultiplayer(
     };
 
     apinator.bind('state_change', (state: unknown) => {
-      const statePayload = state as { current?: string } | string | null;
-      const current = typeof statePayload === 'string' ? statePayload : statePayload?.current;
+      const s = (state as { current?: string } | string | null);
+      const current = typeof s === 'string' ? s : s?.current;
       const isConnected = current === 'connected';
       connectedRef.current = isConnected;
       setConnected(isConnected);
-      if (isConnected) {
-        reconnectDelayMs = 1200;
-        clearReconnectTimeout();
-      } else {
-        scheduleReconnect();
-      }
+      if (isConnected) { reconnectDelayMs = 1200; clearReconnectTimeout(); }
+      else { scheduleReconnect(); }
     });
 
     const channel = apinator.subscribe('private-robocode-live');
 
-    channel.bind('client-player-move', (data: unknown) => {
-      try { upsertRemotePlayer(data); } catch { /* ignore */ }
-    });
-
-    channel.bind('client-player-join', (data: unknown) => {
-      try { upsertRemotePlayer(data); } catch { /* ignore */ }
-    });
-
+    channel.bind('client-player-move', upsertRemotePlayer);
+    channel.bind('client-player-join', upsertRemotePlayer);
     channel.bind('client-player-leave', (data: unknown) => {
-      try {
-        const parsed = typeof data === 'string' ? JSON.parse(data) : (data as Record<string, unknown> | null);
-        const remoteUserId = parsed?.userId ?? parsed?.user_id;
-        if (typeof remoteUserId === 'string') {
-          setPlayers((prev) => {
-            const next = { ...prev };
-            delete next[remoteUserId];
-            return next;
-          });
-        }
-      } catch { /* ignore */ }
+      const parsed = typeof data === 'string' ? JSON.parse(data) : (data as Record<string, unknown> | null);
+      const uid = parsed?.userId ?? parsed?.user_id;
+      if (typeof uid === 'string') setPlayers((prev) => { const n = { ...prev }; delete n[uid]; return n; });
     });
+
+    channel.bind('client-arena-join', (data: unknown) => handleArenaEvent('client-arena-join', data));
+    channel.bind('client-arena-leave', (data: unknown) => handleArenaEvent('client-arena-leave', data));
+    channel.bind('client-arena-challenge', (data: unknown) => handleArenaEvent('client-arena-challenge', data));
+    channel.bind('client-arena-accept', (data: unknown) => handleArenaEvent('client-arena-accept', data));
+    channel.bind('client-arena-decline', (data: unknown) => handleArenaEvent('client-arena-decline', data));
 
     apinator.connect();
 
     const reconnectInterval = window.setInterval(tryReconnect, 4000);
-
     const handleVisibility = () => { if (document.visibilityState === 'visible') tryReconnect(); };
-    const handleWindowFocus = () => { tryReconnect(); };
-    const handleOnline = () => { tryReconnect(); };
+    window.addEventListener('focus', tryReconnect);
+    window.addEventListener('online', tryReconnect);
     document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('focus', handleWindowFocus);
-    window.addEventListener('online', handleOnline);
 
     return () => {
       setConnected(false);
@@ -140,8 +139,8 @@ export function useMultiplayer(
       clearReconnectTimeout();
       window.clearInterval(reconnectInterval);
       document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('focus', handleWindowFocus);
-      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('focus', tryReconnect);
+      window.removeEventListener('online', tryReconnect);
       apinator.unsubscribe('private-robocode-live');
       apinator.disconnect();
     };
@@ -149,10 +148,7 @@ export function useMultiplayer(
 
   useEffect(() => {
     if (!userId) return;
-    fetch('/api/profile')
-      .then(r => r.json())
-      .then(d => { if (d.name) playerNameRef.current = d.name; })
-      .catch(() => {});
+    fetch('/api/profile').then(r => r.json()).then(d => { if (d.name) playerNameRef.current = d.name; }).catch(() => {});
   }, [userId]);
 
   function triggerEvent(event: string, data: Record<string, unknown>) {
@@ -166,12 +162,19 @@ export function useMultiplayer(
 
   const sendPosition = useCallback((x: number, y: number) => {
     triggerEvent('client-player-move', { x, y });
-    fetch('/api/move', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ x, y }),
-    }).catch(() => {});
+    fetch('/api/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ x, y }) }).catch(() => {});
   }, []);
 
-  return { players, connected, sendPosition, triggerEvent };
+  return {
+    players,
+    connected,
+    sendPosition,
+    triggerEvent,
+    arenaPlayers,
+    setArenaPlayers,
+    arenaChallenge,
+    setArenaChallenge,
+    onArenaEventRef,
+    arenaPlayersRef,
+  };
 }
