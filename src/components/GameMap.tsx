@@ -2603,7 +2603,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       } else {
         setArenaChallenge({ toId: targetId, toName: targetName, status: 'pending' });
         setArenaOutput(`Challenge sent to ${targetName}!`);
-        triggerEvent('client-arena-challenge', { targetId });
       }
     } catch {
       setArenaOutput('❌ Failed to send challenge.');
@@ -2624,7 +2623,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         setArenaBattleActive(true);
         setArenaChallenge(data.challenge ? { id: data.challenge.id, status: 'active' } : null);
         setArenaOutput('Battle started! Write your code and submit.');
-        triggerEvent('client-arena-accept', { challengeId: data.challenge?.id });
       }
     } catch {
       setArenaOutput('❌ Failed to accept challenge.');
