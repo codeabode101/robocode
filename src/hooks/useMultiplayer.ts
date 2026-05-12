@@ -20,6 +20,8 @@ export function useMultiplayer(
   const [connected, setConnected] = useState(false);
   const apinatorRef = useRef<Apinator | null>(null);
   const connectedRef = useRef(false);
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
 
   useEffect(() => {
     if (!apinatorAppKey) {
@@ -30,6 +32,7 @@ export function useMultiplayer(
     const apinator = new Apinator({
       cluster: apinatorCluster,
       appKey: apinatorAppKey,
+      authEndpoint: '/api/apinator-auth',
     });
     apinatorRef.current = apinator;
 
@@ -37,7 +40,7 @@ export function useMultiplayer(
       const parsed =
         typeof payload === 'string' ? (JSON.parse(payload) as Record<string, unknown>) : (payload as Record<string, unknown> | null);
       const remoteUserId = parsed?.userId ?? parsed?.user_id;
-      if (typeof remoteUserId !== 'string' || remoteUserId === userId) return;
+      if (typeof remoteUserId !== 'string' || remoteUserId === userIdRef.current) return;
 
       const rawX = Number(parsed?.x);
       const rawY = Number(parsed?.y);
@@ -60,12 +63,9 @@ export function useMultiplayer(
 
     const tryReconnect = () => {
       if (connectedRef.current) return;
-      try {
-        apinator.connect();
-      } catch (error) {
-        console.error('Reconnect attempt failed:', error);
-      }
+      try { apinator.connect(); } catch { /* ignore */ }
     };
+
     let reconnectTimeout: number | null = null;
     let reconnectDelayMs = 1200;
     const clearReconnectTimeout = () => {
@@ -84,11 +84,9 @@ export function useMultiplayer(
       }, reconnectDelayMs);
     };
 
-    // Monitor connection state
     apinator.bind('state_change', (state: unknown) => {
       const statePayload = state as { current?: string } | string | null;
       const current = typeof statePayload === 'string' ? statePayload : statePayload?.current;
-      console.log('Apinator state:', current);
       const isConnected = current === 'connected';
       connectedRef.current = isConnected;
       setConnected(isConnected);
@@ -100,59 +98,37 @@ export function useMultiplayer(
       }
     });
 
-    // Subscribe to the shared game channel
-    const channel = apinator.subscribe('robocode-live');
+    const channel = apinator.subscribe('private-robocode-live');
 
-    // Listen for other players' moves
-    channel.bind('player-move', (data: unknown) => {
-      try {
-        upsertRemotePlayer(data);
-      } catch (error) {
-        console.error('Error parsing move:', error);
-      }
+    channel.bind('client-player-move', (data: unknown) => {
+      try { upsertRemotePlayer(data); } catch { /* ignore */ }
     });
 
-    channel.bind('player-join', (data: unknown) => {
-      try {
-        upsertRemotePlayer(data);
-      } catch (error) {
-        console.error('Error parsing join:', error);
-      }
+    channel.bind('client-player-join', (data: unknown) => {
+      try { upsertRemotePlayer(data); } catch { /* ignore */ }
     });
 
-    channel.bind('player-leave', (data: unknown) => {
+    channel.bind('client-player-leave', (data: unknown) => {
       try {
-        const parsed =
-          typeof data === 'string' ? (JSON.parse(data) as Record<string, unknown>) : (data as Record<string, unknown> | null);
+        const parsed = typeof data === 'string' ? JSON.parse(data) : (data as Record<string, unknown> | null);
         const remoteUserId = parsed?.userId ?? parsed?.user_id;
         if (typeof remoteUserId === 'string') {
-          setPlayers((prev) => ({
-            ...Object.fromEntries(Object.entries(prev).filter(([id]) => id !== remoteUserId)),
-          }));
+          setPlayers((prev) => {
+            const next = { ...prev };
+            delete next[remoteUserId];
+            return next;
+          });
         }
-      } catch (error) {
-        console.error('Error parsing leave:', error);
-      }
+      } catch { /* ignore */ }
     });
 
-    // Connect to Apinator
     apinator.connect();
 
-    const reconnectInterval = window.setInterval(() => {
-      tryReconnect();
-    }, 4000);
+    const reconnectInterval = window.setInterval(tryReconnect, 4000);
 
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        tryReconnect();
-      }
-    };
-    const handleWindowFocus = () => {
-      tryReconnect();
-    };
-    const handleOnline = () => {
-      tryReconnect();
-    };
+    const handleVisibility = () => { if (document.visibilityState === 'visible') tryReconnect(); };
+    const handleWindowFocus = () => { tryReconnect(); };
+    const handleOnline = () => { tryReconnect(); };
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('focus', handleWindowFocus);
     window.addEventListener('online', handleOnline);
@@ -165,67 +141,24 @@ export function useMultiplayer(
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('online', handleOnline);
-      apinator.unsubscribe('robocode-live');
+      apinator.unsubscribe('private-robocode-live');
       apinator.disconnect();
     };
-  }, [apinatorAppKey, apinatorCluster, userId]);
-
-  useEffect(() => {
-    if (!connected) return;
-
-    const loadPlayers = async () => {
-      try {
-        const res = await fetch('/api/players');
-        if (!res.ok) return;
-        const payload = await res.json();
-        const incoming: Array<{
-          user_id?: string;
-          userId?: string;
-          x?: number;
-          y?: number;
-          name?: string;
-        }> = payload?.players || [];
-
-        setPlayers((prev) => {
-          const next = { ...prev };
-          for (const player of incoming) {
-            const remoteUserId = player.userId ?? player.user_id;
-            if (!remoteUserId || remoteUserId === userId) continue;
-            next[remoteUserId] = {
-              userId: remoteUserId,
-              x: Number(player.x) || 0,
-              y: Number(player.y) || 0,
-              name: player.name || next[remoteUserId]?.name,
-              lastSeenAt: Date.now(),
-            };
-          }
-          return next;
-        });
-      } catch (error) {
-        console.error('Failed to load current players:', error);
-      }
-    };
-
-    loadPlayers();
-  }, [connected, userId]);
-
-  useEffect(() => {
-    const prune = window.setInterval(() => {
-      const now = Date.now();
-      setPlayers((prev) => {
-        const next: Record<string, PlayerPosition> = {};
-        for (const [remoteUserId, player] of Object.entries(prev)) {
-          if (now - player.lastSeenAt < 30000) {
-            next[remoteUserId] = player;
-          }
-        }
-        return next;
-      });
-    }, 5000);
-    return () => window.clearInterval(prune);
-  }, []);
+  }, [apinatorAppKey, apinatorCluster]);
 
   const sendPosition = useCallback((x: number, y: number) => {
+    const apinator = apinatorRef.current;
+    if (apinator && connectedRef.current) {
+      try {
+        apinator.trigger('private-robocode-live', 'client-player-move', {
+          userId: userIdRef.current,
+          x,
+          y,
+        });
+      } catch (e) {
+        console.error('Failed to send position:', e);
+      }
+    }
     fetch('/api/move', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
