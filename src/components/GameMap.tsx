@@ -71,20 +71,6 @@ const PLAYER_RADIUS = 0.48;
 const MOVE_SPEED = 7.4;
 const NETWORK_SYNC_MS = 90;
 const NPC_POSITION = new THREE.Vector2(3.6, 1.8);
-
-// 2D Tile map constants
-const TILE_SIZE = 3;
-const TILE_COLS = 50;
-const TILE_ROWS = 50;
-const MAP_LEFT = -75;
-const MAP_TOP = 75;
-const T_GRASS = 0;
-const T_ROAD = 1;
-const T_SIDEWALK = 2;
-const T_BUILDING = 3;
-const T_WATER = 4;
-const T_PLAZA = 5;
-const T_TREE = 6;
 const WALK_BOB_SPEED = 14;
 const REMOTE_LERP = 0.18;
 const CAMERA_OFFSET = new THREE.Vector3(0, -18, 42);
@@ -918,151 +904,6 @@ function animateRobotVisual(visual: RobotVisual, time: number, speedFactor: numb
   visual.rightPupil.position.set(eyeX, eyeY, 0.035);
 }
 
-// === 2D Tile Map Generation ===
-const BUILDING_DATA: [number, number, number, number, number][] = [
-  [-6, 4, 5, 4, 0], [-2.2, 5.8, 3.8, 3.5, 1], [-9.2, 4.5, 4.5, 5, 2], [-8, 7.8, 3.5, 3.5, 3],
-  [6, 4.5, 5.5, 5, 4], [4, 6.8, 4, 4, 5], [9.2, 5, 4.5, 4.5, 6],
-  [-6, -4, 5, 4.5, 7], [-2.2, -5.5, 4, 4, 8], [-9.2, -4, 4.5, 5, 0],
-  [6, -4.5, 5.5, 5, 1], [9.2, -4, 4, 4, 2], [4, -6.8, 3.5, 4.5, 8],
-  [-7, -12, 5, 4, 9], [-2.5, -12.5, 4, 5, 10],
-  [16, -4, 5, 4.5, 11], [16, 4, 4.5, 4, 4], [23, -4, 4, 5, 12],
-  [-4, -20.5, 4.5, 4, 13], [6, -20.5, 5, 4, 14], [12, -19.5, 4, 4, 6], [24, -8, 4, 5, 0],
-];
-const BLDG_COLORS = ['#475569', '#6b7280', '#374151', '#4f46e5', '#78716c', '#64748b', '#991b1b', '#57534e', '#6366f1', '#525252', '#44403c', '#3b82f6', '#1e40af', '#065f46', '#854d0e'];
-const TREE_POS: [number, number][] = [[-1.2, 1.2], [1.2, 1.2], [-1.2, -1.2], [1.2, -1.2], [0, 1.8], [0, -1.8]];
-
-function tileCol(wx: number) { return Math.max(0, Math.min(TILE_COLS - 1, Math.floor((wx - MAP_LEFT) / TILE_SIZE))); }
-function tileRow(wy: number) { return Math.max(0, Math.min(TILE_ROWS - 1, Math.floor((MAP_TOP - wy) / TILE_SIZE))); }
-
-function markRect(map: number[][], x: number, y: number, w: number, h: number, t: number) {
-  const c1 = tileCol(x), c2 = tileCol(x + w);
-  const r1 = tileRow(y + h), r2 = tileRow(y);
-  for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) map[r][c] = t;
-}
-
-function markCircle(map: number[][], cx: number, cy: number, rad: number, t: number) {
-  const c1 = tileCol(cx - rad), c2 = tileCol(cx + rad);
-  const r1 = tileRow(cy + rad), r2 = tileRow(cy - rad);
-  for (let r = r1; r <= r2; r++) for (let c = c1; c <= c2; c++) {
-    const wx = MAP_LEFT + (c + 0.5) * TILE_SIZE, wy = MAP_TOP - (r + 0.5) * TILE_SIZE;
-    if (Math.hypot(wx - cx, wy - cy) <= rad) map[r][c] = t;
-  }
-}
-
-function generateTileMap(): number[][] {
-  const map: number[][] = [];
-  for (let r = 0; r < TILE_ROWS; r++) {
-    map[r] = [];
-    for (let c = 0; c < TILE_COLS; c++) {
-      const wx = MAP_LEFT + (c + 0.5) * TILE_SIZE, wy = MAP_TOP - (r + 0.5) * TILE_SIZE;
-      map[r][c] = Math.hypot(wx, wy) > 40 ? T_WATER : T_GRASS;
-    }
-  }
-  // Roads
-  for (const ry of [0, -8, 8, -16]) markRect(map, -72, ry - 1.5, 144, 3, T_ROAD);
-  for (const rx of [0, -12, 12, 20]) markRect(map, rx - 1.5, -40, 3, 80, T_ROAD);
-  // Sidewalks
-  for (const sy of [1.75, -1.75, -6.25, -9.75, 6.25, 9.75, -14.25, -17.75]) markRect(map, -72, sy - 0.25, 144, 0.5, T_SIDEWALK);
-  for (const sx of [-1.75, 1.75, -13.75, -10.25, 10.25, 13.75, 18.25, 21.75]) markRect(map, sx - 0.25, -40, 0.5, 80, T_SIDEWALK);
-  // Buildings
-  for (const [bx, by, bw, bh] of BUILDING_DATA) markRect(map, bx - bw / 2, by - bh / 2, bw, bh, T_BUILDING);
-  // Pet shop + Arena
-  markRect(map, -18, -12.5, 8, 5, T_BUILDING);
-  markRect(map, 16, -17, 8, 6, T_BUILDING);
-  // Plaza
-  markCircle(map, 0, 0, 2.8, T_PLAZA);
-  // Trees
-  for (const [tx, ty] of TREE_POS) markCircle(map, tx, ty, 0.6, T_TREE);
-  return map;
-}
-
-function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: number) {
-  const s = TILE_SIZE;
-  switch (tile) {
-    case T_GRASS: ctx.fillStyle = '#2d6a4f'; ctx.fillRect(x, y, s, s); break;
-    case T_ROAD: ctx.fillStyle = '#475569'; ctx.fillRect(x, y, s, s);
-      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 0.04;
-      ctx.beginPath(); ctx.moveTo(x + s / 2, y); ctx.lineTo(x + s / 2, y + s); ctx.stroke(); break;
-    case T_SIDEWALK: ctx.fillStyle = '#64748b'; ctx.fillRect(x, y, s, s); break;
-    case T_BUILDING: ctx.fillStyle = '#1a1a2e'; ctx.fillRect(x, y, s, s); break;
-    case T_WATER: ctx.fillStyle = '#0a1628'; ctx.fillRect(x, y, s, s); break;
-    case T_PLAZA: ctx.fillStyle = '#4a5568'; ctx.fillRect(x, y, s, s);
-      ctx.strokeStyle = '#5a6a7e'; ctx.lineWidth = 0.03;
-      ctx.strokeRect(x + 0.1, y + 0.1, s - 0.2, s - 0.2); break;
-    case T_TREE: ctx.fillStyle = '#5c3a1e'; ctx.fillRect(x + s / 2 - 0.06, y + s / 2, 0.12, s / 2);
-      ctx.fillStyle = '#2d6a4f'; ctx.beginPath(); ctx.arc(x + s / 2, y + s / 2 - 0.1, s / 3, 0, Math.PI * 2); ctx.fill(); break;
-  }
-}
-
-function drawWholeBuilding(ctx: CanvasRenderingContext2D, bx: number, by: number, bw: number, bh: number, ci: number) {
-  const color = BLDG_COLORS[ci];
-  const halfW = bw / 2, halfH = bh / 2;
-  ctx.fillStyle = color;
-  ctx.fillRect(bx - halfW, by - halfH, bw, bh);
-  ctx.fillStyle = '#1e293b';
-  ctx.beginPath();
-  ctx.moveTo(bx - halfW - 0.2, by + halfH);
-  ctx.lineTo(bx, by + halfH + 0.6);
-  ctx.lineTo(bx + halfW + 0.2, by + halfH);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#fef08a';
-  const winRows = Math.min(Math.floor(bh / 0.95), 3);
-  const winCols = Math.min(Math.floor(bw / 0.85), 4);
-  for (let r = 0; r < winRows; r++) {
-    for (let c = 0; c < winCols; c++) {
-      ctx.fillRect(bx - halfW + 0.3 + c * (bw - 0.6) / winCols, by - halfH + 0.3 + r * (bh - 0.5) / winRows, 0.3, 0.4);
-    }
-  }
-}
-
-function drawPlayerOnCanvas(ctx: CanvasRenderingContext2D, x: number, y: number, time: number) {
-  const bob = Math.sin(time * 14) * 0.04;
-  ctx.save();
-  ctx.translate(x, y + bob);
-  ctx.fillStyle = '#3b82f6';
-  ctx.beginPath(); ctx.arc(0, 0, 0.46, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#60a5fa';
-  ctx.beginPath(); ctx.moveTo(0.5, 0); ctx.lineTo(0, -0.25); ctx.lineTo(0, 0.25); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#f8fafc';
-  ctx.beginPath(); ctx.arc(-0.12, -0.08, 0.08, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(0.12, -0.08, 0.08, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#1e293b';
-  ctx.beginPath(); ctx.arc(-0.12, -0.08, 0.03, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(0.12, -0.08, 0.03, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#f43f5e';
-  ctx.beginPath(); ctx.arc(0, -0.45, 0.05, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-}
-
-function drawNPCOnCanvas(ctx: CanvasRenderingContext2D, x: number, y: number, color: string, label: string, time: number) {
-  const bob = Math.sin(time * 12) * 0.03;
-  ctx.save();
-  ctx.translate(x, y + bob);
-  ctx.fillStyle = color;
-  ctx.beginPath(); ctx.arc(0, 0, 0.46, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#facc15';
-  ctx.beginPath(); ctx.arc(0, -0.08, 0.08, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#1e293b';
-  ctx.beginPath(); ctx.arc(-0.03, -0.08, 0.025, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(0.03, -0.08, 0.025, 0, Math.PI * 2); ctx.fill();
-  if (label) {
-    ctx.fillStyle = '#f8fafc'; ctx.font = '0.28px system-ui, sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(label, 0, -0.65);
-  }
-  ctx.restore();
-}
-
-function drawRemoteAvatar(ctx: CanvasRenderingContext2D, x: number, y: number, color: string, name: string) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.fillStyle = color;
-  ctx.beginPath(); ctx.arc(0, 0, 0.4, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#f8fafc'; ctx.font = '0.26px system-ui, sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText(name, 0, -0.65);
-  ctx.restore();
-}
-
 export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: GameMapProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const codeInputRef = useRef<HTMLTextAreaElement>(null);
@@ -1108,10 +949,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const arenaRoomGroupRef = useRef<THREE.Group | null>(null);
   const arenaDoorHitboxRef = useRef<CircleHitbox | null>(null);
   const arenaDoorArmedRef = useRef(true);
-
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const tileMapRef = useRef<number[][] | null>(null);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.OrthographicCamera | null>(null);
@@ -1328,22 +1165,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     renderer.toneMappingExposure = 1.05;
     mountElement.appendChild(renderer.domElement);
     rendererRef.current = renderer;
-
-    // Create 2D canvas for outdoor city rendering
-    const canvas2d = document.createElement('canvas');
-    canvas2d.style.position = 'absolute';
-    canvas2d.style.top = '0';
-    canvas2d.style.left = '0';
-    canvas2d.style.width = '100%';
-    canvas2d.style.height = '100%';
-    canvas2d.style.pointerEvents = 'none';
-    canvas2d.width = mountElement.clientWidth * window.devicePixelRatio;
-    canvas2d.height = mountElement.clientHeight * window.devicePixelRatio;
-    canvas2d.style.display = 'block';
-    canvasRef.current = canvas2d;
-    mountElement.appendChild(canvas2d);
-    const ctx2d = canvas2d.getContext('2d');
-    if (ctx2d) { ctxRef.current = ctx2d; }
 
     const hemiLight = new THREE.HemisphereLight(0xfff7d1, 0x345b2a, 0.8);
     scene.add(hemiLight);
@@ -1795,8 +1616,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       radius: 1.6,
     };
 
-    tileMapRef.current = generateTileMap();
-
     roomObstacleHitboxesRef.current = [
       { shape: 'box', center: new THREE.Vector2(-3.2, 3.25), halfWidth: 0.9, halfHeight: 0.34 },
       { shape: 'box', center: new THREE.Vector2(2.9, 3.05), halfWidth: 0.82, halfHeight: 0.44 },
@@ -1947,13 +1766,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       cameraRef.current.bottom = -nextHeight / 2;
       cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(mountElement.clientWidth, mountElement.clientHeight);
-      const canvas2d = canvasRef.current;
-      if (canvas2d) {
-        canvas2d.width = mountElement.clientWidth * window.devicePixelRatio;
-        canvas2d.height = mountElement.clientHeight * window.devicePixelRatio;
-        const ctx2d = canvas2d.getContext('2d');
-        if (ctx2d) ctxRef.current = ctx2d;
-      }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -2408,9 +2220,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
 
       if (inWorkshopRoomRef.current) {
-        const canvas2d = canvasRef.current;
-        if (canvas2d) canvas2d.style.display = 'none';
-        localRobot.root.visible = true;
         outdoorGroup.visible = false;
         workshopRoomGroup.visible = true;
         arenaRoomGroup.visible = false;
@@ -2419,11 +2228,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         camera.position.y += (localPositionRef.current.y - 4.6 - camera.position.y) * 0.08;
         camera.position.z += (11.6 - camera.position.z) * 0.08;
         camera.lookAt(localPositionRef.current.x, localPositionRef.current.y, 0);
-        renderer.render(scene, camera);
       } else if (inArenaRoomRef.current) {
-        const canvas2d = canvasRef.current;
-        if (canvas2d) canvas2d.style.display = 'none';
-        localRobot.root.visible = true;
         outdoorGroup.visible = false;
         workshopRoomGroup.visible = false;
         arenaRoomGroup.visible = true;
@@ -2432,72 +2237,24 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         camera.position.y += (localPositionRef.current.y - 4.6 - camera.position.y) * 0.08;
         camera.position.z += (11.6 - camera.position.z) * 0.08;
         camera.lookAt(localPositionRef.current.x, localPositionRef.current.y, 0);
-        renderer.render(scene, camera);
       } else {
-        const canvas2d = canvasRef.current;
-        const c2d = ctxRef.current;
-        if (canvas2d) canvas2d.style.display = 'block';
-        localRobot.root.visible = false;
-        outdoorGroup.visible = false;
+        outdoorGroup.visible = true;
         workshopRoomGroup.visible = false;
         arenaRoomGroup.visible = false;
-        scene.background = null;
-        if (c2d && canvas2d && tileMapRef.current) {
-          const dpr = window.devicePixelRatio || 1;
-          const w = canvas2d.width / dpr;
-          const h = canvas2d.height / dpr;
-          c2d.clearRect(0, 0, w, h);
-          const scale = h / 26;
-          c2d.save();
-          c2d.translate(w / 2, h / 2);
-          c2d.scale(scale, -scale);
-          c2d.translate(-localPositionRef.current.x, -localPositionRef.current.y);
-          const margin = 8;
-          const vpL = localPositionRef.current.x - w / (2 * scale) - margin;
-          const vpR = localPositionRef.current.x + w / (2 * scale) + margin;
-          const vpT = localPositionRef.current.y + h / (2 * scale) + margin;
-          const vpB = localPositionRef.current.y - h / (2 * scale) - margin;
-          const tcL = Math.max(0, tileCol(vpL));
-          const tcR = Math.min(TILE_COLS - 1, tileCol(vpR));
-          const trT = Math.max(0, tileRow(vpT));
-          const trB = Math.min(TILE_ROWS - 1, tileRow(vpB));
-          const tm = tileMapRef.current;
-          for (let r = trT; r <= trB; r++) {
-            for (let c = tcL; c <= tcR; c++) {
-              const tx = MAP_LEFT + c * TILE_SIZE;
-              const ty = MAP_TOP - r * TILE_SIZE - TILE_SIZE;
-              drawTile(c2d, tx, ty, tm[r][c]);
-            }
-          }
-          // Draw whole buildings from data
-          for (const [bx, by, bw, bh, ci] of BUILDING_DATA) {
-            drawWholeBuilding(c2d, bx, by, bw, bh, ci);
-          }
-          // Draw pet shop
-          drawWholeBuilding(c2d, -14, -10, 8, 5, 0);
-          // Draw arena
-          drawWholeBuilding(c2d, 20, -14, 8, 6, 11);
-          // Draw plaza fountain
-          c2d.fillStyle = '#64748b';
-          c2d.beginPath(); c2d.arc(0, 0, 0.8, 0, Math.PI * 2); c2d.fill();
-          c2d.fillStyle = '#38bdf8';
-          c2d.beginPath(); c2d.arc(0, 0, 0.55, 0, Math.PI * 2); c2d.fill();
-          // Draw NPC Sparky
-          drawNPCOnCanvas(c2d, NPC_POSITION.x, NPC_POSITION.y, '#facc15', 'Sparky', worldTime);
-          // Draw other NPCs
-          drawNPCOnCanvas(c2d, -3.85, -1.8, '#e879f9', 'Masala Chai', worldTime);
-          drawNPCOnCanvas(c2d, 0.9, -1.8, '#60a5fa', 'Code Bazaar', worldTime);
-          drawNPCOnCanvas(c2d, 5.65, -1.8, '#34d399', 'Snack Stop', worldTime);
-          // Draw remote avatars
-          for (const avatar of Object.values(remoteAvatarsRef.current)) {
-            const hash = hashColor(avatar.name);
-            drawRemoteAvatar(c2d, avatar.target.x, avatar.target.y, `#${hash.getHexString()}`, avatar.name);
-          }
-          // Draw player on top
-          drawPlayerOnCanvas(c2d, localPositionRef.current.x, localPositionRef.current.y, worldTime);
-          c2d.restore();
-        }
+        scene.background = new THREE.Color(0x8ed6ff);
+        const cameraTargetX = localPositionRef.current.x;
+        const cameraTargetY = localPositionRef.current.y;
+        camera.position.x += (cameraTargetX + CAMERA_OFFSET.x - camera.position.x) * 0.14;
+        camera.position.y += (cameraTargetY + CAMERA_OFFSET.y - camera.position.y) * 0.14;
+        camera.position.z += (CAMERA_OFFSET.z - camera.position.z) * 0.14;
+        camera.lookAt(
+          cameraTargetX + CAMERA_LOOK_AHEAD.x,
+          cameraTargetY + CAMERA_LOOK_AHEAD.y,
+          CAMERA_LOOK_AHEAD.z
+        );
       }
+
+      renderer.render(scene, camera);
       rafRef.current = window.requestAnimationFrame(animate);
     };
 
@@ -2544,13 +2301,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       renderer.dispose();
       mountElement.removeChild(renderer.domElement);
       rendererRef.current = null;
-      const canvas2dRemove = canvasRef.current;
-      if (canvas2dRemove && mountElement.contains(canvas2dRemove)) {
-        mountElement.removeChild(canvas2dRemove);
-      }
-      canvasRef.current = null;
-      ctxRef.current = null;
-      tileMapRef.current = null;
     };
   }, [sendPosition, userId]);
 
