@@ -970,6 +970,38 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const codePreviewRef = useRef<HTMLPreElement>(null);
   const { players, connected, sendPosition } = useMultiplayer(userId, apinatorAppKey, apinatorCluster);
 
+  // Poll for player positions as fallback when Apinator is not available
+  const [polledPlayers, setPolledPlayers] = useState<Record<string, { userId: string; x: number; y: number; name?: string }>>({});
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/players');
+        if (!res.ok) return;
+        const data = await res.json();
+        const incoming: Array<Record<string, unknown>> = data?.players || [];
+        const merged: Record<string, { userId: string; x: number; y: number; name?: string }> = {};
+        for (const p of incoming) {
+          const id = (p.userId ?? p.user_id ?? '') as string;
+          if (!id || id === userId) continue;
+          merged[id] = { userId: id, x: Number(p.x) || 0, y: Number(p.y) || 0, name: (p.name as string) || undefined };
+        }
+        setPolledPlayers(merged);
+      } catch { /* ignore */ }
+    };
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, [userId]);
+
+  // Merge polled players into the remote players map for rendering
+  const allRemotePlayers = useMemo(() => {
+    const merged = { ...players };
+    for (const [id, data] of Object.entries(polledPlayers)) {
+      if (!merged[id]) merged[id] = { ...data, lastSeenAt: Date.now() };
+    }
+    return merged;
+  }, [players, polledPlayers]);
+
   const localPositionRef = useRef(new THREE.Vector2(0, 0));
   const localRobotRef = useRef<RobotVisual | null>(null);
   const remoteAvatarsRef = useRef<Record<string, RemoteAvatar>>({});
@@ -2440,9 +2472,9 @@ scene.background = new THREE.Color(0xd4e8f7);
   useEffect(() => {
     if (!sceneRef.current) return;
     const scene = sceneRef.current;
-    const activeIds = new Set(Object.keys(players));
+    const activeIds = new Set(Object.keys(allRemotePlayers));
 
-    for (const [remoteUserId, data] of Object.entries(players)) {
+    for (const [remoteUserId, data] of Object.entries(allRemotePlayers)) {
       const name = data.name?.trim() || `Robot ${remoteUserId.slice(0, 4)}`;
       if (!remoteAvatarsRef.current[remoteUserId]) {
         const color = hashColor(remoteUserId);
@@ -2483,7 +2515,7 @@ scene.background = new THREE.Color(0xd4e8f7);
       disposeObject(avatar.visual.root);
       delete remoteAvatarsRef.current[existingId];
     }
-  }, [players]);
+  }, [allRemotePlayers]);
 
   const onEditorScroll = () => {
     if (!codeInputRef.current || !codePreviewRef.current) return;
@@ -2897,7 +2929,7 @@ scene.background = new THREE.Color(0xd4e8f7);
       </div>
 
       <div className="absolute top-4 left-4 bg-black/45 text-white text-base md:text-lg px-4 py-2 rounded-full">
-        {connected ? `🟢 Live island • ${Object.keys(players).length + 1} robots` : '🟡 Connecting to island...'}
+        {connected ? `🟢 Live island • ${Object.keys(allRemotePlayers).length + 1} robots` : '🟡 Connecting to island...'}
       </div>
 
       <div className="absolute bottom-16 left-4 max-w-[min(90vw,24rem)] rounded-lg border border-amber-300/40 bg-slate-950/80 px-4 py-3 text-sm md:text-base text-amber-100 shadow-lg">
