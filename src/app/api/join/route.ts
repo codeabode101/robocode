@@ -3,6 +3,7 @@ import { jwtVerify } from 'jose';
 import { db } from '@/db';
 import { users, playerPositions } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
+import { Apinator } from '@apinator/server';
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
@@ -35,28 +36,22 @@ export async function POST(request: NextRequest) {
       ON CONFLICT (user_id) DO UPDATE SET x = ${safeX}, y = ${safeY}, updated_at = ${new Date(now).toISOString()}
     `);
 
-    const publishResponse = await fetch('https://api.apinator.io/v1/publish', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.APINATOR_SECRET!}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        channel: 'robocode-live',
-        name: 'player-join',
-        data: JSON.stringify({
-          userId,
-          x: safeX,
-          y: safeY,
-          name: (user as { name?: string } | null)?.name || 'Unknown',
-        }),
+    const apinator = new Apinator({
+      appId: '6f9eb36b9dd488e2fef9ddf0cee08a2d4db8026f',
+      key: process.env.NEXT_PUBLIC_APINATOR_APP_KEY!,
+      secret: process.env.APINATOR_SECRET!,
+      cluster: process.env.NEXT_PUBLIC_APINATOR_CLUSTER || 'us',
+    });
+    await apinator.trigger({
+      name: 'player-join',
+      channel: 'robocode-live',
+      data: JSON.stringify({
+        userId,
+        x: safeX,
+        y: safeY,
+        name: (user as { name?: string } | null)?.name || 'Unknown',
       }),
     });
-
-    if (!publishResponse.ok) {
-      const body = await publishResponse.text();
-      throw new Error(`Apinator publish failed: ${publishResponse.status} ${body}`);
-    }
 
     return NextResponse.json({ ok: true });
   } catch (error: any) {
