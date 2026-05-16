@@ -27,12 +27,13 @@ interface Props {
   declineChallenge: () => void;
   submitArenaCode: () => void;
   leaveArenaRoom: () => void;
+  currentUserId?: string;
 }
 
 export default function ArenaOverlay({
   inArenaRoom, arenaPlayers, arenaChallenge, arenaCode, setArenaCode,
   arenaOutput, arenaBattleActive, challengePlayer, acceptChallenge,
-  declineChallenge, submitArenaCode, leaveArenaRoom,
+  declineChallenge, submitArenaCode, leaveArenaRoom, currentUserId,
 }: Props) {
   if (!inArenaRoom) return null;
 
@@ -43,7 +44,7 @@ export default function ArenaOverlay({
         <div className="mt-2 text-slate-300">Players in arena:</div>
         <div className="mt-1 space-y-1">
           {arenaPlayers.length === 0 && <div className="text-slate-500 italic">No other players yet.</div>}
-          {arenaPlayers.map((p) => (
+          {arenaPlayers.filter((p) => p.id !== currentUserId).map((p) => (
             <div key={p.id} className="flex items-center justify-between rounded bg-slate-800 px-3 py-2">
               <span className="text-slate-100">{p.name}</span>
               <button type="button" className="rounded bg-red-500 px-3 py-1 text-sm font-semibold text-white hover:bg-red-400 disabled:opacity-40" disabled={arenaBattleActive} onClick={() => challengePlayer(p.id, p.name)}>Challenge</button>
