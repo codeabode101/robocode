@@ -384,12 +384,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   // Load profile data — prevents tutorial re-trigger
   useEffect(() => {
-    fetch('/api/profile').then(r => {
-      if (!r.ok) { profileLoadedRef.current = true; return null; }
+    let retries = 3;
+    const loadProfile = (): Promise<void> => fetch('/api/profile').then(r => {
+      if (!r.ok) throw new Error('Not OK');
       return r.json();
     }).then(data => {
-      if (!data) return;
-      if (data.error) { profileLoadedRef.current = true; return; }
+      if (data.error) throw new Error(data.error);
       if (data.currency !== undefined) setMoney(data.currency);
       if (data.workshopIntroDone) setWorkshopIntroSeen(true);
       if (data.questStage && data.questStage !== 'intro') {
@@ -406,7 +406,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         tutorialCompleteRef.current = true; showTutorialRef.current = false;
       }
       profileLoadedRef.current = true;
-    }).catch(() => { profileLoadedRef.current = true; });
+    }).catch(() => {
+      if (--retries > 0) return new Promise(r => setTimeout(r, 1500)).then(loadProfile);
+      profileLoadedRef.current = true;
+    });
+    loadProfile();
   }, []);
 
   // Block tutorial if already completed or profile loaded with completion
