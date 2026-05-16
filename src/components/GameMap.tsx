@@ -1015,12 +1015,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       localGroup.add(pupil);
     }
 
-    const nameSprite = createNameSprite('You', new THREE.Color(localColor));
-    localGroup.add(nameSprite);
     localGroup.position.set(0, -7, 0.30);
     scene.add(localGroup);
     localPositionRef.current.set(0, -7);
-    const localRobot = { root: localGroup, nameSprite, body: torso, shadow: torso, leftPupil: torso, rightPupil: torso, antennaTip: torso };
+    const localRobot = { root: localGroup, nameSprite: new THREE.Sprite(), body: torso, shadow: torso, leftPupil: torso, rightPupil: torso, antennaTip: torso };
     localRobotRef.current = localRobot;
 
     const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
