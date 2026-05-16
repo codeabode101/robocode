@@ -87,7 +87,8 @@ Procedural city generation:
 Orthographic camera (top-down, z-up), viewHeight=26 units, ACESFilmic tone mapping, PCFSoft shadows, Fog at 38-58 units for depth. No post-processing (EffectComposer) — would need to import from `three/examples/jsm/postprocessing/`.
 
 ## Deployment
-- **Cloudflare Workers**: `npm run deploy:cf` (builds with opennext then deploys via wrangler)
+- **Cloudflare Workers**: `./scripts/deploy.sh` (reads NEXT_PUBLIC_APINATOR_APP_KEY from .dev.vars automatically)
 - **Vercel**: `vercel` (standard Next.js deployment)
 - Build output: `.open-next/` (Cloudflare) or `.next/` (Vercel)
 - Secrets: `npx wrangler secret put <NAME>` for .dev.vars entries on Cloudflare
+- **IMPORTANT**: Do NOT hardcode `NEXT_PUBLIC_APINATOR_APP_KEY` in build commands. Always use `./scripts/deploy.sh` or export it from `.dev.vars`.

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import { db } from '@/db';
-import { userXp } from '@/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { userXp, tutorialProgress } from '@/db/schema';
+import { sql } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
@@ -65,21 +65,25 @@ export async function POST(request: NextRequest) {
     }
 
     if (valid) {
-      // Mark concept as completed
-      await db.execute(sql`
-        INSERT INTO tutorial_progress (user_id, concept, completed, completed_at)
-        VALUES (${userId}, ${concept}, 1, ${new Date().toISOString()})
-        ON CONFLICT(user_id, concept) DO UPDATE SET completed=1, completed_at=${new Date().toISOString()}
-      `);
-
-      await db.insert(userXp).values({ user_id: userId, xp: 25 })
-        .onConflictDoUpdate({ target: userXp.user_id, set: { xp: sql`user_xp.xp + 25`, updated_at: new Date() } });
+      try {
+        await db.execute(sql`
+          INSERT INTO tutorial_progress (user_id, concept, completed, completed_at)
+          VALUES (${userId}, ${concept}, 1, ${new Date().toISOString()})
+          ON CONFLICT (user_id, concept) DO UPDATE SET completed = 1, completed_at = ${new Date().toISOString()}
+        `);
+        await db.execute(sql`
+          INSERT INTO user_xp (user_id, xp, level, updated_at)
+          VALUES (${userId}, 25, 1, ${new Date().toISOString()})
+          ON CONFLICT (user_id) DO UPDATE SET xp = user_xp.xp + 25, updated_at = ${new Date().toISOString()}
+        `);
+      } catch (dbErr) {
+        console.error('DB save failed (non-fatal):', dbErr);
+      }
     }
 
-    return NextResponse.json({ valid, error });
-  } catch (error) {
-    console.error('Validation error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown validation error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ valid: !!valid, error: valid ? '' : error });
+  } catch (error: any) {
+    console.error('Validation error:', error?.message || error);
+    return NextResponse.json({ valid: false, error: 'Server error' });
   }
 }
