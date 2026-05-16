@@ -200,12 +200,13 @@ type ArenaPlayer = {
   name: string;
 };
 
-type RemoteAvatar = {
-  visual: RobotVisual;
-  target: THREE.Vector2;
-  name: string;
-  walkTime: number;
-};
+  type RemoteAvatar = {
+    visual: RobotVisual;
+    target: THREE.Vector2;
+    name: string;
+    walkTime: number;
+    room: string;
+  };
 
 type CustomerNpc = {
   id: string;
@@ -493,7 +494,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(mountElement.clientWidth, mountElement.clientHeight);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     mountElement.appendChild(renderer.domElement);
@@ -887,6 +888,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     );
     arenaDoorMesh.position.set(20, -16.7, 2.2);
     arenaBuilding.add(arenaDoorMesh);
+    const arenaDoorGlow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.05, 0.4),
+      new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.5 })
+    );
+    arenaDoorGlow.position.set(20, -17.2, 2.8);
+    arenaBuilding.add(arenaDoorGlow);
+    const arenaDoorLabel = createLabelSprite('▶ ENTER', '#0f172a', 'rgba(253,224,71,0.95)', '#f8fafc', 160, 74);
+    arenaDoorLabel.scale.set(2.4, 0.9, 1);
+    arenaDoorLabel.center.set(0.5, 0);
+    arenaDoorLabel.position.set(20, -17.4, 3.8);
+    arenaDoorLabel.renderOrder = 36;
+    arenaBuilding.add(arenaDoorLabel);
     const arenaSign = createLabelSprite('ARENA', '#f8fafc', 'rgba(220,38,38,0.92)', '#fca5a5', 280, 90);
     arenaSign.scale.set(5, 1.4, 1);
     arenaSign.center.set(0.5, 0);
@@ -1343,6 +1356,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'join' }),
               }).catch(() => {});
+              triggerEvent('client-player-join', { x: ARENA_ROOM_SPAWN.x, y: ARENA_ROOM_SPAWN.y, room: 'arena' });
               localPositionRef.current.copy(ARENA_ROOM_SPAWN);
               localRobot.root.position.set(ARENA_ROOM_SPAWN.x, ARENA_ROOM_SPAWN.y, 0.01);
               keyStateRef.current.clear();
@@ -1358,7 +1372,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
 
       if (moved && now - sendAtRef.current >= NETWORK_SYNC_MS) {
-        sendPosition(localPositionRef.current.x, localPositionRef.current.y);
+        const room = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : 'outside';
+        triggerEvent('client-player-move', { x: localPositionRef.current.x, y: localPositionRef.current.y, room });
         sendAtRef.current = now;
       }
       if (moved && now - lastStepAtRef.current > 190) {
@@ -1602,8 +1617,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         });
       }
 
+      const currentRoom = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : 'outside';
       for (const avatar of Object.values(remoteAvatarsRef.current)) {
-        avatar.visual.root.visible = !inWorkshopRoomRef.current;
+        const showAvatar = currentRoom === 'outside' || (currentRoom === 'arena' && avatar.room === 'arena');
+        avatar.visual.root.visible = showAvatar;
+        if (showAvatar) {
+          const targetGroup = currentRoom === 'arena' && avatar.room === 'arena' ? arenaRoomGroup : (outdoorGroupRef.current || scene);
+          if (avatar.visual.root.parent !== targetGroup) {
+            avatar.visual.root.parent?.remove(avatar.visual.root);
+            targetGroup.add(avatar.visual.root);
+          }
+        }
         const prevX = avatar.visual.root.position.x;
         const prevY = avatar.visual.root.position.y;
         avatar.visual.root.position.x += (avatar.target.x - avatar.visual.root.position.x) * REMOTE_LERP;
@@ -1738,8 +1762,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
     };
     fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join' }) }).catch(() => {});
-    triggerEvent('client-arena-join', {});
-    fetch('/api/arena?action=players').then(r => r.json()).then(d => { if (d.players) setArenaPlayers(d.players); }).catch(() => {});
+    triggerEvent('client-arena-join', { room: 'arena' });
+    fetch('/api/arena?action=players').then(r => r.json()).then(d => { if (d.players) setArenaPlayers(d.players.filter((p: any) => p.id !== userId)); }).catch(() => {});
     return () => {
       mp.onArenaEventRef.current = null;
       fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'leave' }) }).catch(() => {});
@@ -1754,24 +1778,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     for (const [remoteUserId, data] of Object.entries(players)) {
       const name = data.name?.trim() || `Robot ${remoteUserId.slice(0, 4)}`;
+      const remoteRoom = (data as any).room || 'outside';
       if (!remoteAvatarsRef.current[remoteUserId]) {
         const color = hashColor(remoteUserId);
         const visual = createRobotVisual(color, name);
+        visual.root.scale.set(0.4, 0.4, 0.4);
         visual.root.position.set(data.x, data.y, 0.01);
-        if (outdoorGroupRef.current) {
-          outdoorGroupRef.current.add(visual.root);
-        } else {
-          scene.add(visual.root);
-        }
         remoteAvatarsRef.current[remoteUserId] = {
           visual,
           target: new THREE.Vector2(data.x, data.y),
           name,
           walkTime: performance.now() / 1000,
+          room: remoteRoom,
         };
       } else {
         const avatar = remoteAvatarsRef.current[remoteUserId];
         avatar.target.set(data.x, data.y);
+        avatar.room = remoteRoom;
         if (avatar.name !== name) {
           avatar.visual.root.remove(avatar.visual.nameSprite);
           disposeObject(avatar.visual.nameSprite);
@@ -1785,11 +1808,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     for (const existingId of Object.keys(remoteAvatarsRef.current)) {
       if (activeIds.has(existingId)) continue;
       const avatar = remoteAvatarsRef.current[existingId];
-      if (outdoorGroupRef.current) {
-        outdoorGroupRef.current.remove(avatar.visual.root);
-      } else {
-        scene.remove(avatar.visual.root);
-      }
+      avatar.visual.root.parent?.remove(avatar.visual.root);
       disposeObject(avatar.visual.root);
       delete remoteAvatarsRef.current[existingId];
     }
@@ -1876,6 +1895,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setArenaOutput('');
     setArenaBattleActive(false);
     fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'leave' }) }).catch(() => {});
+    triggerEvent('client-player-join', { x: 20, y: -16.5, room: 'outside' });
     const outsideArena = new THREE.Vector2(20, -16.5);
     localPositionRef.current.copy(outsideArena);
     if (localRobotRef.current) {
@@ -2018,7 +2038,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} leaveWorkshopRoom={leaveWorkshopRoom} />
 
-      <ArenaOverlay inArenaRoom={inArenaRoom} arenaPlayers={arenaPlayers} arenaChallenge={arenaChallenge} arenaCode={arenaCode} setArenaCode={setArenaCode} arenaOutput={arenaOutput} arenaBattleActive={arenaBattleActive} challengePlayer={challengePlayer} acceptChallenge={acceptChallenge} declineChallenge={declineChallenge} submitArenaCode={submitArenaCode} leaveArenaRoom={leaveArenaRoom} />
+      <ArenaOverlay inArenaRoom={inArenaRoom} arenaPlayers={arenaPlayers} arenaChallenge={arenaChallenge} arenaCode={arenaCode} setArenaCode={setArenaCode} arenaOutput={arenaOutput} arenaBattleActive={arenaBattleActive} challengePlayer={challengePlayer} acceptChallenge={acceptChallenge} declineChallenge={declineChallenge} submitArenaCode={submitArenaCode} leaveArenaRoom={leaveArenaRoom} currentUserId={userId} />
 
       {roomEntryFlash && <div className="pointer-events-none fixed inset-0 z-[70] animate-pulse bg-cyan-200/35 backdrop-blur-[1px]" />}
 

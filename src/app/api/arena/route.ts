@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     const players = await db.select({ id: users.id, name: users.name })
       .from(arenaPresence)
       .innerJoin(users, eq(arenaPresence.user_id, users.id));
-    return NextResponse.json({ players });
+    return NextResponse.json({ players: players.filter((p) => p.id !== userId) });
   }
 
   if (action === 'my-challenge') {
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         const existing = await db.select()
           .from(arenaChallenges)
           .where(and(
-            or(eq(arenaChallenges.challenger_id, userId), eq(arenaChallenges.opponent_id, userId)),
+            eq(arenaChallenges.challenger_id, userId),
             eq(arenaChallenges.status, 'pending')
           ))
           .limit(1).then(r => r[0]);
