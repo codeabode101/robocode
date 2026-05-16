@@ -1,3 +1,2 @@
-import { defineCloudflareConfig } from "@opennextjs/cloudflare";
-
-export default defineCloudflareConfig({});
+// OpenNext config — not used (Vercel deploys via next build)
+export default {};
