@@ -7,6 +7,7 @@ export async function middleware(request: NextRequest) {
 
   if (
     pathname.startsWith('/api/auth') ||
+    pathname === '/api/ping' ||
     pathname === '/login' ||
     pathname === '/signup' ||
     pathname === '/'

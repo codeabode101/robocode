@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import { db } from '@/db';
-import { users } from '@/db/schema';
+import { users, tutorialProgress } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -15,8 +15,24 @@ export async function GET(request: NextRequest) {
     const user = await db.select({ name: users.name, email: users.email, currency: users.currency })
       .from(users).where(eq(users.id, userId)).limit(1).then(r => r[0]);
 
-    return NextResponse.json(user ?? { error: 'Not found' }, { status: user ? 200 : 404 });
-  } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const tutorials = await db.select({ concept: tutorialProgress.concept })
+      .from(tutorialProgress).where(eq(tutorialProgress.user_id, userId));
+
+    if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    const concepts = tutorials.map(t => t.concept);
+    const questStage = concepts.find(c => c.startsWith('_quest_'))?.replace('_quest_', '') || 'intro';
+
+    return NextResponse.json({
+      name: user.name,
+      email: user.email,
+      currency: user.currency,
+      tutorials: concepts,
+      questStage,
+      workshopIntroDone: concepts.includes('_workshop_intro'),
+    });
+  } catch (err) {
+    console.error('Profile load error:', err);
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
