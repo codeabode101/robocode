@@ -73,6 +73,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true });
       }
       case 'challenge': {
+        // expire any stale pending challenges (>60s old)
+        await db.update(arenaChallenges).set({ status: 'declined', completed_at: new Date() })
+          .where(and(
+            eq(arenaChallenges.challenger_id, userId),
+            eq(arenaChallenges.status, 'pending'),
+            sql`created_at < NOW() - INTERVAL '60 seconds'`
+          ));
         const existing = await db.select()
           .from(arenaChallenges)
           .where(and(

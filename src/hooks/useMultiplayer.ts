@@ -8,6 +8,7 @@ interface PlayerPosition {
   x: number;
   y: number;
   name?: string;
+  room?: string;
   lastSeenAt: number;
 }
 
@@ -61,6 +62,7 @@ export function useMultiplayer(
           x: Number(parsed?.x) || 0,
           y: Number(parsed?.y) || 0,
           name: typeof parsed?.name === 'string' ? parsed.name : prev[remoteUserId]?.name,
+          room: typeof parsed?.room === 'string' ? parsed.room : prev[remoteUserId]?.room,
           lastSeenAt: Date.now(),
         },
       }));

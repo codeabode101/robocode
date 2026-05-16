@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useMultiplayer } from '@/hooks/useMultiplayer';
-import type { SparkyQuestStage, CustomerRequest } from '@/components/game/types';
+import type { SparkyQuestStage, CustomerRequest, ArenaPlayer } from '@/components/game/types';
 import Editor from '@/components/game/Editor';
 import TutorialOverlay from '@/components/game/TutorialOverlay';
 import ArenaOverlay from '@/components/game/ArenaOverlay';
@@ -195,11 +195,6 @@ function highlightJava(input: string) {
   return output;
 }
 
-type ArenaPlayer = {
-  id: string;
-  name: string;
-};
-
   type RemoteAvatar = {
     visual: RobotVisual;
     target: THREE.Vector2;
@@ -245,8 +240,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const petShopMarkerRef = useRef<THREE.Sprite | null>(null);
   const outdoorGroupRef = useRef<THREE.Group | null>(null);
   const workshopRoomGroupRef = useRef<THREE.Group | null>(null);
-    const yawRef = useRef(0);
-    const obstacleHitboxesRef = useRef<Hitbox[]>([]);
+  const yawRef = useRef(0);
+  const obstacleHitboxesRef = useRef<Hitbox[]>([]);
   const roomObstacleHitboxesRef = useRef<Hitbox[]>([]);
   const workshopDoorHitboxRef = useRef<CircleHitbox | null>(null);
   const workshopDoorArmedRef = useRef(true);
@@ -306,6 +301,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [arenaCode, setArenaCode] = useState('');
   const [arenaOutput, setArenaOutput] = useState('');
   const [arenaBattleActive, setArenaBattleActive] = useState(false);
+  const [battleId, setBattleId] = useState<string | null>(null);
+  const [battleStatus, setBattleStatus] = useState('');
+  const [battleResult, setBattleResult] = useState<any>(null);
+  const [waitingForOpponent, setWaitingForOpponent] = useState(false);
+  const [myRank, setMyRank] = useState({ elo: 1000, rank_tier: 'bronze', wins: 0, losses: 0 });
+  const [battleState, setBattleState] = useState<{
+    round: number; myTurn: boolean; p1Hp: number; p2Hp: number;
+    p1Energy: number; p2Energy: number; submitted: boolean;
+    revealedAction: string | null; roundHistory: any[];
+    turnResult: any; gameOver: boolean; winnerId: string | null;
+    p1TimeBank: number; p2TimeBank: number; userWon: boolean;
+    currentTurn: string | null; isChallenger: boolean; challengerId: string;
+  } | null>(null);
   const [sparkyModal, setSparkyModal] = useState<string | null>(null);
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
@@ -911,7 +919,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     arenaBuildingRef.current = arenaBuilding;
 
     const arenaMarker = createExclamationMarker();
-    arenaMarker.position.set(20, -10, 4.8);
+    arenaMarker.position.set(20, -17.2, 4.5);
     arenaMarker.renderOrder = 60;
     arenaMarker.visible = true;
     arenaBuilding.add(arenaMarker);
@@ -1032,10 +1040,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       localGroup.add(pupil);
     }
 
+    const youName = createNameSprite('You', new THREE.Color(localColor));
+    localGroup.add(youName);
+    const rankLabel = createLabelSprite('', '#fbbf24', 'rgba(2,6,23,0.7)', '#fbbf24', 80, 28, 4, 2, 12);
+    rankLabel.scale.set(1.2, 0.4, 1);
+    rankLabel.position.set(0, 2.7, 0.96);
+    rankLabel.renderOrder = 45;
+    rankLabel.visible = false;
+    rankLabel.name = 'rank-label';
+    localGroup.add(rankLabel);
     localGroup.position.set(0, -7, 0.30);
     scene.add(localGroup);
     localPositionRef.current.set(0, -7);
-    const localRobot = { root: localGroup, nameSprite: new THREE.Sprite(), body: torso, shadow: torso, leftPupil: torso, rightPupil: torso, antennaTip: torso };
+    const localRobot = { root: localGroup, nameSprite: youName, body: torso, shadow: torso, leftPupil: torso, rightPupil: torso, antennaTip: torso };
     localRobotRef.current = localRobot;
 
     const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
@@ -1658,6 +1675,28 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         workshopRoomGroup.visible = inWorkshopRoomRef.current;
         arenaRoomGroup.visible = inArenaRoomRef.current;
         scene.background = new THREE.Color(roomBg);
+        const rankLabelObj = localRobot.root.getObjectByName('rank-label') as THREE.Sprite | undefined;
+        if (rankLabelObj) {
+          if (inArenaRoomRef.current) {
+            rankLabelObj.visible = true;
+            const tier = myRank.rank_tier;
+            if (rankLabelObj.userData.lastTier !== tier) {
+              rankLabelObj.userData.lastTier = tier;
+              const label = (tier.charAt(0).toUpperCase() + tier.slice(1) + ' #' + myRank.elo) as string;
+              const newLabel = createLabelSprite(label, '#fbbf24', 'rgba(2,6,23,0.7)', '#fbbf24', 120, 28, 4, 2, 12);
+              newLabel.scale.copy(rankLabelObj.scale);
+              newLabel.position.copy(rankLabelObj.position);
+              newLabel.renderOrder = rankLabelObj.renderOrder;
+              newLabel.name = 'rank-label';
+              newLabel.userData.lastTier = tier;
+              localRobot.root.remove(rankLabelObj);
+              disposeObject(rankLabelObj);
+              localRobot.root.add(newLabel);
+            }
+          } else {
+            rankLabelObj.visible = false;
+          }
+        }
         const yaw = yawRef.current;
         const px = localPositionRef.current.x;
         const py = localPositionRef.current.y;
@@ -1739,6 +1778,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       setArenaPlayers([]);
       setArenaChallenge(null);
       setArenaBattleActive(false);
+      setBattleId(null);
+      setBattleStatus('');
+      setBattleResult(null);
+      setWaitingForOpponent(false);
       setArenaOutput('');
       return;
     }
@@ -1751,11 +1794,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       } else if (event.type === 'arena-leave') {
         setArenaPlayers((prev) => prev.filter(p => p.id !== event.fromId));
       } else if (event.type === 'arena-challenge') {
-        setArenaChallenge({ id: '', fromId: event.fromId, fromName: event.fromName, status: 'pending' });
+        setArenaChallenge({ id: event.challengeId || '', fromId: event.fromId, fromName: event.fromName, status: 'pending' });
       } else if (event.type === 'arena-accept') {
         setArenaBattleActive(true);
+        setBattleId(event.challengeId || null);
         setArenaChallenge({ id: event.challengeId || '', status: 'active' });
-        setArenaOutput('Battle started! Write your code.');
+        setBattleState({ round: 0, myTurn: true, p1Hp: 20, p2Hp: 20, p1Energy: 3, p2Energy: 3, submitted: false, revealedAction: null, roundHistory: [], turnResult: null, gameOver: false, winnerId: null, p1TimeBank: 240000, p2TimeBank: 240000, userWon: false, currentTurn: userId, isChallenger: true, challengerId: userId });
+        setArenaOutput('Battle accepted! Write your code.');
       } else if (event.type === 'arena-decline') {
         setArenaChallenge(null);
         setArenaOutput('Challenge declined.');
@@ -1764,12 +1809,81 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join' }) }).catch(() => {});
     triggerEvent('client-arena-join', { room: 'arena' });
     fetch('/api/arena?action=players').then(r => r.json()).then(d => { if (d.players) setArenaPlayers(d.players.filter((p: any) => p.id !== userId)); }).catch(() => {});
+    fetch('/api/arena/battle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rank' }) }).then(r => r.json()).then(d => { if (d.rank) setMyRank(d.rank); }).catch(() => {});
     return () => {
       mp.onArenaEventRef.current = null;
       fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'leave' }) }).catch(() => {});
       triggerEvent('client-arena-leave', {});
     };
   }, [inArenaRoom]);
+
+  // poll battle status while waiting for opponent
+  useEffect(() => {
+    if (!waitingForOpponent || !battleId) return;
+    let attempts = 0;
+    const maxAttempts = 40;
+    const interval = window.setInterval(async () => {
+      attempts++;
+      if (attempts > maxAttempts) {
+        window.clearInterval(interval);
+        setWaitingForOpponent(false);
+        return;
+      }
+      try {
+        const res = await fetch('/api/arena/battle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'status', battleId }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.battle) return;
+        const b = data.battle;
+        if (b.status === 'completed') {
+          setBattleResult(b.roundHistory?.length > 0 ? { message: `Player ${b.winnerId === b.challengerId ? '1' : '2'} wins!`, turns: b.roundHistory } : null);
+          setArenaBattleActive(false);
+          setBattleStatus('completed');
+          setWaitingForOpponent(false);
+          setBattleState((prev) => {
+            if (!prev) return null;
+            return { ...prev, gameOver: true, myTurn: false, submitted: false, winnerId: b.winnerId, roundHistory: b.roundHistory || [] };
+          });
+          setArenaOutput(b.winnerId === userId ? 'You won!' : 'You lost.');
+          fetch('/api/arena/battle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rank' }) }).then(r => r.json()).then(d => { if (d.rank) setMyRank(d.rank); }).catch(() => {});
+        } else if (b.status === 'pending') {
+          // battle not yet accepted by opponent
+          setArenaOutput('Waiting for opponent to accept...');
+        } else {
+          const lastResult = b.roundHistory?.[b.roundHistory.length - 1] || null;
+          setBattleState((prev) => {
+            const myTurn = b.myTurn;
+            const submitted = b.iSubmitted;
+            const waiting = !myTurn && !submitted;
+            setWaitingForOpponent(waiting);
+            return {
+              round: b.roundNumber,
+              myTurn,
+              p1Hp: b.p1Hp, p2Hp: b.p2Hp,
+              p1Energy: b.p1Energy, p2Energy: b.p2Energy,
+              submitted,
+              revealedAction: b.revealedAction || null,
+              roundHistory: b.roundHistory || [],
+              turnResult: lastResult,
+              gameOver: false,
+              winnerId: null,
+              p1TimeBank: b.p1TimeBank,
+              p2TimeBank: b.p2TimeBank,
+              userWon: false,
+              currentTurn: b.currentTurn,
+              isChallenger: b.challengerId === userId,
+              challengerId: b.challengerId,
+            };
+          });
+        }
+      } catch { /* ignore */ }
+    }, 2000);
+    return () => window.clearInterval(interval);
+  }, [waitingForOpponent, battleId, userId]);
 
   useEffect(() => {
     if (!sceneRef.current) return;
@@ -1778,11 +1892,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     for (const [remoteUserId, data] of Object.entries(players)) {
       const name = data.name?.trim() || `Robot ${remoteUserId.slice(0, 4)}`;
-      const remoteRoom = (data as any).room || 'outside';
+      const remoteRoom = data.room || 'outside';
       if (!remoteAvatarsRef.current[remoteUserId]) {
         const color = hashColor(remoteUserId);
         const visual = createRobotVisual(color, name);
-        visual.root.scale.set(0.4, 0.4, 0.4);
+        visual.root.scale.set(0.6, 0.6, 0.6);
         visual.root.position.set(data.x, data.y, 0.01);
         remoteAvatarsRef.current[remoteUserId] = {
           visual,
@@ -1894,6 +2008,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setArenaCode('');
     setArenaOutput('');
     setArenaBattleActive(false);
+    setBattleState(null);
     fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'leave' }) }).catch(() => {});
     triggerEvent('client-player-join', { x: 20, y: -16.5, room: 'outside' });
     const outsideArena = new THREE.Vector2(20, -16.5);
@@ -1903,37 +2018,34 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
   };
 
-  const challengePlayer = async (targetId: string, targetName: string) => {
+  const challengePlayer = async (targetId: string, targetName: string, wagerAmount: number) => {
     try {
-      const res = await fetch('/api/arena', {
+      const res = await fetch('/api/arena/battle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'challenge', opponentId: targetId }),
+        body: JSON.stringify({ action: 'start', opponentId: targetId, wager: wagerAmount }),
       });
       const data = await res.json();
       if (data.error) { setArenaOutput(`❌ ${data.error}`); return; }
-      triggerEvent('client-arena-challenge', { targetId });
-      setArenaOutput(`Challenge sent to ${targetName}!`);
+      setBattleId(data.battleId);
+      setArenaBattleActive(true);
+      setWaitingForOpponent(true);
+      setArenaOutput(`Challenge sent to ${targetName}! Awaiting acceptance...`);
+      triggerEvent('client-arena-challenge', { targetId, wager: wagerAmount, challengeId: data.battleId });
     } catch {
       setArenaOutput('❌ Failed to send challenge.');
     }
   };
 
-  const acceptChallenge = async (fromId: string) => {
-    try {
-      const res = await fetch('/api/arena', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'accept', opponentId: fromId }),
-      });
-      const data = await res.json();
-      if (data.error) { setArenaOutput(`❌ ${data.error}`); return; }
+  const acceptChallenge = async (fromId: string, wagerAmount = 0, incomingBattleId?: string) => {
+    if (incomingBattleId) {
+      setBattleId(incomingBattleId);
       setArenaBattleActive(true);
       setArenaChallenge(null);
-      setArenaOutput('Battle started! Write your code and submit.');
-      triggerEvent('client-arena-accept', { challengeId: data.challenge?.id });
-    } catch {
-      setArenaOutput('❌ Failed to accept challenge.');
+      setBattleState({ round: 0, myTurn: false, p1Hp: 20, p2Hp: 20, p1Energy: 3, p2Energy: 3, submitted: false, revealedAction: null, roundHistory: [], turnResult: null, gameOver: false, winnerId: null, p1TimeBank: 240000, p2TimeBank: 240000, userWon: false, currentTurn: fromId, isChallenger: false, challengerId: fromId });
+      setWaitingForOpponent(true);
+      setArenaOutput('Battle accepted! Submit your AI code.');
+      triggerEvent('client-arena-accept', { challengeId: incomingBattleId });
     }
   };
 
@@ -1947,26 +2059,49 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setArenaOutput('Challenge declined.');
   };
 
-  const submitArenaCode = async () => {
-    if (!arenaCode.trim()) {
-      setArenaOutput('Write some code first.');
+  const submitBattleCode = async (code: string) => {
+    if (!code.trim()) {
+      setArenaOutput('Write your battle code first.');
       return;
     }
     try {
-      const res = await fetch('/api/arena/submit', {
+      const res = await fetch('/api/arena/battle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ challengeId: arenaChallenge?.id, code: arenaCode }),
+        body: JSON.stringify({ action: 'submit-turn', battleId, code }),
       });
       const data = await res.json();
-      if (data.error) {
-        setArenaOutput(`❌ ${data.error}`);
+      if (data.error) { setArenaOutput(`❌ ${data.error}`); return; }
+      if (data.gameOver) {
+        setBattleState((prev) => {
+          if (!prev) return prev;
+          return { ...prev, gameOver: true, myTurn: false, submitted: true, winnerId: data.resolved?.winnerId || null, userWon: data.resolved?.userWon || false };
+        });
+        setBattleResult(data.resolved);
+        setArenaBattleActive(false);
+        setBattleStatus('completed');
+        setArenaOutput(data.resolved?.message || 'Battle over!');
+        fetch('/api/arena/battle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rank' }) }).then(r => r.json()).then(d => { if (d.rank) setMyRank(d.rank); }).catch(() => {});
+      } else if (data.resolved?.resolved) {
+        // both submitted, turn resolved
+        setBattleState((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev, round: data.turn, myTurn: data.resolved.nextTurn === userId,
+            submitted: false, revealedAction: null, turnResult: data.result,
+            p1TimeBank: data.p1TimeBank ?? prev.p1TimeBank,
+            p2TimeBank: data.p2TimeBank ?? prev.p2TimeBank,
+          };
+        });
+        setArenaOutput(`Turn resolved! ${data.result?.message || ''}`);
       } else {
-        setArenaOutput(data.output || 'Code submitted!');
-        if (data.winner) {
-          setArenaOutput(`🏆 ${data.winner} wins!`);
-          setArenaBattleActive(false);
-        }
+        // submitted, waiting for opponent
+        setBattleState((prev) => {
+          if (!prev) return null;
+          return { ...prev, submitted: true, myTurn: false };
+        });
+        setWaitingForOpponent(true);
+        setArenaOutput('Code submitted! Waiting for opponent...');
       }
     } catch {
       setArenaOutput('❌ Failed to submit code.');
@@ -2038,7 +2173,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} leaveWorkshopRoom={leaveWorkshopRoom} />
 
-      <ArenaOverlay inArenaRoom={inArenaRoom} arenaPlayers={arenaPlayers} arenaChallenge={arenaChallenge} arenaCode={arenaCode} setArenaCode={setArenaCode} arenaOutput={arenaOutput} arenaBattleActive={arenaBattleActive} challengePlayer={challengePlayer} acceptChallenge={acceptChallenge} declineChallenge={declineChallenge} submitArenaCode={submitArenaCode} leaveArenaRoom={leaveArenaRoom} currentUserId={userId} />
+      <ArenaOverlay inArenaRoom={inArenaRoom} arenaPlayers={arenaPlayers} challengePlayer={challengePlayer as any} acceptChallenge={acceptChallenge as any} declineChallenge={declineChallenge} submitBattleCode={submitBattleCode} leaveArenaRoom={leaveArenaRoom} currentUserId={userId} battleId={battleId} battleStatus={battleStatus} battleActive={arenaBattleActive} battleResult={battleResult} waitingForOpponent={waitingForOpponent} myRank={myRank} arenaChallenge={arenaChallenge} battleState={battleState} />
 
       {roomEntryFlash && <div className="pointer-events-none fixed inset-0 z-[70] animate-pulse bg-cyan-200/35 backdrop-blur-[1px]" />}
 

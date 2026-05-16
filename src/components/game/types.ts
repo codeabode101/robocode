@@ -71,3 +71,9 @@ export type TutorialPhase =
 export type Hitbox = 
   | { shape: 'circle'; center: Vec2; radius: number }
   | { shape: 'box'; center: Vec2; halfWidth: number; halfHeight: number };
+
+export type ArenaPlayer = {
+  id: string;
+  name: string;
+  rankTier?: string;
+};

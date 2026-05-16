@@ -14,6 +14,8 @@ async function migrate() {
     DROP TABLE IF EXISTS guild_members CASCADE;
     DROP TABLE IF EXISTS guilds CASCADE;
     DROP TABLE IF EXISTS user_xp CASCADE;
+    DROP TABLE IF EXISTS arena_rank CASCADE;
+    DROP TABLE IF EXISTS arena_battles CASCADE;
     DROP TABLE IF EXISTS arena_challenges CASCADE;
     DROP TABLE IF EXISTS arena_presence CASCADE;
     DROP TABLE IF EXISTS friend_requests CASCADE;
@@ -132,6 +134,33 @@ async function migrate() {
     );
     CREATE INDEX IF NOT EXISTS friend_requests_receiver_idx ON friend_requests(receiver_id);
     CREATE INDEX IF NOT EXISTS friend_requests_sender_idx ON friend_requests(sender_id);
+
+    CREATE TABLE arena_rank (
+      user_id VARCHAR(36) PRIMARY KEY REFERENCES users(id),
+      elo INTEGER NOT NULL DEFAULT 1000,
+      rank_tier VARCHAR(20) NOT NULL DEFAULT 'bronze',
+      wins INTEGER NOT NULL DEFAULT 0,
+      losses INTEGER NOT NULL DEFAULT 0,
+      battles INTEGER NOT NULL DEFAULT 0,
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE arena_battles (
+      id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid(),
+      challenger_id VARCHAR(36) NOT NULL REFERENCES users(id),
+      opponent_id VARCHAR(36) NOT NULL REFERENCES users(id),
+      winner_id VARCHAR(36) REFERENCES users(id),
+      status VARCHAR(20) NOT NULL DEFAULT 'pending',
+      wager INTEGER NOT NULL DEFAULT 0,
+      battle_log TEXT,
+      round_number INTEGER NOT NULL DEFAULT 0,
+      current_turn VARCHAR(36) REFERENCES users(id),
+      p1_time_bank_ms INTEGER NOT NULL DEFAULT 240000,
+      p2_time_bank_ms INTEGER NOT NULL DEFAULT 240000,
+      round_history TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      completed_at TIMESTAMP
+    );
 
     CREATE TABLE tutorial_progress (
       user_id VARCHAR(36) NOT NULL REFERENCES users(id),

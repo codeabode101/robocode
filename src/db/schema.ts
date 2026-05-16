@@ -134,6 +134,39 @@ export const guildChat = pgTable('guild_chat', {
   created_at: timestamp('created_at').notNull().defaultNow(),
 });
 
+export const arenaRank = pgTable('arena_rank', {
+  user_id: varchar('user_id', { length: 36 })
+    .primaryKey()
+    .references(() => users.id),
+  elo: integer('elo').notNull().default(1000),
+  rank_tier: varchar('rank_tier', { length: 20 }).notNull().default('bronze'),
+  wins: integer('wins').notNull().default(0),
+  losses: integer('losses').notNull().default(0),
+  battles: integer('battles').notNull().default(0),
+  updated_at: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const arenaBattles = pgTable('arena_battles', {
+  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
+  challenger_id: varchar('challenger_id', { length: 36 })
+    .notNull()
+    .references(() => users.id),
+  opponent_id: varchar('opponent_id', { length: 36 })
+    .notNull()
+    .references(() => users.id),
+  winner_id: varchar('winner_id', { length: 36 }).references(() => users.id),
+  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  wager: integer('wager').notNull().default(0),
+  battle_log: text('battle_log'),
+  round_number: integer('round_number').notNull().default(0),
+  current_turn: varchar('current_turn', { length: 36 }).references(() => users.id),
+  p1_time_bank_ms: integer('p1_time_bank_ms').notNull().default(240000),
+  p2_time_bank_ms: integer('p2_time_bank_ms').notNull().default(240000),
+  round_history: text('round_history'),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  completed_at: timestamp('completed_at'),
+});
+
 export const tutorialProgress = pgTable('tutorial_progress', {
   user_id: varchar('user_id', { length: 36 })
     .notNull()
