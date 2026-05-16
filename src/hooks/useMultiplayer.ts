@@ -29,11 +29,13 @@ export function useMultiplayer(
   const [arenaChallenge, setArenaChallenge] = useState<{ fromId: string; fromName: string } | null>(null);
   const apinatorRef = useRef<Apinator | null>(null);
   const connectedRef = useRef(false);
+  const channelReadyRef = useRef(false);
   const userIdRef = useRef(userId);
   userIdRef.current = userId;
   const playerNameRef = useRef('');
   const arenaPlayersRef = useRef<{ id: string; name: string }[]>([]);
   const onArenaEventRef = useRef<((event: ArenaEvent) => void) | null>(null);
+  const eventQueueRef = useRef<Array<{ event: string; data: Record<string, unknown> }>>([]);
 
   useEffect(() => {
     if (!apinatorAppKey) {
@@ -106,10 +108,19 @@ export function useMultiplayer(
       connectedRef.current = isConnected;
       setConnected(isConnected);
       if (isConnected) { reconnectDelayMs = 1200; clearReconnectTimeout(); }
-      else { scheduleReconnect(); }
+      if (!isConnected) { channelReadyRef.current = false; scheduleReconnect(); }
     });
 
     const channel = apinator.subscribe('private-robocode-live');
+
+    channel.bind('realtime:subscription_succeeded', () => {
+      channelReadyRef.current = true;
+      const queue = eventQueueRef.current;
+      eventQueueRef.current = [];
+      for (const queued of queue) {
+        try { apinator.trigger('private-robocode-live', queued.event, queued.data); } catch { /* ignore */ }
+      }
+    });
 
     channel.bind('client-player-move', upsertRemotePlayer);
     channel.bind('client-player-join', upsertRemotePlayer);
@@ -136,6 +147,8 @@ export function useMultiplayer(
     return () => {
       setConnected(false);
       connectedRef.current = false;
+      channelReadyRef.current = false;
+      eventQueueRef.current = [];
       clearReconnectTimeout();
       window.clearInterval(reconnectInterval);
       document.removeEventListener('visibilitychange', handleVisibility);
@@ -153,10 +166,18 @@ export function useMultiplayer(
 
   function triggerEvent(event: string, data: Record<string, unknown>) {
     const apinator = apinatorRef.current;
-    if (!apinator || !connectedRef.current) return;
-    const channel = apinator.channel('private-robocode-live');
-    if (channel && (channel as any).subscribed) {
-      try { apinator.trigger('private-robocode-live', event, { ...data, userId: userIdRef.current, name: playerNameRef.current }); } catch { /* ignore */ }
+    if (!apinator) return;
+    const enriched = { ...data, userId: userIdRef.current, name: playerNameRef.current };
+
+    if (!channelReadyRef.current) {
+      eventQueueRef.current.push({ event, data: enriched });
+      return;
+    }
+
+    try {
+      apinator.trigger('private-robocode-live', event, enriched);
+    } catch {
+      eventQueueRef.current.push({ event, data: enriched });
     }
   }
 
