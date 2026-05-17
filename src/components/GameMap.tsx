@@ -19,7 +19,7 @@ import {
 } from '@/components/game/scene';
 import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode } from '@/components/game/helpers';
 import { unit1Phases } from '@/components/game/tutorialData';
-import { GRIND_TARGETS } from '@/components/game/types';
+import { SCRAP_PART_COSTS } from '@/components/game/types';
 
 // If URL contains ?nocache=1 and no cache-bust, unregister service workers and reload
 if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
@@ -355,14 +355,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
   const missionText = useMemo(() => {
     if (sparkyQuestStage === 'intro') return 'Mission: Talk to Sparky to begin.';
-    if (sparkyQuestStage === 'grind1') return `Mission: Earn $10 at the Pet Workshop. ($${money}/10)`;
-    if (sparkyQuestStage === 'grind2') return `Mission: Earn $20 at the Pet Workshop. ($${money}/20)`;
-    if (sparkyQuestStage === 'grind3') return `Mission: Earn $30 at the Pet Workshop. ($${money}/30)`;
-    if (sparkyQuestStage === 'arena-ready') return 'Arena unlocked! Battle your friends.';
-    if (sparkyQuestStage === 'unit1') return 'Complete the tutorial with Sparky.';
-    if (sparkyQuestStage === 'unit2' || sparkyQuestStage === 'unit3') return `This lesson isn't ready yet — keep grinding! ($${money})`;
-    if (sparkyQuestStage === 'unit4') return 'This lesson isn\'t ready yet — arena will unlock soon!';
-    return 'Mission: Earn $10 at the Pet Workshop. ($${money}/10)';
+    if (sparkyQuestStage === 'unit1') return 'Mission: Diagnose Scrap with Sparky.';
+    if (sparkyQuestStage === 'unit1-done') return `Mission: Earn $${SCRAP_PART_COSTS['unit1-done']} for Scrap's sensor part. ($${money}/${SCRAP_PART_COSTS['unit1-done']})`;
+    if (sparkyQuestStage === 'unit2') return 'Mission: Complete Unit 2 with Sparky.';
+    if (sparkyQuestStage === 'unit2-done') return `Mission: Earn $${SCRAP_PART_COSTS['unit2-done']} for Scrap's voice module. ($${money}/${SCRAP_PART_COSTS['unit2-done']})`;
+    if (sparkyQuestStage === 'unit3') return 'Mission: Complete Unit 3 with Sparky.';
+    if (sparkyQuestStage === 'unit3-done') return `Mission: Earn $${SCRAP_PART_COSTS['unit3-done']} for Scrap's navigation chip. ($${money}/${SCRAP_PART_COSTS['unit3-done']})`;
+    if (sparkyQuestStage === 'unit4') return 'Mission: Complete Unit 4 with Sparky.';
+    if (sparkyQuestStage === 'all-done') return 'Scrap is fully repaired! Arena unlocked.';
+    return 'Explore the city!';
   }, [sparkyQuestStage, money]);
   const moneyRef = useRef(0);
   const sparkyQuestStageRef = useRef<SparkyQuestStage>('intro');
@@ -458,27 +459,26 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (data.workshopIntroDone) setWorkshopIntroSeen(true);
       if (data.questStage && data.questStage !== 'intro') {
         let mappedStage = String(data.questStage) as SparkyQuestStage;
-        const oldStages = ['earn-money', 'buy-chai', 'gift-ready', 'done'];
+        const oldStages = ['earn-money', 'buy-chai', 'gift-ready', 'done', 'grind1', 'grind2', 'grind3', 'arena-ready', 'unit2', 'unit3', 'unit4', 'unit2-done', 'unit3-done', 'unit4-done', 'all-done'];
         if (oldStages.includes(String(data.questStage))) {
-          mappedStage = 'grind1';
+          mappedStage = 'unit1-done';
         }
-        const c = data.currency ?? 0;
-        if (mappedStage === 'grind1' && c >= 10) mappedStage = 'unit2';
-        if (mappedStage === 'grind2' && c >= 20) mappedStage = 'unit3';
-        if (mappedStage === 'grind3' && c >= 30) mappedStage = 'unit4';
         setSparkyQuestStage(mappedStage);
         sparkyQuestStageRef.current = mappedStage;
-        if (mappedStage !== 'intro' && mappedStage !== 'unit1') {
-          setTutorialComplete(true); setShopUnlocked(true);
-          tutorialCompleteRef.current = true; showTutorialRef.current = false;
+        if (mappedStage === 'intro') {
+          setTutorialComplete(false); setShopUnlocked(false);
+          tutorialCompleteRef.current = false; showTutorialRef.current = false;
         } else if (mappedStage === 'unit1') {
           setTutorialComplete(false); setShopUnlocked(true);
           tutorialCompleteRef.current = false; showTutorialRef.current = false;
+        } else {
+          setTutorialComplete(true); setShopUnlocked(true);
+          tutorialCompleteRef.current = true; showTutorialRef.current = false;
         }
       }
       if (data.questStage === 'intro' && data.tutorials?.length > 0) {
-        setTutorialComplete(true); setShopUnlocked(true); setSparkyQuestStage('grind1');
-        sparkyQuestStageRef.current = 'grind1';
+        setTutorialComplete(true); setShopUnlocked(true); setSparkyQuestStage('unit1-done');
+        sparkyQuestStageRef.current = 'unit1-done';
         tutorialCompleteRef.current = true; showTutorialRef.current = false;
       }
       profileLoadedRef.current = true;
@@ -491,7 +491,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   // Block tutorial if already completed or profile loaded with completion
   useEffect(() => {
-    if (tutorialComplete || sparkyQuestStage !== 'intro') {
+    if (tutorialComplete || (sparkyQuestStage !== 'intro' && sparkyQuestStage !== 'unit1')) {
       showTutorialRef.current = false;
     }
   }, [tutorialComplete, sparkyQuestStage]);
@@ -980,7 +980,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     doorAnchor.position.set(-6, -10.0, 2.5);
     outdoorGroup.add(doorAnchor);
     const doorMarker = addExclamationMarker(doorAnchor);
-    doorMarker.visible = sparkyQuestStageRef.current === 'grind1' || sparkyQuestStageRef.current === 'grind2' || sparkyQuestStageRef.current === 'grind3';
+    doorMarker.visible = sparkyQuestStageRef.current === 'intro' || sparkyQuestStageRef.current === 'unit1-done' || sparkyQuestStageRef.current === 'unit2-done' || sparkyQuestStageRef.current === 'unit3-done';
     workshopDoorMarkerRef.current = doorMarker;
 
     // Transport store at (-18.75, -12) — within left grass block, clears sidewalks
@@ -1880,7 +1880,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const distanceToSparky = localPositionRef.current.distanceTo(NPC_POSITION);
         let outsidePrompt: string | null = null;
 
-        if (profileLoadedRef.current && distanceToSparky < SPARKY_INTERACTION_DISTANCE && !showTutorialRef.current && !tutorialCompleteRef.current) {
+        if (profileLoadedRef.current && distanceToSparky < SPARKY_INTERACTION_DISTANCE && !showTutorialRef.current && (sparkyQuestStageRef.current === 'intro' || sparkyQuestStageRef.current === 'unit1')) {
           setShowTutorial(true);
           setTutorialStep(0);
           setCode(unit1Phases[0].kind === 'dialogue' ? '' : unit1Phases[0].starterCode || '');
@@ -1893,11 +1893,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setOutput('');
         }
 
-        const isGrindStage = sparkyQuestStageRef.current === 'grind1' || sparkyQuestStageRef.current === 'grind2' || sparkyQuestStageRef.current === 'grind3';
-        const grindTarget = isGrindStage && sparkyQuestStageRef.current ? GRIND_TARGETS[sparkyQuestStageRef.current] : 0;
+        const showSparkyPrompt =
+          sparkyQuestStageRef.current === 'intro' ||
+          sparkyQuestStageRef.current === 'unit1' ||
+          sparkyQuestStageRef.current === 'unit1-done' ||
+          sparkyQuestStageRef.current === 'unit2' ||
+          sparkyQuestStageRef.current === 'unit2-done' ||
+          sparkyQuestStageRef.current === 'unit3' ||
+          sparkyQuestStageRef.current === 'unit3-done' ||
+          sparkyQuestStageRef.current === 'unit4' ||
+          sparkyQuestStageRef.current === 'all-done';
 
         if (
-          (isGrindStage || sparkyQuestStageRef.current === 'unit1' || sparkyQuestStageRef.current === 'unit2' || sparkyQuestStageRef.current === 'unit3' || sparkyQuestStageRef.current === 'unit4') &&
+          showSparkyPrompt &&
           distanceToSparky < SPARKY_INTERACTION_DISTANCE
         ) {
           outsidePrompt = 'Sparky';
@@ -1910,18 +1918,31 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
         if (worldInteractionRequestedRef.current) {
           worldInteractionRequestedRef.current = false;
-          if ((sparkyQuestStageRef.current === 'unit2' || sparkyQuestStageRef.current === 'unit3' || sparkyQuestStageRef.current === 'unit4') && distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
-            const nextGrind = sparkyQuestStageRef.current === 'unit2' ? 'grind2' : sparkyQuestStageRef.current === 'unit3' ? 'grind3' : 'grind1';
-            setSparkyModal(`This lesson isn't ready yet! Head to the workshop and keep earning money.`);
-            setSparkyQuestStage(nextGrind);
-          } else if (sparkyQuestStageRef.current === 'unit1' && distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
-            setShowTutorial(true);
-            setTutorialStep(0);
-            setCode(unit1Phases[0].kind === 'dialogue' ? '' : unit1Phases[0].starterCode || '');
-            setOutput('');
-            setSuccess(false);
-          } else if (isGrindStage && distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
-            setSparkyModal(`Head to the PET WORKSHOP across the street and earn $${grindTarget} fixing robot pets!\nCurrent: $${moneyRef.current}/${grindTarget}`);
+          const stage = sparkyQuestStageRef.current;
+          if (distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
+            if (stage === 'intro' || stage === 'unit1') {
+              setShowTutorial(true);
+              setTutorialStep(0);
+              setCode(unit1Phases[0].kind === 'dialogue' ? '' : unit1Phases[0].starterCode || '');
+              setOutput('');
+              setSuccess(false);
+            } else if (stage === 'unit1-done' || stage === 'unit2-done' || stage === 'unit3-done') {
+              const cost = SCRAP_PART_COSTS[stage];
+              const have = moneyRef.current;
+              if (have >= cost) {
+                const nextUnit = stage === 'unit1-done' ? 'unit2' : stage === 'unit2-done' ? 'unit3' : 'unit4';
+                const partName = stage === 'unit1-done' ? 'sensor part' : stage === 'unit2-done' ? 'voice module' : 'navigation chip';
+                setSparkyModal(`Great! You have $${have}. Sparky installs the ${partName}. Scrap is one step closer to being whole again! Talk to Sparky when you're ready for the next lesson.`);
+                setSparkyQuestStage(nextUnit);
+              } else {
+                setSparkyModal(`Sparky needs $${cost} for Scrap's next part. You have $${have}. Head to the Pet Workshop across the street to earn more money!`);
+              }
+            } else if (stage === 'unit2' || stage === 'unit3' || stage === 'unit4') {
+              const unitName = stage === 'unit2' ? 'Unit 2' : stage === 'unit3' ? 'Unit 3' : 'Unit 4';
+              setSparkyModal(`${unitName} isn't built yet! Check back later.`);
+            } else if (stage === 'all-done') {
+              setSparkyModal('Scrap is fully repaired! Arena mode is unlocked — go battle your friends!');
+            }
           } else if (transportHitboxRef.current && isInsideHitbox(localPositionRef.current, transportHitboxRef.current)) {
             setShowTransportModal(true);
             setTransportMessage(null);
@@ -2243,7 +2264,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   useEffect(() => {
     if (petShopRef.current) petShopRef.current.visible = true;
-    if (workshopDoorMarkerRef.current) workshopDoorMarkerRef.current.visible = (sparkyQuestStage === 'grind1' || sparkyQuestStage === 'grind2' || sparkyQuestStage === 'grind3') && !inWorkshopRoom;
+    if (workshopDoorMarkerRef.current) workshopDoorMarkerRef.current.visible = (sparkyQuestStage === 'intro' || sparkyQuestStage === 'unit1-done' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3-done') && !inWorkshopRoom;
   }, [sparkyQuestStage, inWorkshopRoom, inArenaRoom, workshopIntroSeen]);
 
   useEffect(() => {
@@ -2377,10 +2398,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setOutput(`✅ Nice! ${activePhase.title} complete.`);
           setSparkleBurst(false);
         } else {
-          setOutput('✅ Unit 1 complete! Scrap\'s diagnostics are online. Now head to the workshop and earn $10 to buy Scrap\'s first motor part.');
+          setOutput('✅ Unit 1 complete! Scrap\'s motor diagnostics are online. He needs a new sensor part — Sparky will tell you what to do.');
           setTutorialComplete(true);
           setShopUnlocked(true);
-          setSparkyQuestStage('grind1');
+          setSparkyQuestStage('unit1-done');
+          setSparkyModal('Scrap\'s motor diagnostics are working! But his sensor is fried. Earn $5 at the workshop, then talk to Sparky to buy the replacement part.');
           setSparkleBurst(false);
         }
       } else {
@@ -2411,13 +2433,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     localPositionRef.current.copy(outsideDoor);
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.24);
-    }
-    if (sparkyQuestStageRef.current === 'grind1' && moneyRef.current >= 10) {
-      setSparkyQuestStage('unit2');
-    } else if (sparkyQuestStageRef.current === 'grind2' && moneyRef.current >= 20) {
-      setSparkyQuestStage('unit3');
-    } else if (sparkyQuestStageRef.current === 'grind3' && moneyRef.current >= 30) {
-      setSparkyQuestStage('unit4');
     }
   };
 

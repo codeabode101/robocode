@@ -18,10 +18,16 @@ export const ROOM_PET_BROWSE_POINTS = [
   { stand: { x: -1.3, y: -0.2 }, look: { x: -1.9, y: 0.5 } },
 ];
 export const SPARKY_INTERACTION_DISTANCE = 1.7;
-export const GRIND_TARGETS: Record<string, number> = {
-  grind1: 10,
-  grind2: 20,
-  grind3: 30,
+export const SCRAP_PART_COSTS: Record<string, number> = {
+  'intro': 0,
+  'unit1': 0,
+  'unit1-done': 5,
+  'unit2': 0,
+  'unit2-done': 10,
+  'unit3': 0,
+  'unit3-done': 20,
+  'unit4': 0,
+  'all-done': 0,
 };
 export const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
 export const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
@@ -47,7 +53,7 @@ export interface CustomerRequest {
   required: CustomerProperty[];
 }
 
-export type SparkyQuestStage = 'intro' | 'unit1' | 'grind1' | 'unit2' | 'grind2' | 'unit3' | 'grind3' | 'unit4' | 'arena-ready';
+export type SparkyQuestStage = 'intro' | 'unit1' | 'unit1-done' | 'unit2' | 'unit2-done' | 'unit3' | 'unit3-done' | 'unit4' | 'all-done';
 
 export interface CustomerNpc {
   id: string;
