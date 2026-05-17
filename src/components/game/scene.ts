@@ -436,6 +436,7 @@ export function createPalmTree(x: number, y: number) {
     tree.add(leaf);
   }
   tree.rotation.set(0, 0, 0);
+  applyShadows(tree, true, true);
   return tree;
 }
 
