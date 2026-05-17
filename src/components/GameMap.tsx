@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useMultiplayer } from '@/hooks/useMultiplayer';
-import type { SparkyQuestStage, CustomerRequest } from '@/components/game/types';
+import type { SparkyQuestStage, CustomerRequest, TutorialPhase } from '@/components/game/types';
 import Editor from '@/components/game/Editor';
 import TutorialOverlay from '@/components/game/TutorialOverlay';
 import ArenaOverlay from '@/components/game/ArenaOverlay';
@@ -18,7 +18,7 @@ import {
   addExclamationMarker,
 } from '@/components/game/scene';
 import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode } from '@/components/game/helpers';
-import { unit1Phases } from '@/components/game/tutorialData';
+import { unit1Phases, unit2Phases } from '@/components/game/tutorialData';
 import { SCRAP_PART_COSTS } from '@/components/game/types';
 
 // If URL contains ?nocache=1 and no cache-bust, unregister service workers and reload
@@ -242,6 +242,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const localRobotRef = useRef<RobotVisual | null>(null);
   const remoteAvatarsRef = useRef<Record<string, RemoteAvatar>>({});
   const keyStateRef = useRef<Set<string>>(new Set());
+  const tutorialPhasesRef = useRef<TutorialPhase[]>(unit1Phases);
   const showTutorialRef = useRef(false);
   const tutorialCompleteRef = useRef(false);
   const shopUnlockedRef = useRef(false);
@@ -300,6 +301,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [roomEntryFlash, setRoomEntryFlash] = useState(false);
   const [money, setMoney] = useState(0);
   const [sparkyQuestStage, setSparkyQuestStage] = useState<SparkyQuestStage>('intro');
+  const [tutorialPhases, setTutorialPhases] = useState<TutorialPhase[]>(unit1Phases);
   const [activeCustomer, setActiveCustomer] = useState<CustomerRequest | null>(null);
   const [workshopCode, setWorkshopCode] = useState('');
   const [workshopOutput, setWorkshopOutput] = useState('');
@@ -421,6 +423,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   }, [tutorialComplete]);
 
   useEffect(() => {
+    if (sparkyQuestStage === 'unit1') { setTutorialPhases(unit1Phases); tutorialPhasesRef.current = unit1Phases; }
+    else if (sparkyQuestStage === 'unit2') { setTutorialPhases(unit2Phases); tutorialPhasesRef.current = unit2Phases; }
+  }, [sparkyQuestStage]);
+
+  useEffect(() => {
     shopUnlockedRef.current = shopUnlocked;
   }, [shopUnlocked]);
 
@@ -491,7 +498,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   // Block tutorial if already completed or profile loaded with completion
   useEffect(() => {
-    if (tutorialComplete || (sparkyQuestStage !== 'intro' && sparkyQuestStage !== 'unit1')) {
+    if (tutorialComplete || (sparkyQuestStage !== 'intro' && sparkyQuestStage !== 'unit1' && sparkyQuestStage !== 'unit2')) {
       showTutorialRef.current = false;
     }
   }, [tutorialComplete, sparkyQuestStage]);
@@ -1880,10 +1887,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const distanceToSparky = localPositionRef.current.distanceTo(NPC_POSITION);
         let outsidePrompt: string | null = null;
 
-        if (profileLoadedRef.current && distanceToSparky < SPARKY_INTERACTION_DISTANCE && !showTutorialRef.current && (sparkyQuestStageRef.current === 'intro' || sparkyQuestStageRef.current === 'unit1')) {
+        if (profileLoadedRef.current && distanceToSparky < SPARKY_INTERACTION_DISTANCE && !showTutorialRef.current && (sparkyQuestStageRef.current === 'intro' || sparkyQuestStageRef.current === 'unit1' || sparkyQuestStageRef.current === 'unit2')) {
           setShowTutorial(true);
           setTutorialStep(0);
-          setCode(unit1Phases[0].kind === 'dialogue' ? '' : unit1Phases[0].starterCode || '');
+          setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
           setOutput('');
           setSuccess(false);
         } else if (distanceToSparky > 2.25 && showTutorialRef.current) {
@@ -1920,25 +1927,26 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           worldInteractionRequestedRef.current = false;
           const stage = sparkyQuestStageRef.current;
           if (distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
-            if (stage === 'intro' || stage === 'unit1') {
+            if (stage === 'intro' || stage === 'unit1' || stage === 'unit2') {
               setShowTutorial(true);
               setTutorialStep(0);
-              setCode(unit1Phases[0].kind === 'dialogue' ? '' : unit1Phases[0].starterCode || '');
+              setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
               setOutput('');
               setSuccess(false);
             } else if (stage === 'unit1-done' || stage === 'unit2-done' || stage === 'unit3-done') {
-              const cost = SCRAP_PART_COSTS[stage];
+              const s = stage;
+              const cost = SCRAP_PART_COSTS[s];
               const have = moneyRef.current;
               if (have >= cost) {
-                const nextUnit = stage === 'unit1-done' ? 'unit2' : stage === 'unit2-done' ? 'unit3' : 'unit4';
-                const partName = stage === 'unit1-done' ? 'sensor part' : stage === 'unit2-done' ? 'voice module' : 'navigation chip';
+                const nextUnit: SparkyQuestStage = s === 'unit1-done' ? 'unit2' : s === 'unit2-done' ? 'unit3' : 'unit4';
+                const partName = s === 'unit1-done' ? 'sensor part' : s === 'unit2-done' ? 'voice module' : 'navigation chip';
                 setSparkyModal(`Great! You have $${have}. Sparky installs the ${partName}. Scrap is one step closer to being whole again! Talk to Sparky when you're ready for the next lesson.`);
                 setSparkyQuestStage(nextUnit);
               } else {
                 setSparkyModal(`Sparky needs $${cost} for Scrap's next part. You have $${have}. Head to the Pet Workshop across the street to earn more money!`);
               }
-            } else if (stage === 'unit2' || stage === 'unit3' || stage === 'unit4') {
-              const unitName = stage === 'unit2' ? 'Unit 2' : stage === 'unit3' ? 'Unit 3' : 'Unit 4';
+            } else if (stage === 'unit3' || stage === 'unit4') {
+              const unitName = stage === 'unit3' ? 'Unit 3' : 'Unit 4';
               setSparkyModal(`${unitName} isn't built yet! Check back later.`);
             } else if (stage === 'all-done') {
               setSparkyModal('Scrap is fully repaired! Arena mode is unlocked — go battle your friends!');
@@ -2356,7 +2364,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   };
 
   const checkAnswer = async () => {
-    const activePhase = unit1Phases[tutorialStep];
+    const activePhase = tutorialPhasesRef.current[tutorialStep];
     if (!activePhase || activePhase.kind !== 'challenge') return;
 
     try {
@@ -2375,7 +2383,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       if (data.valid) {
         const nextStep = tutorialStep + 1;
-        const nextPhase = unit1Phases[nextStep];
+        const nextPhase = tutorialPhasesRef.current[nextStep];
 
         setSuccess(true);
         setSparkleBurst(true);
@@ -2398,11 +2406,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setOutput(`✅ Nice! ${activePhase.title} complete.`);
           setSparkleBurst(false);
         } else {
-          setOutput('✅ Unit 1 complete! Scrap\'s motor diagnostics are online. He needs a new sensor part — Sparky will tell you what to do.');
-          setTutorialComplete(true);
-          setShopUnlocked(true);
-          setSparkyQuestStage('unit1-done');
-          setSparkyModal('Scrap\'s motor diagnostics are working! But his sensor is fried. Earn $5 at the workshop, then talk to Sparky to buy the replacement part.');
+          const currentStage = sparkyQuestStageRef.current;
+          if (currentStage === 'unit2') {
+            setOutput('✅ Unit 2 complete! Scrap\'s voice module is working. He needs a new part — talk to Sparky.');
+            setTutorialComplete(true);
+            setShopUnlocked(true);
+            setSparkyQuestStage('unit2-done');
+            setSparkyModal('Scrap can speak! But his voice module is still glitchy. Earn $10 at the workshop, then talk to Sparky to get a replacement.');
+          } else {
+            setOutput('✅ Unit 1 complete! Scrap\'s motor diagnostics are online. He needs a new sensor part — talk to Sparky.');
+            setTutorialComplete(true);
+            setShopUnlocked(true);
+            setSparkyQuestStage('unit1-done');
+            setSparkyModal('Scrap\'s motor diagnostics are working! But his sensor is fried. Earn $5 at the workshop, then talk to Sparky to buy the replacement part.');
+          }
           setSparkleBurst(false);
         }
       } else {
@@ -2764,7 +2781,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      <TutorialOverlay showTutorial={showTutorial} tutorialStep={tutorialStep} setTutorialStep={setTutorialStep} code={code} setCode={setCode} highlightedCode={highlightedCode} output={output} setOutput={setOutput} success={success} setSuccess={setSuccess} sparkleBurst={sparkleBurst} codeInputRef={codeInputRef} codePreviewRef={codePreviewRef} onEditorScroll={onEditorScroll} checkAnswer={checkAnswer} setShowTutorial={setShowTutorial} tutorialPhases={unit1Phases} />
+       <TutorialOverlay showTutorial={showTutorial} tutorialStep={tutorialStep} setTutorialStep={setTutorialStep} code={code} setCode={setCode} highlightedCode={highlightedCode} output={output} setOutput={setOutput} success={success} setSuccess={setSuccess} sparkleBurst={sparkleBurst} codeInputRef={codeInputRef} codePreviewRef={codePreviewRef} onEditorScroll={onEditorScroll} checkAnswer={checkAnswer} setShowTutorial={setShowTutorial} tutorialPhases={tutorialPhases} />
 
       {activeModal && <ModalShell activeModal={activeModal} setActiveModal={setActiveModal} userId={userId} debugMode={debugMode} setDebugMode={setDebugMode} />}
     </div>
