@@ -272,6 +272,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const roomPetVisualRef = useRef<RobotVisual | null>(null);
   const roomCustomerGroupRef = useRef<THREE.Group | null>(null);
   const roomEntryFlashTimeoutRef = useRef<number | null>(null);
+  const scrapRobotRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
+  const scrapChallengesDoneRef = useRef(0);
   const sparkyQuestMarkerRef = useRef<THREE.Sprite | null>(null);
   const workshopDoorMarkerRef = useRef<THREE.Sprite | null>(null);
   const transportHitboxRef = useRef<CircleHitbox | null>(null);
@@ -1392,6 +1394,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const localRobot = { root: localGroup, nameSprite: new THREE.Sprite(), body: torso, shadow: torso, leftPupil: torso, rightPupil: torso, antennaTip: torso };
     localRobotRef.current = localRobot;
 
+    const scrapRobot = createRobotVisual(new THREE.Color(0x4a3f35), 'Scrap');
+    scrapRobot.root.scale.set(0.7, 0.7, 0.7);
+    scrapRobot.root.position.set(NPC_POSITION.x + 1.5, NPC_POSITION.y - 1.2, 0.24);
+    scrapRobot.root.rotation.z = 0.15;
+    scrapRobot.nameSprite.visible = false;
+    if (scrapRobot.leftPupil) scrapRobot.leftPupil.material.color.setHex(0x222222);
+    if (scrapRobot.rightPupil) scrapRobot.rightPupil.material.color.setHex(0x222222);
+    if (scrapRobot.antennaTip) scrapRobot.antennaTip.material.color.setHex(0x555555);
+    outdoorGroup.add(scrapRobot.root);
+    scrapRobotRef.current = scrapRobot;
+
     const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
     sparky.root.scale.set(0.8, 0.8, 0.8);
     sparky.root.position.set(NPC_POSITION.x, NPC_POSITION.y, 0.24);
@@ -2321,6 +2334,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         setSuccess(true);
         setSparkleBurst(true);
         playHappyChime();
+
+        scrapChallengesDoneRef.current += 1;
+        const scrap = scrapRobotRef.current;
+        const done = scrapChallengesDoneRef.current;
+        if (scrap) {
+          const eyesOn = Math.min(1, done / 4);
+          const eyeBright = Math.floor(0x22 + eyesOn * 0xdd) * 0x10000 + Math.floor(0xdd + eyesOn * 0x22) * 0x100;
+          if (scrap.leftPupil) scrap.leftPupil.material.color.setHex(eyeBright);
+          if (scrap.rightPupil) scrap.rightPupil.material.color.setHex(eyeBright);
+          if (done >= 6 && scrap.antennaTip) scrap.antennaTip.material.color.setHex(0x22dd22);
+          if (done >= 8) scrap.root.rotation.z = 0;
+          if (done >= 10 && scrap.antennaTip) scrap.antennaTip.material.color.setHex(0x44ff44);
+        }
 
         if (nextPhase && nextPhase.kind === 'challenge') {
           setOutput(`✅ Nice! ${activePhase.title} complete.`);
