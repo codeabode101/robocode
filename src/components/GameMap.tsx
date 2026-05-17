@@ -359,7 +359,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (sparkyQuestStage === 'grind2') return `Mission: Earn $20 at the Pet Workshop. ($${money}/20)`;
     if (sparkyQuestStage === 'grind3') return `Mission: Earn $30 at the Pet Workshop. ($${money}/30)`;
     if (sparkyQuestStage === 'arena-ready') return 'Arena unlocked! Battle your friends.';
-    if (sparkyQuestStage === 'unit1' || sparkyQuestStage === 'unit2' || sparkyQuestStage === 'unit3' || sparkyQuestStage === 'unit4') return 'Complete the tutorial with Sparky.';
+    if (sparkyQuestStage === 'unit1') return 'Complete the tutorial with Sparky.';
+    if (sparkyQuestStage === 'unit2' || sparkyQuestStage === 'unit3') return `This lesson isn't ready yet — keep grinding! ($${money})`;
+    if (sparkyQuestStage === 'unit4') return 'This lesson isn\'t ready yet — arena will unlock soon!';
     return 'Mission: Earn $10 at the Pet Workshop. ($${money}/10)';
   }, [sparkyQuestStage, money]);
   const moneyRef = useRef(0);
@@ -469,6 +471,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (mappedStage !== 'intro' && mappedStage !== 'unit1') {
           setTutorialComplete(true); setShopUnlocked(true);
           tutorialCompleteRef.current = true; showTutorialRef.current = false;
+        } else if (mappedStage === 'unit1') {
+          setTutorialComplete(false); setShopUnlocked(true);
+          tutorialCompleteRef.current = false; showTutorialRef.current = false;
         }
       }
       if (data.questStage === 'intro' && data.tutorials?.length > 0) {
@@ -1905,7 +1910,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
         if (worldInteractionRequestedRef.current) {
           worldInteractionRequestedRef.current = false;
-          if (isGrindStage && distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
+          if ((sparkyQuestStageRef.current === 'unit2' || sparkyQuestStageRef.current === 'unit3' || sparkyQuestStageRef.current === 'unit4') && distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
+            const nextGrind = sparkyQuestStageRef.current === 'unit2' ? 'grind2' : sparkyQuestStageRef.current === 'unit3' ? 'grind3' : 'grind1';
+            setSparkyModal(`This lesson isn't ready yet! Head to the workshop and keep earning money.`);
+            setSparkyQuestStage(nextGrind);
+          } else if (sparkyQuestStageRef.current === 'unit1' && distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
+            setShowTutorial(true);
+            setTutorialStep(0);
+            setCode(unit1Phases[0].kind === 'dialogue' ? '' : unit1Phases[0].starterCode || '');
+            setOutput('');
+            setSuccess(false);
+          } else if (isGrindStage && distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
             setSparkyModal(`Head to the PET WORKSHOP across the street and earn $${grindTarget} fixing robot pets!\nCurrent: $${moneyRef.current}/${grindTarget}`);
           } else if (transportHitboxRef.current && isInsideHitbox(localPositionRef.current, transportHitboxRef.current)) {
             setShowTransportModal(true);
