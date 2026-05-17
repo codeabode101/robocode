@@ -359,7 +359,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (sparkyQuestStage === 'grind2') return `Mission: Earn $20 at the Pet Workshop. ($${money}/20)`;
     if (sparkyQuestStage === 'grind3') return `Mission: Earn $30 at the Pet Workshop. ($${money}/30)`;
     if (sparkyQuestStage === 'arena-ready') return 'Arena unlocked! Battle your friends.';
-    return 'Mission complete!';
+    if (sparkyQuestStage === 'unit1' || sparkyQuestStage === 'unit2' || sparkyQuestStage === 'unit3' || sparkyQuestStage === 'unit4') return 'Complete the tutorial with Sparky.';
+    return 'Mission: Earn $10 at the Pet Workshop. ($${money}/10)';
   }, [sparkyQuestStage, money]);
   const moneyRef = useRef(0);
   const sparkyQuestStageRef = useRef<SparkyQuestStage>('intro');
@@ -454,9 +455,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (data.currency !== undefined) setMoney(data.currency);
       if (data.workshopIntroDone) setWorkshopIntroSeen(true);
       if (data.questStage && data.questStage !== 'intro') {
-        setSparkyQuestStage(data.questStage);
-        sparkyQuestStageRef.current = data.questStage;
-        if (data.questStage !== 'intro' && data.questStage !== 'unit1') {
+        let mappedStage = String(data.questStage) as SparkyQuestStage;
+        const oldStages = ['earn-money', 'buy-chai', 'gift-ready', 'done'];
+        if (oldStages.includes(String(data.questStage))) {
+          mappedStage = 'grind1';
+        }
+        const c = data.currency ?? 0;
+        if (mappedStage === 'grind1' && c >= 10) mappedStage = 'unit2';
+        if (mappedStage === 'grind2' && c >= 20) mappedStage = 'unit3';
+        if (mappedStage === 'grind3' && c >= 30) mappedStage = 'unit4';
+        setSparkyQuestStage(mappedStage);
+        sparkyQuestStageRef.current = mappedStage;
+        if (mappedStage !== 'intro' && mappedStage !== 'unit1') {
           setTutorialComplete(true); setShopUnlocked(true);
           tutorialCompleteRef.current = true; showTutorialRef.current = false;
         }
