@@ -1,14 +1,30 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { drizzle } from 'drizzle-orm/d1';
 import * as schema from './schema';
 
-const connectionString = process.env.DATABASE_URL || process.env.COCKROACHDB_CONNECTION_STRING!;
-const sqlClient = postgres(connectionString, {
-  connect_timeout: 15,
-  max: 3,
-  idle_timeout: 10,
-  max_lifetime: 30,
+let _db: ReturnType<typeof drizzle> | null = null;
+
+function getDb() {
+  if (!_db) {
+    const { env } = getCloudflareContext();
+    _db = drizzle((env as any).DB, { schema });
+  }
+  return _db;
+}
+
+type DrizzleWithRun = ReturnType<typeof drizzle> & {
+  run: (query: any, ...params: any[]) => any;
+};
+
+export const db: DrizzleWithRun = new Proxy({} as any, {
+  get(_, prop) {
+    const d = getDb();
+    const val = (d as any)[prop];
+    if (typeof val === 'function') {
+      return (...args: any[]) => (val as Function).apply(d, args);
+    }
+    return val;
+  },
 });
-export const db = drizzle(sqlClient, { schema });
 
 export * from './schema';

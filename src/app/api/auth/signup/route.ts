@@ -27,17 +27,17 @@ export async function POST(request: NextRequest) {
       name: name || '',
       password_hash,
       currency: 0,
-      created_at: new Date(now),
+      created_at: now,
     });
 
     const token = await new SignJWT({ sub: userId, email })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
-      .setExpirationTime('24h')
+      .setExpirationTime('30d')
       .sign(new TextEncoder().encode(process.env.WORKOS_API_KEY!));
 
     const response = NextResponse.json({ success: true, user: { id: userId, email, name } });
-    response.cookies.set('session', token, { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 86400 });
+    response.headers.set('Set-Cookie', `session=${token}; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000; Path=/`);
     return response;
   } catch (error: any) {
     console.error('Signup error:', error);

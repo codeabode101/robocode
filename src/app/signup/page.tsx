@@ -1,18 +1,25 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRef, useState } from 'react';
 
 export default function SignupPage() {
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
+  const emailRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState('');
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    const email = emailRef.current?.value || '';
+    const name = nameRef.current?.value || '';
+    const password = passwordRef.current?.value || '';
+
+    if (!email || !password) {
+      setError('Email and password required');
+      return;
+    }
 
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
@@ -29,63 +36,68 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
-      <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-lg">
-        <h1 className="text-4xl font-bold text-center">Robocode</h1>
-        <p className="text-center text-gray-300">Create your account</p>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+      <div className="w-full max-w-md p-8 space-y-6 bg-slate-900/90 border border-slate-700/50 rounded-2xl shadow-2xl">
+        <div className="text-center">
+          <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-emerald-300 to-cyan-300">Robocode</h1>
+          <p className="mt-2 text-slate-400">Create your account</p>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium">Email</label>
+            <label htmlFor="email" className="block text-sm font-medium text-slate-300">Email</label>
             <input
+              ref={emailRef}
               id="email"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              defaultValue=""
               required
-              className="w-full px-3 py-2 mt-1 text-black rounded"
+              className="w-full px-4 py-2.5 mt-1 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-colors"
+              placeholder="you@example.com"
             />
           </div>
           <div>
-            <label htmlFor="name" className="block text-sm font-medium">Name</label>
+            <label htmlFor="name" className="block text-sm font-medium text-slate-300">Name</label>
             <input
+              ref={nameRef}
               id="name"
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 mt-1 text-black rounded"
+              defaultValue=""
+              className="w-full px-4 py-2.5 mt-1 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-colors"
+              placeholder="Your name"
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm font-medium">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium text-slate-300">Password</label>
             <input
+              ref={passwordRef}
               id="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              defaultValue=""
               required
               minLength={8}
-              className="w-full px-3 py-2 mt-1 text-black rounded"
+              className="w-full px-4 py-2.5 mt-1 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-colors"
+              placeholder="At least 8 characters"
             />
           </div>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded font-semibold">
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+          <button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 py-2.5 rounded-lg font-bold text-lg text-slate-900 shadow-lg shadow-emerald-500/20 transition-all">
             Sign Up
           </button>
         </form>
         <div className="relative">
-          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-600" /></div>
-          <div className="relative flex justify-center text-xs"><span className="bg-gray-800 px-2 text-gray-400">or</span></div>
+          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-slate-700" /></div>
+          <div className="relative flex justify-center text-xs"><span className="bg-slate-900 px-3 text-slate-500">or</span></div>
         </div>
         <a
           href="/api/auth/authorize"
-          className="flex w-full items-center justify-center gap-3 rounded border border-gray-600 bg-white px-4 py-2.5 font-semibold text-gray-900 hover:bg-gray-100 transition-colors"
+          className="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-600 bg-slate-800 px-4 py-2.5 font-semibold text-white hover:bg-slate-700 transition-colors"
         >
           <svg className="h-5 w-5" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.54 28.59A14.5 14.5 0 0 1 9.5 24c0-1.59.28-3.14.76-4.59l-7.98-6.19A23.98 23.98 0 0 0 0 24c0 3.77.87 7.35 2.56 10.56l7.98-5.97z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 5.97C6.51 42.62 14.62 48 24 48z"/></svg>
           Sign up with Google
         </a>
-        <p className="text-center text-sm">
+        <p className="text-center text-sm text-slate-400">
           Already have an account?{' '}
-          <a href="/login" className="text-blue-400 hover:underline">Sign in</a>
+          <a href="/login" className="text-amber-400 hover:text-amber-300 font-semibold transition-colors">Sign in</a>
         </p>
       </div>
     </div>

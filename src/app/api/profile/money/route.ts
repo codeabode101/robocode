@@ -2,20 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import { db } from '@/db';
 import { users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   let userId: string;
+  let payload: any;
   try {
-    const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.WORKOS_API_KEY!));
+    const result = await jwtVerify(token, new TextEncoder().encode(process.env.WORKOS_API_KEY!));
+    payload = result.payload;
     userId = payload.sub as string;
   } catch { return NextResponse.json({ error: 'Invalid session' }, { status: 401 }); }
   const { amount } = await request.json();
   if (typeof amount !== 'number') return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
   try {
-    await db.update(users).set({ currency: amount }).where(eq(users.id, userId));
+    await db.run(sql`
+      INSERT INTO users (id, email, name, password_hash, currency)
+      VALUES (${userId}, ${(payload.email as string) || userId + '@temp'}, ${payload.name as string || null}, 'migrated', 0)
+      ON CONFLICT (id) DO UPDATE SET currency = ${amount}
+    `);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Money save error:', error);

@@ -135,7 +135,7 @@ export function createNameSprite(label: string, color: THREE.Color) {
   const baseScaleY = 0.5;
   sprite.scale.set((canvasWidth / canvasHeight) * baseScaleY, baseScaleY, 1);
   sprite.center.set(0.5, 0.05);
-  sprite.position.set(0, 2.22, 0.96);
+  sprite.position.set(0, 1.8, 0);
   sprite.renderOrder = 40;
   sprite.name = LABEL_BUILD_TAG;
   return sprite;
@@ -193,10 +193,10 @@ export function createGradientTexture(steps = 3) {
   return texture;
 }
 
-export function createToonMaterial(color: number | THREE.Color, _lightness = 0.7, _roughness = 0.05) {
+export function createToonMaterial(color: number | THREE.Color, lightness = 0.7, _roughness = 0.05) {
   return new THREE.MeshToonMaterial({
     color: color,
-    gradientMap: createGradientTexture(3),
+    gradientMap: createGradientTexture(5),
   });
 }
 
@@ -260,16 +260,10 @@ export type HumanVisual = {
 export function createPlayerSprite(imagePath: string, color: THREE.Color, name: string): RobotVisual {
   const group = new THREE.Group();
 
-  const shadow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.42, 18),
-    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18 })
-  );
-  shadow.scale.set(1.08, 0.62, 1);
-  shadow.position.set(0, 0, 0.01);
-  group.add(shadow);
+  // shadow handled by Three.js shadow mapping
 
   const sprite = createCharacterSprite(imagePath, 0.7);
-  sprite.position.set(0, 0, 0.55);
+  sprite.position.set(0, 0.07, 0.55);
   group.add(sprite);
 
   const nameSprite = createNameSprite(name, color);
@@ -283,7 +277,7 @@ export function createPlayerSprite(imagePath: string, color: THREE.Color, name: 
 
   applyShadows(group, true, true);
   group.scale.set(2.35, 2.35, 2.35);
-  return { root: group, nameSprite, body: dummyBody as unknown as THREE.Mesh, shadow, leftPupil, rightPupil, antennaTip: antennaTip as unknown as THREE.Mesh };
+  return { root: group, nameSprite, body: dummyBody as unknown as THREE.Mesh, shadow: new THREE.Object3D() as unknown as THREE.Mesh, leftPupil, rightPupil, antennaTip: antennaTip as unknown as THREE.Mesh };
 }
 
 export function addOutline(mesh: THREE.Mesh, color = 0x2d2d3d) {
@@ -304,99 +298,100 @@ export function applyShadows(object: THREE.Object3D, cast = true, receive = true
 export function createRobotVisual(color: THREE.Color, name: string) {
   const group = new THREE.Group();
 
-  const shadow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.78, 24),
-    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18 })
-  );
-  shadow.scale.set(1.3, 0.8, 1);
-  shadow.position.set(0, -0.12, 0.25);
-  group.add(shadow);
+  // shadow handled by Three.js shadow mapping
 
-  const feet = new THREE.Mesh(
-    new THREE.BoxGeometry(0.66, 0.22, 0.28),
-    createToonMaterial(0x1f2937, 0.62, 0.2)
-  );
-  feet.position.set(0, -0.5, 0.38);
-  group.add(feet);
+  const footMat = createToonMaterial(0x374151);
+  const bodyMat = createToonMaterial(color);
+  const legMat = createToonMaterial(color);
+  const armMat = createToonMaterial(color);
+
+  const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.08), legMat);
+  leftLeg.position.set(-0.16, 0.07, 0.42);
+  group.add(leftLeg);
+
+  const rightLeg = leftLeg.clone();
+  rightLeg.position.x = 0.16;
+  group.add(rightLeg);
+
+  const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.2), footMat);
+  leftFoot.position.set(-0.16, -0.03, 0.42);
+  group.add(leftFoot);
+
+  const rightFoot = leftFoot.clone();
+  rightFoot.position.x = 0.16;
+  group.add(rightFoot);
 
   const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.54, 1.3, 0.3),
-    createToonMaterial(color, 0.7, 0.07)
+    new THREE.BoxGeometry(0.52, 0.32, 0.32),
+    bodyMat
   );
-  body.position.set(0, 0.1, 0.5);
+  body.position.set(0, 0.3, 0.5);
   group.add(body);
 
-  const armLeft = new THREE.Mesh(
-    new THREE.BoxGeometry(0.12, 0.42, 0.14),
-    createToonMaterial(color, 0.72, 0.06)
-  );
-  armLeft.position.set(-0.44, 0.18, 0.36);
-  armLeft.rotation.z = 0.08;
-  group.add(armLeft);
+  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.28, 0.14), armMat);
+  leftArm.position.set(-0.37, 0.26, 0.5);
+  leftArm.rotation.z = 0.3;
+  group.add(leftArm);
 
-  const armRight = armLeft.clone();
-  armRight.position.x = 0.44;
-  armRight.rotation.z = -0.08;
-  group.add(armRight);
+  const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.28, 0.14), armMat);
+  rightArm.position.set(0.37, 0.26, 0.5);
+  rightArm.rotation.z = -0.3;
+  group.add(rightArm);
+
+  const headBlock = new THREE.Mesh(
+    new THREE.BoxGeometry(0.42, 0.22, 0.34),
+    bodyMat
+  );
+  headBlock.position.set(0, 0.56, 0.5);
+  group.add(headBlock);
 
   const facePanel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.44, 0.42, 0.08),
-    createToonMaterial(0xe2e8f0, 0.5, 0.15)
+    new THREE.BoxGeometry(0.36, 0.18, 0.04),
+    createToonMaterial(0x475569)
   );
-  facePanel.position.set(0, 0.93, 0.15);
+  facePanel.position.set(0, 0.58, 0.7);
   group.add(facePanel);
 
-  const leftEyeGroup = new THREE.Group();
-  leftEyeGroup.position.set(-0.11, 0.97, 0.26);
-  const eyeLeft = new THREE.Mesh(
-    new THREE.SphereGeometry(0.08, 12, 12),
-    new THREE.MeshBasicMaterial({ color: 0xd1d5db })
+  const leftEye = new THREE.Mesh(
+    new THREE.SphereGeometry(0.03, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffffff })
   );
-  eyeLeft.position.set(0, 0, 0);
-  leftEyeGroup.add(eyeLeft);
+  leftEye.position.set(-0.07, 0.6, 0.73);
+  group.add(leftEye);
 
-  const createPupilMesh = () => {
-    const geom = new THREE.SphereGeometry(0.024, 10, 10);
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0x050505,
-      depthTest: false,
-      depthWrite: false,
-    });
-    const pupil = new THREE.Mesh(geom, mat);
-    pupil.renderOrder = 50;
-    return pupil;
-  };
-
-  const leftPupil = createPupilMesh();
-  leftPupil.position.set(0, 0, 0.06);
-  leftEyeGroup.add(leftPupil);
-  group.add(leftEyeGroup);
-
-  const rightEyeGroup = new THREE.Group();
-  rightEyeGroup.position.set(0.11, 0.97, 0.26);
-  const eyeRight = new THREE.Mesh(
-    new THREE.SphereGeometry(0.08, 12, 12),
-    new THREE.MeshBasicMaterial({ color: 0xd1d5db })
+  const leftPupil = new THREE.Mesh(
+    new THREE.SphereGeometry(0.012, 6, 6),
+    new THREE.MeshBasicMaterial({ color: 0x000000 })
   );
-  eyeRight.position.set(0, 0, 0);
-  rightEyeGroup.add(eyeRight);
-  const rightPupil = createPupilMesh();
-  rightPupil.position.set(0, 0, 0.06);
-  rightEyeGroup.add(rightPupil);
-  group.add(rightEyeGroup);
+  leftPupil.position.set(-0.07, 0.6, 0.745);
+  group.add(leftPupil);
+
+  const rightEye = new THREE.Mesh(
+    new THREE.SphereGeometry(0.03, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffffff })
+  );
+  rightEye.position.set(0.07, 0.6, 0.73);
+  group.add(rightEye);
+
+  const rightPupil = new THREE.Mesh(
+    new THREE.SphereGeometry(0.012, 6, 6),
+    new THREE.MeshBasicMaterial({ color: 0x000000 })
+  );
+  rightPupil.position.set(0.07, 0.6, 0.745);
+  group.add(rightPupil);
 
   const antennaStem = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.02, 0.02, 0.18, 10),
-    createToonMaterial(0x64748b, 0.4, 0.45)
+    new THREE.CylinderGeometry(0.015, 0.015, 0.14, 6),
+    createToonMaterial(0x94a3b8)
   );
-  antennaStem.position.set(0, 1.32, 0.18);
+  antennaStem.position.set(0, 0.74, 0.5);
   group.add(antennaStem);
 
   const antennaTip = new THREE.Mesh(
-    new THREE.SphereGeometry(0.06, 12, 12),
-    createToonMaterial(0xf43f5e, 0.5, 0.18)
+    new THREE.SphereGeometry(0.04, 8, 8),
+    createToonMaterial(0xef4444)
   );
-  antennaTip.position.set(0, 1.44, 0.18);
+  antennaTip.position.set(0, 0.82, 0.5);
   group.add(antennaTip);
 
   const nameSprite = createNameSprite(name, color);
@@ -405,7 +400,7 @@ export function createRobotVisual(color: THREE.Color, name: string) {
 
   group.rotation.set(Math.PI / 2, 0, 0);
   group.scale.set(2.35, 2.35, 2.35);
-  return { root: group, nameSprite, body, shadow, leftPupil, rightPupil, antennaTip };
+  return { root: group, nameSprite, body, shadow: new THREE.Object3D() as unknown as THREE.Mesh, leftPupil, rightPupil, antennaTip };
 }
 
 export function createGrid(size: number, step: number, color: number) {
@@ -453,8 +448,6 @@ export function createBazaarShop(
   scale = 3.12
 ) {
   const stall = new THREE.Group();
-  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.7, 16), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.12 }));
-  shadow.position.set(0, 0.05, 0); stall.add(shadow);
 
   const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.7, 0.08), createTexturedToonMaterial('tile_21.png', 3, 1, baseColor));
   backWall.position.set(0, 0.35, -0.25); stall.add(backWall);
@@ -653,16 +646,30 @@ export const WALK_BOB_SPEED = 14;
 
 export function animateRobotVisual(visual: RobotVisual, time: number, speedFactor: number, lookX: number, lookY: number) {
   const walkAmount = Math.min(1, speedFactor);
-  const bob = Math.sin(time * WALK_BOB_SPEED) * 0.035 * walkAmount;
-  visual.body.position.y = 0.02 + bob;
-  visual.shadow.scale.set(1.08 + walkAmount * 0.06, 0.62 - walkAmount * 0.07, 1);
-  if (visual.antennaTip) visual.antennaTip.position.y = 1.44 + Math.sin(time * 9) * 0.02;
+  const bob = Math.sin(time * WALK_BOB_SPEED) * 0.03 * walkAmount;
+  visual.body.position.y = 0.3 + bob;
+  if (visual.antennaTip) visual.antennaTip.position.y = 0.82 + Math.sin(time * 9) * 0.015;
 
   if (visual.leftPupil.scale) visual.leftPupil.scale.set(1, 1, 1);
   if (visual.rightPupil.scale) visual.rightPupil.scale.set(1, 1, 1);
 
-  const eyeX = Math.max(-0.035, Math.min(0.035, lookX * 0.03));
-  const eyeY = Math.max(-0.02, Math.min(0.02, lookY * 0.02));
-  visual.leftPupil.position.set(eyeX, eyeY, 0.035);
-  visual.rightPupil.position.set(eyeX, eyeY, 0.035);
+  const eyeX = Math.max(-0.025, Math.min(0.025, lookX * 0.018));
+  const eyeY = Math.max(-0.015, Math.min(0.015, lookY * 0.012));
+  visual.leftPupil.position.set(-0.07 + eyeX, 0.6 + eyeY, 0.75);
+  visual.rightPupil.position.set(0.07 + eyeX, 0.6 + eyeY, 0.75);
+}
+
+export function addExclamationMarker(parent: THREE.Group) {
+  const marker = createExclamationMarker();
+  marker.renderOrder = 61;
+  const s = parent.scale.x;
+  const worldSize = 0.22;
+  marker.scale.set(worldSize / s, worldSize / s, 1);
+  if (parent.rotation.x >= 1) {
+    marker.position.set(0, 1.0, 0.46);
+  } else {
+    marker.position.set(0, 0, 0.5);
+  }
+  parent.add(marker);
+  return marker;
 }

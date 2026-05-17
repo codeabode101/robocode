@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true });
       }
       case 'accept': {
-        await db.update(friendRequests).set({ status: 'accepted', updated_at: new Date() })
+        await db.update(friendRequests).set({ status: 'accepted', updated_at: new Date().toISOString() })
           .where(and(
             eq(friendRequests.sender_id, friendId),
             eq(friendRequests.receiver_id, userId),
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true });
       }
       case 'reject': {
-        await db.update(friendRequests).set({ status: 'rejected', updated_at: new Date() })
+        await db.update(friendRequests).set({ status: 'rejected', updated_at: new Date().toISOString() })
           .where(and(
             eq(friendRequests.sender_id, friendId),
             eq(friendRequests.receiver_id, userId),

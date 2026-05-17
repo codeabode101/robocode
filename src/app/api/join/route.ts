@@ -11,11 +11,13 @@ export async function POST(request: NextRequest) {
   }
 
   let userId: string;
+  let payload: any;
   try {
-    const { payload } = await jwtVerify(
+    const result = await jwtVerify(
       token,
       new TextEncoder().encode(process.env.WORKOS_API_KEY!)
     );
+    payload = result.payload;
     userId = payload.sub as string;
   } catch {
     return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
@@ -27,12 +29,10 @@ export async function POST(request: NextRequest) {
     const safeX = Number(x) || 0;
     const safeY = Number(y) || 0;
 
-    const user = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1).then(rows => rows[0]);
-
-    await db.execute(sql`
+    await db.run(sql`
       INSERT INTO player_positions (user_id, x, y, map, updated_at)
-      VALUES (${userId}, ${safeX}, ${safeY}, 'default', ${new Date(now).toISOString()})
-      ON CONFLICT (user_id) DO UPDATE SET x = ${safeX}, y = ${safeY}, updated_at = ${new Date(now).toISOString()}
+      VALUES (${userId}, ${safeX}, ${safeY}, 'default', ${now})
+      ON CONFLICT (user_id) DO UPDATE SET x = ${safeX}, y = ${safeY}, updated_at = ${now}
     `);
 
     return NextResponse.json({ ok: true });

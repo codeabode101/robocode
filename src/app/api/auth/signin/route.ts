@@ -25,14 +25,14 @@ export async function POST(request: NextRequest) {
     const token = await new SignJWT({ sub: user.id, email: user.email })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
-      .setExpirationTime('24h')
+      .setExpirationTime('30d')
       .sign(new TextEncoder().encode(process.env.WORKOS_API_KEY!));
 
     const response = NextResponse.json({ 
       success: true, 
       user: { id: user.id, email: user.email, name: user.name } 
     });
-    response.cookies.set('session', token, { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 86400 });
+    response.headers.set('Set-Cookie', `session=${token}; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000; Path=/`);
     return response;
   } catch (error: any) {
     console.error('Signin error:', error);

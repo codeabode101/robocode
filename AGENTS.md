@@ -83,12 +83,51 @@ Procedural city generation:
 - `createBigPetShop` / `createBazaarShop` — Building blueprints
 - `createAutoRickshaw` — 3-wheeler vehicle visible on roads
 
-## Render Pipeline
+## Three.js CanvasTexture notes
+- `CanvasTexture.flipY` defaults to `true` — Three.js auto-flips vertically (canvas Y-down → WebGL Y-up).
+- If text on a BoxGeometry face appears upside-down, set `st.flipY = false`.
+- If text appears mirrored (backwards), the face normal is reversed — use `scale.x = -1` on the mesh to mirror the texture horizontally.
+- For a BoxGeometry sign on a building facade: use `MeshBasicMaterial({ map: st })` with `st.flipY = false`. If the text reads backwards, the mesh is on the wrong side of the face or the face normal points inward.
 Orthographic camera (top-down, z-up), viewHeight=26 units, ACESFilmic tone mapping, PCFSoft shadows, Fog at 38-58 units for depth. No post-processing (EffectComposer) — would need to import from `three/examples/jsm/postprocessing/`.
 
 ## Deployment
-- **Cloudflare Workers**: `./scripts/deploy.sh` (reads NEXT_PUBLIC_APINATOR_APP_KEY from .dev.vars automatically)
+- **Cloudflare Workers** (NOT Pages): `./scripts/deploy.sh` (reads `NEXT_PUBLIC_APINATOR_APP_KEY` from `.dev.vars` automatically)
+- **Config**: `wrangler.jsonc` MUST exist — it's the Worker entry point. Do NOT delete it.
 - **Vercel**: `vercel` (standard Next.js deployment)
 - Build output: `.open-next/` (Cloudflare) or `.next/` (Vercel)
-- Secrets: `npx wrangler secret put <NAME>` for .dev.vars entries on Cloudflare
+- Secrets: `npx wrangler secret put <NAME>` for `.dev.vars` entries on Cloudflare
 - **IMPORTANT**: Do NOT hardcode `NEXT_PUBLIC_APINATOR_APP_KEY` in build commands. Always use `./scripts/deploy.sh` or export it from `.dev.vars`.
+- **Cloudflare secrets**: After first deploy, set these with `npx wrangler secret put <NAME>` for each entry in `.dev.vars`:
+  - `WORKOS_API_KEY` — JWT signing key for auth
+  - `DATABASE_URL` — CockroachDB connection string (postgres://...)
+  - `NEXT_PUBLIC_APINATOR_APP_KEY` — WebSocket pub/sub app key
+  (`.dev.vars` is only for local dev; secrets are NOT auto-deployed with the worker.)
+
+## ⚠️ DATABASE SAFETY RULES — READ BEFORE RUNNING ANY MIGRATION
+
+### NEVER run destructive operations against production.
+The file `src/db/migrate.ts` is DESIGNED to be safe — it uses
+`CREATE TABLE IF NOT EXISTS` and `ALTER TABLE ADD COLUMN IF NOT EXISTS`
+only. It will NEVER drop or overwrite data.
+
+### If you need to add a column:
+1. Add it to `src/db/schema.ts`
+2. Add `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` to `src/db/migrate.ts`
+3. Run: `npx tsx src/db/migrate.ts`
+
+### If you need to drop or alter a table destructively:
+**THIS IS EXTREMELY DANGEROUS. DO NOT DO IT WITHOUT EXPLICIT USER APPROVAL.**
+1. Create a SEPARATE script (e.g., `src/db/migrate_dangerous.ts`)
+2. Require `CONFIRM_DESTRUCTIVE=yes` env var at the top:
+   ```ts
+   if (process.env.CONFIRM_DESTRUCTIVE !== 'yes') {
+     console.error('Set CONFIRM_DESTRUCTIVE=yes to confirm you want to destroy data.');
+     process.exit(1);
+   }
+   ```
+3. Never run this against production unless the user explicitly asks you to.
+
+If you, an AI agent, are about to run any database operation, STOP and think:
+- Am I about to drop tables? → DO NOT. Use ALTER TABLE instead.
+- Am I about to run a migration? → Check that it uses CREATE TABLE IF NOT EXISTS / ALTER TABLE ADD COLUMN IF NOT EXISTS.
+- Could this delete user data? → If yes, DON'T DO IT. Ask the user first.

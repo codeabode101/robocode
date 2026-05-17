@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         name,
         password_hash: '',
         currency: 0,
-        created_at: new Date(),
+        created_at: new Date().toISOString(),
       });
       user = { id: userId };
     }
@@ -64,11 +64,11 @@ export async function GET(request: NextRequest) {
     const jwt = await new SignJWT({ sub: user.id, email })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
-      .setExpirationTime('24h')
+      .setExpirationTime('30d')
       .sign(new TextEncoder().encode(apiKey));
 
     const response = NextResponse.redirect(new URL('/game', request.url));
-    response.cookies.set('session', jwt, { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 86400 });
+    response.headers.set('Set-Cookie', `session=${jwt}; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000; Path=/`);
     return response;
   } catch (error) {
     console.error('OAuth callback error:', error);

@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   const record = await db.insert(userXp)
     .values({ user_id: userId, xp: amount })
-    .onConflictDoUpdate({ target: userXp.user_id, set: { xp: sql`user_xp.xp + ${amount}`, updated_at: new Date() } })
+    .onConflictDoUpdate({ target: userXp.user_id, set: { xp: sql`user_xp.xp + ${amount}`, updated_at: new Date().toISOString() } })
     .returning()
     .then(r => r[0]);
 

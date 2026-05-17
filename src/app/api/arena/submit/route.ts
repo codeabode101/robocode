@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   await db.update(arenaChallenges).set({
     status: 'completed',
     winner_id: userId,
-    completed_at: new Date(),
+    completed_at: new Date().toISOString(),
   }).where(eq(arenaChallenges.id, challengeId));
 
   return NextResponse.json({

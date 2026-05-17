@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import { db } from '@/db';
-import { tutorialProgress } from '@/db/schema';
-import { sql } from 'drizzle-orm';
-function now() { return new Date().toISOString(); }
+import { users } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
@@ -13,15 +12,18 @@ export async function POST(request: NextRequest) {
     const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.WORKOS_API_KEY!));
     userId = payload.sub as string;
   } catch { return NextResponse.json({ error: 'Invalid session' }, { status: 401 }); }
+
   try {
+    const { seconds } = await request.json();
+    if (typeof seconds !== 'number') return NextResponse.json({ error: 'Invalid' }, { status: 400 });
     await db.run(sql`
-      INSERT INTO tutorial_progress (user_id, concept, completed, completed_at)
-      VALUES (${userId}, '_workshop_intro', 1, ${now()})
-      ON CONFLICT (user_id, concept) DO NOTHING
+      INSERT INTO users (id, email, name, password_hash, currency, playtime_seconds)
+      VALUES (${userId}, ${userId + '@playtime'}, NULL, 'migrated', 0, ${Math.max(0, Math.round(seconds))})
+      ON CONFLICT (id) DO UPDATE SET playtime_seconds = ${Math.max(0, Math.round(seconds))}
     `);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Workshop intro save error:', error);
+    console.error('Playtime save error:', error);
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }
 }
