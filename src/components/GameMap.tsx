@@ -469,6 +469,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const oldStages = ['earn-money', 'buy-chai', 'gift-ready', 'done', 'grind1', 'grind2', 'grind3', 'arena-ready', 'unit2', 'unit3', 'unit4', 'unit2-done', 'unit3-done', 'unit4-done', 'all-done'];
         if (oldStages.includes(String(data.questStage))) {
           mappedStage = 'unit1-done';
+          setMoney(0);
+          moneyRef.current = 0;
+          setWorkshopIntroSeen(false);
+          fetch('/api/profile/money', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 0 }), keepalive: true }).catch(() => {});
         }
         setSparkyQuestStage(mappedStage);
         sparkyQuestStageRef.current = mappedStage;
