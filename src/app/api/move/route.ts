@@ -3,7 +3,6 @@ import { jwtVerify } from 'jose';
 import { db } from '@/db';
 import { users, playerPositions } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
-
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -16,20 +15,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
   }
 
-  const { x, y } = await request.json();
+  let x: unknown, y: unknown;
+  try {
+    const body = await request.json();
+    x = (body as any).x;
+    y = (body as any).y;
+  } catch {
+    return NextResponse.json({ valid: false, error: 'Invalid request body' });
+  }
 
   try {
     const now = new Date().toISOString();
-
     const safeX = Math.max(-50, Math.min(50, Number(x) || 0));
     const safeY = Math.max(-50, Math.min(50, Number(y) || 0));
 
-    const user = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1).then(rows => rows[0]);
+    // Ensure user exists
+    await db.run(sql`
+      INSERT INTO users (id, email, name, password_hash, currency)
+      VALUES (${userId}, ${userId + '@move'}, NULL, 'migrated', 0)
+      ON CONFLICT (id) DO NOTHING
+    `);
 
-    await db.execute(sql`
+    await db.run(sql`
       INSERT INTO player_positions (user_id, x, y, map, updated_at)
-      VALUES (${userId}, ${safeX}, ${safeY}, 'default', ${new Date(now).toISOString()})
-      ON CONFLICT (user_id) DO UPDATE SET x = ${safeX}, y = ${safeY}, updated_at = ${new Date(now).toISOString()}
+      VALUES (${userId}, ${safeX}, ${safeY}, 'default', ${now})
+      ON CONFLICT (user_id) DO UPDATE SET x = ${safeX}, y = ${safeY}, updated_at = ${now}
     `);
 
     return NextResponse.json({ success: true });

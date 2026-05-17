@@ -2,6 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   const response = NextResponse.json({ success: true });
-  response.cookies.set('session', '', { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 0 });
+  response.headers.set('Set-Cookie', 'session=; HttpOnly; Secure; SameSite=Lax; Max-Age=0; Path=/');
   return response;
 }

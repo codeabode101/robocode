@@ -3,87 +3,79 @@ import { jwtVerify } from 'jose';
 import { db } from '@/db';
 import { userXp, tutorialProgress } from '@/db/schema';
 import { sql } from 'drizzle-orm';
+import { validateTutorialCode } from '@/lib/tutorial-validation';
 
+function now() { return new Date().toISOString(); }
 export async function POST(request: NextRequest) {
-  const token = request.cookies.get('session')?.value;
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
   let userId: string;
   try {
+    const token = request.cookies.get('session')?.value;
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.WORKOS_API_KEY!));
     userId = payload.sub as string;
   } catch {
-    return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+    // Token missing or invalid — not a server crash
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { code, concept } = await request.json();
-
+  // Parse body INSIDE try-catch — request.json() can throw on
+  // malformed / empty body, and if it escapes the route handler
+  // Cloudflare returns an HTML error page.
+  let code: unknown;
+  let concept: unknown;
   try {
-    // Validation for beginner-friendly String variable declarations
-    let valid = false;
-    let error = '';
-    const normalized = String(code || '').replace(/\s+/g, ' ').trim();
+    const body = await request.json();
+    code = (body as any).code;
+    concept = (body as any).concept;
+  } catch {
+    return NextResponse.json({ valid: false, error: 'Invalid request body' });
+  }
 
-    if (concept === 'string-variable' || concept === 'string-name' || concept === 'string-color') {
-      const declarationPattern = /^String\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"([^"\n]+)"\s*;\s*$/;
-      const match = normalized.match(declarationPattern);
+  // Validate returns { valid, error } — never throws
+  const { valid, error } = validateTutorialCode(String(code || ''), String(concept || ''));
 
-      if (match) {
-        valid = true;
-      } else if (!code.includes('String')) {
-        error = 'Start with the type: use String at the beginning.';
-      } else if (!code.includes(';')) {
-        error = 'Add a semicolon at the end (;).';
-      } else if (!code.includes('=')) {
-        error = 'Use = to assign a text value to your variable.';
-      } else if (!/String\s+[A-Za-z_][A-Za-z0-9_]*/.test(normalized)) {
-        error = 'Give your variable a valid name, like favoriteColor or botMood.';
-      } else if (!/"[^"\n]+"/.test(normalized)) {
-        error = 'Put a text value in quotes, like "teal" or "happy".';
-      } else {
-        error = 'Try the shape: String favoriteColor = "teal"; then make it your own.';
-      }
-    } else if (concept === 'int-age') {
-      const declarationPattern = /^int\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\d+)\s*;\s*$/;
-      const match = normalized.match(declarationPattern);
-
-      if (match) {
-        valid = true;
-      } else if (!/\bint\b/.test(normalized)) {
-        error = 'Use int at the start for age values.';
-      } else if (!/;/.test(normalized)) {
-        error = 'Add a semicolon at the end (;).';
-      } else if (!/=/.test(normalized)) {
-        error = 'Use = to assign a number.';
-      } else if (!/\bint\s+[A-Za-z_][A-Za-z0-9_]*/.test(normalized)) {
-        error = 'Give your age variable a valid name, like petAge.';
-      } else if (!/\d+/.test(normalized)) {
-        error = 'Age should be a whole number like 2 or 7 (no quotes).';
-      } else {
-        error = 'Try the shape: int petAge = 2;';
-      }
+  if (valid) {
+    try {
+      // Ensure user record exists (may have been dropped by migration)
+      await db.run(sql`
+        INSERT INTO users (id, email, name, password_hash, currency)
+        VALUES (${userId}, ${userId + '@tutorial'}, NULL, 'migrated', 0)
+        ON CONFLICT (id) DO NOTHING
+      `);
+    } catch {
+      // Non-fatal — the INSERT below will fail with FK violation if the
+      // user doesn't exist, but at least we tried to create them.
     }
 
-    if (valid) {
-      try {
-        await db.execute(sql`
-          INSERT INTO tutorial_progress (user_id, concept, completed, completed_at)
-          VALUES (${userId}, ${concept}, 1, ${new Date().toISOString()})
-          ON CONFLICT (user_id, concept) DO UPDATE SET completed = 1, completed_at = ${new Date().toISOString()}
-        `);
-        await db.execute(sql`
-          INSERT INTO user_xp (user_id, xp, level, updated_at)
-          VALUES (${userId}, 25, 1, ${new Date().toISOString()})
-          ON CONFLICT (user_id) DO UPDATE SET xp = user_xp.xp + 25, updated_at = ${new Date().toISOString()}
-        `);
-      } catch (dbErr) {
-        console.error('DB save failed (non-fatal):', dbErr);
-      }
+    try {
+      await db.run(sql`
+        INSERT INTO tutorial_progress (user_id, concept, completed, completed_at)
+        VALUES (${userId}, ${concept}, 1, ${now()})
+        ON CONFLICT (user_id, concept) DO UPDATE SET completed = 1, completed_at = ${now()}
+      `);
+    } catch {
     }
 
-    return NextResponse.json({ valid: !!valid, error: valid ? '' : error });
-  } catch (error: any) {
-    console.error('Validation error:', error?.message || error);
-    return NextResponse.json({ valid: false, error: 'Server error' });
+    try {
+      await db.run(sql`
+        INSERT INTO user_xp (user_id, xp, level, updated_at)
+        VALUES (${userId}, 25, 1, ${now()})
+        ON CONFLICT (user_id) DO UPDATE SET xp = user_xp.xp + 25, updated_at = ${now()}
+      `);
+    } catch {
+      // Non-fatal — XP save should not break the response
+    }
+  }
+
+  // Final catch-all — if anything above somehow threw without being
+  // caught, this prevents the HTML 500 page from being returned.
+  try {
+    return NextResponse.json({ valid, error: valid ? '' : error });
+  } catch {
+    return new Response(JSON.stringify({ valid: false, error: 'Internal error' }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    });
   }
 }

@@ -6,8 +6,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
-    pathname.startsWith('/api/auth') ||
-    pathname === '/api/ping' ||
+    pathname.startsWith('/api') ||
     pathname === '/login' ||
     pathname === '/signup' ||
     pathname === '/'

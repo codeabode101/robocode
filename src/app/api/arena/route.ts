@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     const players = await db.select({ id: users.id, name: users.name })
       .from(arenaPresence)
       .innerJoin(users, eq(arenaPresence.user_id, users.id));
-    return NextResponse.json({ players: players.filter((p) => p.id !== userId) });
+    return NextResponse.json({ players: players.filter((p: any) => p.id !== userId) });
   }
 
   if (action === 'my-challenge') {
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         });
       }
       case 'decline': {
-        await db.update(arenaChallenges).set({ status: 'declined', completed_at: new Date() })
+        await db.update(arenaChallenges).set({ status: 'declined', completed_at: new Date().toISOString() })
           .where(and(
             eq(arenaChallenges.opponent_id, userId),
             eq(arenaChallenges.status, 'pending')

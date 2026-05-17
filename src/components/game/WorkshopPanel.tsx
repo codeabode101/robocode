@@ -10,13 +10,19 @@ interface Props {
   inWorkshopRoom: boolean;
   runWorkshopCode: () => void;
   reopenWorkshopIntro: () => void;
+  showSparkyExamples: () => void;
   leaveWorkshopRoom: () => void;
+  bonusFraction: number;
+  bonusDuration: number;
+  firstTransactionDone: boolean;
 }
 
 export default function WorkshopPanel({
   activeCustomer, workshopCode, setWorkshopCode, workshopOutput,
-  inWorkshopRoom, runWorkshopCode, reopenWorkshopIntro, leaveWorkshopRoom,
+  inWorkshopRoom, runWorkshopCode, reopenWorkshopIntro, showSparkyExamples, leaveWorkshopRoom,
+  bonusFraction, bonusDuration, firstTransactionDone,
 }: Props) {
+  const bonusAmount = Math.round(5 * bonusFraction);
   return (
     <>
       {inWorkshopRoom && activeCustomer && (
@@ -27,12 +33,36 @@ export default function WorkshopPanel({
           {activeCustomer.required.includes('size') && <div className="mt-1">Size (int): <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span></div>}
           <div className="mt-1 text-sky-100">"I want a pet with these settings!"</div>
 
+          {bonusFraction > 0 && (
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
+                <span>Speed bonus: ${bonusAmount}</span>
+                <span>{Math.ceil(bonusFraction * bonusDuration)}s left</span>
+              </div>
+              <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-200"
+                  style={{
+                    width: `${bonusFraction * 100}%`,
+                    background: bonusFraction > 0.5
+                      ? 'linear-gradient(90deg, #22c55e, #eab308)'
+                      : 'linear-gradient(90deg, #eab308, #ef4444)',
+                  }}
+                />
+              </div>
+              {!firstTransactionDone && (
+                <div className="mt-1 text-xs text-amber-400 animate-pulse">↑ If you do it fast, you get a bonus!</div>
+              )}
+            </div>
+          )}
+
           <div className="mt-3 rounded-xl border border-slate-700 bg-slate-950 overflow-hidden">
             <div className="px-4 py-2 text-base text-slate-200 border-b border-slate-800">Java Workshop Editor</div>
             <textarea value={workshopCode} onChange={(e) => setWorkshopCode(e.target.value)} spellCheck={false} wrap="off" className="h-28 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 font-mono text-base leading-7 text-slate-100 [font-variant-ligatures:none]" />
           </div>
           <div className="mt-4 flex gap-3">
             <button type="button" className="rounded bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400" onClick={runWorkshopCode}>Submit Java Code</button>
+            <button type="button" className="rounded bg-amber-600 px-4 py-2.5 text-base font-semibold text-white hover:bg-amber-500" onClick={showSparkyExamples}>Need help?</button>
           </div>
         </div>
       )}

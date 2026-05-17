@@ -1,146 +1,147 @@
-import { pgTable, varchar, text, integer, timestamp, numeric, primaryKey, index } from 'drizzle-orm/pg-core';
+import { sqliteTable, text, integer, real, primaryKey, index } from 'drizzle-orm/sqlite-core';
 
-export const users = pgTable('users', {
-  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  name: varchar('name', { length: 255 }),
-  password_hash: varchar('password_hash', { length: 255 }).notNull(),
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  email: text('email').notNull().unique(),
+  name: text('name'),
+  password_hash: text('password_hash').notNull(),
   currency: integer('currency').notNull().default(0),
-  created_at: timestamp('created_at').notNull().defaultNow(),
+  playtime_seconds: integer('playtime_seconds').notNull().default(0),
+  created_at: text('created_at').notNull().default("datetime('now')"),
 });
 
-export const playerPositions = pgTable('player_positions', {
-  user_id: varchar('user_id', { length: 36 })
+export const playerPositions = sqliteTable('player_positions', {
+  user_id: text('user_id')
     .primaryKey()
     .references(() => users.id),
-  x: numeric('x', { precision: 10, scale: 2 }).notNull(),
-  y: numeric('y', { precision: 10, scale: 2 }).notNull(),
-  map: varchar('map', { length: 255 }).notNull().default('default'),
-  updated_at: timestamp('updated_at').notNull().defaultNow(),
+  x: real('x').notNull(),
+  y: real('y').notNull(),
+  map: text('map').notNull().default('default'),
+  updated_at: text('updated_at').notNull().default("datetime('now')"),
 });
 
-export const houses = pgTable('houses', {
-  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-  owner_id: varchar('owner_id', { length: 36 })
+export const houses = sqliteTable('houses', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  owner_id: text('owner_id')
     .notNull()
     .references(() => users.id),
   plot_x: integer('plot_x').notNull(),
   plot_y: integer('plot_y').notNull(),
   style_json: text('style_json'),
-  created_at: timestamp('created_at').notNull().defaultNow(),
+  created_at: text('created_at').notNull().default("datetime('now')"),
 });
 
-export const inventory = pgTable('inventory', {
-  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-  user_id: varchar('user_id', { length: 36 })
+export const inventory = sqliteTable('inventory', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  user_id: text('user_id')
     .notNull()
     .references(() => users.id),
-  item_type: varchar('item_type', { length: 255 }).notNull(),
-  item_id: varchar('item_id', { length: 255 }).notNull(),
+  item_type: text('item_type').notNull(),
+  item_id: text('item_id').notNull(),
   quantity: integer('quantity').notNull().default(1),
-  acquired_at: timestamp('acquired_at').notNull().defaultNow(),
+  acquired_at: text('acquired_at').notNull().default("datetime('now')"),
 });
 
-export const conceptsUnlocked = pgTable('concepts_unlocked', {
-  user_id: varchar('user_id', { length: 36 })
+export const conceptsUnlocked = sqliteTable('concepts_unlocked', {
+  user_id: text('user_id')
     .notNull()
     .references(() => users.id),
-  concept: varchar('concept', { length: 255 }).notNull(),
-  unlocked_at: timestamp('unlocked_at').notNull().defaultNow(),
+  concept: text('concept').notNull(),
+  unlocked_at: text('unlocked_at').notNull().default("datetime('now')"),
 }, (table) => ({
   pk: primaryKey(table.user_id, table.concept),
 }));
 
-export const friendRequests = pgTable('friend_requests', {
-  sender_id: varchar('sender_id', { length: 36 })
+export const friendRequests = sqliteTable('friend_requests', {
+  sender_id: text('sender_id')
     .notNull()
     .references(() => users.id),
-  receiver_id: varchar('receiver_id', { length: 36 })
+  receiver_id: text('receiver_id')
     .notNull()
     .references(() => users.id),
-  status: varchar('status', { length: 20 }).notNull().default('pending'),
-  created_at: timestamp('created_at').notNull().defaultNow(),
-  updated_at: timestamp('updated_at').notNull().defaultNow(),
+  status: text('status').notNull().default('pending'),
+  created_at: text('created_at').notNull().default("datetime('now')"),
+  updated_at: text('updated_at').notNull().default("datetime('now')"),
 }, (table) => ({
   pk: primaryKey({ columns: [table.sender_id, table.receiver_id] }),
-  receiverIdx: index().on(table.receiver_id),
-  senderIdx: index().on(table.sender_id),
+  receiverIdx: index('receiver_idx').on(table.receiver_id),
+  senderIdx: index('sender_idx').on(table.sender_id),
 }));
 
-export const arenaPresence = pgTable('arena_presence', {
-  user_id: varchar('user_id', { length: 36 })
+export const arenaPresence = sqliteTable('arena_presence', {
+  user_id: text('user_id')
     .primaryKey()
     .references(() => users.id),
-  joined_at: timestamp('joined_at').notNull().defaultNow(),
+  joined_at: text('joined_at').notNull().default("datetime('now')"),
 });
 
-export const arenaChallenges = pgTable('arena_challenges', {
-  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-  challenger_id: varchar('challenger_id', { length: 36 })
+export const arenaChallenges = sqliteTable('arena_challenges', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  challenger_id: text('challenger_id')
     .notNull()
     .references(() => users.id),
-  opponent_id: varchar('opponent_id', { length: 36 })
+  opponent_id: text('opponent_id')
     .notNull()
     .references(() => users.id),
-  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  status: text('status').notNull().default('pending'),
   problem: text('problem'),
-  winner_id: varchar('winner_id', { length: 36 }).references(() => users.id),
-  created_at: timestamp('created_at').notNull().defaultNow(),
-  completed_at: timestamp('completed_at'),
+  winner_id: text('winner_id').references(() => users.id),
+  created_at: text('created_at').notNull().default("datetime('now')"),
+  completed_at: text('completed_at'),
 });
 
-export const userXp = pgTable('user_xp', {
-  user_id: varchar('user_id', { length: 36 })
+export const userXp = sqliteTable('user_xp', {
+  user_id: text('user_id')
     .primaryKey()
     .references(() => users.id),
   xp: integer('xp').notNull().default(0),
   level: integer('level').notNull().default(1),
-  updated_at: timestamp('updated_at').notNull().defaultNow(),
+  updated_at: text('updated_at').notNull().default("datetime('now')"),
 });
 
-export const guilds = pgTable('guilds', {
-  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-  name: varchar('name', { length: 100 }).notNull().unique(),
-  owner_id: varchar('owner_id', { length: 36 })
+export const guilds = sqliteTable('guilds', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: text('name').notNull().unique(),
+  owner_id: text('owner_id')
     .notNull()
     .references(() => users.id),
   description: text('description'),
   min_level: integer('min_level').notNull().default(1),
-  created_at: timestamp('created_at').notNull().defaultNow(),
+  created_at: text('created_at').notNull().default("datetime('now')"),
 });
 
-export const guildMembers = pgTable('guild_members', {
-  guild_id: varchar('guild_id', { length: 36 })
+export const guildMembers = sqliteTable('guild_members', {
+  guild_id: text('guild_id')
     .notNull()
     .references(() => guilds.id),
-  user_id: varchar('user_id', { length: 36 })
+  user_id: text('user_id')
     .notNull()
     .references(() => users.id),
-  role: varchar('role', { length: 20 }).notNull().default('member'),
-  joined_at: timestamp('joined_at').notNull().defaultNow(),
+  role: text('role').notNull().default('member'),
+  joined_at: text('joined_at').notNull().default("datetime('now')"),
 }, (table) => ({
   pk: primaryKey({ columns: [table.guild_id, table.user_id] }),
 }));
 
-export const guildChat = pgTable('guild_chat', {
-  id: varchar('id', { length: 36 }).primaryKey().$defaultFn(() => crypto.randomUUID()),
-  guild_id: varchar('guild_id', { length: 36 })
+export const guildChat = sqliteTable('guild_chat', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  guild_id: text('guild_id')
     .notNull()
     .references(() => guilds.id),
-  user_id: varchar('user_id', { length: 36 })
+  user_id: text('user_id')
     .notNull()
     .references(() => users.id),
   message: text('message').notNull(),
-  created_at: timestamp('created_at').notNull().defaultNow(),
+  created_at: text('created_at').notNull().default("datetime('now')"),
 });
 
-export const tutorialProgress = pgTable('tutorial_progress', {
-  user_id: varchar('user_id', { length: 36 })
+export const tutorialProgress = sqliteTable('tutorial_progress', {
+  user_id: text('user_id')
     .notNull()
     .references(() => users.id),
-  concept: varchar('concept', { length: 255 }).notNull(),
+  concept: text('concept').notNull(),
   completed: integer('completed').notNull().default(1),
-  completed_at: timestamp('completed_at').notNull().defaultNow(),
+  completed_at: text('completed_at').notNull().default("datetime('now')"),
 }, (table) => ({
   pk: primaryKey(table.user_id, table.concept),
 }));

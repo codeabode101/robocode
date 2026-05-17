@@ -85,20 +85,33 @@ export function useMultiplayer(
       if (connectedRef.current) return;
       try { apinator.connect(); } catch { /* ignore */ }
     };
-
-    let reconnectTimeout: number | null = null;
-    let reconnectDelayMs = 1200;
-    const clearReconnectTimeout = () => {
-      if (reconnectTimeout !== null) { window.clearTimeout(reconnectTimeout); reconnectTimeout = null; }
+    const forceReconnect = () => {
+      if (connectedRef.current) return;
+      try {
+        apinator.disconnect();
+        apinator.connect();
+      } catch { /* ignore */ }
     };
-    const scheduleReconnect = () => {
-      if (connectedRef.current || reconnectTimeout !== null) return;
-      reconnectTimeout = window.setTimeout(() => {
-        reconnectTimeout = null;
+
+    let reconnectHandle: number | null = null;
+    let forceHandle: number | null = null;
+    const stopReconnect = () => {
+      if (reconnectHandle !== null) { window.clearTimeout(reconnectHandle); reconnectHandle = null; }
+      if (forceHandle !== null) { window.clearTimeout(forceHandle); forceHandle = null; }
+    };
+    const startReconnect = () => {
+      stopReconnect();
+      const loop = () => {
+        if (connectedRef.current) return;
         tryReconnect();
-        reconnectDelayMs = Math.min(10000, Math.floor(reconnectDelayMs * 1.5));
-        scheduleReconnect();
-      }, reconnectDelayMs);
+        reconnectHandle = window.setTimeout(loop, 300);
+      };
+      loop();
+      // Force full reset after 10s if still not connected
+      forceHandle = window.setTimeout(() => {
+        forceHandle = null;
+        if (!connectedRef.current) forceReconnect();
+      }, 10000);
     };
 
     apinator.bind('state_change', (state: unknown) => {
@@ -107,8 +120,8 @@ export function useMultiplayer(
       const isConnected = current === 'connected';
       connectedRef.current = isConnected;
       setConnected(isConnected);
-      if (isConnected) { reconnectDelayMs = 1200; clearReconnectTimeout(); }
-      if (!isConnected) { channelReadyRef.current = false; scheduleReconnect(); }
+      if (isConnected) { stopReconnect(); }
+      if (!isConnected) { channelReadyRef.current = false; startReconnect(); }
     });
 
     const channel = apinator.subscribe('private-robocode-live');
@@ -138,7 +151,10 @@ export function useMultiplayer(
 
     apinator.connect();
 
-    const reconnectInterval = window.setInterval(tryReconnect, 4000);
+    const pingInterval = window.setInterval(() => {
+      if (!connectedRef.current) fetch('/api/ping').catch(() => {});
+    }, 3000);
+
     const handleVisibility = () => { if (document.visibilityState === 'visible') tryReconnect(); };
     window.addEventListener('focus', tryReconnect);
     window.addEventListener('online', tryReconnect);
@@ -149,8 +165,8 @@ export function useMultiplayer(
       connectedRef.current = false;
       channelReadyRef.current = false;
       eventQueueRef.current = [];
-      clearReconnectTimeout();
-      window.clearInterval(reconnectInterval);
+      stopReconnect();
+      window.clearInterval(pingInterval);
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', tryReconnect);
       window.removeEventListener('online', tryReconnect);

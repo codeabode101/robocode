@@ -1,0 +1,16 @@
+{
+  "name": "robocode",
+  "compatibility_date": "2026-05-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": ".open-next/worker.js",
+  "assets": {
+    "directory": ".open-next/assets"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "robocode",
+      "database_id": "ad7706ec-6332-4d2b-b711-36aaf39f6da8"
+    }
+  ]
+}

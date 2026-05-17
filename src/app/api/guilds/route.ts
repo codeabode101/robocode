@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
   await db.insert(userXp).values({ user_id: userId, xp: -cost }).onConflictDoUpdate({
     target: userXp.user_id,
-    set: { xp: sql`user_xp.xp - ${cost}`, updated_at: new Date() },
+    set: { xp: sql`user_xp.xp - ${cost}`, updated_at: new Date().toISOString() },
   });
 
   const guild = await db.insert(guilds).values({
