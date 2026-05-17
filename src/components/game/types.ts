@@ -77,7 +77,14 @@ export type TutorialConcept =
   | 'compound-charge'
   | 'compound-discharge'
   | 'cast-double-to-int'
-  | 'cast-int-to-double';
+  | 'cast-int-to-double'
+  | 'string-length'
+  | 'string-charat'
+  | 'string-substring'
+  | 'string-indexof'
+  | 'math-random'
+  | 'math-max'
+  | 'string-concat';
 
 export type TutorialChallenge = {
   concept: TutorialConcept;

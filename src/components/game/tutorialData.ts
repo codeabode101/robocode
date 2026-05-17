@@ -143,9 +143,107 @@ export const unit1Phases: TutorialPhase[] = [
   },
 ];
 
+export const unit2Phases: TutorialPhase[] = [
+  {
+    kind: 'dialogue',
+    npcText:
+      "I found a voice module in the back! Scrap's sensor is installed and working. Now let's teach them to speak. Objects in Java let us interact with things — like Scrap's new voice module.",
+  },
+  {
+    kind: 'challenge',
+    concept: 'string-length',
+    title: 'Word length',
+    prompt: 'Scrap wants to say "Hello". Use <code>.length()</code> to find the length of the word and store it in <code>wordLen</code>.',
+    hint: '<code>String word = "Hello";\nint wordLen = word.length();</code>',
+    starterCode: 'String word = "Hello";\nint wordLen = word.length();',
+    npcText:
+      'Strings are objects. Call <code>.length()</code> on the string variable to get its length.',
+  },
+  {
+    kind: 'challenge',
+    concept: 'string-charat',
+    title: 'First letter',
+    prompt: 'Get the first character of the word and store it in <code>firstChar</code>.',
+    hint: '<code>char firstChar = word.charAt(0);</code>',
+    starterCode: 'char firstChar = word.charAt(0);',
+    npcText:
+      'Use <code>.charAt(index)</code> to get a character at a position. Index 0 is the first letter.',
+  },
+  {
+    kind: 'dialogue',
+    npcText:
+      'Scrap can pick out letters. Now let\'s teach them to grab chunks of words — substrings. This is how Scrap will learn to form syllables.',
+  },
+  {
+    kind: 'challenge',
+    concept: 'string-substring',
+    title: 'Syllable slice',
+    prompt: 'Get the first 3 letters of "Hello" (from index 1 to 4, which is "ell") and store in <code>part</code>.',
+    hint: '<code>String part = word.substring(1, 4);</code>',
+    starterCode: 'String part = word.substring(1, 4);',
+    npcText:
+      'Use <code>.substring(start, end)</code>. It returns the characters from start index up to (but not including) end index.',
+  },
+  {
+    kind: 'challenge',
+    concept: 'string-indexof',
+    title: 'Find the letter',
+    prompt: 'Find the position of "l" in "Hello" and store it in <code>pos</code>.',
+    hint: '<code>int pos = word.indexOf("l");</code>',
+    starterCode: 'int pos = word.indexOf("l");',
+    npcText:
+      'Use <code>.indexOf("char")</code> to find where a character first appears. It returns the index number.',
+  },
+  {
+    kind: 'dialogue',
+    npcText:
+      'Scrap can read! Now let\'s give them a brain — the Math class. Math is a built-in Java object with useful methods. No need to create it, just use it.',
+  },
+  {
+    kind: 'challenge',
+    concept: 'math-random',
+    title: 'Random thought',
+    prompt: 'Generate a random decimal between 0 and 1 and store it in <code>rand</code>.',
+    hint: '<code>double rand = Math.random();</code>',
+    starterCode: 'double rand = Math.random();',
+    npcText:
+      '<code>Math.random()</code> returns a random double between 0.0 and 1.0. It\'s how Scrap will make choices.',
+  },
+  {
+    kind: 'challenge',
+    concept: 'math-max',
+    title: 'Which is stronger?',
+    prompt: 'Find the larger of 7 and 12 using <code>Math.max()</code>. Store it in <code>stronger</code>.',
+    hint: '<code>int stronger = Math.max(7, 12);</code>',
+    starterCode: 'int stronger = Math.max(7, 12);',
+    npcText:
+      '<code>Math.max(a, b)</code> returns the bigger of two values. Scrap uses it to compare options.',
+  },
+  {
+    kind: 'dialogue',
+    npcText:
+      'One last thing — concatenation. We can glue strings together with <code>+</code>. Scrap\'s first sentence will be built from pieces.',
+  },
+  {
+    kind: 'challenge',
+    concept: 'string-concat',
+    title: 'Scrap speaks!',
+    prompt: 'Join the words together with a space: "Beep" + " " + "boop" into <code>scrapSays</code>.',
+    hint: '<code>String scrapSays = "Beep" + " " + "boop";</code>',
+    starterCode: 'String scrapSays = "Beep" + " " + "boop";',
+    npcText:
+      'Use <code>+</code> between strings to concatenate. Add a space in the middle so the words don\'t squish together.',
+  },
+  {
+    kind: 'dialogue',
+    npcText:
+      'Scrap said "Beep boop"! The voice module works. Objects are everywhere in Java — Strings, Math, arrays, and more. You\'ll use them constantly.',
+  },
+];
+
 export function getConceptErrorHint(concept: string, code: string): string {
   const normalized = String(code || '').replace(/\s+/g, ' ').trim();
-  const varNameMatch = normalized.match(/^(String|int|double|boolean)\s+([A-Za-z_][A-Za-z0-9_]*)/);
+  const varNameMatch = normalized.match(/^(String|int|double|boolean|char)\s+([A-Za-z_][A-Za-z0-9_]*)/);
 
   switch (concept) {
     case 'string-name': {
@@ -222,6 +320,54 @@ export function getConceptErrorHint(concept: string, code: string): string {
       if (!normalized.includes('(double)')) return 'Cast with <code>(double)</code>.';
       if (!normalized.includes('batteryLevel')) return 'Cast <code>batteryLevel</code>.';
       return 'Check the shape: <code>double preciseBattery = (double) batteryLevel;</code>';
+    }
+    case 'string-length': {
+      if (!/\bint\b/.test(normalized)) return 'Store the result in an int: use <code>int wordLen</code>.';
+      if (!normalized.includes('wordLen')) return 'Name the variable <code>wordLen</code>.';
+      if (!normalized.includes('.length()')) return 'Call <code>.length()</code> on the word variable.';
+      if (!normalized.includes('word')) return 'Use the <code>word</code> variable.';
+      return 'Check the shape: <code>int wordLen = word.length();</code>';
+    }
+    case 'string-charat': {
+      if (!/\bchar\b/.test(normalized)) return 'Store the result in a char: use <code>char firstChar</code>.';
+      if (!normalized.includes('firstChar')) return 'Name the variable <code>firstChar</code>.';
+      if (!normalized.includes('.charAt(')) return 'Call <code>.charAt(index)</code> on the word.';
+      if (!normalized.includes('0')) return 'Use index 0 for the first character.';
+      return 'Check the shape: <code>char firstChar = word.charAt(0);</code>';
+    }
+    case 'string-substring': {
+      if (!/\bString\b/.test(normalized)) return 'Store the result in a String: <code>String part</code>.';
+      if (!normalized.includes('part')) return 'Name the variable <code>part</code>.';
+      if (!normalized.includes('.substring(')) return 'Call <code>.substring(start, end)</code>.';
+      if (!normalized.includes('1') || !normalized.includes('4')) return 'Use substring(1, 4) to get "ell".';
+      return 'Check the shape: <code>String part = word.substring(1, 4);</code>';
+    }
+    case 'string-indexof': {
+      if (!/\bint\b/.test(normalized)) return 'Store the result in an int: <code>int pos</code>.';
+      if (!normalized.includes('pos')) return 'Name the variable <code>pos</code>.';
+      if (!normalized.includes('.indexOf(')) return 'Call <code>.indexOf("char")</code>.';
+      if (!/["']l["']/.test(normalized) && !normalized.includes('.indexOf("l")')) return 'Search for "l" (lowercase L).';
+      return 'Check the shape: <code>int pos = word.indexOf("l");</code>';
+    }
+    case 'math-random': {
+      if (!/\bdouble\b/.test(normalized)) return 'Store the result in a double: <code>double rand</code>.';
+      if (!normalized.includes('rand')) return 'Name the variable <code>rand</code>.';
+      if (!normalized.includes('Math.random()')) return 'Call <code>Math.random()</code>.';
+      return 'Check the shape: <code>double rand = Math.random();</code>';
+    }
+    case 'math-max': {
+      if (!/\bint\b/.test(normalized)) return 'Store the result in an int: <code>int stronger</code>.';
+      if (!normalized.includes('stronger')) return 'Name the variable <code>stronger</code>.';
+      if (!normalized.includes('Math.max(')) return 'Call <code>Math.max(a, b)</code>.';
+      if (!normalized.includes('7') || !normalized.includes('12')) return 'Pass 7 and 12 as arguments.';
+      return 'Check the shape: <code>int stronger = Math.max(7, 12);</code>';
+    }
+    case 'string-concat': {
+      if (!/\bString\b/.test(normalized)) return 'Store the result in a String: <code>String scrapSays</code>.';
+      if (!normalized.includes('scrapSays')) return 'Name the variable <code>scrapSays</code>.';
+      if (!normalized.includes('"Beep"') || !normalized.includes('"boop"')) return 'Use "Beep" and "boop".';
+      if (!normalized.includes('" "') && !normalized.includes('"  "')) return 'Add a space " " between them.';
+      return 'Check the shape: <code>String scrapSays = "Beep" + " " + "boop";</code>';
     }
     default:
       return 'Something went wrong. Check the code shape.';
