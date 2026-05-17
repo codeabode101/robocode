@@ -17,8 +17,12 @@ export const ROOM_PET_BROWSE_POINTS = [
   { stand: { x: 2.7, y: -1.75 }, look: { x: 3.4, y: -2.4 } },
   { stand: { x: -1.3, y: -0.2 }, look: { x: -1.9, y: 0.5 } },
 ];
-export const MASALA_CHAI_SHOP_POS = { x: -3.85, y: -1.8 };
 export const SPARKY_INTERACTION_DISTANCE = 1.7;
+export const GRIND_TARGETS: Record<string, number> = {
+  grind1: 10,
+  grind2: 20,
+  grind3: 30,
+};
 export const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
 export const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
 export const PET_COLORS = ['red', 'blue', 'green', 'gold', 'teal', 'violet', 'orange', 'silver'];
@@ -43,7 +47,7 @@ export interface CustomerRequest {
   required: CustomerProperty[];
 }
 
-export type SparkyQuestStage = 'intro' | 'earn-money' | 'buy-chai' | 'gift-ready' | 'done';
+export type SparkyQuestStage = 'intro' | 'unit1' | 'grind1' | 'unit2' | 'grind2' | 'unit3' | 'grind3' | 'unit4' | 'arena-ready';
 
 export interface CustomerNpc {
   id: string;
@@ -56,8 +60,21 @@ export interface CustomerNpc {
   stage: 'walking-to-browse' | 'browsing' | 'awaiting-code' | 'follow-to-counter' | 'leaving';
 }
 
+export type TutorialConcept =
+  | 'string-name'
+  | 'string-robot-name'
+  | 'int-battery'
+  | 'double-temperature'
+  | 'boolean-online'
+  | 'expression-power'
+  | 'expression-total'
+  | 'compound-charge'
+  | 'compound-discharge'
+  | 'cast-double-to-int'
+  | 'cast-int-to-double';
+
 export type TutorialChallenge = {
-  concept: 'string-name' | 'string-color' | 'int-age';
+  concept: TutorialConcept;
   title: string;
   prompt: string;
   hint: string;
