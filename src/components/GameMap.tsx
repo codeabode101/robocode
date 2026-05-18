@@ -466,18 +466,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (data.workshopIntroDone) setWorkshopIntroSeen(true);
         if (data.questStage && data.questStage !== 'intro') {
           let mappedStage = String(data.questStage) as SparkyQuestStage;
+          const wantsReset = typeof window !== 'undefined' && window.location.search.includes('reset=1');
           const resetStages = ['earn-money', 'buy-chai', 'gift-ready', 'done', 'grind1', 'grind2', 'grind3', 'arena-ready', 'unit2', 'unit3', 'unit4', 'unit2-done', 'unit3-done', 'unit4-done', 'all-done'];
-          const needsReset = resetStages.includes(String(data.questStage)) || (String(data.questStage) === 'unit1-done' && !localStorage.getItem('rb_migrated'));
-          if (needsReset) {
+          if (resetStages.includes(String(data.questStage)) || (String(data.questStage) === 'unit1-done' && wantsReset)) {
             mappedStage = 'unit1-done';
-            setMoney(0);
-            moneyRef.current = 0;
-            setWorkshopIntroSeen(false);
-            fetch('/api/profile/money', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 0 }), keepalive: true }).catch(() => {});
-            localStorage.setItem('rb_migrated', '1');
-          }
-          if (mappedStage === 'unit2') {
-            tutorialPhasesRef.current = unit2Phases;
+            if (wantsReset) {
+              setMoney(0);
+              moneyRef.current = 0;
+              setWorkshopIntroSeen(false);
+              fetch('/api/profile/money', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 0 }), keepalive: true }).catch(() => {});
+            }
           }
         setSparkyQuestStage(mappedStage);
         sparkyQuestStageRef.current = mappedStage;
