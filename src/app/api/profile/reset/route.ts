@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import { db } from '@/db';
-import { tutorialProgress, userXp } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { users, tutorialProgress, userXp } from '@/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
   try {
     await db.delete(tutorialProgress).where(eq(tutorialProgress.user_id, userId));
     await db.delete(userXp).where(eq(userXp.user_id, userId));
+    await db.run(sql`UPDATE users SET currency = 0, quest_stage = 'intro' WHERE id = ${userId}`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Reset error:', error);
