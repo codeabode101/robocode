@@ -21,6 +21,13 @@ const validators: Record<string, (code: string) => boolean> = {
   'compound-discharge': (c) => /^batteryLevel\s*-=\s*\d+\s*;\s*$/.test(c),
   'cast-double-to-int': (c) => /^int\s+roundedTemp\s*=\s*\(int\)\s*temperature\s*;\s*$/.test(c),
   'cast-int-to-double': (c) => /^double\s+preciseBattery\s*=\s*\(double\)\s*batteryLevel\s*;\s*$/.test(c),
+  'string-length': (c) => /^String\s+word\s*=\s*"[^"]*"\s*;\s*int\s+wordLen\s*=\s*word\.length\s*\(\s*\)\s*;\s*$/.test(c),
+  'string-charat': (c) => /^char\s+firstChar\s*=\s*word\.charAt\s*\(\s*0\s*\)\s*;\s*$/.test(c),
+  'string-substring': (c) => /^String\s+part\s*=\s*word\.substring\s*\(\s*1\s*,\s*4\s*\)\s*;\s*$/.test(c),
+  'string-indexof': (c) => /^int\s+pos\s*=\s*word\.indexOf\s*\(\s*["']l["']\s*\)\s*;\s*$/.test(c),
+  'math-random': (c) => /^double\s+rand\s*=\s*Math\.random\s*\(\s*\)\s*;\s*$/.test(c),
+  'math-max': (c) => /^int\s+stronger\s*=\s*Math\.max\s*\(\s*7\s*,\s*12\s*\)\s*;\s*$/.test(c),
+  'string-concat': (c) => /^String\s+scrapSays\s*=\s*"Beep"\s*\+\s*"\s?"\s*\+\s*"boop"\s*;\s*$/.test(c),
 };
 
 export function validateTutorialCode(code: string, concept: string): ValidationResult {
