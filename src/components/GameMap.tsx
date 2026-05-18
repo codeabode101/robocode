@@ -468,14 +468,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           let mappedStage = String(data.questStage) as SparkyQuestStage;
           const wantsReset = typeof window !== 'undefined' && window.location.search.includes('reset=1');
           const resetStages = ['earn-money', 'buy-chai', 'gift-ready', 'done', 'grind1', 'grind2', 'grind3', 'arena-ready', 'unit2', 'unit3', 'unit4', 'unit2-done', 'unit3-done', 'unit4-done', 'all-done'];
-          if (resetStages.includes(String(data.questStage)) || (String(data.questStage) === 'unit1-done' && wantsReset)) {
+          if (resetStages.includes(String(data.questStage))) {
             mappedStage = 'unit1-done';
-            if (wantsReset) {
-              setMoney(0);
-              moneyRef.current = 0;
-              setWorkshopIntroSeen(false);
-              fetch('/api/profile/reset', { method: 'POST', keepalive: true }).catch(() => {});
-            }
+            setMoney(0);
+            moneyRef.current = 0;
+            setWorkshopIntroSeen(false);
+            fetch('/api/profile/reset', { method: 'POST', keepalive: true }).catch(() => {});
+          } else if (String(data.questStage) === 'unit1-done' && wantsReset) {
+            setMoney(0);
+            moneyRef.current = 0;
+            setWorkshopIntroSeen(false);
+            fetch('/api/profile/reset', { method: 'POST', keepalive: true }).catch(() => {});
           }
         setSparkyQuestStage(mappedStage);
         sparkyQuestStageRef.current = mappedStage;
