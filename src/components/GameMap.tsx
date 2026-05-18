@@ -243,6 +243,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const remoteAvatarsRef = useRef<Record<string, RemoteAvatar>>({});
   const keyStateRef = useRef<Set<string>>(new Set());
   const tutorialPhasesRef = useRef<TutorialPhase[]>(unit1Phases);
+  const robotNameRef = useRef('Scrap');
   const showTutorialRef = useRef(false);
   const tutorialCompleteRef = useRef(false);
   const shopUnlockedRef = useRef(false);
@@ -302,6 +303,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [money, setMoney] = useState(0);
   const [sparkyQuestStage, setSparkyQuestStage] = useState<SparkyQuestStage>('intro');
   const [tutorialPhases, setTutorialPhases] = useState<TutorialPhase[]>(unit1Phases);
+  const [robotName, setRobotName] = useState('Scrap');
   const [activeCustomer, setActiveCustomer] = useState<CustomerRequest | null>(null);
   const [workshopCode, setWorkshopCode] = useState('');
   const [workshopOutput, setWorkshopOutput] = useState('');
@@ -495,6 +497,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         tutorialCompleteRef.current = true; showTutorialRef.current = false;
       }
       profileLoadedRef.current = true;
+      const savedName = localStorage.getItem('rb_robot_name');
+      if (savedName) { setRobotName(savedName); robotNameRef.current = savedName; }
     }).catch(() => {
       if (--retries > 0) return new Promise(r => setTimeout(r, 1500)).then(loadProfile);
       profileLoadedRef.current = true;
@@ -1422,7 +1426,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const localRobot = { root: localGroup, nameSprite: new THREE.Sprite(), body: torso, shadow: torso, leftPupil: torso, rightPupil: torso, antennaTip: torso };
     localRobotRef.current = localRobot;
 
-    const scrapRobot = createRobotVisual(new THREE.Color(0x4a3f35), 'Scrap');
+    const scrapRobot = createRobotVisual(new THREE.Color(0x4a3f35), robotNameRef.current);
     scrapRobot.root.scale.set(0.7, 0.7, 0.7);
     scrapRobot.root.position.set(NPC_POSITION.x + 1.5, NPC_POSITION.y - 1.2, 0.24);
     scrapRobot.root.rotation.z = 0.15;
@@ -2397,15 +2401,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
         scrapChallengesDoneRef.current += 1;
         const scrap = scrapRobotRef.current;
-        const done = scrapChallengesDoneRef.current;
-        if (scrap) {
-          const eyesOn = Math.min(1, done / 4);
-          const eyeBright = Math.floor(0x22 + eyesOn * 0xdd) * 0x10000 + Math.floor(0xdd + eyesOn * 0x22) * 0x100;
-          if (scrap.leftPupil) scrap.leftPupil.material.color.setHex(eyeBright);
-          if (scrap.rightPupil) scrap.rightPupil.material.color.setHex(eyeBright);
-          if (done >= 6 && scrap.antennaTip) scrap.antennaTip.material.color.setHex(0x22dd22);
-          if (done >= 8) scrap.root.rotation.z = 0;
-          if (done >= 10 && scrap.antennaTip) scrap.antennaTip.material.color.setHex(0x44ff44);
+
+        if (activePhase.concept === 'string-name') {
+          const match = code.match(/String\s+name\s*=\s*"([^"]+)"/);
+          if (match && match[1]) {
+            const newName = match[1];
+            localStorage.setItem('rb_robot_name', newName);
+            robotNameRef.current = newName;
+            setRobotName(newName);
+            if (scrap) {
+              scrap.root.remove(scrap.nameSprite);
+              const newSprite = createNameSprite(newName, new THREE.Color(0x22c55e));
+              scrap.nameSprite = newSprite;
+              scrap.root.add(newSprite);
+            }
+          }
         }
 
         if (nextPhase && nextPhase.kind === 'challenge') {
