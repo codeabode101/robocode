@@ -462,24 +462,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       return r.json();
     }).then(data => {
       if (data.error) throw new Error(data.error);
-      if (data.currency !== undefined) setMoney(data.currency);
-      if (data.workshopIntroDone) setWorkshopIntroSeen(true);
-        if (data.questStage && data.questStage !== 'intro') {
-          let mappedStage = String(data.questStage) as SparkyQuestStage;
-          const wantsReset = typeof window !== 'undefined' && window.location.search.includes('reset=1');
-          const resetStages = ['earn-money', 'buy-chai', 'gift-ready', 'done', 'grind1', 'grind2', 'grind3', 'arena-ready', 'unit2', 'unit3', 'unit4', 'unit2-done', 'unit3-done', 'unit4-done', 'all-done'];
-          if (resetStages.includes(String(data.questStage))) {
-            mappedStage = 'unit1-done';
-            setMoney(0);
-            moneyRef.current = 0;
-            setWorkshopIntroSeen(false);
-            fetch('/api/profile/reset', { method: 'POST', keepalive: true }).catch(() => {});
-          } else if (String(data.questStage) === 'unit1-done' && wantsReset) {
-            setMoney(0);
-            moneyRef.current = 0;
-            setWorkshopIntroSeen(false);
-            fetch('/api/profile/reset', { method: 'POST', keepalive: true }).catch(() => {});
-          }
+      if (data.questStage && data.questStage !== 'intro') {
+        let mappedStage = String(data.questStage) as SparkyQuestStage;
+        const wantsReset = typeof window !== 'undefined' && window.location.search.includes('reset=1');
+        const resetStages = ['earn-money', 'buy-chai', 'gift-ready', 'done', 'grind1', 'grind2', 'grind3', 'arena-ready', 'unit2', 'unit3', 'unit4', 'unit2-done', 'unit3-done', 'unit4-done', 'all-done'];
+        const doReset = resetStages.includes(String(data.questStage)) || (String(data.questStage) === 'unit1-done' && wantsReset);
+        if (doReset) {
+          data.currency = 0;
+          data.workshopIntroDone = false;
+          mappedStage = 'unit1-done';
+          fetch('/api/profile/reset', { method: 'POST', keepalive: true }).catch(() => {});
+        }
+        setMoney(data.currency ?? 0);
+        moneyRef.current = data.currency ?? 0;
+        if (data.workshopIntroDone) setWorkshopIntroSeen(true);
         setSparkyQuestStage(mappedStage);
         sparkyQuestStageRef.current = mappedStage;
         if (mappedStage === 'intro') {
