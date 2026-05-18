@@ -464,16 +464,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (data.error) throw new Error(data.error);
       if (data.currency !== undefined) setMoney(data.currency);
       if (data.workshopIntroDone) setWorkshopIntroSeen(true);
-      if (data.questStage && data.questStage !== 'intro') {
-        let mappedStage = String(data.questStage) as SparkyQuestStage;
-        const oldStages = ['earn-money', 'buy-chai', 'gift-ready', 'done', 'grind1', 'grind2', 'grind3', 'arena-ready', 'unit2', 'unit3', 'unit4', 'unit2-done', 'unit3-done', 'unit4-done', 'all-done'];
-        if (oldStages.includes(String(data.questStage))) {
-          mappedStage = 'unit1-done';
-          setMoney(0);
-          moneyRef.current = 0;
-          setWorkshopIntroSeen(false);
-          fetch('/api/profile/money', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 0 }), keepalive: true }).catch(() => {});
-        }
+        if (data.questStage && data.questStage !== 'intro') {
+          let mappedStage = String(data.questStage) as SparkyQuestStage;
+          const resetStages = ['earn-money', 'buy-chai', 'gift-ready', 'done', 'grind1', 'grind2', 'grind3', 'arena-ready', 'unit2', 'unit3', 'unit4', 'unit2-done', 'unit3-done', 'unit4-done', 'all-done'];
+          const needsReset = resetStages.includes(String(data.questStage)) || (String(data.questStage) === 'unit1-done' && !localStorage.getItem('rb_migrated'));
+          if (needsReset) {
+            mappedStage = 'unit1-done';
+            setMoney(0);
+            moneyRef.current = 0;
+            setWorkshopIntroSeen(false);
+            fetch('/api/profile/money', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 0 }), keepalive: true }).catch(() => {});
+            localStorage.setItem('rb_migrated', '1');
+          }
+          if (mappedStage === 'unit2') {
+            tutorialPhasesRef.current = unit2Phases;
+          }
         setSparkyQuestStage(mappedStage);
         sparkyQuestStageRef.current = mappedStage;
         if (mappedStage === 'intro') {
