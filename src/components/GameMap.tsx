@@ -474,7 +474,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               setMoney(0);
               moneyRef.current = 0;
               setWorkshopIntroSeen(false);
-              fetch('/api/profile/money', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: 0 }), keepalive: true }).catch(() => {});
+              fetch('/api/profile/reset', { method: 'POST', keepalive: true }).catch(() => {});
             }
           }
         setSparkyQuestStage(mappedStage);
