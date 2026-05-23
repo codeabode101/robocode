@@ -948,8 +948,8 @@ export function animateRepairSparky(visual: RobotVisual, time: number, repairPha
   visual.body.position.y = 0.3 + bob;
   if (visual.antennaTip) visual.antennaTip.position.y = 0.82 + Math.sin(time * 9) * 0.015;
 
-  // Face north toward the kiosk (PI = +Y direction in game coords)
-  visual.root.rotation.z = Math.PI + Math.sin(time * 2) * 0.03;
+  // Gentle wobble
+  visual.root.rotation.z = Math.sin(time * 2) * 0.03;
 
   // Pupils look up toward kiosk workbench
   const eyeX = Math.max(-0.025, Math.min(0.025, 0.05 * 0.018));
