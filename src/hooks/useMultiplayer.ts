@@ -151,10 +151,6 @@ export function useMultiplayer(
 
     apinator.connect();
 
-    const pingInterval = window.setInterval(() => {
-      if (!connectedRef.current) fetch('/api/ping').catch(() => {});
-    }, 3000);
-
     const handleVisibility = () => { if (document.visibilityState === 'visible') tryReconnect(); };
     window.addEventListener('focus', tryReconnect);
     window.addEventListener('online', tryReconnect);
@@ -166,7 +162,6 @@ export function useMultiplayer(
       channelReadyRef.current = false;
       eventQueueRef.current = [];
       stopReconnect();
-      window.clearInterval(pingInterval);
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', tryReconnect);
       window.removeEventListener('online', tryReconnect);

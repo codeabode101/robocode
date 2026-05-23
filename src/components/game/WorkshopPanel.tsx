@@ -23,15 +23,38 @@ export default function WorkshopPanel({
   bonusFraction, bonusDuration, firstTransactionDone,
 }: Props) {
   const bonusAmount = Math.round(5 * bonusFraction);
+  const isDataProcessing = activeCustomer?.requestType === 'data-processing';
+
   return (
     <>
       {inWorkshopRoom && activeCustomer && (
         <div className="absolute left-4 top-20 z-40 w-[min(90vw,24rem)] rounded-2xl border border-cyan-200/50 bg-slate-900/94 px-5 py-4 text-base text-slate-100 shadow-2xl">
           <div className="text-sky-300 text-lg font-semibold">{activeCustomer.customerName}'s Request</div>
-          {activeCustomer.required.includes('name') && <div className="mt-1">Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span></div>}
-          {activeCustomer.required.includes('color') && <div className="mt-1">Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span></div>}
-          {activeCustomer.required.includes('size') && <div className="mt-1">Size (int): <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span></div>}
-          <div className="mt-1 text-sky-100">"I want a pet with these settings!"</div>
+
+          {isDataProcessing && activeCustomer.dataSteps ? (
+            <div className="mt-2">
+              <div className="text-sky-100">{activeCustomer.dataSteps[0].description}</div>
+              <pre className="mt-2 rounded-lg bg-slate-950 border border-slate-700 p-3 font-mono text-sm text-emerald-300 leading-relaxed">
+                {activeCustomer.dataSteps[0].givenInfo.length > 0 ? (
+                  activeCustomer.dataSteps[0].givenInfo.map((line, i) => (
+                    <div key={i}><code>{line}</code></div>
+                  ))
+                ) : (
+                  <div className="text-slate-400 italic">(no data shown — write from scratch)</div>
+                )}
+              </pre>
+              <div className="mt-1 text-xs text-slate-400">
+                Write {activeCustomer.dataSteps[0].expectedCode.length} statement{activeCustomer.dataSteps[0].expectedCode.length > 1 ? 's' : ''}:
+              </div>
+            </div>
+          ) : (
+            <>
+              {activeCustomer.required.includes('name') && <div className="mt-1">Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span></div>}
+              {activeCustomer.required.includes('color') && <div className="mt-1">Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span></div>}
+              {activeCustomer.required.includes('size') && <div className="mt-1">Size (int): <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span></div>}
+              <div className="mt-1 text-sky-100">"I want my robot to have these settings!"</div>
+            </>
+          )}
 
           {bonusFraction > 0 && (
             <div className="mt-3">

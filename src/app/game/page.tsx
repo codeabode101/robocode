@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
-import GameMap from '@/components/GameMap';
+import GameMapLoader from '@/components/GameMapLoader';
 
 export default async function GamePage() {
   const cookieStore = await cookies();
@@ -23,7 +23,7 @@ export default async function GamePage() {
   const apinatorCluster = (process.env.NEXT_PUBLIC_APINATOR_CLUSTER as 'us' | 'eu') || 'us';
 
   return (
-    <GameMap
+    <GameMapLoader
       userId={userId}
       apinatorAppKey={apinatorAppKey}
       apinatorCluster={apinatorCluster}

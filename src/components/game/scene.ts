@@ -250,6 +250,10 @@ export type RobotVisual = {
   leftPupil: THREE.Object3D;
   rightPupil: THREE.Object3D;
   antennaTip: THREE.Mesh;
+  leftArm: THREE.Mesh;
+  rightArm: THREE.Mesh;
+  leftLeg: THREE.Mesh;
+  rightLeg: THREE.Mesh;
 };
 
 export type HumanVisual = {
@@ -274,10 +278,14 @@ export function createPlayerSprite(imagePath: string, color: THREE.Color, name: 
   const antennaTip = new THREE.Object3D();
   const leftPupil = new THREE.Object3D();
   const rightPupil = new THREE.Object3D();
+  const leftArm = new THREE.Object3D() as unknown as THREE.Mesh;
+  const rightArm = new THREE.Object3D() as unknown as THREE.Mesh;
+  const leftLeg = new THREE.Object3D() as unknown as THREE.Mesh;
+  const rightLeg = new THREE.Object3D() as unknown as THREE.Mesh;
 
   applyShadows(group, true, true);
   group.scale.set(2.35, 2.35, 2.35);
-  return { root: group, nameSprite, body: dummyBody as unknown as THREE.Mesh, shadow: new THREE.Object3D() as unknown as THREE.Mesh, leftPupil, rightPupil, antennaTip: antennaTip as unknown as THREE.Mesh };
+  return { root: group, nameSprite, body: dummyBody as unknown as THREE.Mesh, shadow: new THREE.Object3D() as unknown as THREE.Mesh, leftPupil, rightPupil, antennaTip: antennaTip as unknown as THREE.Mesh, leftArm, rightArm, leftLeg, rightLeg };
 }
 
 export function addOutline(mesh: THREE.Mesh, color = 0x2d2d3d) {
@@ -400,7 +408,7 @@ export function createRobotVisual(color: THREE.Color, name: string) {
 
   group.rotation.set(Math.PI / 2, 0, 0);
   group.scale.set(2.35, 2.35, 2.35);
-  return { root: group, nameSprite, body, shadow: new THREE.Object3D() as unknown as THREE.Mesh, leftPupil, rightPupil, antennaTip };
+  return { root: group, nameSprite, body, shadow: new THREE.Object3D() as unknown as THREE.Mesh, leftPupil, rightPupil, antennaTip, leftArm, rightArm, leftLeg, rightLeg };
 }
 
 export function createGrid(size: number, step: number, color: number) {
@@ -606,7 +614,7 @@ export function createBigPetShop(x: number, y: number, scale = 1) {
   doorLabel.renderOrder = 36;
   shop.add(doorLabel);
 
-  const sign = createLabelSprite('PET WORKSHOP', '#f8fafc', 'rgba(15,23,42,0.92)', '#fde68a', 360, 90);
+  const sign = createLabelSprite("RAFIQ'S ROBOTS", '#f8fafc', 'rgba(15,23,42,0.92)', '#fde68a', 360, 90);
   sign.scale.set(5.78, 1.6, 1);
   sign.center.set(0.5, 0);
   sign.position.set(x, y + 2.9, 4.5);
@@ -658,6 +666,644 @@ export function animateRobotVisual(visual: RobotVisual, time: number, speedFacto
   const eyeY = Math.max(-0.015, Math.min(0.015, lookY * 0.012));
   visual.leftPupil.position.set(-0.07 + eyeX, 0.6 + eyeY, 0.75);
   visual.rightPupil.position.set(0.07 + eyeX, 0.6 + eyeY, 0.75);
+
+  // Leg swing
+  const legSwing = Math.sin(time * WALK_BOB_SPEED) * 0.3 * walkAmount;
+  visual.leftLeg.rotation.z = legSwing;
+  visual.rightLeg.rotation.z = -legSwing;
+
+  // Arm swing (opposite to legs)
+  const armSwing = Math.sin(time * WALK_BOB_SPEED + Math.PI) * 0.2 * walkAmount;
+  visual.leftArm.rotation.z = 0.3 + armSwing;
+  visual.rightArm.rotation.z = -0.3 - armSwing;
+}
+
+export function createRepairKiosk() {
+  const kiosk = new THREE.Group();
+
+  const woodMat = createToonMaterial(0x8b6b4a);
+  const metalMat = createToonMaterial(0x475569);
+  const darkMat = createToonMaterial(0x1e293b);
+  const emissiveMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+
+  // Workbench
+  const bench = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.16, 0.22), woodMat);
+  bench.position.set(0, 0, 0.13);
+  bench.receiveShadow = true;
+  kiosk.add(bench);
+
+  // Bench legs
+  for (const lx of [-0.28, 0.28]) {
+    for (const ly of [-0.06, 0.06]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.02, 0.13, 6), darkMat);
+      leg.position.set(lx, ly, 0.065);
+      kiosk.add(leg);
+    }
+  }
+
+  // Canopy posts
+  for (const px of [-0.37, 0.37]) {
+    for (const py of [-0.15, 0.15]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.45, 6), metalMat);
+      post.position.set(px, py, 0.38);
+      kiosk.add(post);
+    }
+  }
+
+  // Canopy
+  const canopy = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.04), darkMat);
+  canopy.position.set(0, 0, 0.60);
+  canopy.receiveShadow = true;
+  kiosk.add(canopy);
+
+  // Hanging tool hooks (left side of canopy)
+  for (let i = 0; i < 3; i++) {
+    const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.04, 4), metalMat);
+    hook.position.set(-0.3, -0.06 + i * 0.06, 0.56);
+    kiosk.add(hook);
+    const tool = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.04, 0.015), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
+    tool.position.set(-0.3, -0.06 + i * 0.06, 0.53);
+    kiosk.add(tool);
+  }
+
+  // Holographic diagnostic screen
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.08), emissiveMat);
+  screen.position.set(0, 0, 0.36);
+  kiosk.add(screen);
+  // Screen glow ring
+  const glow = new THREE.Mesh(new THREE.EdgesGeometry(screen.geometry), new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.6 }));
+  glow.position.copy(screen.position);
+  kiosk.add(glow);
+
+  // Cables draping from bench
+  for (let i = 0; i < 3; i++) {
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.008, 0.06, 4), new THREE.MeshToonMaterial({ color: 0x1e293b }));
+    cable.position.set(-0.15 + i * 0.15, 0.0, 0.04);
+    cable.rotation.x = 0.2;
+    kiosk.add(cable);
+  }
+
+  // Broken drone on workbench (the repair subject)
+  const droneBody = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.03), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
+  droneBody.position.set(-0.1, 0, 0.29);
+  kiosk.add(droneBody);
+  const droneWings = [
+    new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, 0.005), new THREE.MeshToonMaterial({ color: 0x6b7280 })),
+    new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.005), new THREE.MeshToonMaterial({ color: 0x6b7280 })),
+  ];
+  droneWings[0].position.set(-0.1, -0.04, 0.30);
+  droneWings[1].position.set(-0.1, 0.04, 0.30);
+  kiosk.add(droneWings[0]);
+  kiosk.add(droneWings[1]);
+  // Small wires sticking out
+  for (let i = 0; i < 3; i++) {
+    const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.025, 4), new THREE.MeshToonMaterial({ color: 0xf59e0b }));
+    wire.position.set(-0.1 + (i - 1) * 0.025, 0, 0.315);
+    wire.rotation.x = 0.4;
+    kiosk.add(wire);
+  }
+
+  // Small scrap parts on the ground
+  for (let i = 0; i < 4; i++) {
+    const part = new THREE.Mesh(
+      [new THREE.BoxGeometry(0.02, 0.02, 0.01), new THREE.SphereGeometry(0.012, 6, 6), new THREE.CylinderGeometry(0.01, 0.015, 0.015, 5)][i % 3],
+      new THREE.MeshToonMaterial({ color: [0x6b7280, 0x94a3b8, 0xf59e0b, 0xef4444][i] })
+    );
+    part.position.set(-0.35 + i * 0.04, -0.12 + (i % 2) * 0.04, 0.04);
+    kiosk.add(part);
+  }
+
+  return kiosk;
+}
+
+export function createRepairShop(x: number, y: number, scale = 1.2) {
+  const shop = new THREE.Group();
+
+  const wallMat = createTexturedToonMaterial('tile_23.png', 3, 2, 0x8b6b4a);
+  const trimMat = createToonMaterial(0x5a3a1a);
+  const roofMat = createToonMaterial(0xc2410c);
+  const metalMat = createToonMaterial(0x475569);
+  const darkMat = createToonMaterial(0x1e293b);
+  const woodMat = createToonMaterial(0x8b6b4a);
+  const emissiveMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+
+  // Floor platform
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.7, 0.06), trimMat);
+  floor.position.set(0, 0, 0.03);
+  floor.receiveShadow = true;
+  shop.add(floor);
+
+  // Back wall
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.7, 0.08), wallMat);
+  backWall.position.set(0, 0, 0.48);
+  backWall.receiveShadow = true;
+  shop.add(backWall);
+
+  // Side walls (leaving front open)
+  for (let s = -1; s <= 1; s += 2) {
+    const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.44), wallMat);
+    sideWall.position.set(s * 0.85, 0.01, 0.26);
+    shop.add(sideWall);
+  }
+
+  // Front counter
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.08, 0.18), woodMat);
+  counter.position.set(0, 0, 0.12);
+  shop.add(counter);
+
+  // Counter legs
+  for (let sx = -1; sx <= 1; sx += 2) {
+    for (let sy = -1; sy <= 1; sy += 2) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.12, 6), darkMat);
+      leg.position.set(sx * 0.65, sy * 0.06, 0.06);
+      shop.add(leg);
+    }
+  }
+
+  // Inside workbench
+  const bench = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.16, 0.2), woodMat);
+  bench.position.set(0, -0.08, 0.38);
+  shop.add(bench);
+
+  // Bench legs
+  for (const lx of [-0.25, 0.25]) {
+    for (const ly of [-0.06, 0.06]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.11, 6), darkMat);
+      leg.position.set(lx, ly, 0.31);
+      shop.add(leg);
+    }
+  }
+
+  // Diagnostic screen on workbench
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.07), emissiveMat);
+  screen.position.set(0, -0.08, 0.50);
+  shop.add(screen);
+  const glow = new THREE.Mesh(new THREE.EdgesGeometry(screen.geometry), new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.6 }));
+  glow.position.copy(screen.position);
+  shop.add(glow);
+
+  // Broken drone on workbench
+  const droneBody = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.04, 0.025), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
+  droneBody.position.set(0.1, -0.08, 0.49);
+  shop.add(droneBody);
+  for (let s = -1; s <= 1; s += 2) {
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.035, 0.005), new THREE.MeshToonMaterial({ color: 0x6b7280 }));
+    wing.position.set(0.1, s * 0.035, 0.50);
+    shop.add(wing);
+  }
+
+  // Hanging tools on back wall
+  for (let i = 0; i < 3; i++) {
+    const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.03, 4), metalMat);
+    hook.position.set(-0.4 + i * 0.4, -0.2, 0.44);
+    shop.add(hook);
+    const tool = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.035, 0.01), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
+    tool.position.set(-0.4 + i * 0.4, -0.2, 0.41);
+    shop.add(tool);
+  }
+
+  // Cables from bench
+  for (let i = 0; i < 3; i++) {
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.007, 0.05, 4), new THREE.MeshToonMaterial({ color: 0x1e293b }));
+    cable.position.set(-0.1 + i * 0.1, -0.08, 0.32);
+    cable.rotation.x = 0.2;
+    shop.add(cable);
+  }
+
+  // Awning poles
+  for (const px of [-0.8, 0.8]) {
+    for (const py of [-0.25, 0.25]) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 6), metalMat);
+      pole.position.set(px, py, 0.45);
+      shop.add(pole);
+    }
+  }
+
+  // Awning roof
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.5, 0.04), roofMat);
+  roof.position.set(0, 0, 0.70);
+  roof.receiveShadow = true;
+  shop.add(roof);
+
+  // Sign
+  const signCanvas = document.createElement('canvas');
+  signCanvas.width = 256; signCanvas.height = 64;
+  const sctx = signCanvas.getContext('2d')!;
+  sctx.fillStyle = 'rgba(2, 6, 23, 0.92)';
+  const rad = 8;
+  sctx.beginPath(); sctx.moveTo(rad, 0); sctx.lineTo(256 - rad, 0);
+  sctx.quadraticCurveTo(256, 0, 256, rad); sctx.lineTo(256, 64 - rad);
+  sctx.quadraticCurveTo(256, 64, 256 - rad, 64); sctx.lineTo(rad, 64);
+  sctx.quadraticCurveTo(0, 64, 0, 64 - rad); sctx.lineTo(0, rad);
+  sctx.quadraticCurveTo(0, 0, rad, 0); sctx.closePath(); sctx.fill();
+  sctx.fillStyle = '#fbbf24'; sctx.font = '700 28px system-ui'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+  sctx.fillText('REPAIR SHOP', 128, 34);
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  signTex.minFilter = THREE.LinearFilter;
+  const signMesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.04), new THREE.MeshBasicMaterial({ map: signTex }));
+  signMesh.position.set(0, 0, 0.72);
+  shop.add(signMesh);
+
+  // Hanging lights
+  for (let i = -2; i <= 2; i++) {
+    const light = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+    light.position.set(i * 0.35, 0, 0.58);
+    shop.add(light);
+  }
+
+  // Scrap parts on ground out front
+  for (let i = 0; i < 4; i++) {
+    const part = new THREE.Mesh(
+      [new THREE.BoxGeometry(0.02, 0.02, 0.01), new THREE.SphereGeometry(0.012, 6, 6), new THREE.CylinderGeometry(0.01, 0.015, 0.015, 5)][i % 3],
+      new THREE.MeshToonMaterial({ color: [0x6b7280, 0x94a3b8, 0xf59e0b, 0xef4444][i] })
+    );
+    part.position.set(-0.35 + i * 0.05, -0.18 + (i % 2) * 0.04, 0.03);
+    shop.add(part);
+  }
+
+  shop.scale.set(scale, scale, scale);
+  shop.position.set(x, y, 0);
+  shop.rotation.set(Math.PI / 2, 0, 0);
+  applyShadows(shop, true, true);
+  return shop;
+}
+
+export function animateRepairSparky(visual: RobotVisual, time: number, repairPhase: number) {
+  const bob = Math.sin(time * 3) * 0.015;
+  visual.body.position.y = 0.3 + bob;
+  if (visual.antennaTip) visual.antennaTip.position.y = 0.82 + Math.sin(time * 9) * 0.015;
+
+  // Pupils look toward shop workbench (slightly up)
+  const eyeX = Math.max(-0.025, Math.min(0.025, 0.05 * 0.018));
+  const eyeY = Math.max(-0.015, Math.min(0.015, 0.25 * 0.012));
+  visual.leftPupil.position.set(-0.07 + eyeX, 0.6 + eyeY, 0.75);
+  visual.rightPupil.position.set(0.07 + eyeX, 0.6 + eyeY, 0.75);
+
+  // Face into the repair shop (north = rotation.z = 0) with gentle head tilt
+  visual.root.rotation.z = Math.sin(time * 2) * 0.03;
+
+  // Arm animation based on repair phase (0-1, cycles)
+  const armSwing = Math.sin(repairPhase * Math.PI * 2) * 0.3;
+  visual.rightArm.rotation.z = -0.3 + Math.max(0, armSwing) * 0.8;
+  visual.rightArm.rotation.x = Math.max(0, armSwing) * 0.4;
+  visual.leftArm.rotation.z = 0.3 + Math.min(0, armSwing) * 0.8;
+  visual.leftArm.rotation.x = Math.min(0, armSwing) * 0.4;
+}
+
+export function animateSparkyWave(visual: RobotVisual, time: number) {
+  const bob = Math.sin(time * 3) * 0.01;
+  visual.body.position.y = 0.3 + bob;
+  if (visual.antennaTip) visual.antennaTip.position.y = 0.82 + Math.sin(time * 12) * 0.02;
+
+  // Pupils look toward player
+  visual.leftPupil.position.set(-0.07 + 0.02, 0.6 + 0.01, 0.75);
+  visual.rightPupil.position.set(0.07 + 0.02, 0.6 + 0.01, 0.75);
+
+  // Wave: right arm up, slight wobble
+  visual.rightArm.rotation.z = 0.5 + Math.sin(time * 6) * 0.15;
+  visual.rightArm.rotation.x = -0.3;
+  visual.leftArm.rotation.z = 0.3;
+  visual.leftArm.rotation.x = 0;
+
+  // Slight head tilt
+  visual.root.rotation.z = Math.sin(time * 2.5) * 0.02;
+}
+
+export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
+  const shop = new THREE.Group();
+  const bh = 1.8;
+  const wallMat = createTexturedToonMaterial('tile_23.png', 8, 4, 0xf5e6d0);
+  const trimMat = createToonMaterial(0x8b4513);
+  const roofMat = createToonMaterial(0xc2410c);
+
+  // Foundation slab — lifts the building off the ground
+  const foundation = new THREE.Mesh(
+    new THREE.BoxGeometry(bw + 0.4, bd + 0.4, 0.1),
+    createToonMaterial(0x94a3b8)
+  );
+  foundation.position.set(0, 0, 0.05);
+  shop.add(foundation);
+
+  const floor = new THREE.Mesh(
+    new THREE.BoxGeometry(bw, bd, 0.04),
+    createTexturedToonMaterial('tile_43.png', 8, 4, 0x8b6b4a)
+  );
+  floor.position.set(0, 0, 0.12);
+  shop.add(floor);
+
+  const backWall = new THREE.Mesh(
+    new THREE.BoxGeometry(bw, 0.08, bh),
+    wallMat
+  );
+  backWall.position.set(0, -bd / 2, 0.1 + bh / 2);
+  shop.add(backWall);
+
+  for (let s = -1; s <= 1; s += 2) {
+    const sideWall = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, bd, bh),
+      wallMat
+    );
+    sideWall.position.set(s * bw / 2, 0, 0.1 + bh / 2);
+    shop.add(sideWall);
+  }
+
+  // Roof — thicker slab with overhang and trim
+  const roofBase = new THREE.Mesh(
+    new THREE.BoxGeometry(bw + 0.8, bd + 0.6, 0.12),
+    roofMat
+  );
+  roofBase.position.set(0, 0, 0.1 + bh + 0.06);
+  shop.add(roofBase);
+
+  const roofTrim = new THREE.Mesh(
+    new THREE.BoxGeometry(bw + 0.9, bd + 0.7, 0.04),
+    createToonMaterial(0x7c2d12)
+  );
+  roofTrim.position.set(0, 0, 0.1 + bh + 0.14);
+  shop.add(roofTrim);
+
+  const roofRidge = new THREE.Mesh(
+    new THREE.BoxGeometry(bw - 1.0, 0.08, 0.06),
+    createToonMaterial(0x7c2d12)
+  );
+  roofRidge.position.set(0, -bd / 2 + 0.3, 0.1 + bh + 0.16);
+  shop.add(roofRidge);
+
+  const fwY = bd / 2;
+  const doorW = 0.8, doorH = 0.9;
+
+  const frontMat = createTexturedToonMaterial('tile_23.png', 8, 4, 0xf5e6d0);
+  for (let s = -1; s <= 1; s += 2) {
+    const segStart = s === -1 ? -bw / 2 : doorW / 2 + 0.1;
+    const segEnd = s === -1 ? -doorW / 2 - 0.1 : bw / 2;
+    const segW = segEnd - segStart;
+    if (segW < 0.01) continue;
+    const segCx = (segStart + segEnd) / 2;
+    const wall = new THREE.Mesh(
+      new THREE.BoxGeometry(segW, 0.08, bh),
+      frontMat
+    );
+    wall.position.set(segCx, fwY, 0.1 + bh / 2);
+    shop.add(wall);
+
+    // Display window with warm interior glow
+    const win = new THREE.Mesh(
+      new THREE.BoxGeometry(segW - 0.4, 0.04, 0.5),
+      new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
+    );
+    win.position.set(segCx, fwY, 0.35);
+    shop.add(win);
+
+    // Window frame
+    const winFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(segW - 0.35, 0.06, 0.06),
+      trimMat
+    );
+    winFrame.position.set(segCx, fwY, 0.62);
+    shop.add(winFrame);
+  }
+
+  // Door
+  const door = new THREE.Mesh(
+    new THREE.BoxGeometry(doorW, 0.08, doorH),
+    createToonMaterial(0x0f172a)
+  );
+  door.position.set(0, fwY, 0.1 + doorH / 2);
+  shop.add(door);
+
+  const doorFrame = new THREE.Mesh(
+    new THREE.BoxGeometry(doorW + 0.1, 0.08, doorH + 0.06),
+    trimMat
+  );
+  doorFrame.position.set(0, fwY, 0.1 + (doorH + 0.06) / 2);
+  shop.add(doorFrame);
+
+  // Porch step — wide solid slab in front of door
+  const porchStep = new THREE.Mesh(
+    new THREE.BoxGeometry(doorW + 0.6, 0.3, 0.08),
+    createToonMaterial(0x9ca3af)
+  );
+  porchStep.position.set(0, fwY + 0.15, 0.04);
+  shop.add(porchStep);
+
+  // Awning — red/white striped canopy over door
+  const awningMat = createTexturedToonMaterial('tile_33.png', 6, 1, 0xdc2626);
+  const awning = new THREE.Mesh(
+    new THREE.BoxGeometry(bw - 0.4, 0.06, 0.15),
+    awningMat
+  );
+  awning.position.set(0, fwY, 0.1 + bh + 0.08);
+  shop.add(awning);
+
+  // String lights across the facade
+  for (let i = -2; i <= 2; i++) {
+    const light = new THREE.Mesh(
+      new THREE.SphereGeometry(0.035, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xfef08a })
+    );
+    light.position.set(i * 1.2, fwY, 0.1 + bh - 0.02);
+    shop.add(light);
+  }
+
+  // Rooftop sign — "PARTS & GEAR" on poles standing on the roof
+  const signCanvas = document.createElement('canvas');
+  signCanvas.width = 500; signCanvas.height = 120;
+  const sctx = signCanvas.getContext('2d')!;
+  sctx.fillStyle = 'rgba(220,38,38,0.95)';
+  const rad = 14;
+  sctx.beginPath(); sctx.moveTo(rad, 0); sctx.lineTo(500 - rad, 0);
+  sctx.quadraticCurveTo(500, 0, 500, rad); sctx.lineTo(500, 120 - rad);
+  sctx.quadraticCurveTo(500, 120, 500 - rad, 120); sctx.lineTo(rad, 120);
+  sctx.quadraticCurveTo(0, 120, 0, 120 - rad); sctx.lineTo(0, rad);
+  sctx.quadraticCurveTo(0, 0, rad, 0); sctx.closePath(); sctx.fill();
+  sctx.shadowColor = '#000'; sctx.shadowBlur = 6;
+  sctx.fillStyle = '#f8fafc'; sctx.font = '700 52px system-ui'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+  sctx.fillText('PARTS', 250, 46);
+  sctx.fillText('& GEAR', 250, 92);
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  signTex.minFilter = THREE.LinearFilter;
+  signTex.flipY = false;
+
+  const roofTopZ = 0.1 + bh + 0.16;
+  const signZ = roofTopZ + 0.44;
+  for (let px = -1; px <= 1; px += 2) {
+    const pole = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.04, 0.36),
+      createToonMaterial(0x1a1a1a)
+    );
+    pole.position.set(px * 0.9, fwY, roofTopZ + 0.18);
+    shop.add(pole);
+  }
+  const signBoard = new THREE.Mesh(
+    new THREE.BoxGeometry(1.6, 0.06, 0.44),
+    new THREE.MeshBasicMaterial({ map: signTex })
+  );
+  signBoard.position.set(0, fwY, signZ);
+  signBoard.scale.x = -1;
+  shop.add(signBoard);
+
+  shop.position.set(x, y, 0);
+  applyShadows(shop, true, true);
+  return shop;
+}
+
+export function createPartModel(partId: string): THREE.Group {
+  const g = new THREE.Group();
+
+  if (partId === 'sensor') {
+    // PCB body
+    const pcb = new THREE.Mesh(
+      new THREE.BoxGeometry(0.05, 0.035, 0.015),
+      createToonMaterial(0x2e7d32)
+    );
+    pcb.position.set(0, 0, 0);
+    g.add(pcb);
+    // Red LED
+    const ledBase = new THREE.Mesh(
+      new THREE.SphereGeometry(0.008, 8, 4),
+      new THREE.MeshBasicMaterial({ color: 0xef4444 })
+    );
+    ledBase.position.set(-0.012, 0.02, 0.005);
+    g.add(ledBase);
+    const ledTop = new THREE.Mesh(
+      new THREE.SphereGeometry(0.004, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xdc2626 })
+    );
+    ledTop.position.set(-0.012, 0.02, 0.011);
+    g.add(ledTop);
+    // Sensor window
+    const window = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, 0.014, 0.003),
+      createToonMaterial(0x0f172a)
+    );
+    window.position.set(0.016, 0.02, 0.007);
+    g.add(window);
+    // Antenna
+    const antPole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0015, 0.002, 0.025, 4),
+      createToonMaterial(0x94a3b8)
+    );
+    antPole.rotation.x = Math.PI / 2;
+    antPole.position.set(0.016, -0.014, 0.025);
+    g.add(antPole);
+    const antTip = new THREE.Mesh(
+      new THREE.SphereGeometry(0.003, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
+    );
+    antTip.position.set(0.016, -0.014, 0.038);
+    g.add(antTip);
+    // Gold pins
+    for (let i = -1; i <= 1; i++) {
+      const pin = new THREE.Mesh(
+        new THREE.BoxGeometry(0.005, 0.003, 0.004),
+        new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
+      );
+      pin.position.set(i * 0.011, 0, -0.009);
+      g.add(pin);
+    }
+  } else if (partId === 'voice') {
+    // Body
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.022, 0.024, 0.04, 12),
+      new THREE.MeshToonMaterial({ color: 0x2563eb, gradientMap: createGradientTexture(3) })
+    );
+    body.rotation.x = Math.PI / 2;
+    body.position.set(0, 0, 0);
+    g.add(body);
+    // Speaker grille rings
+    for (let r = 0; r < 3; r++) {
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(0.015 - r * 0.004, 0.0015, 6, 12),
+        createToonMaterial(0x1e3a5f)
+      );
+      ring.position.set(0, 0.024, 0);
+      g.add(ring);
+    }
+    // Volume dial
+    const dial = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.008, 0.01, 0.006, 8),
+      createToonMaterial(0x94a3b8)
+    );
+    dial.position.set(0, 0.022, 0.018);
+    g.add(dial);
+    const dialKnob = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.004, 0.004, 0.003, 6),
+      createToonMaterial(0x475569)
+    );
+    dialKnob.position.set(0, 0.022, 0.024);
+    g.add(dialKnob);
+    // Status LED
+    const led = new THREE.Mesh(
+      new THREE.SphereGeometry(0.003, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0x22c55e })
+    );
+    led.position.set(0.02, 0, 0.005);
+    g.add(led);
+    // Connector pins on back
+    for (let i = -1; i <= 1; i++) {
+      const pin = new THREE.Mesh(
+        new THREE.BoxGeometry(0.004, 0.003, 0.006),
+        createToonMaterial(0x94a3b8)
+      );
+      pin.position.set(i * 0.01, 0, -0.022);
+      g.add(pin);
+    }
+  } else if (partId === 'navigation') {
+    // PCB
+    const pcb = new THREE.Mesh(
+      new THREE.BoxGeometry(0.045, 0.045, 0.004),
+      createTexturedToonMaterial('tile_23.png', 2, 2, 0x1b5e20)
+    );
+    pcb.position.set(0, 0, 0);
+    g.add(pcb);
+    // IC chip
+    const ic = new THREE.Mesh(
+      new THREE.BoxGeometry(0.016, 0.016, 0.003),
+      createToonMaterial(0x0f172a)
+    );
+    ic.position.set(0, 0, 0.003);
+    g.add(ic);
+    const icDot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.002, 6, 6),
+      new THREE.MeshBasicMaterial({ color: 0xfacc15 })
+    );
+    icDot.position.set(-0.005, -0.005, 0.005);
+    g.add(icDot);
+    // Crystal oscillator
+    const crystal = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.003, 0.003, 0.005, 6),
+      createToonMaterial(0x94a3b8)
+    );
+    crystal.position.set(0.015, 0.015, 0.003);
+    g.add(crystal);
+    // Gold edge pins
+    for (let side = -1; side <= 1; side += 2) {
+      for (let i = 0; i < 3; i++) {
+        const pin = new THREE.Mesh(
+          new THREE.BoxGeometry(0.003, 0.003, 0.005),
+          new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
+        );
+        pin.position.set(side * 0.023, (i - 1) * 0.013, -0.003);
+        g.add(pin);
+        const pin2 = new THREE.Mesh(
+          new THREE.BoxGeometry(0.003, 0.003, 0.005),
+          new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
+        );
+        pin2.position.set((i - 1) * 0.013, side * 0.023, -0.003);
+        g.add(pin2);
+      }
+    }
+    // Traces
+    const traceMat = new THREE.MeshBasicMaterial({ color: 0x4ade80 });
+    const t1 = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.001, 0.001), traceMat);
+    t1.position.set(-0.01, -0.01, 0.003);
+    g.add(t1);
+    const t2 = new THREE.Mesh(new THREE.BoxGeometry(0.001, 0.006, 0.001), traceMat);
+    t2.position.set(0.01, 0.01, 0.003);
+    g.add(t2);
+  }
+
+  return g;
 }
 
 export function addExclamationMarker(parent: THREE.Group) {
@@ -673,4 +1319,197 @@ export function addExclamationMarker(parent: THREE.Group) {
   }
   parent.add(marker);
   return marker;
+}
+
+export function createApartmentBuilding(x: number, y: number, bw = 4.0, bd = 4.0, doorX = 0) {
+  const building = new THREE.Group();
+  const storyH = 1.0, bh = storyH * 2;
+  const wallMat = createTexturedToonMaterial('tile_23.png', 4, 4, 0xe8dcc8);
+  const trimMat = createToonMaterial(0x6b4a3d);
+  const roofMat = createToonMaterial(0x4a3728);
+  const roofTrimMat = createToonMaterial(0x3a2718);
+  const glassMat = new THREE.MeshBasicMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.25, side: THREE.DoubleSide });
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.2 });
+  const warmGlowMat = new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+  const doorMat = createToonMaterial(0x0f172a);
+  const stepMat = createToonMaterial(0x9ca3af);
+  const fwY = bd / 2;
+
+  // Foundation
+  const foundation = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.4, bd + 0.4, 0.1), createToonMaterial(0x94a3b8));
+  foundation.position.set(0, 0, 0.05);
+  building.add(foundation);
+
+  // Ground floor north (back) wall — solid, no door
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.08, storyH), wallMat);
+  backWall.position.set(0, fwY, 0.1 + storyH / 2);
+  building.add(backWall);
+
+  // Ground floor side walls
+  for (let s = -1; s <= 1; s += 2) {
+    const side = new THREE.Mesh(new THREE.BoxGeometry(0.08, bd, storyH), wallMat);
+    side.position.set(s * bw / 2, 0, 0.1 + storyH / 2);
+    building.add(side);
+  }
+
+  // Ground floor south (front) wall segments with door cutout at doorX
+  const doorW = 0.7, doorH = 0.7;
+  const segments: { start: number; end: number }[] = [];
+  const gapL = doorX - doorW / 2 - 0.1;
+  const gapR = doorX + doorW / 2 + 0.1;
+  if (-bw / 2 < gapL) segments.push({ start: -bw / 2, end: gapL });
+  if (gapR < bw / 2) segments.push({ start: gapR, end: bw / 2 });
+  segments.forEach(({ start, end }) => {
+    const segW = end - start;
+    if (segW < 0.01) return;
+    const segCx = (start + end) / 2;
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(segW, 0.08, storyH), wallMat);
+    wall.position.set(segCx, -fwY, 0.1 + storyH / 2);
+    building.add(wall);
+
+    const win = new THREE.Mesh(new THREE.BoxGeometry(segW - 0.3, 0.04, 0.5), warmGlowMat);
+    win.position.set(segCx, -fwY, 0.35);
+    building.add(win);
+
+    const winFrame = new THREE.Mesh(new THREE.BoxGeometry(segW - 0.25, 0.06, 0.06), trimMat);
+    winFrame.position.set(segCx, -fwY, 0.62);
+    building.add(winFrame);
+  });
+
+  // Reception furniture visible through glass (south side)
+  const furnMat = createToonMaterial(0x6b4226);
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.5), furnMat);
+  counter.position.set(-0.8, -0.5, 0.45);
+  building.add(counter);
+
+  const counterTop = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.04, 0.04), createToonMaterial(0x92400e));
+  counterTop.position.set(-0.8, -0.5, 0.72);
+  building.add(counterTop);
+
+  const chairBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.04, 8), createToonMaterial(0x334155));
+  chairBase.position.set(0.7, -0.5, 0.14);
+  building.add(chairBase);
+
+  const chairSeat = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.03, 8), createToonMaterial(0x475569));
+  chairSeat.position.set(0.7, -0.5, 0.18);
+  building.add(chairSeat);
+
+  const lampPole = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.35), createToonMaterial(0x1e293b));
+  lampPole.position.set(-1.0, 0.8, 0.3);
+  building.add(lampPole);
+
+  const lampGlow = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+  lampGlow.position.set(-1.0, 0.8, 0.55);
+  building.add(lampGlow);
+
+  // Door — south wall at doorX (z above wall z=0.6 so it renders in front)
+  const door = new THREE.Mesh(new THREE.BoxGeometry(doorW, 0.08, doorH), doorMat);
+  door.position.set(doorX, -fwY, 0.1 + storyH / 2 + 0.04);
+  building.add(door);
+  const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.1, 0.08, doorH + 0.06), trimMat);
+  doorFrame.position.set(doorX, -fwY, 0.1 + storyH / 2 + 0.04);
+  building.add(doorFrame);
+
+  // Door step
+  const step = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.4, 0.3, 0.06), stepMat);
+  step.position.set(doorX, -fwY, 0.03);
+  building.add(step);
+
+  // Floor divider between floors
+  const floorDiv = new THREE.Mesh(new THREE.BoxGeometry(bw, bd, 0.04), createTexturedToonMaterial('tile_43.png', 5, 4, 0x8b6b4a));
+  floorDiv.position.set(0, 0, 0.1 + storyH);
+  building.add(floorDiv);
+
+  // Second floor north (back) wall
+  const upperBack = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.08, storyH), wallMat);
+  upperBack.position.set(0, fwY, 0.1 + storyH + storyH / 2);
+  building.add(upperBack);
+
+  // Second floor side walls
+  for (let s = -1; s <= 1; s += 2) {
+    const side = new THREE.Mesh(new THREE.BoxGeometry(0.08, bd, storyH), wallMat);
+    side.position.set(s * bw / 2, 0, 0.1 + storyH + storyH / 2);
+    building.add(side);
+  }
+
+  // Second floor south (front) wall
+  const upperFront = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.08, storyH), wallMat);
+  upperFront.position.set(0, -fwY, 0.1 + storyH + storyH / 2);
+  building.add(upperFront);
+
+  // Second floor south windows
+  const winCount = 3;
+  const winSpacing = bw / (winCount + 1);
+  for (let i = 0; i < winCount; i++) {
+    const wx = -bw / 2 + winSpacing * (i + 1);
+    const ww = 0.6, wh = 0.5;
+    const wz = 0.1 + storyH + storyH / 2;
+
+    const winGlass = new THREE.Mesh(new THREE.BoxGeometry(ww, 0.04, wh), glassMat);
+    winGlass.position.set(wx, -fwY, wz);
+    building.add(winGlass);
+
+    const winGlow = new THREE.Mesh(new THREE.BoxGeometry(ww - 0.1, 0.02, wh - 0.1), glowMat);
+    winGlow.position.set(wx, -fwY, wz + 0.05);
+    building.add(winGlow);
+
+    // Window frame (4 sides)
+    const fH = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.08, 0.06, 0.04), trimMat);
+    fH.position.set(wx, -fwY, wz + wh / 2 + 0.02);
+    building.add(fH);
+    const fH2 = fH.clone();
+    fH2.position.set(wx, -fwY, wz - wh / 2 - 0.02);
+    building.add(fH2);
+    const fV = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, wh + 0.08), trimMat);
+    fV.position.set(wx - ww / 2 - 0.04, -fwY, wz);
+    building.add(fV);
+    const fV2 = fV.clone();
+    fV2.position.set(wx + ww / 2 + 0.04, -fwY, wz);
+    building.add(fV2);
+  }
+
+  // Awning over door
+  const awningMat = createTexturedToonMaterial('tile_33.png', 6, 1, 0xdc2626);
+  const awning = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.6, 0.06, 0.12), awningMat);
+  awning.position.set(doorX, -fwY, 0.1 + storyH - 0.02);
+  building.add(awning);
+
+  // Sign above door
+  const signCanvas = document.createElement('canvas');
+  signCanvas.width = 400; signCanvas.height = 100;
+  const sctx = signCanvas.getContext('2d')!;
+  sctx.fillStyle = 'rgba(30,41,59,0.94)';
+  const rad = 10;
+  sctx.beginPath(); sctx.moveTo(rad, 0); sctx.lineTo(400 - rad, 0);
+  sctx.quadraticCurveTo(400, 0, 400, rad); sctx.lineTo(400, 100 - rad);
+  sctx.quadraticCurveTo(400, 100, 400 - rad, 100); sctx.lineTo(rad, 100);
+  sctx.quadraticCurveTo(0, 100, 0, 100 - rad); sctx.lineTo(0, rad);
+  sctx.quadraticCurveTo(0, 0, rad, 0); sctx.closePath(); sctx.fill();
+  sctx.fillStyle = '#fbbf24'; sctx.font = '700 32px system-ui'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+  sctx.fillText("SPARKY'S APT", 200, 48);
+  sctx.font = '500 18px system-ui';
+  sctx.fillStyle = '#94a3b8';
+  sctx.fillText('RECEPTION', 200, 78);
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  signTex.minFilter = THREE.LinearFilter;
+  signTex.flipY = false;
+  const signMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.12), new THREE.MeshBasicMaterial({ map: signTex }));
+  signMesh.position.set(doorX, -fwY, 0.1 + storyH + 0.08);
+  building.add(signMesh);
+
+  // Roof
+  const roofBase = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.6, bd + 0.4, 0.12), roofMat);
+  roofBase.position.set(0, 0, 0.1 + bh + 0.06);
+  building.add(roofBase);
+  const roofTrim = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.7, bd + 0.5, 0.04), roofTrimMat);
+  roofTrim.position.set(0, 0, 0.1 + bh + 0.14);
+  building.add(roofTrim);
+
+  // Door glow (subtle warm light spilling from the door)
+  const doorGlow = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.2, 0.02, 0.04), new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.08 }));
+  doorGlow.position.set(doorX, -fwY, 0.06);
+  building.add(doorGlow);
+
+  building.position.set(x, y, 0);
+  return building;
 }
