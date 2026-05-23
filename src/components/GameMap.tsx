@@ -579,18 +579,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (scene) scene.add(particleGroup);
     eventParticlesRef.current = particleGroup;
 
-    // Sparky recoil + sequence
+    // Sparky recoil + sequence (use relative rotateZ to preserve north-facing quaternion)
     const sparky = outdoorSparkyRef.current;
     if (sparky) {
-      sparky.root.rotation.z = 0.15;
+      sparky.root.rotateZ(0.15);
       setTimeout(() => {
-        if (sparky.root) sparky.root.rotation.z = -0.08;
+        if (sparky.root) sparky.root.rotateZ(-0.23);
       }, 150);
       setTimeout(() => {
-        if (sparky.root) sparky.root.rotation.z = 0.05;
+        if (sparky.root) sparky.root.rotateZ(0.13);
       }, 300);
       setTimeout(() => {
-        if (sparky.root) sparky.root.rotation.z = 0;
+        if (sparky.root) sparky.root.rotateZ(-0.05);
       }, 500);
     }
 
