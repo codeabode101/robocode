@@ -948,10 +948,7 @@ export function animateRepairSparky(visual: RobotVisual, time: number, repairPha
   visual.body.position.y = 0.3 + bob;
   if (visual.antennaTip) visual.antennaTip.position.y = 0.82 + Math.sin(time * 9) * 0.015;
 
-  // Gentle wobble
-  visual.root.rotation.z = Math.sin(time * 2) * 0.03;
-
-  // Pupils look up toward kiosk workbench
+  // Pupils look toward kiosk workbench
   const eyeX = Math.max(-0.025, Math.min(0.025, 0.05 * 0.018));
   const eyeY = Math.max(-0.015, Math.min(0.015, 0.25 * 0.012));
   visual.leftPupil.position.set(-0.07 + eyeX, 0.6 + eyeY, 0.75);
@@ -979,9 +976,6 @@ export function animateSparkyWave(visual: RobotVisual, time: number) {
   visual.rightArm.rotation.x = -0.3;
   visual.leftArm.rotation.z = 0.3;
   visual.leftArm.rotation.x = 0;
-
-  // Slight head tilt
-  visual.root.rotation.z = Math.sin(time * 2.5) * 0.02;
 }
 
 export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
