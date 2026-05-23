@@ -2724,8 +2724,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const dist = sparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
         if (dist > 0.15) {
           const dir = new THREE.Vector2(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
-          sparky.root.position.x += dir.x * MOVE_SPEED * 0.7 * delta;
-          sparky.root.position.y += dir.y * MOVE_SPEED * 0.7 * delta;
+          const step = 1.8 * delta;
+          const candidate = new THREE.Vector2(
+            sparky.root.position.x + dir.x * step,
+            sparky.root.position.y + dir.y * step
+          );
+          if (!collidesWithAny(candidate, obstacleHitboxesRef.current)) {
+            sparky.root.position.x = candidate.x;
+            sparky.root.position.y = candidate.y;
+          }
         } else {
           // Arrived — swap to indoor Sparky
           sparkyHomeArrivedRef.current = true;
@@ -2757,19 +2764,26 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             playToolClank();
           }
         } else {
-          sparkyWaitTimerRef.current += delta;
-          if (sparkyWaitTimerRef.current > 1.5 && !showTutorialRef.current) {
-            const target = SPARKY_PATH[sparkyPathIndexRef.current];
-            const dist = sparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
-            if (dist < 0.15) {
-              sparkyPathIndexRef.current = (sparkyPathIndexRef.current + 1) % SPARKY_PATH.length;
-              sparkyWaitTimerRef.current = 0;
-            } else {
-              const dir = new THREE.Vector2(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
-              sparky.root.position.x += dir.x * 1.8 * delta;
-              sparky.root.position.y += dir.y * 1.8 * delta;
+            sparkyWaitTimerRef.current += delta;
+            if (sparkyWaitTimerRef.current > 1.5 && !showTutorialRef.current) {
+              const target = SPARKY_PATH[sparkyPathIndexRef.current];
+              const dist = sparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
+              if (dist < 0.15) {
+                sparkyPathIndexRef.current = (sparkyPathIndexRef.current + 1) % SPARKY_PATH.length;
+                sparkyWaitTimerRef.current = 0;
+              } else {
+                const dir = new THREE.Vector2(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
+                const step = 1.8 * delta;
+                const candidate = new THREE.Vector2(
+                  sparky.root.position.x + dir.x * step,
+                  sparky.root.position.y + dir.y * step
+                );
+                if (!collidesWithAny(candidate, obstacleHitboxesRef.current)) {
+                  sparky.root.position.x = candidate.x;
+                  sparky.root.position.y = candidate.y;
+                }
+              }
             }
-          }
         }
       }
       sparky.root.position.z = 0.24 + Math.sin(worldTime * 4) * 0.04;
