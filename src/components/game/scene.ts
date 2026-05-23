@@ -750,9 +750,11 @@ export function createRepairKiosk() {
   kiosk.add(screenBorder);
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.07), emissiveMat);
   screen.position.set(-0.15, -0.05, 0.525);
+  screen.userData.animated = 'screen';
   kiosk.add(screen);
   const screenGlow = new THREE.Mesh(new THREE.EdgesGeometry(screen.geometry), new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.5 }));
   screenGlow.position.copy(screen.position);
+  screenGlow.userData.animated = 'screen';
   kiosk.add(screenGlow);
 
   // Small status LEDs on screen border
@@ -802,6 +804,7 @@ export function createRepairKiosk() {
   kiosk.add(lampShade);
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
   bulb.position.set(0.2, -0.02, 0.62);
+  bulb.userData.animated = 'bulb';
   kiosk.add(bulb);
 
   // Exhaust fan on back wall
@@ -812,6 +815,7 @@ export function createRepairKiosk() {
   const fanBlade = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.08, 0.005), metalMat);
   fanBlade.position.set(0.3, 0.1, 0.468);
   fanBlade.rotation.x = Math.PI / 2;
+  fanBlade.userData.animated = 'fan';
   kiosk.add(fanBlade);
   const fanHub = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), accentMat);
   fanHub.position.set(0.3, 0.1, 0.47);
@@ -843,7 +847,7 @@ export function createRepairKiosk() {
   sctx.fillText('KIOSK', 128, 48);
   const signTex = new THREE.CanvasTexture(signCanvas);
   signTex.minFilter = THREE.LinearFilter;
-  // Stand the sign vertical (face normal -Y, southward) using a plane so it's single-sided
+  // Stand the sign vertical (face normal -Y, southward)
   const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.14), new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide }));
   signMesh.position.set(-0.45, -0.1, 0.50);
   signMesh.rotation.x = Math.PI / 2;
@@ -859,6 +863,7 @@ export function createRepairKiosk() {
       new THREE.MeshToonMaterial({ color: [0x94a3b8, 0xf59e0b, 0x6b7280, 0xef4444][i] })
     );
     tool.position.set(-0.3 + i * 0.2, -0.27, 0.41);
+    tool.userData.animated = 'tool';
     kiosk.add(tool);
   }
 
@@ -869,18 +874,21 @@ export function createRepairKiosk() {
   kiosk.add(torchHandle);
   const torchTip = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.015, 6), accentMat);
   torchTip.position.set(-0.23, -0.06, 0.54);
+  torchTip.userData.animated = 'torch';
   kiosk.add(torchTip);
 
   // Gear decoration on side
   const gear = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.008, 8), new THREE.MeshToonMaterial({ color: 0x64748b }));
   gear.position.set(0.48, 0.12, 0.35);
   gear.rotation.x = Math.PI / 2;
+  gear.userData.animated = 'gear';
   kiosk.add(gear);
   // Teeth on gear
   for (let i = 0; i < 8; i++) {
     const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.008, 0.012), metalMat);
     const angle = (i / 8) * Math.PI * 2;
     tooth.position.set(0.48 + Math.cos(angle) * 0.045, 0.12 + Math.sin(angle) * 0.045, 0.35);
+    tooth.userData.animated = 'gear';
     kiosk.add(tooth);
   }
 
@@ -904,34 +912,33 @@ export function createRepairKiosk() {
 }
 
 export function animateRepairKiosk(kiosk: THREE.Group, time: number) {
-  // Screen flicker — periodically dim
-  const flicker = Math.random() < 0.03 ? 0.3 + Math.random() * 0.7 : 1;
   kiosk.children.forEach(child => {
-    if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial && child.material.color.getHex() === 0x3b82f6) {
-      child.material.opacity = flicker;
-      child.material.transparent = true;
-    }
-  });
+    if (!(child instanceof THREE.Mesh) || !child.userData.animated) return;
+    const tag = child.userData.animated as string;
 
-  // Fan blade spin
-  kiosk.children.forEach(child => {
-    if (child instanceof THREE.Mesh && child.position.x === 0.3 && child.position.y === 0.1 && child.position.z === 0.468) {
-      child.rotation.z += 0.05;
-    }
-  });
-
-  // Bulb pulse
-  kiosk.children.forEach(child => {
-    if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial && child.material.color.getHex() === 0xfef08a) {
-      const intensity = 0.4 + Math.sin(time * 3) * 0.3;
-      child.material.color.setHSL(0.12, 1.0, intensity);
-    }
-  });
-
-  // Gear spin
-  kiosk.children.forEach(child => {
-    if (child instanceof THREE.Mesh && child.position.x === 0.48 && child.position.y === 0.12 && child.position.z === 0.35) {
-      child.rotation.z += 0.02;
+    if (tag === 'screen') {
+      // Flicker
+      if (child.material instanceof THREE.MeshBasicMaterial) {
+        const f = Math.random() < 0.04 ? 0.2 + Math.random() * 0.8 : 1;
+        child.material.opacity = f;
+        child.material.transparent = true;
+      }
+    } else if (tag === 'bulb') {
+      // Pulse
+      if (child.material instanceof THREE.MeshBasicMaterial) {
+        const i = 0.4 + Math.sin(time * 3) * 0.3;
+        child.material.color.setHSL(0.12, 1.0, i);
+      }
+    } else if (tag === 'fan') {
+      child.rotation.z += 0.08;
+    } else if (tag === 'gear') {
+      child.rotation.z += 0.03;
+    } else if (tag === 'tool') {
+      // Gentle sway
+      child.rotation.z = Math.sin(time * 2 + child.position.x) * 0.02;
+    } else if (tag === 'torch') {
+      // Tiny wobble
+      child.rotation.x = Math.PI / 3 + Math.sin(time * 4) * 0.02;
     }
   });
 }
@@ -941,14 +948,14 @@ export function animateRepairSparky(visual: RobotVisual, time: number, repairPha
   visual.body.position.y = 0.3 + bob;
   if (visual.antennaTip) visual.antennaTip.position.y = 0.82 + Math.sin(time * 9) * 0.015;
 
-  // Pupils look toward shop workbench (slightly up)
+  // Face north toward the kiosk (PI = +Y direction in game coords)
+  visual.root.rotation.z = Math.PI + Math.sin(time * 2) * 0.03;
+
+  // Pupils look up toward kiosk workbench
   const eyeX = Math.max(-0.025, Math.min(0.025, 0.05 * 0.018));
   const eyeY = Math.max(-0.015, Math.min(0.015, 0.25 * 0.012));
   visual.leftPupil.position.set(-0.07 + eyeX, 0.6 + eyeY, 0.75);
   visual.rightPupil.position.set(0.07 + eyeX, 0.6 + eyeY, 0.75);
-
-  // Face into the repair shop (north = rotation.z = 0) with gentle head tilt
-  visual.root.rotation.z = Math.sin(time * 2) * 0.03;
 
   // Arm animation based on repair phase (0-1, cycles)
   const armSwing = Math.sin(repairPhase * Math.PI * 2) * 0.3;
