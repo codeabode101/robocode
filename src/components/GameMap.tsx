@@ -1877,8 +1877,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     sparky.root.position.set(NPC_POSITION.x, NPC_POSITION.y, 0.24);
     sparky.nameSprite.visible = false;
     outdoorGroup.add(sparky.root);
-    // Face north toward the kiosk (default is -Y/south, rotate 180° via rotateZ on quaternion)
-    sparky.root.rotateZ(Math.PI);
+    // Face north toward the kiosk: set full Euler so Z=PI rotates 180° in XY plane
+    sparky.root.rotation.set(Math.PI / 2, 0, Math.PI);
     if (sparky.body) sparky.body.visible = true;
     outdoorSparkyRef.current = sparky;
     // Neck connector so head doesn't float
