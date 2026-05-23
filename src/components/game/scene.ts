@@ -681,151 +681,259 @@ export function animateRobotVisual(visual: RobotVisual, time: number, speedFacto
 export function createRepairKiosk() {
   const kiosk = new THREE.Group();
 
-  const wallMat = createTexturedToonMaterial('tile_23.png', 3, 2, 0x8b6b4a);
-  const trimMat = createToonMaterial(0x5a3a1a);
-  const woodMat = createToonMaterial(0x8b6b4a);
   const metalMat = createToonMaterial(0x475569);
   const darkMat = createToonMaterial(0x1e293b);
-  const roofMat = createToonMaterial(0xc2410c);
+  const accentMat = createToonMaterial(0xc2410c);
+  const pipeMat = createToonMaterial(0x334155);
   const emissiveMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
 
-  // Base platform
-  const base = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 0.06), trimMat);
-  base.position.set(0, 0, 0.03);
-  base.receiveShadow = true;
-  kiosk.add(base);
+  // Exposed metal floor grating
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 0.04), darkMat);
+  floor.position.set(0, 0, 0.02);
+  floor.receiveShadow = true;
+  kiosk.add(floor);
+  // Grating lines
+  for (let i = -4; i <= 4; i++) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.005, 0.005), metalMat);
+    bar.position.set(0, i * 0.065, 0.045);
+    kiosk.add(bar);
+  }
 
-  // Back wall
-  const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.6, 0.08), wallMat);
-  backWall.position.set(0, 0, 0.48);
+  // Back wall — riveted metal
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.55, 0.06), metalMat);
+  backWall.position.set(0, 0, 0.45);
   backWall.receiveShadow = true;
   kiosk.add(backWall);
-
-  // Side walls (open front)
-  for (let s = -1; s <= 1; s += 2) {
-    const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.5, 0.40), wallMat);
-    sideWall.position.set(s * 0.52, 0.01, 0.26);
-    kiosk.add(sideWall);
-  }
-
-  // Counter
-  const counter = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.16), woodMat);
-  counter.position.set(0, 0, 0.12);
-  kiosk.add(counter);
-  for (let sx = -1; sx <= 1; sx += 2) {
-    for (let sy = -1; sy <= 1; sy += 2) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.015, 0.10, 6), darkMat);
-      leg.position.set(sx * 0.38, sy * 0.04, 0.06);
-      kiosk.add(leg);
+  // Rivets
+  for (let rx = -2; rx <= 2; rx++) {
+    for (let ry = -1; ry <= 1; ry++) {
+      const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), darkMat);
+      rivet.position.set(rx * 0.2, ry * 0.2, 0.48);
+      kiosk.add(rivet);
     }
   }
 
-  // Workbench area inside
-  const bench = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.18), woodMat);
-  bench.position.set(0, -0.06, 0.40);
+  // Side wall frames (open front)
+  for (let s = -1; s <= 1; s += 2) {
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.45, 0.38), darkMat);
+    frame.position.set(s * 0.475, 0.01, 0.26);
+    kiosk.add(frame);
+    // Vertical pipe along frame
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.45, 6), pipeMat);
+    pipe.position.set(s * 0.50, 0, 0.38);
+    pipe.rotation.x = Math.PI / 2;
+    kiosk.add(pipe);
+  }
+
+  // Cross beam at top of frame
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.04, 0.04), darkMat);
+  beam.position.set(0, 0, 0.70);
+  kiosk.add(beam);
+
+  // Workbench — metal top
+  const bench = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.14, 0.02), metalMat);
+  bench.position.set(0, -0.05, 0.44);
   kiosk.add(bench);
-  for (const lx of [-0.2, 0.2]) {
-    for (const ly of [-0.05, 0.05]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.09, 6), darkMat);
-      leg.position.set(lx, ly, 0.34);
-      kiosk.add(leg);
-    }
+  // Bench legs — angled struts
+  for (let bx = -1; bx <= 1; bx += 2) {
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.12, 5), darkMat);
+    strut.position.set(bx * 0.22, -0.05, 0.37);
+    kiosk.add(strut);
+    const strut2 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.12, 5), darkMat);
+    strut2.position.set(bx * 0.22, 0.04, 0.37);
+    kiosk.add(strut2);
   }
 
-  // Diagnostic screen
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.10, 0.06), emissiveMat);
-  screen.position.set(0, -0.06, 0.51);
+  // Diagnostic terminal — holographic screen
+  const screenBorder = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.09, 0.005), darkMat);
+  screenBorder.position.set(-0.15, -0.05, 0.52);
+  kiosk.add(screenBorder);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.07), emissiveMat);
+  screen.position.set(-0.15, -0.05, 0.525);
   kiosk.add(screen);
-  const glow = new THREE.Mesh(new THREE.EdgesGeometry(screen.geometry), new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.5 }));
-  glow.position.copy(screen.position);
-  kiosk.add(glow);
+  const screenGlow = new THREE.Mesh(new THREE.EdgesGeometry(screen.geometry), new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.5 }));
+  screenGlow.position.copy(screen.position);
+  kiosk.add(screenGlow);
 
-  // Broken drone on workbench
-  const droneBody = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.02), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
-  droneBody.position.set(0.08, -0.06, 0.50);
-  kiosk.add(droneBody);
-  for (let s = -1; s <= 1; s += 2) {
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.03, 0.004), new THREE.MeshToonMaterial({ color: 0x6b7280 }));
-    wing.position.set(0.08, s * 0.03, 0.51);
-    kiosk.add(wing);
-  }
-
-  // Cables from bench
+  // Small status LEDs on screen border
   for (let i = 0; i < 3; i++) {
-    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.006, 0.04, 4), new THREE.MeshToonMaterial({ color: 0x1e293b }));
-    cable.position.set(-0.08 + i * 0.08, -0.06, 0.35);
-    cable.rotation.x = 0.3;
-    kiosk.add(cable);
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.003, 6, 6), new THREE.MeshBasicMaterial({ color: [0x22c55e, 0xfacc15, 0xef4444][i] }));
+    led.position.set(-0.15 + (i - 1) * 0.03, -0.09, 0.528);
+    kiosk.add(led);
   }
 
-  // Awning poles
-  for (const px of [-0.52, 0.52]) {
-    for (const py of [-0.28, 0.28]) {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.55, 6), metalMat);
-      pole.position.set(px, py, 0.50);
-      kiosk.add(pole);
-    }
+  // Broken robot arm on workbench (replaces drone)
+  const armBase = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.03), metalMat);
+  armBase.position.set(0.12, -0.05, 0.49);
+  kiosk.add(armBase);
+  const armSeg = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.05, 0.025), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
+  armSeg.position.set(0.12, -0.02, 0.52);
+  kiosk.add(armSeg);
+  const armClaw = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.025, 0.012), accentMat);
+  armClaw.position.set(0.12, 0.02, 0.53);
+  kiosk.add(armClaw);
+  // Wires from arm
+  for (let i = 0; i < 3; i++) {
+    const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.003, 0.04, 4), new THREE.MeshToonMaterial({ color: [0xef4444, 0x22c55e, 0x3b82f6][i] }));
+    wire.position.set(0.12 + (i - 1) * 0.015, -0.07, 0.48);
+    wire.rotation.x = 0.5;
+    kiosk.add(wire);
   }
 
-  // Awning roof
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.4, 0.04), roofMat);
-  roof.position.set(0, 0, 0.78);
-  roof.receiveShadow = true;
-  kiosk.add(roof);
+  // Conduit pipes on back wall
+  for (let i = 0; i < 3; i++) {
+    const conduit = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.008, 0.22, 5), pipeMat);
+    conduit.position.set(-0.3 + i * 0.3, -0.1, 0.42);
+    conduit.rotation.x = Math.PI / 2;
+    kiosk.add(conduit);
+    // Connector box
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.015), darkMat);
+    box.position.set(-0.3 + i * 0.3, -0.1, 0.31);
+    kiosk.add(box);
+  }
 
-  // Awning trim
-  const trim = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.46, 0.015), trimMat);
-  trim.position.set(0, 0, 0.77);
-  kiosk.add(trim);
+  // Overhead articulating work light
+  const lightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.25, 5), metalMat);
+  lightArm.position.set(0.2, 0, 0.75);
+  lightArm.rotation.x = 0.3;
+  kiosk.add(lightArm);
+  const lampShade = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.03, 8), darkMat);
+  lampShade.position.set(0.2, -0.02, 0.64);
+  kiosk.add(lampShade);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+  bulb.position.set(0.2, -0.02, 0.62);
+  kiosk.add(bulb);
 
-  // Sign on awning
+  // Exhaust fan on back wall
+  const fanFrame = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.015, 10), darkMat);
+  fanFrame.position.set(0.3, 0.1, 0.46);
+  fanFrame.rotation.x = Math.PI / 2;
+  kiosk.add(fanFrame);
+  const fanBlade = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.08, 0.005), metalMat);
+  fanBlade.position.set(0.3, 0.1, 0.468);
+  fanBlade.rotation.x = Math.PI / 2;
+  kiosk.add(fanBlade);
+  const fanHub = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), accentMat);
+  fanHub.position.set(0.3, 0.1, 0.47);
+  kiosk.add(fanHub);
+
+  // Vertical sign — post and board
+  const signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.5, 6), darkMat);
+  signPost.position.set(-0.45, -0.1, 0.25);
+  kiosk.add(signPost);
+  const signAngle = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.12, 5), metalMat);
+  signAngle.position.set(-0.45, -0.1, 0.50);
+  signAngle.rotation.x = 0.2;
+  kiosk.add(signAngle);
+
+  // The sign board — vertical, facing south toward player approach
   const signCanvas = document.createElement('canvas');
   signCanvas.width = 256; signCanvas.height = 64;
   const sctx = signCanvas.getContext('2d')!;
-  sctx.fillStyle = 'rgba(2, 6, 23, 0.92)';
+  sctx.fillStyle = '#1e293b';
   const rad = 8;
   sctx.beginPath(); sctx.moveTo(rad, 0); sctx.lineTo(256 - rad, 0);
   sctx.quadraticCurveTo(256, 0, 256, rad); sctx.lineTo(256, 64 - rad);
   sctx.quadraticCurveTo(256, 64, 256 - rad, 64); sctx.lineTo(rad, 64);
   sctx.quadraticCurveTo(0, 64, 0, 64 - rad); sctx.lineTo(0, rad);
   sctx.quadraticCurveTo(0, 0, rad, 0); sctx.closePath(); sctx.fill();
-  sctx.fillStyle = '#fbbf24'; sctx.font = '700 26px system-ui'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
-  sctx.fillText('REPAIR KIOSK', 128, 34);
+  sctx.fillStyle = '#fbbf24'; sctx.font = '700 24px system-ui'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+  sctx.fillText('REPAIR', 128, 26);
+  sctx.fillStyle = '#94a3b8'; sctx.font = '600 14px system-ui'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+  sctx.fillText('KIOSK', 128, 48);
   const signTex = new THREE.CanvasTexture(signCanvas);
   signTex.minFilter = THREE.LinearFilter;
-  const signMesh = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.03), new THREE.MeshBasicMaterial({ map: signTex }));
-  signMesh.position.set(0, 0, 0.80);
+  // Stand the sign vertical (face normal -Y, southward) using a plane so it's single-sided
+  const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.14), new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide }));
+  signMesh.position.set(-0.45, -0.1, 0.50);
+  signMesh.rotation.x = Math.PI / 2;
   kiosk.add(signMesh);
 
-  // Hanging tools on back wall
-  for (let i = 0; i < 3; i++) {
-    const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.025, 4), metalMat);
-    hook.position.set(-0.3 + i * 0.3, -0.18, 0.45);
-    kiosk.add(hook);
-    const tool = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.03, 0.008), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
-    tool.position.set(-0.3 + i * 0.3, -0.18, 0.42);
+  // Hanging tools on pegboard
+  for (let i = 0; i < 4; i++) {
+    const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.02, 4), metalMat);
+    peg.position.set(-0.3 + i * 0.2, -0.25, 0.43);
+    kiosk.add(peg);
+    const tool = new THREE.Mesh(
+      [new THREE.BoxGeometry(0.008, 0.025, 0.005), new THREE.BoxGeometry(0.005, 0.03, 0.008), new THREE.BoxGeometry(0.012, 0.02, 0.005), new THREE.BoxGeometry(0.006, 0.028, 0.006)][i],
+      new THREE.MeshToonMaterial({ color: [0x94a3b8, 0xf59e0b, 0x6b7280, 0xef4444][i] })
+    );
+    tool.position.set(-0.3 + i * 0.2, -0.27, 0.41);
     kiosk.add(tool);
   }
 
-  // Hanging lanterns under awning
-  for (let i = -2; i <= 2; i++) {
-    const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-    lantern.position.set(i * 0.22, 0, 0.70);
-    kiosk.add(lantern);
+  // Welding torch on bench
+  const torchHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.05, 5), darkMat);
+  torchHandle.position.set(-0.22, -0.08, 0.50);
+  torchHandle.rotation.x = Math.PI / 3;
+  kiosk.add(torchHandle);
+  const torchTip = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.015, 6), accentMat);
+  torchTip.position.set(-0.23, -0.06, 0.54);
+  kiosk.add(torchTip);
+
+  // Gear decoration on side
+  const gear = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.008, 8), new THREE.MeshToonMaterial({ color: 0x64748b }));
+  gear.position.set(0.48, 0.12, 0.35);
+  gear.rotation.x = Math.PI / 2;
+  kiosk.add(gear);
+  // Teeth on gear
+  for (let i = 0; i < 8; i++) {
+    const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.008, 0.012), metalMat);
+    const angle = (i / 8) * Math.PI * 2;
+    tooth.position.set(0.48 + Math.cos(angle) * 0.045, 0.12 + Math.sin(angle) * 0.045, 0.35);
+    kiosk.add(tooth);
   }
 
-  // Scrap parts on ground out front
-  for (let i = 0; i < 5; i++) {
-    const part = new THREE.Mesh(
-      [new THREE.BoxGeometry(0.015, 0.015, 0.008), new THREE.SphereGeometry(0.01, 6, 6), new THREE.CylinderGeometry(0.008, 0.012, 0.012, 5)][i % 3],
+  // Spark catcher tray at bottom
+  const tray = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.005), darkMat);
+  tray.position.set(0, -0.22, 0.08);
+  kiosk.add(tray);
+
+  // Scrap metal parts on tray
+  for (let i = 0; i < 4; i++) {
+    const scrap = new THREE.Mesh(
+      [new THREE.BoxGeometry(0.015, 0.01, 0.005), new THREE.SphereGeometry(0.008, 5, 5), new THREE.CylinderGeometry(0.006, 0.01, 0.01, 5), new THREE.BoxGeometry(0.01, 0.015, 0.004)][i],
       new THREE.MeshToonMaterial({ color: [0x6b7280, 0x94a3b8, 0xf59e0b, 0xef4444][i] })
     );
-    part.position.set(-0.35 + i * 0.05, -0.2 + (i % 2) * 0.03, 0.03);
-    kiosk.add(part);
+    scrap.position.set(-0.15 + i * 0.08, -0.22, 0.085);
+    kiosk.add(scrap);
   }
 
   applyShadows(kiosk, true, true);
   return kiosk;
+}
+
+export function animateRepairKiosk(kiosk: THREE.Group, time: number) {
+  // Screen flicker — periodically dim
+  const flicker = Math.random() < 0.03 ? 0.3 + Math.random() * 0.7 : 1;
+  kiosk.children.forEach(child => {
+    if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial && child.material.color.getHex() === 0x3b82f6) {
+      child.material.opacity = flicker;
+      child.material.transparent = true;
+    }
+  });
+
+  // Fan blade spin
+  kiosk.children.forEach(child => {
+    if (child instanceof THREE.Mesh && child.position.x === 0.3 && child.position.y === 0.1 && child.position.z === 0.468) {
+      child.rotation.z += 0.05;
+    }
+  });
+
+  // Bulb pulse
+  kiosk.children.forEach(child => {
+    if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial && child.material.color.getHex() === 0xfef08a) {
+      const intensity = 0.4 + Math.sin(time * 3) * 0.3;
+      child.material.color.setHSL(0.12, 1.0, intensity);
+    }
+  });
+
+  // Gear spin
+  kiosk.children.forEach(child => {
+    if (child instanceof THREE.Mesh && child.position.x === 0.48 && child.position.y === 0.12 && child.position.z === 0.35) {
+      child.rotation.z += 0.02;
+    }
+  });
 }
 
 export function animateRepairSparky(visual: RobotVisual, time: number, repairPhase: number) {

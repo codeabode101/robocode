@@ -15,7 +15,7 @@ import {
   createToonMaterial, createTexturedToonMaterial, createCharacterSprite, createPlayerSprite,
   createGrid, createPalmTree, createBazaarShop, createRangoli, addWindows, addOutline, applyShadows, disposeObject,
   createRobotVisual, createHumanVisual, createPartsShop, createPartModel, createApartmentBuilding, animateRobotVisual, LABEL_BUILD_TAG, WALK_BOB_SPEED,
-  addExclamationMarker, createRepairKiosk, animateRepairSparky, animateSparkyWave,
+  addExclamationMarker, createRepairKiosk, animateRepairKiosk, animateRepairSparky, animateSparkyWave,
 } from '@/components/game/scene';
 import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest } from '@/components/game/helpers';
 import { buildObstacles } from '@/components/game/city';
@@ -315,6 +315,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyEventTriggeredRef = useRef(false);
   const sparkyAcknowledgedRef = useRef(false);
   const repairTimerRef = useRef(0);
+  const repairKioskRef = useRef<THREE.Group | null>(null);
   const eventParticlesRef = useRef<THREE.Group | null>(null);
   const cameraTargetPosRef = useRef(new THREE.Vector3());
   const cameraLookTargetRef = useRef(new THREE.Vector3());
@@ -1128,7 +1129,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
     makeVendor(-7.5, -5.3, 0xffffff);
     makeVendor(-4.87, -5.3, 0x60a5fa);
-    makeVendor(-2.87, -5.3, 0x34d399);
 
     // Grid removed (was creating lines through the lake)
 
@@ -1870,6 +1870,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const kiosk = createRepairKiosk();
     kiosk.position.set(-2.87, -5.3, 0.04);
     outdoorGroup.add(kiosk);
+    repairKioskRef.current = kiosk;
 
     const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
     sparky.root.scale.set(0.8, 0.8, 0.8);
@@ -2737,6 +2738,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           // Pre-conversation intro: Sparky repairs at kiosk
           repairTimerRef.current += delta;
           animateRepairSparky(sparky, worldTime, repairTimerRef.current);
+          if (repairKioskRef.current) animateRepairKiosk(repairKioskRef.current, worldTime);
           // Antenna light pulse (emissive sphere on antenna tip)
           if (sparky.antennaTip) {
             sparky.antennaTip.material.color.setHSL(0.12, 0.9, 0.5 + Math.sin(worldTime * 5) * 0.3);
