@@ -303,7 +303,7 @@ export function applyShadows(object: THREE.Object3D, cast = true, receive = true
   });
 }
 
-export function createRobotVisual(color: THREE.Color, name: string) {
+export function createRobotVisual(color: THREE.Color, name: string, facing: 'south' | 'north' = 'south') {
   const group = new THREE.Group();
 
   // shadow handled by Three.js shadow mapping
@@ -407,6 +407,12 @@ export function createRobotVisual(color: THREE.Color, name: string) {
   applyShadows(group, true, true);
 
   group.rotation.set(Math.PI / 2, 0, 0);
+  if (facing === 'north') {
+    // Rotate 180° around Y in Y-up space (to face opposite direction)
+    // before the X rotation lays it down. Q = Qx(PI/2) * Qy(PI)
+    // → Qy applied first (face -Z), then Qx (map -Z to +Y)
+    group.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
+  }
   group.scale.set(2.35, 2.35, 2.35);
   return { root: group, nameSprite, body, shadow: new THREE.Object3D() as unknown as THREE.Mesh, leftPupil, rightPupil, antennaTip, leftArm, rightArm, leftLeg, rightLeg };
 }
