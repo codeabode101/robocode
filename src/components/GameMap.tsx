@@ -85,12 +85,12 @@ interface GameMapProps {
 
   const ISLAND_RADIUS = 40;
   const SPARKY_PATH = [
-    { x: -2.87, y: -5.7 }, { x: -2.87, y: -6.5 }, { x: -2.87, y: -5.7 },
+    { x: -2.87, y: -6.1 }, { x: -2.87, y: -6.9 }, { x: -2.87, y: -6.1 },
   ];
 const PLAYER_RADIUS = 0.48;
 const MOVE_SPEED = 7.4;
 const NETWORK_SYNC_MS = 50;
-const NPC_POSITION = new THREE.Vector2(-2.87, -5.7);
+const NPC_POSITION = new THREE.Vector2(-2.87, -6.1);
 const REMOTE_LERP = 0.35;
 const PLAYER_EYE_HEIGHT = 1.5;
 const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
