@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN backpack_json TEXT NOT NULL DEFAULT '[]';

@@ -6,6 +6,7 @@ export const users = sqliteTable('users', {
   name: text('name'),
   password_hash: text('password_hash').notNull(),
   currency: integer('currency').notNull().default(0),
+  backpack_json: text('backpack_json').notNull().default('[]'),
   playtime_seconds: integer('playtime_seconds').notNull().default(0),
   created_at: text('created_at').notNull().default("datetime('now')"),
 });

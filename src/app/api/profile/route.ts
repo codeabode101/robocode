@@ -12,8 +12,13 @@ export async function GET(request: NextRequest) {
     const { payload } = await jwtVerify(token, new TextEncoder().encode(process.env.WORKOS_API_KEY!));
     const userId = payload.sub as string;
 
-    let user = await db.select({ name: users.name, email: users.email, currency: users.currency, playtime_seconds: users.playtime_seconds })
-      .from(users).where(eq(users.id, userId)).limit(1).then(r => r[0]);
+    let user = await db.select({
+      name: users.name,
+      email: users.email,
+      currency: users.currency,
+      playtime_seconds: users.playtime_seconds,
+      backpack_json: users.backpack_json,
+    }).from(users).where(eq(users.id, userId)).limit(1).then(r => r[0]);
 
     // Auto-create user record if missing (e.g., after migration reset)
     if (!user) {
@@ -24,7 +29,7 @@ export async function GET(request: NextRequest) {
         VALUES (${userId}, ${email}, ${name}, 'migrated', 0)
         ON CONFLICT (id) DO NOTHING
       `);
-      user = { name, email, currency: 0, playtime_seconds: 0 };
+      user = { name, email, currency: 0, playtime_seconds: 0, backpack_json: '[]' };
     }
 
     const tutorials = await db.select({ concept: tutorialProgress.concept })
@@ -32,6 +37,9 @@ export async function GET(request: NextRequest) {
 
     const concepts = tutorials.map(t => t.concept);
     const questStage = concepts.find(c => c.startsWith('_quest_'))?.replace('_quest_', '') || 'intro';
+
+    let backpack: string[] = [];
+    try { backpack = JSON.parse(user.backpack_json || '[]'); } catch { backpack = []; }
 
     return NextResponse.json({
       name: user.name,
@@ -41,6 +49,7 @@ export async function GET(request: NextRequest) {
       tutorials: concepts,
       questStage,
       workshopIntroDone: concepts.includes('_workshop_intro'),
+      backpack,
     });
   } catch (err) {
     console.error('Profile load error:', err);

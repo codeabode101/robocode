@@ -36,14 +36,24 @@ export const REQUEST_PATTERNS = [
   ['name'], ['color'], ['size'], ['name', 'color'], ['name', 'size'], ['color', 'size'],
 ] as const;
 export const WORKSHOP_INTRO_PAGES = [
-  { title: "Welcome to Rafiq's Workshop", body: 'Customers browse robo-pets here. Walk up and press Space to start a job.' },
+  { title: "Welcome to Rafiq's Robots", body: 'Customers browse robots here. Walk up and press Space to start a job.' },
   { title: 'Do the Java task', body: 'Each customer asks for properties (name, color, size). Write code that matches.' },
   { title: 'Get paid at register', body: 'Correct code makes them follow you. Lead them to the register for $2.' },
 ] as const;
 
+export const DATA_CUSTOMER_NAMES = ['Priya', 'Arjun', 'Kavya', 'Ravi', 'Neha', 'Vikram', 'Anjali', 'Deepak'];
+
 export interface Vec2 { x: number; y: number }
 
 export type CustomerProperty = 'name' | 'color' | 'size';
+
+export type RequestType = 'standard' | 'data-processing';
+
+export interface DataProcessingStep {
+  givenInfo: string[];
+  expectedCode: string[];
+  description: string;
+}
 
 export interface CustomerRequest {
   customerName: string;
@@ -51,9 +61,33 @@ export interface CustomerRequest {
   petColor: string;
   petSize: number;
   required: CustomerProperty[];
+  requestType: RequestType;
+  dataSteps?: DataProcessingStep[];
 }
 
 export type SparkyQuestStage = 'intro' | 'unit1' | 'unit1-done' | 'unit2' | 'unit2-done' | 'unit3' | 'unit3-done' | 'unit4' | 'all-done';
+
+export type ScrapPartId = 'sensor' | 'voice' | 'navigation';
+
+export type ScrapPart = {
+  id: ScrapPartId;
+  name: string;
+  cost: number;
+  questStage: SparkyQuestStage;
+  description: string;
+};
+
+export const PARTS_CATALOG: ScrapPart[] = [
+  { id: 'sensor', name: 'Sensor Part', cost: 5, questStage: 'unit1-done', description: 'A basic motion sensor for Scrap.' },
+  { id: 'voice', name: 'Voice Module', cost: 10, questStage: 'unit2-done', description: 'A speech synthesizer module.' },
+  { id: 'navigation', name: 'Navigation Chip', cost: 20, questStage: 'unit3-done', description: 'A GPS navigation chip.' },
+];
+
+export const PART_FOR_STAGE: Record<string, ScrapPartId> = {
+  'unit1-done': 'sensor',
+  'unit2-done': 'voice',
+  'unit3-done': 'navigation',
+};
 
 export interface CustomerNpc {
   id: string;
@@ -72,19 +106,26 @@ export type TutorialConcept =
   | 'int-battery'
   | 'double-temperature'
   | 'boolean-online'
-  | 'expression-power'
-  | 'expression-total'
-  | 'compound-charge'
-  | 'compound-discharge'
-  | 'cast-double-to-int'
-  | 'cast-int-to-double'
-  | 'string-length'
-  | 'string-charat'
-  | 'string-substring'
-  | 'string-indexof'
+  | 'expression-add'
+  | 'expression-multiply'
+  | 'expression-modulo'
+  | 'compound-op'
+  | 'cast-explicit'
+  | 'cast-implicit'
   | 'math-random'
-  | 'math-max'
-  | 'string-concat';
+  | 'math-abs'
+  | 'math-pow'
+  | 'math-sqrt'
+  | 'promotion-mixed'
+  | 'string-length'
+  | 'string-indexof'
+  | 'string-substring'
+  | 'string-equals'
+  | 'string-compareto'
+  | 'string-concat'
+  | 'scanner-int'
+  | 'wrapper-parse'
+  | 'equals-vs-ref';
 
 export type TutorialChallenge = {
   concept: TutorialConcept;

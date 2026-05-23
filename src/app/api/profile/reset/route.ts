@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   try {
     await db.delete(tutorialProgress).where(eq(tutorialProgress.user_id, userId));
     await db.delete(userXp).where(eq(userXp.user_id, userId));
-    await db.run(sql`UPDATE users SET currency = 0 WHERE id = ${userId}`);
+    await db.run(sql`UPDATE users SET currency = 0, backpack_json = '[]' WHERE id = ${userId}`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Reset error:', error);
