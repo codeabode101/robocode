@@ -15,7 +15,7 @@ import {
   createToonMaterial, createTexturedToonMaterial, createCharacterSprite, createPlayerSprite,
   createGrid, createPalmTree, createBazaarShop, createRangoli, addWindows, addOutline, applyShadows, disposeObject,
   createRobotVisual, createHumanVisual, createPartsShop, createPartModel, createApartmentBuilding, animateRobotVisual, LABEL_BUILD_TAG, WALK_BOB_SPEED,
-  addExclamationMarker, createRepairShop, animateRepairSparky, animateSparkyWave,
+  addExclamationMarker, createRepairKiosk, animateRepairSparky, animateSparkyWave,
 } from '@/components/game/scene';
 import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest } from '@/components/game/helpers';
 import { buildObstacles } from '@/components/game/city';
@@ -1866,9 +1866,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (scrapRobot.antennaTip) scrapRobot.antennaTip.material.color.setHex(0x555555);
     scrapRobotRef.current = scrapRobot;
 
-    // Repair shop replacing Snack Stop
-    const repairShop = createRepairShop(-2.87, -5.3, 1.2);
-    outdoorGroup.add(repairShop);
+    // Repair kiosk — proper kiosk at Snack Stop spot
+    const kiosk = createRepairKiosk();
+    kiosk.position.set(-2.87, -5.3, 0.04);
+    outdoorGroup.add(kiosk);
 
     const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
     sparky.root.scale.set(0.8, 0.8, 0.8);

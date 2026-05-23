@@ -19,7 +19,7 @@ export function buildObstacles(params: ObstacleParams): Hitbox[] {
     // 2 Bazaar stalls + repair shop
     { shape: 'circle', center: { x: -7.5, y: -5.3 }, radius: 0.5 },
     { shape: 'circle', center: { x: -4.87, y: -5.3 }, radius: 0.5 },
-    { shape: 'box', center: { x: -2.87, y: -5.3 }, halfWidth: 1.1, halfHeight: 0.45 },
+    { shape: 'circle', center: { x: -2.87, y: -5.3 }, radius: 0.5 },
 
     // Rafiq's Robots (pet workshop) footprint
     { shape: 'box', center: { x: -6, y: -11.8 }, halfWidth: 4.1, halfHeight: 1.6 },

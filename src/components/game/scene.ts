@@ -681,211 +681,104 @@ export function animateRobotVisual(visual: RobotVisual, time: number, speedFacto
 export function createRepairKiosk() {
   const kiosk = new THREE.Group();
 
+  const wallMat = createTexturedToonMaterial('tile_23.png', 3, 2, 0x8b6b4a);
+  const trimMat = createToonMaterial(0x5a3a1a);
   const woodMat = createToonMaterial(0x8b6b4a);
   const metalMat = createToonMaterial(0x475569);
   const darkMat = createToonMaterial(0x1e293b);
+  const roofMat = createToonMaterial(0xc2410c);
   const emissiveMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
 
-  // Workbench
-  const bench = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.16, 0.22), woodMat);
-  bench.position.set(0, 0, 0.13);
-  bench.receiveShadow = true;
-  kiosk.add(bench);
+  // Base platform
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 0.06), trimMat);
+  base.position.set(0, 0, 0.03);
+  base.receiveShadow = true;
+  kiosk.add(base);
 
-  // Bench legs
-  for (const lx of [-0.28, 0.28]) {
-    for (const ly of [-0.06, 0.06]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.02, 0.13, 6), darkMat);
-      leg.position.set(lx, ly, 0.065);
+  // Back wall
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.6, 0.08), wallMat);
+  backWall.position.set(0, 0, 0.48);
+  backWall.receiveShadow = true;
+  kiosk.add(backWall);
+
+  // Side walls (open front)
+  for (let s = -1; s <= 1; s += 2) {
+    const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.5, 0.40), wallMat);
+    sideWall.position.set(s * 0.52, 0.01, 0.26);
+    kiosk.add(sideWall);
+  }
+
+  // Counter
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.16), woodMat);
+  counter.position.set(0, 0, 0.12);
+  kiosk.add(counter);
+  for (let sx = -1; sx <= 1; sx += 2) {
+    for (let sy = -1; sy <= 1; sy += 2) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.015, 0.10, 6), darkMat);
+      leg.position.set(sx * 0.38, sy * 0.04, 0.06);
       kiosk.add(leg);
     }
   }
 
-  // Canopy posts
-  for (const px of [-0.37, 0.37]) {
-    for (const py of [-0.15, 0.15]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.45, 6), metalMat);
-      post.position.set(px, py, 0.38);
-      kiosk.add(post);
+  // Workbench area inside
+  const bench = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.18), woodMat);
+  bench.position.set(0, -0.06, 0.40);
+  kiosk.add(bench);
+  for (const lx of [-0.2, 0.2]) {
+    for (const ly of [-0.05, 0.05]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.014, 0.09, 6), darkMat);
+      leg.position.set(lx, ly, 0.34);
+      kiosk.add(leg);
     }
   }
 
-  // Canopy
-  const canopy = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.04), darkMat);
-  canopy.position.set(0, 0, 0.60);
-  canopy.receiveShadow = true;
-  kiosk.add(canopy);
-
-  // Hanging tool hooks (left side of canopy)
-  for (let i = 0; i < 3; i++) {
-    const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.04, 4), metalMat);
-    hook.position.set(-0.3, -0.06 + i * 0.06, 0.56);
-    kiosk.add(hook);
-    const tool = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.04, 0.015), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
-    tool.position.set(-0.3, -0.06 + i * 0.06, 0.53);
-    kiosk.add(tool);
-  }
-
-  // Holographic diagnostic screen
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.08), emissiveMat);
-  screen.position.set(0, 0, 0.36);
+  // Diagnostic screen
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.10, 0.06), emissiveMat);
+  screen.position.set(0, -0.06, 0.51);
   kiosk.add(screen);
-  // Screen glow ring
-  const glow = new THREE.Mesh(new THREE.EdgesGeometry(screen.geometry), new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.6 }));
+  const glow = new THREE.Mesh(new THREE.EdgesGeometry(screen.geometry), new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.5 }));
   glow.position.copy(screen.position);
   kiosk.add(glow);
 
-  // Cables draping from bench
-  for (let i = 0; i < 3; i++) {
-    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.008, 0.06, 4), new THREE.MeshToonMaterial({ color: 0x1e293b }));
-    cable.position.set(-0.15 + i * 0.15, 0.0, 0.04);
-    cable.rotation.x = 0.2;
-    kiosk.add(cable);
-  }
-
-  // Broken drone on workbench (the repair subject)
-  const droneBody = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.03), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
-  droneBody.position.set(-0.1, 0, 0.29);
-  kiosk.add(droneBody);
-  const droneWings = [
-    new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, 0.005), new THREE.MeshToonMaterial({ color: 0x6b7280 })),
-    new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.005), new THREE.MeshToonMaterial({ color: 0x6b7280 })),
-  ];
-  droneWings[0].position.set(-0.1, -0.04, 0.30);
-  droneWings[1].position.set(-0.1, 0.04, 0.30);
-  kiosk.add(droneWings[0]);
-  kiosk.add(droneWings[1]);
-  // Small wires sticking out
-  for (let i = 0; i < 3; i++) {
-    const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.025, 4), new THREE.MeshToonMaterial({ color: 0xf59e0b }));
-    wire.position.set(-0.1 + (i - 1) * 0.025, 0, 0.315);
-    wire.rotation.x = 0.4;
-    kiosk.add(wire);
-  }
-
-  // Small scrap parts on the ground
-  for (let i = 0; i < 4; i++) {
-    const part = new THREE.Mesh(
-      [new THREE.BoxGeometry(0.02, 0.02, 0.01), new THREE.SphereGeometry(0.012, 6, 6), new THREE.CylinderGeometry(0.01, 0.015, 0.015, 5)][i % 3],
-      new THREE.MeshToonMaterial({ color: [0x6b7280, 0x94a3b8, 0xf59e0b, 0xef4444][i] })
-    );
-    part.position.set(-0.35 + i * 0.04, -0.12 + (i % 2) * 0.04, 0.04);
-    kiosk.add(part);
-  }
-
-  return kiosk;
-}
-
-export function createRepairShop(x: number, y: number, scale = 1.2) {
-  const shop = new THREE.Group();
-
-  const wallMat = createTexturedToonMaterial('tile_23.png', 3, 2, 0x8b6b4a);
-  const trimMat = createToonMaterial(0x5a3a1a);
-  const roofMat = createToonMaterial(0xc2410c);
-  const metalMat = createToonMaterial(0x475569);
-  const darkMat = createToonMaterial(0x1e293b);
-  const woodMat = createToonMaterial(0x8b6b4a);
-  const emissiveMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
-
-  // Floor platform
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.7, 0.06), trimMat);
-  floor.position.set(0, 0, 0.03);
-  floor.receiveShadow = true;
-  shop.add(floor);
-
-  // Back wall
-  const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.7, 0.08), wallMat);
-  backWall.position.set(0, 0, 0.48);
-  backWall.receiveShadow = true;
-  shop.add(backWall);
-
-  // Side walls (leaving front open)
-  for (let s = -1; s <= 1; s += 2) {
-    const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.44), wallMat);
-    sideWall.position.set(s * 0.85, 0.01, 0.26);
-    shop.add(sideWall);
-  }
-
-  // Front counter
-  const counter = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.08, 0.18), woodMat);
-  counter.position.set(0, 0, 0.12);
-  shop.add(counter);
-
-  // Counter legs
-  for (let sx = -1; sx <= 1; sx += 2) {
-    for (let sy = -1; sy <= 1; sy += 2) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.12, 6), darkMat);
-      leg.position.set(sx * 0.65, sy * 0.06, 0.06);
-      shop.add(leg);
-    }
-  }
-
-  // Inside workbench
-  const bench = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.16, 0.2), woodMat);
-  bench.position.set(0, -0.08, 0.38);
-  shop.add(bench);
-
-  // Bench legs
-  for (const lx of [-0.25, 0.25]) {
-    for (const ly of [-0.06, 0.06]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.11, 6), darkMat);
-      leg.position.set(lx, ly, 0.31);
-      shop.add(leg);
-    }
-  }
-
-  // Diagnostic screen on workbench
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.07), emissiveMat);
-  screen.position.set(0, -0.08, 0.50);
-  shop.add(screen);
-  const glow = new THREE.Mesh(new THREE.EdgesGeometry(screen.geometry), new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.6 }));
-  glow.position.copy(screen.position);
-  shop.add(glow);
-
   // Broken drone on workbench
-  const droneBody = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.04, 0.025), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
-  droneBody.position.set(0.1, -0.08, 0.49);
-  shop.add(droneBody);
+  const droneBody = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.02), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
+  droneBody.position.set(0.08, -0.06, 0.50);
+  kiosk.add(droneBody);
   for (let s = -1; s <= 1; s += 2) {
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.035, 0.005), new THREE.MeshToonMaterial({ color: 0x6b7280 }));
-    wing.position.set(0.1, s * 0.035, 0.50);
-    shop.add(wing);
-  }
-
-  // Hanging tools on back wall
-  for (let i = 0; i < 3; i++) {
-    const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.03, 4), metalMat);
-    hook.position.set(-0.4 + i * 0.4, -0.2, 0.44);
-    shop.add(hook);
-    const tool = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.035, 0.01), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
-    tool.position.set(-0.4 + i * 0.4, -0.2, 0.41);
-    shop.add(tool);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.03, 0.004), new THREE.MeshToonMaterial({ color: 0x6b7280 }));
+    wing.position.set(0.08, s * 0.03, 0.51);
+    kiosk.add(wing);
   }
 
   // Cables from bench
   for (let i = 0; i < 3; i++) {
-    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.007, 0.05, 4), new THREE.MeshToonMaterial({ color: 0x1e293b }));
-    cable.position.set(-0.1 + i * 0.1, -0.08, 0.32);
-    cable.rotation.x = 0.2;
-    shop.add(cable);
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.006, 0.04, 4), new THREE.MeshToonMaterial({ color: 0x1e293b }));
+    cable.position.set(-0.08 + i * 0.08, -0.06, 0.35);
+    cable.rotation.x = 0.3;
+    kiosk.add(cable);
   }
 
   // Awning poles
-  for (const px of [-0.8, 0.8]) {
-    for (const py of [-0.25, 0.25]) {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 6), metalMat);
-      pole.position.set(px, py, 0.45);
-      shop.add(pole);
+  for (const px of [-0.52, 0.52]) {
+    for (const py of [-0.28, 0.28]) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.55, 6), metalMat);
+      pole.position.set(px, py, 0.50);
+      kiosk.add(pole);
     }
   }
 
   // Awning roof
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.5, 0.04), roofMat);
-  roof.position.set(0, 0, 0.70);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.4, 0.04), roofMat);
+  roof.position.set(0, 0, 0.78);
   roof.receiveShadow = true;
-  shop.add(roof);
+  kiosk.add(roof);
 
-  // Sign
+  // Awning trim
+  const trim = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.46, 0.015), trimMat);
+  trim.position.set(0, 0, 0.77);
+  kiosk.add(trim);
+
+  // Sign on awning
   const signCanvas = document.createElement('canvas');
   signCanvas.width = 256; signCanvas.height = 64;
   const sctx = signCanvas.getContext('2d')!;
@@ -896,36 +789,43 @@ export function createRepairShop(x: number, y: number, scale = 1.2) {
   sctx.quadraticCurveTo(256, 64, 256 - rad, 64); sctx.lineTo(rad, 64);
   sctx.quadraticCurveTo(0, 64, 0, 64 - rad); sctx.lineTo(0, rad);
   sctx.quadraticCurveTo(0, 0, rad, 0); sctx.closePath(); sctx.fill();
-  sctx.fillStyle = '#fbbf24'; sctx.font = '700 28px system-ui'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
-  sctx.fillText('REPAIR SHOP', 128, 34);
+  sctx.fillStyle = '#fbbf24'; sctx.font = '700 26px system-ui'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+  sctx.fillText('REPAIR KIOSK', 128, 34);
   const signTex = new THREE.CanvasTexture(signCanvas);
   signTex.minFilter = THREE.LinearFilter;
-  const signMesh = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.04), new THREE.MeshBasicMaterial({ map: signTex }));
-  signMesh.position.set(0, 0, 0.72);
-  shop.add(signMesh);
+  const signMesh = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.03), new THREE.MeshBasicMaterial({ map: signTex }));
+  signMesh.position.set(0, 0, 0.80);
+  kiosk.add(signMesh);
 
-  // Hanging lights
+  // Hanging tools on back wall
+  for (let i = 0; i < 3; i++) {
+    const hook = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.025, 4), metalMat);
+    hook.position.set(-0.3 + i * 0.3, -0.18, 0.45);
+    kiosk.add(hook);
+    const tool = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.03, 0.008), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
+    tool.position.set(-0.3 + i * 0.3, -0.18, 0.42);
+    kiosk.add(tool);
+  }
+
+  // Hanging lanterns under awning
   for (let i = -2; i <= 2; i++) {
-    const light = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-    light.position.set(i * 0.35, 0, 0.58);
-    shop.add(light);
+    const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+    lantern.position.set(i * 0.22, 0, 0.70);
+    kiosk.add(lantern);
   }
 
   // Scrap parts on ground out front
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     const part = new THREE.Mesh(
-      [new THREE.BoxGeometry(0.02, 0.02, 0.01), new THREE.SphereGeometry(0.012, 6, 6), new THREE.CylinderGeometry(0.01, 0.015, 0.015, 5)][i % 3],
+      [new THREE.BoxGeometry(0.015, 0.015, 0.008), new THREE.SphereGeometry(0.01, 6, 6), new THREE.CylinderGeometry(0.008, 0.012, 0.012, 5)][i % 3],
       new THREE.MeshToonMaterial({ color: [0x6b7280, 0x94a3b8, 0xf59e0b, 0xef4444][i] })
     );
-    part.position.set(-0.35 + i * 0.05, -0.18 + (i % 2) * 0.04, 0.03);
-    shop.add(part);
+    part.position.set(-0.35 + i * 0.05, -0.2 + (i % 2) * 0.03, 0.03);
+    kiosk.add(part);
   }
 
-  shop.scale.set(scale, scale, scale);
-  shop.position.set(x, y, 0);
-  shop.rotation.set(Math.PI / 2, 0, 0);
-  applyShadows(shop, true, true);
-  return shop;
+  applyShadows(kiosk, true, true);
+  return kiosk;
 }
 
 export function animateRepairSparky(visual: RobotVisual, time: number, repairPhase: number) {
