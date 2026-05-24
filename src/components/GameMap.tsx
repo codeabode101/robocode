@@ -95,7 +95,7 @@ const REMOTE_LERP = 0.35;
 const PLAYER_EYE_HEIGHT = 1.5;
 const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
 const ARENA_ROOM_SPAWN = new THREE.Vector2(0, 3.7);
-const APARTMENT_SPAWN = new THREE.Vector2(0, -3.5);
+const APARTMENT_SPAWN = new THREE.Vector2(0, -1.5);
 const APARTMENT_EXIT = new THREE.Vector2(-8.5, -5.8);
 const ROOM_OWNER_POS = new THREE.Vector2(2.35, 1.95);
 const ROOM_COUNTER_POS = new THREE.Vector2(2.35, 2.25);
@@ -3283,6 +3283,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         );
         camera.position.lerp(cameraTargetPosRef.current, 0.1);
         camera.lookAt(cameraLookTargetRef.current);
+
+        // Clamp camera inside room so it never sees past walls into the void
+        if (inside) {
+          const room = currentRoom;
+          const limits: Record<string, number> = {
+            workshop: 4.0, arena: 5.0, apartment: 3.0, shop: 2.5,
+          };
+          const lim = limits[room] ?? 20;
+          camera.position.x = Math.max(-lim, Math.min(lim, camera.position.x));
+          camera.position.y = Math.max(-lim, Math.min(lim, camera.position.y));
+        }
 
       renderer.render(scene, camera);
       rafRef.current = window.requestAnimationFrame(animate);
