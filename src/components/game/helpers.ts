@@ -33,6 +33,20 @@ export function highlightJava(input: string) {
   return out + escapeHtml(input.slice(last));
 }
 
+export function highlightPython(input: string) {
+  const re = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|\b(True|False|None|def|class|if|else|return|for|while|import|from)\b|\b([a-z_][a-z0-9_]*)\b(?=\s*=)/gi;
+  let out = '', last = 0;
+  for (const m of input.matchAll(re)) {
+    const v = m[0], i = m.index ?? 0;
+    out += escapeHtml(input.slice(last, i));
+    if (v.startsWith('"') || v.startsWith("'")) out += `<span style="color:#f59e0b">${escapeHtml(v)}</span>`;
+    else if (m[1]) out += `<span style="color:#60a5fa">${escapeHtml(v)}</span>`;
+    else out += `<span style="color:#a78bfa">${escapeHtml(v)}</span>`;
+    last = i + v.length;
+  }
+  return out + escapeHtml(input.slice(last));
+}
+
 export function pickRandom<T>(items: T[]) { return items[Math.floor(Math.random() * items.length)]; }
 
 export function randInt(min: number, max: number) {
@@ -170,10 +184,7 @@ function checkLine(n: string, req: string, expectedType: string, expectedValue: 
   return null;
 }
 
-export function validateWorkshopCode(input: string, request: CustomerRequest) {
-  if (request.requestType === 'data-processing' && request.dataSteps) {
-    return validateDataProcessingCode(input, request.dataSteps);
-  }
+function validateJavaWorkshopCode(input: string, request: CustomerRequest) {
   const n = input.replace(/\s+/g, ' ').trim();
   if (!n) return { valid: false, error: 'Write some code first.' };
   if (!n.endsWith(';')) return { valid: false, error: 'Missing semicolon at the end (;).' };
@@ -190,6 +201,47 @@ export function validateWorkshopCode(input: string, request: CustomerRequest) {
     if (hint) return { valid: false, error: hint };
   }
   return { valid: true, error: '' };
+}
+
+function validatePythonWorkshopCode(input: string, request: CustomerRequest) {
+  const n = input.trim();
+  if (!n) return { valid: false, error: 'Write some code first.' };
+  const lines = n.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
+
+  if (lines.length < request.required.length) {
+    return { valid: false, error: `You need ${request.required.length} statement${request.required.length > 1 ? 's' : ''}.` };
+  }
+  if (lines.length > request.required.length) {
+    return { valid: false, error: `Too many statements. You only need ${request.required.length} line${request.required.length > 1 ? 's' : ''}.` };
+  }
+
+  const reqToVal = (r: string) => r === 'name' ? `"${request.petName}"` : r === 'color' ? `"${request.petColor}"` : String(request.petSize);
+
+  for (let i = 0; i < request.required.length; i++) {
+    const line = lines[i].trim();
+    const req = request.required[i];
+    const val = reqToVal(req);
+
+    if (!line.includes('=')) return { valid: false, error: `Line ${i + 1}: Use = to assign a value.` };
+    if (!line.includes(val)) return { valid: false, error: `Line ${i + 1}: Expected value ${val}.` };
+  }
+  return { valid: true, error: '' };
+}
+
+
+
+export function validateWorkshopCode(input: string, request: CustomerRequest) {
+  if (request.requestType === 'data-processing' && request.dataSteps) {
+    return validateDataProcessingCode(input, request.dataSteps, request.language);
+  }
+
+  const language = request.language || 'java';
+
+  if (language === 'python-easy' || language === 'python-hard') {
+    return validatePythonWorkshopCode(input, request);
+  } else {
+    return validateJavaWorkshopCode(input, request);
+  }
 }
 
 // ── Data Processing Validation ──
@@ -258,7 +310,7 @@ function lineMatches(codeLine: string, expectedLine: string): string | null {
   const eVars = e.match(/\b[a-z][a-zA-Z0-9]*\b/g) || [];
   for (const ev of eVars) {
     if (!['parseInt', 'nextInt', 'in', 'abs', 'max', 'min', 'pow', 'sqrt', 'random'].includes(ev) &&
-        !c.includes(ev) && !ev.match(/^\d+$/)) {
+      !c.includes(ev) && !ev.match(/^\d+$/)) {
       // Check if it's a variable used in the expected but not a keyword or number
       // Allow this — the variable name might differ
     }
@@ -267,13 +319,20 @@ function lineMatches(codeLine: string, expectedLine: string): string | null {
   return null;
 }
 
-export function validateDataProcessingCode(input: string, steps: DataProcessingStep[]): { valid: boolean; error: string } {
+export function validateDataProcessingCode(input: string, steps: DataProcessingStep[], language?: string): { valid: boolean; error: string } {
+  const language_type = language || 'java';
   const n = input.replace(/\s+/g, ' ').trim();
   if (!n) return { valid: false, error: 'Write some code first.' };
-  if (!n.endsWith(';')) return { valid: false, error: 'Missing semicolon at the end (;).' };
 
   const allExpected = steps.flatMap(s => s.expectedCode);
-  const lines = n.split(';').filter(l => l.trim()).map(l => l.trim() + ';');
+
+  let lines: string[];
+  if (language_type === 'python') {
+    lines = n.split('\n').filter(l => l.trim() && !l.trim().startsWith('#')).map(l => l.trim());
+  } else {
+    if (!n.endsWith(';') && language_type !== 'python') return { valid: false, error: 'Missing semicolon at the end (;).' };
+    lines = n.split(';').filter(l => l.trim()).map(l => l.trim() + ';');
+  }
 
   if (lines.length < allExpected.length) {
     return { valid: false, error: `You need ${allExpected.length} statement${allExpected.length > 1 ? 's' : ''}. You wrote ${lines.length}.` };

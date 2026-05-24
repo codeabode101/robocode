@@ -1,11 +1,14 @@
 'use client';
 
-import type { CustomerRequest } from './types';
+import type { CustomerRequest, ProgrammingLanguage } from './types';
+import { PROGRAMMING_LANGUAGES, LANGUAGE_NAMES } from './types';
 
 interface Props {
   activeCustomer: CustomerRequest | null;
   workshopCode: string;
   setWorkshopCode: (v: string) => void;
+  workshopLanguage: ProgrammingLanguage;
+  setWorkshopLanguage: (v: ProgrammingLanguage) => void;
   workshopOutput: string;
   inWorkshopRoom: boolean;
   runWorkshopCode: () => void;
@@ -18,7 +21,7 @@ interface Props {
 }
 
 export default function WorkshopPanel({
-  activeCustomer, workshopCode, setWorkshopCode, workshopOutput,
+  activeCustomer, workshopCode, setWorkshopCode, workshopLanguage, setWorkshopLanguage, workshopOutput,
   inWorkshopRoom, runWorkshopCode, reopenWorkshopIntro, showSparkyExamples, leaveWorkshopRoom,
   bonusFraction, bonusDuration, firstTransactionDone,
 }: Props) {
@@ -80,11 +83,22 @@ export default function WorkshopPanel({
           )}
 
           <div className="mt-3 rounded-xl border border-slate-700 bg-slate-950 overflow-hidden">
-            <div className="px-4 py-2 text-base text-slate-200 border-b border-slate-800">Java Workshop Editor</div>
+            <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+              <span className="text-base text-slate-200">Workshop Editor</span>
+              <select 
+                value={workshopLanguage} 
+                onChange={(e) => setWorkshopLanguage(e.target.value as ProgrammingLanguage)}
+                className="px-3 py-1.5 text-sm rounded bg-slate-800 text-slate-100 border border-slate-600 hover:border-slate-500 cursor-pointer"
+              >
+                {PROGRAMMING_LANGUAGES.map(lang => (
+                  <option key={lang} value={lang}>{LANGUAGE_NAMES[lang]}</option>
+                ))}
+              </select>
+            </div>
             <textarea value={workshopCode} onChange={(e) => setWorkshopCode(e.target.value)} spellCheck={false} wrap="off" className="h-28 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 font-mono text-base leading-7 text-slate-100 [font-variant-ligatures:none]" />
           </div>
           <div className="mt-4 flex gap-3">
-            <button type="button" className="rounded bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400" onClick={runWorkshopCode}>Submit Java Code</button>
+            <button type="button" className="rounded bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400" onClick={runWorkshopCode}>Submit {LANGUAGE_NAMES[workshopLanguage]} Code</button>
             <button type="button" className="rounded bg-amber-600 px-4 py-2.5 text-base font-semibold text-white hover:bg-amber-500" onClick={showSparkyExamples}>Need help?</button>
           </div>
         </div>

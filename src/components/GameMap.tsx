@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useMultiplayer } from '@/hooks/useMultiplayer';
-import type { SparkyQuestStage, CustomerRequest, TutorialPhase } from '@/components/game/types';
+import type { SparkyQuestStage, CustomerRequest, TutorialPhase, ProgrammingLanguage } from '@/components/game/types';
 import Editor from '@/components/game/Editor';
 import TutorialOverlay from '@/components/game/TutorialOverlay';
 import ArenaOverlay from '@/components/game/ArenaOverlay';
@@ -345,6 +345,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [robotName, setRobotName] = useState('Scrap');
   const [activeCustomer, setActiveCustomer] = useState<CustomerRequest | null>(null);
   const [workshopCode, setWorkshopCode] = useState('');
+  const [workshopLanguage, setWorkshopLanguage] = useState<ProgrammingLanguage>('python-easy');
   const [workshopOutput, setWorkshopOutput] = useState('');
   const [interactionPromptName, setInteractionPromptName] = useState<string | null>(null);
   const [workshopIntroSeen, setWorkshopIntroSeen] = useState(false);
@@ -3648,7 +3649,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       return;
     }
 
-    const result = validateWorkshopCode(workshopCode, activeCustomer);
+    const customerWithLanguage = { ...activeCustomer, language: workshopLanguage };
+    const result = validateWorkshopCode(workshopCode, customerWithLanguage);
     if (!result.valid) {
       setWorkshopOutput(`❌ ${result.error}`);
       return;
@@ -3737,7 +3739,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} showSparkyExamples={() => setShowSparkyExamples(true)} leaveWorkshopRoom={leaveWorkshopRoom} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />
+      <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopLanguage={workshopLanguage} setWorkshopLanguage={setWorkshopLanguage} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} showSparkyExamples={() => setShowSparkyExamples(true)} leaveWorkshopRoom={leaveWorkshopRoom} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />
 
       <ArenaOverlay inArenaRoom={inArenaRoom} arenaPlayers={arenaPlayers} arenaChallenge={arenaChallenge} arenaCode={arenaCode} setArenaCode={setArenaCode} arenaOutput={arenaOutput} arenaBattleActive={arenaBattleActive} challengePlayer={challengePlayer} acceptChallenge={acceptChallenge} declineChallenge={declineChallenge} submitArenaCode={submitArenaCode} leaveArenaRoom={leaveArenaRoom} currentUserId={userId} />
 

@@ -37,9 +37,16 @@ export const REQUEST_PATTERNS = [
 ] as const;
 export const WORKSHOP_INTRO_PAGES = [
   { title: "Welcome to Rafiq's Robots", body: 'Customers browse robots here. Walk up and press Space to start a job.' },
-  { title: 'Do the Java task', body: 'Each customer asks for properties (name, color, size). Write code that matches.' },
+  { title: 'Write code in any language', body: 'Each customer asks for properties (name, color, size). Use Python or Java.' },
   { title: 'Get paid at register', body: 'Correct code makes them follow you. Lead them to the register for $2.' },
 ] as const;
+
+export const PROGRAMMING_LANGUAGES: ProgrammingLanguage[] = ['python-easy', 'python-hard', 'java'];
+export const LANGUAGE_NAMES: Record<ProgrammingLanguage, string> = {
+  'python-easy': 'Python (Easy)',
+  'python-hard': 'Python (Hard)',
+  java: 'Java',
+};
 
 export const DATA_CUSTOMER_NAMES = ['Priya', 'Arjun', 'Kavya', 'Ravi', 'Neha', 'Vikram', 'Anjali', 'Deepak'];
 
@@ -48,6 +55,8 @@ export interface Vec2 { x: number; y: number }
 export type CustomerProperty = 'name' | 'color' | 'size';
 
 export type RequestType = 'standard' | 'data-processing';
+
+export type ProgrammingLanguage = 'python-easy' | 'python-hard' | 'java';
 
 export interface DataProcessingStep {
   givenInfo: string[];
@@ -63,6 +72,7 @@ export interface CustomerRequest {
   required: CustomerProperty[];
   requestType: RequestType;
   dataSteps?: DataProcessingStep[];
+  language?: ProgrammingLanguage;
 }
 
 export type SparkyQuestStage = 'intro' | 'unit1' | 'unit1-done' | 'unit2' | 'unit2-done' | 'unit3' | 'unit3-done' | 'unit4' | 'all-done';
@@ -139,6 +149,6 @@ export type TutorialPhase =
   | { kind: 'dialogue'; npcText: string }
   | ({ kind: 'challenge'; npcText: string } & TutorialChallenge);
 
-export type Hitbox = 
+export type Hitbox =
   | { shape: 'circle'; center: Vec2; radius: number }
   | { shape: 'box'; center: Vec2; halfWidth: number; halfHeight: number };
