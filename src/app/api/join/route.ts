@@ -24,15 +24,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { x, y } = await request.json();
+    const { x, y, room } = await request.json();
     const now = new Date().toISOString();
     const safeX = Number(x) || 0;
     const safeY = Number(y) || 0;
+    const safeRoom = ['outside', 'workshop', 'arena', 'apartment'].includes(room) ? room : 'outside';
 
     await db.run(sql`
       INSERT INTO player_positions (user_id, x, y, map, updated_at)
-      VALUES (${userId}, ${safeX}, ${safeY}, 'default', ${now})
-      ON CONFLICT (user_id) DO UPDATE SET x = ${safeX}, y = ${safeY}, updated_at = ${now}
+      VALUES (${userId}, ${safeX}, ${safeY}, ${safeRoom}, ${now})
+      ON CONFLICT (user_id) DO UPDATE SET x = ${safeX}, y = ${safeY}, map = ${safeRoom}, updated_at = ${now}
     `);
 
     return NextResponse.json({ ok: true });
