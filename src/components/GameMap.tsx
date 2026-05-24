@@ -1790,35 +1790,44 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const accentMat = new THREE.MeshToonMaterial({ color: 0x60a5fa, gradientMap: createGradientTexture(3) });
 
     // Feet
+    const feet: THREE.Mesh[] = [];
     for (let s = -1; s <= 1; s += 2) {
       const foot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.03), darkMat);
       foot.position.set(s * 0.08, 0, 0.02);
       localGroup.add(foot);
+      feet.push(foot);
     }
     // Legs (rotate π/2 around x to stand upright in z-up)
-    for (let s = -1; s <= 1; s += 2) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.18, 8), darkMat);
-      leg.rotation.x = Math.PI / 2;
-      leg.position.set(s * 0.08, 0, 0.12);
-      localGroup.add(leg);
-    }
+    const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.18, 8), darkMat);
+    leftLeg.rotation.x = Math.PI / 2;
+    leftLeg.position.set(-0.08, 0, 0.12);
+    localGroup.add(leftLeg);
+    const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.18, 8), darkMat);
+    rightLeg.rotation.x = Math.PI / 2;
+    rightLeg.position.set(0.08, 0, 0.12);
+    localGroup.add(rightLeg);
     // Body (torso)
     const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.25, 12), clothMat);
     torso.rotation.x = Math.PI / 2;
     torso.position.set(0, 0, 0.3);
     localGroup.add(torso);
     // Arms
-    for (let s = -1; s <= 1; s += 2) {
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.22, 8), clothMat);
-      arm.rotation.x = Math.PI / 2;
-      arm.rotation.z = s * 0.3;
-      arm.position.set(s * 0.15, 0, 0.35);
-      localGroup.add(arm);
-      // Hand
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), skinMat);
-      hand.position.set(s * 0.15, 0, 0.46);
-      localGroup.add(hand);
-    }
+    const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.22, 8), clothMat);
+    leftArm.rotation.x = Math.PI / 2;
+    leftArm.rotation.z = 0.3;
+    leftArm.position.set(-0.15, 0, 0.35);
+    localGroup.add(leftArm);
+    const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), skinMat);
+    leftHand.position.set(-0.15, 0, 0.46);
+    localGroup.add(leftHand);
+    const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.22, 8), clothMat);
+    rightArm.rotation.x = Math.PI / 2;
+    rightArm.rotation.z = -0.3;
+    rightArm.position.set(0.15, 0, 0.35);
+    localGroup.add(rightArm);
+    const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 6), skinMat);
+    rightHand.position.set(0.15, 0, 0.46);
+    localGroup.add(rightHand);
     // Neck
     const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.06, 8), skinMat);
     neck.rotation.x = Math.PI / 2;
@@ -1846,7 +1855,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     localGroup.position.set(0, -7, 0.24);
     scene.add(localGroup);
     localPositionRef.current.set(0, -7);
-    const localRobot = { root: localGroup, nameSprite: new THREE.Sprite(), body: torso, shadow: torso, leftPupil: torso, rightPupil: torso, antennaTip: torso, leftArm: torso as unknown as THREE.Mesh, rightArm: torso as unknown as THREE.Mesh, leftLeg: torso as unknown as THREE.Mesh, rightLeg: torso as unknown as THREE.Mesh };
+    const localRobot = { root: localGroup, nameSprite: new THREE.Sprite(), body: torso, shadow: torso, leftPupil: torso, rightPupil: torso, antennaTip: torso, leftArm, rightArm, leftLeg, rightLeg };
     localRobotRef.current = localRobot;
 
     // Held item group — attaches to right hand for 3D inventory display
@@ -2622,6 +2631,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         localGroup.position.z = (inWorkshopRoomRef.current || inArenaRoomRef.current || inApartmentRoomRef.current ? 0.28 : 0.24) + bob;
       } else {
         localGroup.position.z = inWorkshopRoomRef.current || inArenaRoomRef.current || inApartmentRoomRef.current ? 0.28 : 0.24;
+      }
+      // Walk animation for legs and arms
+      const localVis = localRobotRef.current;
+      if (localVis) {
+        animateRobotVisual(localVis, worldTime, moved ? 1 : 0, 0, 0);
       }
 
       // Held item 3D model
