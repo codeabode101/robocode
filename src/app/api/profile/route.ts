@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import { db } from '@/db';
-import { users, tutorialProgress } from '@/db/schema';
+import { users, tutorialProgress, playerPositions } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -36,10 +36,23 @@ export async function GET(request: NextRequest) {
       .from(tutorialProgress).where(eq(tutorialProgress.user_id, userId));
 
     const concepts = tutorials.map(t => t.concept);
-    const questStage = concepts.find(c => c.startsWith('_quest_'))?.replace('_quest_', '') || 'intro';
+    let questStage = concepts.find(c => c.startsWith('_quest_'))?.replace('_quest_', '') || 'intro';
+
+    // Server-side reset for old/migrated quest stages — happens before returning data
+    const resetStages = ['earn-money', 'buy-chai', 'gift-ready', 'done', 'grind1', 'grind2', 'grind3', 'arena-ready'];
+    if (resetStages.includes(questStage)) {
+      await db.delete(tutorialProgress).where(eq(tutorialProgress.user_id, userId));
+      await db.run(sql`UPDATE users SET currency = 0, backpack_json = '[]' WHERE id = ${userId}`);
+      user.currency = 0;
+      user.backpack_json = '[]';
+      questStage = 'unit1-done';
+    }
 
     let backpack: string[] = [];
     try { backpack = JSON.parse(user.backpack_json || '[]'); } catch { backpack = []; }
+
+    const pos = await db.select({ x: playerPositions.x, y: playerPositions.y, map: playerPositions.map })
+      .from(playerPositions).where(eq(playerPositions.user_id, userId)).limit(1).then(r => r[0]);
 
     return NextResponse.json({
       name: user.name,
@@ -50,6 +63,7 @@ export async function GET(request: NextRequest) {
       questStage,
       workshopIntroDone: concepts.includes('_workshop_intro'),
       backpack,
+      position: pos ? { x: pos.x, y: pos.y, room: pos.map } : null,
     });
   } catch (err) {
     console.error('Profile load error:', err);
