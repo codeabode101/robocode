@@ -1543,6 +1543,50 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       };
     }
 
+    const createExitSignMesh = (x: number, y: number, z: number, parent: THREE.Group, bgColor = '#dc2626', textColor = '#ffffff', borderColor = '#fde68a') => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 200; canvas.height = 80;
+      const ctx = canvas.getContext('2d')!;
+      const r = 12;
+      ctx.fillStyle = bgColor;
+      ctx.beginPath();
+      ctx.moveTo(r, 0); ctx.lineTo(200 - r, 0);
+      ctx.quadraticCurveTo(200, 0, 200, r);
+      ctx.lineTo(200, 80 - r);
+      ctx.quadraticCurveTo(200, 80, 200 - r, 80);
+      ctx.lineTo(r, 80);
+      ctx.quadraticCurveTo(0, 80, 0, 80 - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(4, 4, 192, 72);
+      ctx.fillStyle = textColor;
+      ctx.font = '700 40px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('EXIT', 100, 44);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.minFilter = THREE.LinearFilter;
+      tex.flipY = false;
+      const bracketMat = new THREE.MeshToonMaterial({ color: 0x334155 });
+      const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.35), bracketMat);
+      bracket.position.set(0, 0, -0.15);
+      const signMat = new THREE.MeshBasicMaterial({ map: tex });
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.2), signMat);
+      panel.scale.y = -1;
+      const frameMat = new THREE.MeshToonMaterial({ color: 0x1e293b });
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.06, 0.24), frameMat);
+      frame.renderOrder = 1;
+      const signGroup = new THREE.Group();
+      signGroup.add(frame);
+      signGroup.add(panel);
+      signGroup.add(bracket);
+      signGroup.position.set(x, y, z);
+      parent.add(signGroup);
+    };
+
     // Shop interior room
     {
       const shopRoomGroup = new THREE.Group();
@@ -1647,38 +1691,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         new THREE.BoxGeometry(0.6, 0.08, 0.7),
         createToonMaterial(0xdc2626)
       );
-      exitDoor.position.set(0, sD / 2, 0.45);
+      exitDoor.position.set(0, sD / 2, 0.39);
       shopRoomGroup.add(exitDoor);
       const exitFrame = new THREE.Mesh(
         new THREE.BoxGeometry(0.68, 0.08, 0.76),
         createToonMaterial(0x1a1a1a)
       );
-      exitFrame.position.set(0, sD / 2, 0.48);
+      exitFrame.position.set(0, sD / 2, 0.42);
       shopRoomGroup.add(exitFrame);
 
-      // 3D EXIT sign above the exit door
-      const exitSignCanvas = document.createElement('canvas');
-      exitSignCanvas.width = 200; exitSignCanvas.height = 80;
-      const esCtx = exitSignCanvas.getContext('2d')!;
-      esCtx.fillStyle = '#dc2626';
-      const esRad = 8;
-      esCtx.beginPath(); esCtx.moveTo(esRad, 0); esCtx.lineTo(200 - esRad, 0);
-      esCtx.quadraticCurveTo(200, 0, 200, esRad); esCtx.lineTo(200, 80 - esRad);
-      esCtx.quadraticCurveTo(200, 80, 200 - esRad, 80); esCtx.lineTo(esRad, 80);
-      esCtx.quadraticCurveTo(0, 80, 0, 80 - esRad); esCtx.lineTo(0, esRad);
-      esCtx.quadraticCurveTo(0, 0, esRad, 0); esCtx.closePath(); esCtx.fill();
-      esCtx.fillStyle = '#ffffff'; esCtx.font = '700 40px system-ui'; esCtx.textAlign = 'center'; esCtx.textBaseline = 'middle';
-      esCtx.fillText('EXIT', 100, 44);
-      const exitSignTex = new THREE.CanvasTexture(exitSignCanvas);
-      exitSignTex.minFilter = THREE.LinearFilter;
-      exitSignTex.flipY = false;
-      const exitSignMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(0.44, 0.04, 0.18),
-        new THREE.MeshBasicMaterial({ map: exitSignTex })
-      );
-      exitSignMesh.position.set(0, sD / 2, 0.95);
-      exitSignMesh.scale.y = -1;
-      shopRoomGroup.add(exitSignMesh);
+      createExitSignMesh(0, 1.8, 0.84, shopRoomGroup, '#dc2626', '#ffffff', '#fde68a');
     }
 
     // Multi-floor arena at (18.75, -12) — merged grass block x=[13.5,24]
@@ -1977,6 +1999,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       wall.material.side = THREE.DoubleSide;
       workshopRoomGroup.add(wall);
     });
+    // Exit door on south wall — industrial style
+    const wsExitDoor = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.08, 0.7),
+      createToonMaterial(0x475569)
+    );
+    wsExitDoor.position.set(0, -5.15, 0.59);
+    workshopRoomGroup.add(wsExitDoor);
+    const wsExitFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(0.68, 0.08, 0.76),
+      createToonMaterial(0x1e293b)
+    );
+    wsExitFrame.position.set(0, -5.15, 0.62);
+    workshopRoomGroup.add(wsExitFrame);
+    createExitSignMesh(0, -5.15, 1.3, workshopRoomGroup, '#eab308', '#1e293b', '#000000');
 
     const shelf = new THREE.Mesh(
       new THREE.BoxGeometry(1.65, 0.45, 1.45),
@@ -2202,13 +2238,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       apartmentRoomGroup.add(aptSparky.root);
       apartmentSparkyRef.current = aptSparky;
 
-      // Exit door marker on south wall
-      const aptExitMarker = createLabelSprite('EXIT', '#f8fafc', 'rgba(220,38,38,0.85)', '#fde68a', 120, 60);
-      aptExitMarker.scale.set(2.0, 0.8, 1);
-      aptExitMarker.center.set(0.5, 0);
-      aptExitMarker.position.set(0, -4.15, 2.5);
-      aptExitMarker.renderOrder = 36;
-      apartmentRoomGroup.add(aptExitMarker);
+      // Exit door on south wall — wooden style
+      const aptDoor = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.08, 0.7),
+        createToonMaterial(0x8b5a2b)
+      );
+      aptDoor.position.set(0, -4.00, 0.59);
+      apartmentRoomGroup.add(aptDoor);
+      const aptDoorFrame = new THREE.Mesh(
+        new THREE.BoxGeometry(0.68, 0.08, 0.76),
+        createToonMaterial(0x5c3a1e)
+      );
+      aptDoorFrame.position.set(0, -4.00, 0.62);
+      apartmentRoomGroup.add(aptDoorFrame);
+      createExitSignMesh(0, -4.00, 1.3, apartmentRoomGroup, '#b45309', '#fef3c7', '#fde68a');
     }
 
     {
