@@ -26,15 +26,18 @@ export function useMultiplayer(
 ) {
   const [players, setPlayers] = useState<Record<string, PlayerPosition>>({});
   const [connected, setConnected] = useState(false);
+  const [playerCount, setPlayerCount] = useState(1);
   const [arenaPlayers, setArenaPlayers] = useState<{ id: string; name: string | null }[]>([]);
   const [arenaChallenge, setArenaChallenge] = useState<{ fromId: string; fromName: string } | null>(null);
   const apinatorRef = useRef<Apinator | null>(null);
   const connectedRef = useRef(false);
+  const subscribedRef = useRef(false);
   const userIdRef = useRef(userId);
   userIdRef.current = userId;
   const playerNameRef = useRef('');
   const arenaPlayersRef = useRef<{ id: string; name: string }[]>([]);
   const onArenaEventRef = useRef<((event: ArenaEvent) => void) | null>(null);
+  const eventQueueRef = useRef<Array<{ event: string; data: Record<string, unknown> }>>([]);
 
   useEffect(() => {
     if (!apinatorAppKey) {
@@ -49,22 +52,39 @@ export function useMultiplayer(
     });
     apinatorRef.current = apinator;
 
+    const sendQueued = () => {
+      const queue = eventQueueRef.current;
+      eventQueueRef.current = [];
+      for (const q of queue) {
+        try {
+          apinator.trigger('private-robocode-live', q.event, q.data);
+          console.log('📤 Sent event:', q.event, q.data);
+        } catch (err) {
+          console.warn('⚠️ Failed to send queued event:', q.event, err);
+        }
+      }
+    };
+
     const upsertRemotePlayer = (payload: unknown) => {
       const parsed = typeof payload === 'string' ? JSON.parse(payload) : (payload as Record<string, unknown> | null);
       const remoteUserId = parsed?.userId ?? parsed?.user_id;
       if (typeof remoteUserId !== 'string' || remoteUserId === userIdRef.current) return;
       console.log('📥 Multiplayer event:', { event: 'upsert', remoteUserId, x: parsed?.x, y: parsed?.y, room: parsed?.room });
-      setPlayers((prev) => ({
-        ...prev,
-        [remoteUserId]: {
-          userId: remoteUserId,
-          x: Number(parsed?.x) || 0,
-          y: Number(parsed?.y) || 0,
-          name: typeof parsed?.name === 'string' ? parsed.name : prev[remoteUserId]?.name,
-          room: typeof parsed?.room === 'string' ? parsed.room : prev[remoteUserId]?.room,
-          lastSeenAt: Date.now(),
-        },
-      }));
+      setPlayers((prev) => {
+        const next = {
+          ...prev,
+          [remoteUserId]: {
+            userId: remoteUserId,
+            x: Number(parsed?.x) || 0,
+            y: Number(parsed?.y) || 0,
+            name: typeof parsed?.name === 'string' ? parsed.name : prev[remoteUserId]?.name,
+            room: typeof parsed?.room === 'string' ? parsed.room : prev[remoteUserId]?.room,
+            lastSeenAt: Date.now(),
+          },
+        };
+        setPlayerCount(1 + Object.keys(next).length);
+        return next;
+      });
     };
 
     const handleArenaEvent = (eventName: string, data: unknown) => {
@@ -102,6 +122,7 @@ export function useMultiplayer(
     };
     const startReconnect = () => {
       stopReconnect();
+      subscribedRef.current = false;
       const loop = () => {
         if (connectedRef.current) return;
         tryReconnect();
@@ -121,26 +142,40 @@ export function useMultiplayer(
       connectedRef.current = isConnected;
       setConnected(isConnected);
       if (isConnected) { stopReconnect(); }
-      if (!isConnected) { startReconnect(); }
+      if (!isConnected) { subscribedRef.current = false; startReconnect(); }
     });
 
     const channel = apinator.subscribe('private-robocode-live');
 
-    channel.bind('player-join', upsertRemotePlayer);
-    channel.bind('player-move', upsertRemotePlayer);
-    channel.bind('player-leave', (data: unknown) => {
+    channel.bind('realtime:subscription_succeeded', () => {
+      subscribedRef.current = true;
+      sendQueued();
+    });
+
+    channel.bind('realtime:subscription_error', (err: unknown) => {
+      console.warn('⚠️ Channel subscription error:', err);
+    });
+
+    channel.bind('client-player-join', upsertRemotePlayer);
+    channel.bind('client-player-move', upsertRemotePlayer);
+    channel.bind('client-player-leave', (data: unknown) => {
       const parsed = typeof data === 'string' ? JSON.parse(data) : (data as Record<string, unknown> | null);
       const uid = parsed?.userId ?? parsed?.user_id;
       if (typeof uid === 'string' && uid !== userIdRef.current) {
-        setPlayers((prev) => { const n = { ...prev }; delete n[uid]; return n; });
+        setPlayers((prev) => {
+          const n = { ...prev };
+          delete n[uid];
+          setPlayerCount(1 + Object.keys(n).length);
+          return n;
+        });
       }
     });
 
-    channel.bind('arena-join', (data: unknown) => handleArenaEvent('arena-join', data));
-    channel.bind('arena-leave', (data: unknown) => handleArenaEvent('arena-leave', data));
-    channel.bind('arena-challenge', (data: unknown) => handleArenaEvent('arena-challenge', data));
-    channel.bind('arena-accept', (data: unknown) => handleArenaEvent('arena-accept', data));
-    channel.bind('arena-decline', (data: unknown) => handleArenaEvent('arena-decline', data));
+    channel.bind('client-arena-join', (data: unknown) => handleArenaEvent('arena-join', data));
+    channel.bind('client-arena-leave', (data: unknown) => handleArenaEvent('arena-leave', data));
+    channel.bind('client-arena-challenge', (data: unknown) => handleArenaEvent('arena-challenge', data));
+    channel.bind('client-arena-accept', (data: unknown) => handleArenaEvent('arena-accept', data));
+    channel.bind('client-arena-decline', (data: unknown) => handleArenaEvent('arena-decline', data));
 
     apinator.connect();
 
@@ -152,6 +187,8 @@ export function useMultiplayer(
     return () => {
       setConnected(false);
       connectedRef.current = false;
+      subscribedRef.current = false;
+      eventQueueRef.current = [];
       stopReconnect();
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', tryReconnect);
@@ -166,32 +203,36 @@ export function useMultiplayer(
     fetch('/api/profile').then(r => r.json()).then(d => { if (d.name) playerNameRef.current = d.name; }).catch(() => {});
   }, [userId]);
 
-  async function triggerEvent(event: string, data: Record<string, unknown>) {
+  function triggerEvent(event: string, data: Record<string, unknown>) {
+    const apinator = apinatorRef.current;
+    if (!apinator) {
+      console.warn('⚠️ Apinator not initialized');
+      return;
+    }
     const enriched = { ...data, userId: userIdRef.current, name: playerNameRef.current };
-    console.log('📤 Sending event:', event, enriched);
+
+    if (!subscribedRef.current) {
+      eventQueueRef.current.push({ event, data: enriched });
+      return;
+    }
+
     try {
-      const res = await fetch('/api/multiplayer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event, data: enriched }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        console.warn('⚠️ triggerEvent failed:', event, err);
-      }
-    } catch (err) {
-      console.warn('⚠️ triggerEvent network error:', event, err);
+      apinator.trigger('private-robocode-live', event, enriched);
+      console.log('📤 Sent event:', event, enriched);
+    } catch {
+      eventQueueRef.current.push({ event, data: enriched });
     }
   }
 
   const sendPosition = useCallback((x: number, y: number, room?: string) => {
-    triggerEvent('player-move', { x, y, room });
+    triggerEvent('client-player-move', { x, y, room });
     fetch('/api/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ x, y, room }) }).catch(() => {});
   }, []);
 
   return {
     players,
     connected,
+    playerCount,
     sendPosition,
     triggerEvent,
     arenaPlayers,
