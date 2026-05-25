@@ -148,12 +148,40 @@ export function useMultiplayer(
     const channel = apinator.subscribe('private-robocode-live');
 
     channel.bind('realtime:subscription_succeeded', () => {
+      console.log('📡 Channel subscribed');
       subscribedRef.current = true;
       sendQueued();
     });
 
     channel.bind('realtime:subscription_error', (err: unknown) => {
-      console.warn('⚠️ Channel subscription error:', err);
+      console.warn('⚠️ Channel subscription error:', JSON.stringify(err));
+    });
+
+    const subTimeout = window.setTimeout(() => {
+      if (!subscribedRef.current) {
+        console.warn('⏱️ Subscription not confirmed after 5s, state:', apinator.state, 'channel subscribed:', channel.subscribed);
+      }
+    }, 5000);
+
+    apinator.bind('client-player-join', (data: unknown) => {
+      console.log('🌍 Global client-player-join received:', data);
+      upsertRemotePlayer(data);
+    });
+    apinator.bind('client-player-move', (data: unknown) => {
+      console.log('🌍 Global client-player-move received:', data);
+      upsertRemotePlayer(data);
+    });
+    apinator.bind('client-player-leave', (data: unknown) => {
+      const parsed = typeof data === 'string' ? JSON.parse(data) : (data as Record<string, unknown> | null);
+      const uid = parsed?.userId ?? parsed?.user_id;
+      if (typeof uid === 'string' && uid !== userIdRef.current) {
+        setPlayers((prev) => {
+          const n = { ...prev };
+          delete n[uid];
+          setPlayerCount(1 + Object.keys(n).length);
+          return n;
+        });
+      }
     });
 
     channel.bind('client-player-join', upsertRemotePlayer);
@@ -189,6 +217,7 @@ export function useMultiplayer(
       connectedRef.current = false;
       subscribedRef.current = false;
       eventQueueRef.current = [];
+      window.clearTimeout(subTimeout);
       stopReconnect();
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', tryReconnect);
