@@ -855,7 +855,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (connected && !joinedRef.current) {
       joinedRef.current = true;
       const joinRoom = inWorkshopRoomRef.current ? 'workshop' : inArenaRoomRef.current ? 'arena' : inApartmentRoomRef.current ? 'apartment' : 'outside';
-      triggerEvent('client-player-join', { x: localPositionRef.current.x, y: localPositionRef.current.y });
+      triggerEvent('player-join', { x: localPositionRef.current.x, y: localPositionRef.current.y, room: joinRoom });
       fetch('/api/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2656,7 +2656,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'join' }),
               }).catch(() => {});
-              triggerEvent('client-player-join', { x: ARENA_ROOM_SPAWN.x, y: ARENA_ROOM_SPAWN.y, room: 'arena' });
+              triggerEvent('player-join', { x: ARENA_ROOM_SPAWN.x, y: ARENA_ROOM_SPAWN.y, room: 'arena' });
               localPositionRef.current.copy(ARENA_ROOM_SPAWN);
               localRobot.root.position.set(ARENA_ROOM_SPAWN.x, ARENA_ROOM_SPAWN.y, 0.28);
               keyStateRef.current.clear();
@@ -2724,7 +2724,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       if (moved) {
         const room = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : 'outside';
-        triggerEvent('client-player-move', { x: localPositionRef.current.x, y: localPositionRef.current.y, room });
+        triggerEvent('player-move', { x: localPositionRef.current.x, y: localPositionRef.current.y, room });
       }
       // Sync playtime to server every 30s
       if (now - lastPlaytimeSyncRef.current >= 30000) {
@@ -3338,6 +3338,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           camera.position.y = Math.max(-lim, Math.min(lim, camera.position.y));
         }
 
+        // Broadcast position via WebSocket every 50ms for multiplayer
+        if (now >= sendAtRef.current) {
+          sendAtRef.current = now + NETWORK_SYNC_MS;
+          const sendPos = (() => {
+            if (inWorkshopRoomRef.current) return { x: ROOM_SPAWN.x, y: ROOM_SPAWN.y, room: 'workshop' };
+            if (inArenaRoomRef.current) return { x: ARENA_ROOM_SPAWN.x, y: ARENA_ROOM_SPAWN.y, room: 'arena' };
+            if (inApartmentRoomRef.current) return { x: APARTMENT_SPAWN.x, y: APARTMENT_SPAWN.y, room: 'apartment' };
+            if (inShopRoomRef.current) return { x: 0, y: 1.2, room: 'shop' };
+            return { x: localPositionRef.current.x, y: localPositionRef.current.y };
+          })();
+          sendPosition(sendPos.x, sendPos.y, sendPos.room);
+        }
+
       renderer.render(scene, camera);
       rafRef.current = window.requestAnimationFrame(animate);
     } catch (e) {
@@ -3482,12 +3495,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
     };
     fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join' }) }).catch(() => {});
-    triggerEvent('client-arena-join', { room: 'arena' });
+    triggerEvent('arena-join', { room: 'arena' });
     fetch('/api/arena?action=players').then(r => r.json()).then(d => { if (d.players) setArenaPlayers(d.players.filter((p: any) => p.id !== userId)); }).catch(() => {});
     return () => {
       mp.onArenaEventRef.current = null;
       fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'leave' }) }).catch(() => {});
-      triggerEvent('client-arena-leave', {});
+      triggerEvent('arena-leave', {});
     };
   }, [inArenaRoom]);
 
@@ -3671,7 +3684,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setArenaBattleActive(false);
     fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'leave' }) }).catch(() => {});
     const adp = new THREE.Vector2(18.75, -9.0);
-    triggerEvent('client-player-join', { x: adp.x, y: adp.y, room: 'outside' });
+    triggerEvent('player-join', { x: adp.x, y: adp.y, room: 'outside' });
     localPositionRef.current.copy(adp);
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(adp.x, adp.y, 0.24);
@@ -3737,7 +3750,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       });
       const data = await res.json();
       if (data.error) { setArenaOutput(`❌ ${data.error}`); return; }
-      triggerEvent('client-arena-challenge', { targetId });
+      triggerEvent('arena-challenge', { targetId });
       setArenaOutput(`Challenge sent to ${targetName}!`);
     } catch {
       setArenaOutput('❌ Failed to send challenge.');
@@ -3756,7 +3769,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       setArenaBattleActive(true);
       setArenaChallenge(null);
       setArenaOutput('Battle started! Write your code and submit.');
-      triggerEvent('client-arena-accept', { challengeId: data.challenge?.id });
+      triggerEvent('arena-accept', { challengeId: data.challenge?.id });
     } catch {
       setArenaOutput('❌ Failed to accept challenge.');
     }

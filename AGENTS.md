@@ -11,7 +11,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **3D Rendering**: Three.js (r184), orthographic camera, toon-shaded
 - **Database**: Drizzle ORM + postgres.js (CockroachDB via DATABASE_URL)
 - **Auth**: WorkOS + jose (JWT in httpOnly cookies)
-- **Multiplayer**: Apinator (WebSocket pub/sub for real-time position sync & arena events)
+- **Multiplayer**: Apinator (WebSocket receive + HTTP POST send via `@apinator/server` SDK for reliable event triggering; client events not relayed by Apinator server, so server-side trigger via `/api/multiplayer`)
 - **Deploy**: Cloudflare Workers (via @opennextjs/cloudflare) and/or Vercel
 
 ## Directory Structure
@@ -28,7 +28,7 @@ src/
     game/page.tsx        # Game page (auth wrapper, renders GameMap)
     api/                 # All API routes (profile, auth, arena, etc.)
   hooks/
-    useMultiplayer.ts    # WebSocket multiplayer via Apinator
+    useMultiplayer.ts    # WebSocket receive + HTTP POST send via `/api/multiplayer`
   db/
     index.ts             # Drizzle ORM setup
     schema.ts            # Database schema
@@ -101,6 +101,8 @@ Orthographic camera (top-down, z-up), viewHeight=26 units, ACESFilmic tone mappi
   - `WORKOS_API_KEY` — JWT signing key for auth
   - `DATABASE_URL` — CockroachDB connection string (postgres://...)
   - `NEXT_PUBLIC_APINATOR_APP_KEY` — WebSocket pub/sub app key
+  - `APINATOR_SECRET` — HMAC secret for channel auth & server SDK
+  - `APINATOR_APP_ID` — App UUID for `@apinator/server` REST API
   (`.dev.vars` is only for local dev; secrets are NOT auto-deployed with the worker.)
 
 ## ⚠️ DATABASE SAFETY RULES — READ BEFORE RUNNING ANY MIGRATION
