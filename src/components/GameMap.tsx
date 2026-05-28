@@ -12,12 +12,13 @@ import WorkshopPanel from '@/components/game/WorkshopPanel';
 import type { RobotVisual, HumanVisual } from '@/components/game/scene';
 import {
   createLabelSprite, createNameSprite, createGradientTexture, getTileTexture,
-  createToonMaterial, createTexturedToonMaterial, createCharacterSprite, createPlayerSprite,
+  createToonMaterial, createTexturedToonMaterial,
   createGrid, createPalmTree, createBazaarShop, createRangoli, addWindows, addOutline, applyShadows, disposeObject,
-  createRobotVisual, createHumanVisual, createPartsShop, createPartModel, createApartmentBuilding, animateRobotVisual, LABEL_BUILD_TAG, WALK_BOB_SPEED,
+  createRobotVisual, buildPlayerVisual, createHumanVisual, createPartsShop, createPartModel, createApartmentBuilding, animateRobotVisual, LABEL_BUILD_TAG, WALK_BOB_SPEED,
   addExclamationMarker, createRepairKiosk, animateRepairKiosk, animateRepairSparky, animateSparkyWave,
 } from '@/components/game/scene';
-import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest } from '@/components/game/helpers';
+import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest, computeCameraZoom } from '@/components/game/helpers';
+import type { BuildingFootprint } from '@/components/game/helpers';
 import { buildObstacles } from '@/components/game/city';
 import { unit1Phases, unit2Phases } from '@/components/game/tutorialData';
 import { PARTS_CATALOG, PART_FOR_STAGE, DATA_CUSTOMER_NAMES } from '@/components/game/types';
@@ -103,15 +104,6 @@ const CUSTOMER_TALK_DISTANCE = 1.25;
 const REGISTER_ZONE_RADIUS = 2.1;
 const REGISTER_NPC_RADIUS = 1.35;
 const ROOM_CUSTOMER_EXIT_POS = new THREE.Vector2(-5.35, -4.55);
-const REMOTE_SPRITES = [
-  '/kenney-topdown/PNG/Man Brown/manBrown_stand.png',
-  '/kenney-topdown/PNG/Man Blue/manBlue_stand.png',
-  '/kenney-topdown/PNG/Woman Green/womanGreen_stand.png',
-  '/kenney-topdown/PNG/Survivor 1/survivor1_stand.png',
-  '/kenney-topdown/PNG/Hitman 1/hitman1_stand.png',
-  '/kenney-topdown/PNG/Soldier 1/soldier1_stand.png',
-  '/kenney-topdown/PNG/Man Old/manOld_stand.png',
-];
 const ROOM_PET_BROWSE_POINTS = [
   { stand: new THREE.Vector2(-2.35, 1.2), look: new THREE.Vector2(-1.9, 0.5) },
   { stand: new THREE.Vector2(-2.9, 3.7), look: new THREE.Vector2(-3.2, 3.25) },
@@ -215,11 +207,17 @@ type ArenaPlayer = {
 };
 
   type RemoteAvatar = {
-    visual: RobotVisual;
+    root: THREE.Group;
+    nameSprite: THREE.Sprite;
     target: THREE.Vector2;
     name: string;
     walkTime: number;
     room: string;
+    leftLegPivot: THREE.Group;
+    rightLegPivot: THREE.Group;
+    leftArm: THREE.Mesh;
+    rightArm: THREE.Mesh;
+    facingRotation: number;
   };
 
 type CustomerNpc = {
@@ -328,6 +326,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const animateFnRef = useRef<((now: number) => void) | null>(null);
   const lastAnimFrameRef = useRef(0);
   const animFrameCounterRef = useRef(0);
+  const tabHiddenRef = useRef(false);
+  const tabHiddenAtRef = useRef(0);
 
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
@@ -391,7 +391,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   }, [debugMode]);
   const fpsRef = useRef(0);
   const sessionPlaytimeRef = useRef(0);
-  const lastPlaytimeSyncRef = useRef(0);
+  const lastPositionSyncRef = useRef(0);
   const [bonusFraction, setBonusFraction] = useState(0);
   const bonusTimerRef = useRef<number | null>(null);
   const lockedBonusRef = useRef(0);
@@ -407,33 +407,31 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return () => clearInterval(id);
   }, [debugMode]);
 
+  const apiSync = useCallback((data: Record<string, unknown>) => {
+    fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      .catch(() => {});
+  }, []);
+
   const updateQuestStage = useCallback((stage: SparkyQuestStage) => {
     setSparkyQuestStage(stage);
     sparkyQuestStageRef.current = stage;
-    fetch('/api/profile/quest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stage }) })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(() => { lastConfirmedQuestRef.current = stage; })
-      .catch(e => console.error('Quest stage save failed:', e));
-  }, []);
+    apiSync({ questStage: stage });
+    lastConfirmedQuestRef.current = stage;
+  }, [apiSync]);
 
   const updateBackpack = useCallback((items: ScrapPartId[]) => {
-    console.log('🎒 updateBackpack:', items);
     setBackpack(items);
     backpackRef.current = items;
-    fetch('/api/profile/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(() => { console.log('🎒 Backpack saved OK'); lastConfirmedBackpackRef.current = items; })
-      .catch(e => console.error('🎒 Backpack save failed:', e));
-  }, []);
+    apiSync({ backpack: items });
+    lastConfirmedBackpackRef.current = items;
+  }, [apiSync]);
 
   const updateMoney = useCallback((val: number) => {
     setMoney(val);
     moneyRef.current = val;
-    fetch('/api/profile/money', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: val }) })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(() => { lastConfirmedMoneyRef.current = val; })
-      .catch(e => console.error('Money save failed:', e));
-  }, []);
+    apiSync({ money: val });
+    lastConfirmedMoneyRef.current = val;
+  }, [apiSync]);
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
   const missionText = useMemo(() => {
@@ -727,6 +725,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (data.position && data.questStage !== 'intro') {
         const pos = new THREE.Vector2(data.position.x, data.position.y);
         localPositionRef.current.copy(pos);
+        if (typeof data.position.rotation === 'number') {
+          yawRef.current = data.position.rotation;
+        }
         // Restore room state if player was inside a room
         if (data.position.room === 'workshop') {
           inWorkshopRoomRef.current = true;
@@ -772,69 +773,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
   }, [tutorialComplete, sparkyQuestStage]);
 
-  // Aggressive periodic sync — retries every 2s until server confirms
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const unsaved: { url: string; body: object; ref: { current: any }; getCurrent: () => any }[] = [];
-      if (sparkyQuestStageRef.current !== lastConfirmedQuestRef.current) {
-        unsaved.push({ url: '/api/profile/quest', body: { stage: sparkyQuestStageRef.current }, ref: lastConfirmedQuestRef, getCurrent: () => sparkyQuestStageRef.current });
-      }
-      if (backpackRef.current !== lastConfirmedBackpackRef.current) {
-        unsaved.push({ url: '/api/profile/inventory', body: { items: backpackRef.current }, ref: lastConfirmedBackpackRef, getCurrent: () => backpackRef.current });
-      }
-      if (moneyRef.current !== lastConfirmedMoneyRef.current) {
-        unsaved.push({ url: '/api/profile/money', body: { amount: moneyRef.current }, ref: lastConfirmedMoneyRef, getCurrent: () => moneyRef.current });
-      }
-      for (const item of unsaved) {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-        fetch(item.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(item.body),
-          signal: controller.signal,
-        }).then(r => {
-          if (r.ok) { item.ref.current = item.getCurrent(); }
-        }).catch(() => {}).finally(() => clearTimeout(timeout));
-      }
-      // Periodic position/room sync
-      const posRoom = (() => {
-        if (inWorkshopRoomRef.current) return { x: ROOM_SPAWN.x, y: ROOM_SPAWN.y, room: 'workshop' };
-        if (inArenaRoomRef.current) return { x: ARENA_ROOM_SPAWN.x, y: ARENA_ROOM_SPAWN.y, room: 'arena' };
-        if (inApartmentRoomRef.current) return { x: APARTMENT_SPAWN.x, y: APARTMENT_SPAWN.y, room: 'apartment' };
-        return { x: localPositionRef.current.x, y: localPositionRef.current.y };
-      })();
-      fetch('/api/move', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(posRoom),
-      }).catch(() => {});
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
+  // Periodic sync (30s safety net for crash recovery) + beforeunload
   useEffect(() => {
     const onUnload = () => {
-      if (sparkyQuestStageRef.current !== lastConfirmedQuestRef.current) {
-        navigator.sendBeacon('/api/profile/quest', new Blob([JSON.stringify({ stage: sparkyQuestStageRef.current })], { type: 'application/json' }));
-      }
-      if (backpackRef.current !== lastConfirmedBackpackRef.current) {
-        navigator.sendBeacon('/api/profile/inventory', new Blob([JSON.stringify({ items: backpackRef.current })], { type: 'application/json' }));
-      }
-      if (moneyRef.current !== lastConfirmedMoneyRef.current) {
-        navigator.sendBeacon('/api/profile/money', new Blob([JSON.stringify({ amount: moneyRef.current })], { type: 'application/json' }));
-      }
-      let savePos: { x: number; y: number; room?: string };
-      if (inWorkshopRoomRef.current) {
-        savePos = { x: ROOM_SPAWN.x, y: ROOM_SPAWN.y, room: 'workshop' };
-      } else if (inArenaRoomRef.current) {
-        savePos = { x: ARENA_ROOM_SPAWN.x, y: ARENA_ROOM_SPAWN.y, room: 'arena' };
-      } else if (inApartmentRoomRef.current) {
-        savePos = { x: APARTMENT_SPAWN.x, y: APARTMENT_SPAWN.y, room: 'apartment' };
+      const data: Record<string, unknown> = {};
+      const pRoom = inWorkshopRoomRef.current ? 'workshop' : inArenaRoomRef.current ? 'arena' : inApartmentRoomRef.current ? 'apartment' : inShopRoomRef.current ? 'shop' : 'outside';
+      if (pRoom !== 'outside') {
+        const spawns: Record<string, { x: number; y: number }> = { workshop: ROOM_SPAWN, arena: ARENA_ROOM_SPAWN, apartment: APARTMENT_SPAWN, shop: { x: 0, y: 1.2 } };
+        const s = spawns[pRoom];
+        data.position = { x: s.x, y: s.y, room: pRoom, rotation: yawRef.current };
       } else {
-        savePos = { x: localPositionRef.current.x, y: localPositionRef.current.y };
+        data.position = { x: localPositionRef.current.x, y: localPositionRef.current.y, room: 'outside', rotation: yawRef.current };
       }
-      navigator.sendBeacon('/api/move', new Blob([JSON.stringify(savePos)], { type: 'application/json' }));
+      data.questStage = sparkyQuestStageRef.current;
+      data.backpack = backpackRef.current;
+      data.money = moneyRef.current;
+      data.playtime = Math.floor(sessionPlaytimeRef.current);
+      navigator.sendBeacon('/api/sync', new Blob([JSON.stringify(data)], { type: 'application/json' }));
     };
     window.addEventListener('beforeunload', onUnload);
     return () => window.removeEventListener('beforeunload', onUnload);
@@ -856,11 +811,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       joinedRef.current = true;
       const joinRoom = inWorkshopRoomRef.current ? 'workshop' : inArenaRoomRef.current ? 'arena' : inApartmentRoomRef.current ? 'apartment' : 'outside';
       triggerEvent('client-player-join', { x: localPositionRef.current.x, y: localPositionRef.current.y, room: joinRoom });
-      fetch('/api/join', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x: localPositionRef.current.x, y: localPositionRef.current.y, room: joinRoom }),
-      }).catch(() => {});
     }
   }, [connected, triggerEvent]);
 
@@ -869,7 +819,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const mountElement = mountRef.current;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xd4e8f7);
+    scene.background = new THREE.Color(0x4a7a9a);
     sceneRef.current = scene;
 
     const outdoorGroup = new THREE.Group();
@@ -931,7 +881,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(sun);
 
     const water = new THREE.Mesh(
-      new THREE.CircleGeometry(ISLAND_RADIUS + 10, 120),
+      new THREE.PlaneGeometry(2000, 2000),
       createToonMaterial(0x4a7a9a)
     );
     water.position.z = 0.02;
@@ -1539,8 +1489,35 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       shopDoorHitboxRef.current = {
         shape: 'circle',
         center: { x: 6.0, y: -10.2 },
-        radius: 1.3,
+        radius: 0.5,
       };
+    }
+
+    // Invisible vertical occluder panels around outdoor buildings — prevent camera from seeing over walls into interiors
+    // Mirror of room camera clamping: these block the upward frustum that sees past short walls
+    const occluderMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.DoubleSide });
+    const panelH = 3.0 - 1.05;
+    const panelZ = 1.05 + panelH / 2;
+    const INSET = 0.02;
+    const buildingFootprints: { x1: number; y1: number; x2: number; y2: number; cx: number; cy: number; bw: number; bd: number }[] = [
+      { x1: -10.08, y1: -4.98, x2: -1.92, y2: -2.02, cx: -6, cy: -3.5, bw: 8.0, bd: 2.8 },
+      { x1: -9.7, y1: -13.0, x2: -2.3, y2: -10.6, cx: -6, cy: -11.8, bw: 7.4, bd: 2.4 },
+      { x1: -23.4, y1: -13.95, x2: -14.2, y2: -10.05, cx: -18.75, cy: -12, bw: 9.3, bd: 3.9 },
+      { x1: 2.0, y1: -14.0, x2: 10.0, y2: -10.0, cx: 6, cy: -12, bw: 8.0, bd: 4.0 },
+    ];
+    for (let bi = 0; bi < buildingFootprints.length; bi++) {
+      const b = buildingFootprints[bi];
+      if (bi >= 3) continue; // parts shop has peaked roof, no occluder needed
+      const hw = b.bw / 2, hd = b.bd / 2;
+      const addPanel = (w: number, d: number, x: number, y: number) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, d, panelH), occluderMat);
+        m.position.set(x, y, panelZ);
+        outdoorGroup.add(m);
+      };
+      addPanel(b.bw, 0.02, b.cx, b.cy + hd - INSET);
+      addPanel(b.bw, 0.02, b.cx, b.cy - hd + INSET);
+      addPanel(0.02, b.bd, b.cx + hw - INSET, b.cy);
+      addPanel(0.02, b.bd, b.cx - hw + INSET, b.cy);
     }
 
     const createExitSignMesh = (x: number, y: number, z: number, parent: THREE.Group, bgColor = '#dc2626', textColor = '#ffffff', borderColor = '#fde68a') => {
@@ -1807,19 +1784,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     workshopDoorHitboxRef.current = {
       shape: 'circle',
       center: { x: -6, y: -10.3 },
-      radius: 1.5,
+      radius: 0.5,
     };
 
     arenaDoorHitboxRef.current = {
       shape: 'circle',
       center: { x: aCx, y: aCy + aD / 2 },
-      radius: 1.6,
+      radius: 0.5,
     };
 
     apartmentDoorHitboxRef.current = {
       shape: 'circle',
       center: { x: -9.6, y: -5.8 },
-      radius: 1.3,
+      radius: 0.5,
     };
 
     workshopObstaclesRef.current = [
@@ -1848,94 +1825,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       outdoorGroup.add(cloud);
     }
 
-    const localColor = hashColor(userId || 'local-user');
-    const localGroup = new THREE.Group();
-    const skinMat = new THREE.MeshToonMaterial({ color: 0xf5d6c6, gradientMap: createGradientTexture(3) });
-    const clothMat = new THREE.MeshToonMaterial({ color: 0x3b82f6, gradientMap: createGradientTexture(3) });
-    const darkMat = new THREE.MeshToonMaterial({ color: 0x1f2937, gradientMap: createGradientTexture(3) });
-    const accentMat = new THREE.MeshToonMaterial({ color: 0x60a5fa, gradientMap: createGradientTexture(3) });
-
-    // Legs with hip pivot joints (rotate around hip, not leg center)
-    const leftLegPivot = new THREE.Group();
-    leftLegPivot.position.set(-0.08, 0, 0.20);
-    localGroup.add(leftLegPivot);
-    leftLegPivotRef.current = leftLegPivot;
-    const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.22, 8), darkMat);
-    leftLeg.rotation.x = Math.PI / 2;
-    leftLeg.position.set(0, 0, -0.06);
-    leftLegPivot.add(leftLeg);
-    const rightLegPivot = new THREE.Group();
-    rightLegPivot.position.set(0.08, 0, 0.20);
-    localGroup.add(rightLegPivot);
-    rightLegPivotRef.current = rightLegPivot;
-    const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.22, 8), darkMat);
-    rightLeg.rotation.x = Math.PI / 2;
-    rightLeg.position.set(0, 0, -0.06);
-    rightLegPivot.add(rightLeg);
-    // Feet (children of leg pivots so they swing with legs)
-    const feet: THREE.Mesh[] = [];
-    for (let s = -1; s <= 1; s += 2) {
-      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.03), darkMat);
-      foot.position.set(0, 0, -0.185);
-      (s < 0 ? leftLegPivot : rightLegPivot).add(foot);
-      feet.push(foot);
-    }
-    // Body — near-straight cylinder, loose-fit shirt/jacket silhouette
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.13, 0.22, 12), clothMat);
-    torso.rotation.x = Math.PI / 2;
-    torso.position.set(0, 0, 0.35);
-    localGroup.add(torso);
-    // Arms — solid cylinder, shoulder overlaps chest at connection
-    const leftArmPivot = new THREE.Group();
-    leftArmPivot.position.set(-0.12, 0, 0.43);
-    leftArmPivot.rotation.y = 0.42;
-    localGroup.add(leftArmPivot);
-    const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.05, 0.24, 8), clothMat);
-    leftArm.rotation.x = -Math.PI / 2;
-    leftArm.position.set(0, 0, -0.12);
-    leftArmPivot.add(leftArm);
-    const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), skinMat);
-    leftHand.position.set(0, 0.12, 0);
-    leftArm.add(leftHand);
-    const rightArmPivot = new THREE.Group();
-    rightArmPivot.position.set(0.12, 0, 0.43);
-    rightArmPivot.rotation.y = -0.42;
-    localGroup.add(rightArmPivot);
-    const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.05, 0.24, 8), clothMat);
-    rightArm.rotation.x = -Math.PI / 2;
-    rightArm.position.set(0, 0, -0.12);
-    rightArmPivot.add(rightArm);
-    const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), skinMat);
-    rightHand.position.set(0, 0.12, 0);
-    rightArm.add(rightHand);
-    // Neck
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.06, 8), skinMat);
-    neck.rotation.x = Math.PI / 2;
-    neck.position.set(0, 0, 0.51);
-    localGroup.add(neck);
-    // Head
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 12), skinMat);
-    head.position.set(0, 0, 0.57);
-    localGroup.add(head);
-    // Hair — full sphere offset to cover back/top, face protrudes from front
-    const hairMat = new THREE.MeshToonMaterial({ color: 0x3a2a1a, gradientMap: createGradientTexture(3) });
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 16), hairMat);
-    hair.position.set(0, -0.08, 0.59);
-    localGroup.add(hair);
-    // Eyes (front of face, below head equator so hidden from behind)
-    for (let s = -1; s <= 1; s += 2) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-      eye.position.set(s * 0.035, 0.066, 0.53);
-      localGroup.add(eye);
-      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 8), new THREE.MeshBasicMaterial({ color: 0x050505 }));
-      pupil.position.set(s * 0.035, 0.075, 0.53);
-      localGroup.add(pupil);
-    }
+    const playerVis = buildPlayerVisual(0x3b82f6, '');
+    const localGroup = playerVis.root;
+    leftLegPivotRef.current = playerVis.leftLegPivot;
+    rightLegPivotRef.current = playerVis.rightLegPivot;
 
     localGroup.position.set(0, -7, 0.24);
     scene.add(localGroup);
     localPositionRef.current.set(0, -7);
-    const localRobot = { root: localGroup, nameSprite: new THREE.Sprite(), body: torso, shadow: torso, leftPupil: torso, rightPupil: torso, antennaTip: torso, leftArm, rightArm, leftLeg, rightLeg };
+    const localRobot = { root: localGroup, nameSprite: new THREE.Sprite(), body: playerVis.torso, shadow: playerVis.torso, leftPupil: playerVis.torso, rightPupil: playerVis.torso, antennaTip: playerVis.torso, leftArm: playerVis.torso, rightArm: playerVis.torso, leftLeg: playerVis.torso, rightLeg: playerVis.torso };
     localRobotRef.current = localRobot;
 
     // Held item group — attaches to right hand for 3D inventory display
@@ -2484,6 +2382,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     let lastTime = performance.now();
     const animate = (now: number) => {
       try {
+      if (tabHiddenRef.current || tabHiddenAtRef.current > lastTime) {
+        lastTime = now;
+        tabHiddenRef.current = false;
+        rafRef.current = window.requestAnimationFrame(animate);
+        return;
+      }
       const delta = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
       sessionPlaytimeRef.current += delta;
@@ -2642,10 +2546,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 spawnCustomer();
               }
               moved = false;
-              fetch('/api/move', {
+              fetch('/api/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ x: ROOM_SPAWN.x, y: ROOM_SPAWN.y, room: 'workshop' }),
+                body: JSON.stringify({ position: { x: ROOM_SPAWN.x, y: ROOM_SPAWN.y, room: 'workshop', rotation: yawRef.current } }),
               }).catch(() => {});
             } else if (atArenaDoor) {
               arenaDoorArmedRef.current = false;
@@ -2661,10 +2565,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               localRobot.root.position.set(ARENA_ROOM_SPAWN.x, ARENA_ROOM_SPAWN.y, 0.28);
               keyStateRef.current.clear();
               moved = false;
-              fetch('/api/move', {
+              fetch('/api/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ x: ARENA_ROOM_SPAWN.x, y: ARENA_ROOM_SPAWN.y, room: 'arena' }),
+                body: JSON.stringify({ position: { x: ARENA_ROOM_SPAWN.x, y: ARENA_ROOM_SPAWN.y, room: 'arena', rotation: yawRef.current } }),
               }).catch(() => {});
             } else if (atShopDoor) {
               shopDoorArmedRef.current = false;
@@ -2707,10 +2611,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
               keyStateRef.current.clear();
               moved = false;
-              fetch('/api/move', {
+              fetch('/api/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ x: APARTMENT_SPAWN.x, y: APARTMENT_SPAWN.y, room: 'apartment' }),
+                body: JSON.stringify({ position: { x: APARTMENT_SPAWN.x, y: APARTMENT_SPAWN.y, room: 'apartment', rotation: yawRef.current } }),
               }).catch(() => {});
             } else if (!hitsObstacle) {
               localPositionRef.current.copy(candidate);
@@ -2726,14 +2630,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const room = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : 'outside';
         triggerEvent('client-player-move', { x: localPositionRef.current.x, y: localPositionRef.current.y, room });
       }
-      // Sync playtime to server every 30s
-      if (now - lastPlaytimeSyncRef.current >= 30000) {
-        lastPlaytimeSyncRef.current = now;
-        const total = Math.floor(sessionPlaytimeRef.current);
-        fetch('/api/profile/playtime', {
+      // Periodic full sync (30s safety net for crash recovery)
+      if (now - lastPositionSyncRef.current >= 30000) {
+        lastPositionSyncRef.current = now;
+        const pRoom = inWorkshopRoomRef.current ? 'workshop' : inArenaRoomRef.current ? 'arena' : inApartmentRoomRef.current ? 'apartment' : inShopRoomRef.current ? 'shop' : 'outside';
+        const pos = pRoom !== 'outside'
+          ? ({ workshop: ROOM_SPAWN, arena: ARENA_ROOM_SPAWN, apartment: APARTMENT_SPAWN, shop: { x: 0, y: 1.2 } } as Record<string, { x: number; y: number }>)[pRoom]
+          : { x: localPositionRef.current.x, y: localPositionRef.current.y };
+        fetch('/api/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ seconds: total }),
+          body: JSON.stringify({
+            position: { x: pos.x, y: pos.y, room: pRoom, rotation: yawRef.current },
+            questStage: sparkyQuestStageRef.current,
+            backpack: backpackRef.current,
+            money: moneyRef.current,
+            playtime: Math.floor(sessionPlaytimeRef.current),
+          }),
         }).catch(() => {});
       }
       if (moved && now - lastStepAtRef.current > 190) {
@@ -2842,7 +2755,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           worldInteractionRequestedRef.current = false;
           if (distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
             if (stage === 'intro') {
-              sparkyGoHomeRef.current = true;
               setSparkyModal("Oh! Hey there! I'm Sparky. I found something amazing in my apartment. Follow me upstairs — I'll show you! (Door's right over here ↖️)");
             } else if (stage === 'unit1' || stage === 'unit2') {
               showTutorialRef.current = true;
@@ -3273,28 +3185,38 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const currentRoom = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : inShopRoomRef.current ? 'shop' : inApartmentRoomRef.current ? 'apartment' : 'outside';
       for (const avatar of Object.values(remoteAvatarsRef.current)) {
         const showAvatar = currentRoom === avatar.room;
-        avatar.visual.root.visible = showAvatar;
+        avatar.root.visible = showAvatar;
         if (showAvatar) {
           const targetGroup = currentRoom === 'arena' ? arenaRoomGroup :
             currentRoom === 'workshop' ? (workshopRoomGroupRef.current || scene) :
             currentRoom === 'apartment' ? (apartmentRoomGroupRef.current || scene) :
             (outdoorGroupRef.current || scene);
-          if (avatar.visual.root.parent !== targetGroup) {
-            avatar.visual.root.parent?.remove(avatar.visual.root);
-            targetGroup.add(avatar.visual.root);
+          if (avatar.root.parent !== targetGroup) {
+            avatar.root.parent?.remove(avatar.root);
+            targetGroup.add(avatar.root);
           }
         }
-        const prevX = avatar.visual.root.position.x;
-        const prevY = avatar.visual.root.position.y;
-        avatar.visual.root.position.x += (avatar.target.x - avatar.visual.root.position.x) * REMOTE_LERP;
-        avatar.visual.root.position.y += (avatar.target.y - avatar.visual.root.position.y) * REMOTE_LERP;
-        const velocity = Math.hypot(avatar.visual.root.position.x - prevX, avatar.visual.root.position.y - prevY);
+        const prevX = avatar.root.position.x;
+        const prevY = avatar.root.position.y;
+        avatar.root.position.x += (avatar.target.x - avatar.root.position.x) * REMOTE_LERP;
+        avatar.root.position.y += (avatar.target.y - avatar.root.position.y) * REMOTE_LERP;
+        const roomZ = avatar.room === 'workshop' ? 0.26 : avatar.room === 'apartment' || avatar.room === 'arena' || avatar.room === 'shop' ? 0.28 : 0.24;
+        avatar.root.position.z = roomZ;
+        const velocity = Math.hypot(avatar.root.position.x - prevX, avatar.root.position.y - prevY);
         avatar.walkTime += delta * (1 + velocity * 20);
-        const lookX = avatar.target.x - avatar.visual.root.position.x;
-        const lookY = avatar.target.y - avatar.visual.root.position.y;
-        animateRobotVisual(avatar.visual, avatar.walkTime, velocity * 24, lookX, lookY);
-        if (lookX !== 0 || lookY !== 0) {
-          avatar.visual.root.rotation.z = -Math.atan2(lookX, lookY);
+        const lookX = avatar.target.x - avatar.root.position.x;
+        const lookY = avatar.target.y - avatar.root.position.y;
+        const remoteSpeed = velocity > 0.001 ? 1 : 0;
+        const remoteSwing = Math.sin(avatar.walkTime * WALK_BOB_SPEED) * 0.3 * remoteSpeed;
+        avatar.leftLegPivot.rotation.x = remoteSwing;
+        avatar.rightLegPivot.rotation.x = -remoteSwing;
+        const remoteArmSwing = Math.sin(avatar.walkTime * WALK_BOB_SPEED + Math.PI) * 0.2 * remoteSpeed;
+        avatar.leftArm.rotation.x = -Math.PI / 2 + remoteArmSwing;
+        avatar.rightArm.rotation.x = -Math.PI / 2 - remoteArmSwing;
+        if (Math.abs(lookX) > 0.001 || Math.abs(lookY) > 0.001) {
+          avatar.root.rotation.z = -Math.atan2(lookX, lookY);
+        } else {
+          avatar.root.rotation.z = -avatar.facingRotation;
         }
       }
 
@@ -3302,7 +3224,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         cloud.position.x += Math.sin(worldTime * (0.08 + i * 0.03) + i) * 0.0025;
       });
 
-      const roomBg = inWorkshopRoomRef.current ? 0x030712 : inShopRoomRef.current ? 0x1a1a2e : inArenaRoomRef.current ? 0x0f172a : inApartmentRoomRef.current ? 0x1a1a2e : 0xd4e8f7;
+      const roomBg = inWorkshopRoomRef.current ? 0x030712 : inShopRoomRef.current ? 0x1a1a2e : inArenaRoomRef.current ? 0x0f172a : inApartmentRoomRef.current ? 0x1a1a2e : 0x4a7a9a;
         outdoorGroup.visible = !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current;
         workshopRoomGroup.visible = inWorkshopRoomRef.current;
         arenaRoomGroup.visible = inArenaRoomRef.current;
@@ -3314,28 +3236,51 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const py = localPositionRef.current.y;
         const sin = Math.sin(yaw), cos = Math.cos(yaw);
         const inside = inWorkshopRoomRef.current || inShopRoomRef.current || inArenaRoomRef.current || inApartmentRoomRef.current;
+        const room = inside ? currentRoom : 'outside';
+        const zoom = computeCameraZoom(
+          camera.position.x, camera.position.y,
+          inside, room,
+          buildingFootprints as BuildingFootprint[],
+        );
         cameraTargetPosRef.current.set(
-          px - sin * (inside ? 1.4 : 2.2),
-          py - cos * (inside ? 1.4 : 2.2),
-          inside ? 1.2 : 1.8
+          px - sin * zoom.camDist,
+          py - cos * zoom.camDist,
+          zoom.height
         );
         cameraLookTargetRef.current.set(
-          px + sin * (inside ? 1.6 : 2.5),
-          py + cos * (inside ? 1.6 : 2.5),
+          px + sin * zoom.lookDist,
+          py + cos * zoom.lookDist,
           inside ? 0.5 : 0.6
         );
         camera.position.lerp(cameraTargetPosRef.current, 0.1);
         camera.lookAt(cameraLookTargetRef.current);
+        if (Math.abs(camera.fov - zoom.fov) > 0.01) {
+          camera.fov = zoom.fov;
+          camera.updateProjectionMatrix();
+        }
 
         // Clamp camera inside room so it never sees past walls into the void
         if (inside) {
-          const room = currentRoom;
           const limits: Record<string, number> = {
             workshop: 4.0, arena: 5.0, apartment: 3.0, shop: 2.5,
           };
           const lim = limits[room] ?? 20;
           camera.position.x = Math.max(-lim, Math.min(lim, camera.position.x));
           camera.position.y = Math.max(-lim, Math.min(lim, camera.position.y));
+        } else {
+          // Push camera outside building interiors (mirror of room clamp in reverse)
+          const cx = camera.position.x, cy = camera.position.y;
+          for (const fp of buildingFootprints) {
+            if (cx >= fp.x1 && cx <= fp.x2 && cy >= fp.y1 && cy <= fp.y2) {
+              const dl = cx - fp.x1, dr = fp.x2 - cx;
+              const db = cy - fp.y1, dt = fp.y2 - cy;
+              const minD = Math.min(dl, dr, db, dt);
+              if (minD === dl) camera.position.x = fp.x1;
+              else if (minD === dr) camera.position.x = fp.x2;
+              else if (minD === db) camera.position.y = fp.y1;
+              else camera.position.y = fp.y2;
+            }
+          }
         }
 
         // Broadcast position via WebSocket every 50ms for multiplayer
@@ -3348,7 +3293,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (inShopRoomRef.current) return { x: 0, y: 1.2, room: 'shop' };
             return { x: localPositionRef.current.x, y: localPositionRef.current.y };
           })();
-          sendPosition(sendPos.x, sendPos.y, sendPos.room);
+          sendPosition(sendPos.x, sendPos.y, sendPos.room, yawRef.current);
         }
 
       renderer.render(scene, camera);
@@ -3370,18 +3315,30 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     animateFnRef.current = animate;
     rafRef.current = window.requestAnimationFrame(animate);
 
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        tabHiddenRef.current = true;
+        tabHiddenAtRef.current = performance.now();
+        if (rafRef.current !== null) {
+          window.cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+      } else {
+        tabHiddenRef.current = false;
+        if (animateFnRef.current && rafRef.current === null) {
+          rafRef.current = window.requestAnimationFrame(animateFnRef.current);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     const watchdogId = window.setInterval(() => {
+      if (document.hidden || tabHiddenRef.current) return;
       const elapsed = performance.now() - lastAnimFrameRef.current;
       if (elapsed > 3000) {
-        console.warn('⚠️ Animation loop may be frozen — last frame', elapsed.toFixed(0), 'ms ago', {
-          animFrameCount: animFrameCounterRef.current,
-          inWorkshopRoom: inWorkshopRoomRef.current,
-          workshopIntroSeen: workshopIntroSeenRef.current,
-          showTutorial: showTutorialRef.current,
-          modalOpen: modalOpenRef.current,
-          rafRef: rafRef.current,
-        });
+        console.warn('⚠️ Restarting frozen animation loop — last frame', elapsed.toFixed(0), 'ms ago');
         if (animateFnRef.current) {
+          if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
           rafRef.current = window.requestAnimationFrame(animateFnRef.current);
         }
       }
@@ -3389,12 +3346,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     return () => {
       window.clearInterval(watchdogId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       mountElement.removeEventListener('mousedown', handleFocusClick);
-      Object.values(remoteAvatarsRef.current).forEach((avatar) => disposeObject(avatar.visual.root));
+      Object.values(remoteAvatarsRef.current).forEach((avatar) => disposeObject(avatar.root));
       remoteAvatarsRef.current = {};
       disposeObject(localRobot.root);
       leftLegPivotRef.current = null;
@@ -3510,31 +3468,39 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const activeIds = new Set(Object.keys(players));
 
     for (const [remoteUserId, data] of Object.entries(players)) {
-      const name = data.name?.trim() || `Robot ${remoteUserId.slice(0, 4)}`;
+      const name = data.name?.trim() || `Player ${remoteUserId.slice(0, 4)}`;
       const remoteRoom = (data as any).room || 'outside';
       if (!remoteAvatarsRef.current[remoteUserId]) {
-        const color = new THREE.Color(hashColor(remoteUserId));
-        let h = 0;
-        for (let i = 0; i < remoteUserId.length; i++) h = (h * 31 + remoteUserId.charCodeAt(i)) | 0;
-        const spriteIdx = Math.abs(h) % REMOTE_SPRITES.length;
-        const visual = createPlayerSprite(REMOTE_SPRITES[spriteIdx], color, name);
-        visual.root.position.set(data.x, data.y, 0.24);
+        const color = new THREE.Color(hashColor(remoteUserId)).getHex();
+        const pv = buildPlayerVisual(color, name);
+        const roomZ = remoteRoom === 'workshop' ? 0.26 : remoteRoom === 'apartment' || remoteRoom === 'arena' || remoteRoom === 'shop' ? 0.28 : 0.24;
+        pv.root.position.set(data.x, data.y, roomZ);
+        const initialRotation = (data as any).rotation ?? 0;
+        pv.root.rotation.z = -initialRotation;
         remoteAvatarsRef.current[remoteUserId] = {
-          visual,
+          root: pv.root,
+          nameSprite: pv.nameSprite,
           target: new THREE.Vector2(data.x, data.y),
           name,
           walkTime: performance.now() / 1000,
           room: remoteRoom,
+          leftLegPivot: pv.leftLegPivot,
+          rightLegPivot: pv.rightLegPivot,
+          leftArm: pv.leftArm,
+          rightArm: pv.rightArm,
+          facingRotation: initialRotation,
         };
       } else {
         const avatar = remoteAvatarsRef.current[remoteUserId];
         avatar.target.set(data.x, data.y);
         avatar.room = remoteRoom;
+        const curRotation = (data as any).rotation;
+        if (typeof curRotation === 'number') avatar.facingRotation = curRotation;
         if (avatar.name !== name) {
-          avatar.visual.root.remove(avatar.visual.nameSprite);
-          disposeObject(avatar.visual.nameSprite);
-          avatar.visual.nameSprite = createNameSprite(name, new THREE.Color(hashColor(remoteUserId)));
-          avatar.visual.root.add(avatar.visual.nameSprite);
+          avatar.root.remove(avatar.nameSprite);
+          disposeObject(avatar.nameSprite);
+          avatar.nameSprite = createNameSprite(name, new THREE.Color(hashColor(remoteUserId)));
+          avatar.root.add(avatar.nameSprite);
           avatar.name = name;
         }
       }
@@ -3543,8 +3509,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     for (const existingId of Object.keys(remoteAvatarsRef.current)) {
       if (activeIds.has(existingId)) continue;
       const avatar = remoteAvatarsRef.current[existingId];
-      avatar.visual.root.parent?.remove(avatar.visual.root);
-      disposeObject(avatar.visual.root);
+      avatar.root.parent?.remove(avatar.root);
+      disposeObject(avatar.root);
       delete remoteAvatarsRef.current[existingId];
     }
   }, [players]);
@@ -3940,7 +3906,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       </div>
 
       <div className="absolute top-4 left-4 bg-black/45 text-white text-base md:text-lg px-4 py-2 rounded-full">
-        {connected ? `🟢 Live island • ${Object.keys(players).length + 1} robots` : '🟡 Connecting to island...'}
+        {connected ? `🟢 Live island • ${Object.keys(players).length + 1} player${Object.keys(players).length + 1 !== 1 ? 's' : ''}` : '🟡 Connecting to island...'}
       </div>
 
       {debugMode && (
@@ -3965,7 +3931,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       )}
 
       {sparkyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => setSparkyModal(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => { setSparkyModal(null); if (sparkyQuestStageRef.current === 'intro' && !sparkyHomeArrivedRef.current) sparkyGoHomeRef.current = true; }}>
           <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6">
             <div className="flex items-start gap-4 mb-5">
               <div className="text-4xl">🤖</div>
@@ -3975,7 +3941,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               </div>
             </div>
             <div className="flex justify-end">
-              <button className="rounded-lg bg-amber-500 px-6 py-3 text-lg font-semibold text-slate-900 hover:bg-amber-400" onClick={() => setSparkyModal(null)}>Got it!</button>
+              <button className="rounded-lg bg-amber-500 px-6 py-3 text-lg font-semibold text-slate-900 hover:bg-amber-400" onClick={() => { setSparkyModal(null); if (sparkyQuestStageRef.current === 'intro' && !sparkyHomeArrivedRef.current) sparkyGoHomeRef.current = true; }}>Got it!</button>
             </div>
           </div>
         </div>

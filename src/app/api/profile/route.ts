@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import { db } from '@/db';
-import { users, tutorialProgress, playerPositions } from '@/db/schema';
+import { users, tutorialProgress, playerPositions, userXp } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
+
+function calcLevel(xp: number) {
+  const xpForLevel = (lvl: number) => 50 * lvl * (lvl + 1);
+  let level = 1;
+  while (xp >= xpForLevel(level)) level++;
+  const currentLevelXp = xpForLevel(level - 1);
+  const nextLevelXp = xpForLevel(level);
+  return {
+    level: level - 1,
+    xp,
+    xpToNext: nextLevelXp - xp,
+    xpForCurrent: currentLevelXp,
+    xpForNext: nextLevelXp,
+    progress: (xp - currentLevelXp) / (nextLevelXp - currentLevelXp),
+  };
+}
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
@@ -51,8 +67,19 @@ export async function GET(request: NextRequest) {
     let backpack: string[] = [];
     try { backpack = JSON.parse(user.backpack_json || '[]'); } catch { backpack = []; }
 
-    const pos = await db.select({ x: playerPositions.x, y: playerPositions.y, map: playerPositions.map })
+    // Ensure position row exists (eliminates separate /api/join call)
+    const pos = await db.select({ x: playerPositions.x, y: playerPositions.y, rotation: playerPositions.rotation, map: playerPositions.map })
       .from(playerPositions).where(eq(playerPositions.user_id, userId)).limit(1).then(r => r[0]);
+    if (!pos) {
+      await db.run(sql`INSERT INTO player_positions (user_id, x, y, rotation, map, updated_at) VALUES (${userId}, 0, 0, 0, 'outside', ${new Date().toISOString()})`);
+    }
+
+    // Load XP/level (avoids separate /api/xp fetch from modal/profile page)
+    let xpRecord = await db.select({ xp: userXp.xp }).from(userXp).where(eq(userXp.user_id, userId)).limit(1).then(r => r[0]);
+    if (!xpRecord) {
+      xpRecord = await db.insert(userXp).values({ user_id: userId }).returning({ xp: userXp.xp }).then(r => r[0]);
+    }
+    const xpData = calcLevel(xpRecord.xp);
 
     return NextResponse.json({
       name: user.name,
@@ -63,7 +90,8 @@ export async function GET(request: NextRequest) {
       questStage,
       workshopIntroDone: concepts.includes('_workshop_intro'),
       backpack,
-      position: pos ? { x: pos.x, y: pos.y, room: pos.map } : null,
+      position: pos ? { x: pos.x, y: pos.y, room: pos.map, rotation: pos.rotation } : null,
+      xp: xpData,
     });
   } catch (err) {
     console.error('Profile load error:', err);

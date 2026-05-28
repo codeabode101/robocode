@@ -1,25 +1,33 @@
 import { Apinator } from '@apinator/server';
 
+const appId = '0b20127b-18a4-4e3a-b158-584ee0c857f2';
 const key = 'app_6f9eb36b9dd488e2fef9ddf0cee08a2d4db8026f';
-const secret = 'a17b103e71dec9bdacc3584aab10ad53302b3c6618864dbb11f246a99fc83f1b';
-
-async function test(host: string, appId: string, label: string) {
-  const apinator = new Apinator({ appId, key, secret, cluster: 'us' });
-  (apinator as any).host = host;
-  try {
-    await apinator.trigger({ name: 'test', channel: 'robocode-live', data: '{}' });
-    console.log(`SUCCESS: ${label}`);
-  } catch (e: any) {
-    console.log(`FAIL (${label}): ${e.message}${e.status ? ` [${e.status}]` : ''}`);
-  }
-}
+const secret = '0a55f92018ede47e926cfea9fa1e6f9fca3e2b2a08061edd4eb53b9739c48584';
 
 (async () => {
-  const hosts = ['https://api-us.apinator.io', 'https://ws-us.apinator.io'];
-  const ids = ['6f9eb36b9dd488e2fef9ddf0cee08a2d4db8026f', 'app_6f9eb36b9dd488e2fef9ddf0cee08a2d4db8026f'];
-  for (const host of hosts) {
-    for (const id of ids) {
-      await test(host, id, `${host} / ${id}`);
-    }
+  const client = new Apinator({ appId, key, secret, cluster: 'us' });
+
+  // Test trigger
+  try {
+    await client.trigger({ name: 'test', channel: 'private-robocode-live', data: '{}' });
+    console.log('✅ trigger');
+  } catch (e: any) {
+    console.log(`❌ trigger: ${e.message}${e.status ? ` [${e.status}]` : ''}`);
+  }
+
+  // Test getChannels
+  try {
+    const channels = await client.getChannels('private-');
+    console.log(`✅ getChannels: ${channels.length} channels`);
+  } catch (e: any) {
+    console.log(`❌ getChannels: ${e.message}${e.status ? ` [${e.status}]` : ''}`);
+  }
+
+  // Test auth
+  try {
+    const auth = client.authenticateChannel('test-socket-id', 'private-robocode-live');
+    console.log('✅ authenticateChannel:', auth.auth.substring(0, 30) + '...');
+  } catch (e: any) {
+    console.log(`❌ authenticateChannel: ${e.message}`);
   }
 })();

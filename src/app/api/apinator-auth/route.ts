@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
-import { createHmac } from 'crypto';
+import { authenticateChannel } from '@apinator/server';
 
 export async function POST(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
@@ -20,11 +20,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing socket_id or channel_name' }, { status: 400 });
   }
 
-  const secret = process.env.APINATOR_SECRET!;
-  const key = process.env.NEXT_PUBLIC_APINATOR_APP_KEY!;
-  const signature = createHmac('sha256', secret)
-    .update(`${socketId}:${channelName}`)
-    .digest('hex');
+  const secret = process.env.APINATOR_SECRET;
+  const key = process.env.NEXT_PUBLIC_APINATOR_APP_KEY;
 
-  return NextResponse.json({ auth: `${key}:${signature}` });
+  if (!secret || !key) {
+    console.error('Auth config missing:', { hasSecret: !!secret, hasKey: !!key });
+    return NextResponse.json({ error: 'Server config error' }, { status: 500 });
+  }
+
+  const result = authenticateChannel(secret, key, socketId, channelName);
+
+  return NextResponse.json({ auth: result.auth });
 }

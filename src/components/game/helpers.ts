@@ -373,3 +373,58 @@ export function createPartIcon(partId: string): string {
   }
   return c.toDataURL();
 }
+
+export interface BuildingFootprint {
+  x1: number; y1: number; x2: number; y2: number;
+}
+
+const ROOM_HALF: Record<string, number> = {
+  arena: 6.0, workshop: 5.3, apartment: 4.0, shop: 1.8,
+};
+
+export function computeCameraZoom(
+  camX: number, camY: number,
+  inside: boolean,
+  room: string,
+  buildingFootprints: BuildingFootprint[],
+): { fov: number; camDist: number; lookDist: number; height: number } {
+  const BASE = { fov: 65, camDist: 2.2, lookDist: 2.5, height: 1.8 };
+  const ZOOMED = { fov: 50, camDist: 0.8, lookDist: 1.0, height: 1.2 };
+  const ZOOM_RANGE = 3;
+
+  let minDist = Infinity;
+
+  if (inside) {
+    const half = ROOM_HALF[room];
+    if (half !== undefined) {
+      const dx = half - Math.abs(camY);
+      const dy = half - Math.abs(camX);
+      minDist = Math.min(dx, dy);
+      // Adjust base values for rooms
+      BASE.camDist = 1.4;
+      BASE.lookDist = 1.6;
+      BASE.height = 1.2;
+      ZOOMED.camDist = 0.6;
+      ZOOMED.lookDist = 0.7;
+      ZOOMED.height = 1.0;
+    }
+  } else {
+    for (const fp of buildingFootprints) {
+      const dx = camX < fp.x1 ? fp.x1 - camX : camX > fp.x2 ? camX - fp.x2 : 0;
+      const dy = camY < fp.y1 ? fp.y1 - camY : camY > fp.y2 ? camY - fp.y2 : 0;
+      const d = Math.hypot(dx, dy);
+      if (d < minDist) minDist = d;
+    }
+  }
+
+  if (!isFinite(minDist)) minDist = ZOOM_RANGE;
+
+  const t = Math.max(0, Math.min(1, 1 - (minDist - 0.3) / (ZOOM_RANGE - 0.3)));
+
+  return {
+    fov: BASE.fov + (ZOOMED.fov - BASE.fov) * t * t,
+    camDist: BASE.camDist + (ZOOMED.camDist - BASE.camDist) * t,
+    lookDist: BASE.lookDist + (ZOOMED.lookDist - BASE.lookDist) * t,
+    height: BASE.height + (ZOOMED.height - BASE.height) * t,
+  };
+}
