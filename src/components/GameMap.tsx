@@ -1897,7 +1897,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       wall.material.side = THREE.DoubleSide;
       workshopRoomGroup.add(wall);
     });
-    // Exit door on south wall — industrial style
+    // Exit door on south wall — industrial style (flush with wall inner face)
     const wsExitDoor = new THREE.Mesh(
       new THREE.BoxGeometry(0.6, 0.08, 0.7),
       createToonMaterial(0x475569)
@@ -2451,13 +2451,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             localRobot.root.position.set(candidate.x, candidate.y, 0.28);
           } else if (inApartmentRoomRef.current) {
             candidate.x = Math.max(-3.8, Math.min(3.8, candidate.x));
-            candidate.y = Math.max(-3.8, Math.min(3.8, candidate.y));
-            const hitsRoomObstacle = collidesWithAny(candidate, roomObstacleHitboxesRef.current);
-            if (!hitsRoomObstacle) {
-              localPositionRef.current.copy(candidate);
-              localRobot.root.position.set(candidate.x, candidate.y, 0.28);
-            } else {
+            candidate.y = Math.max(-4.3, Math.min(3.8, candidate.y));
+            // Walk into south exit door → leave apartment
+            if (candidate.y < -4.0) {
+              leaveApartmentRoom();
               moved = false;
+            } else {
+              const hitsRoomObstacle = collidesWithAny(candidate, roomObstacleHitboxesRef.current);
+              if (!hitsRoomObstacle) {
+                localPositionRef.current.copy(candidate);
+                localRobot.root.position.set(candidate.x, candidate.y, 0.28);
+              } else {
+                moved = false;
+              }
             }
           } else if (inShopRoomRef.current) {
             candidate.x = Math.max(-3.8, Math.min(3.8, candidate.x));
@@ -2486,7 +2492,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (candidate.length() > maxRadius) candidate.setLength(maxRadius);
             const hitsObstacle = collidesWithAny(candidate, obstacleHitboxesRef.current) ||
               Object.values(remoteAvatarsRef.current).some(a => a.room === 'outside' &&
-                candidate.distanceTo(a.target) < 0.6);
+                candidate.distanceTo(a.target) < 0.3);
             const workshopDoor = workshopDoorHitboxRef.current;
             const atWorkshopDoor =
               Boolean(shopUnlockedRef.current) &&
