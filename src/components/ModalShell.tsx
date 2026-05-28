@@ -25,11 +25,9 @@ export default function ModalShell({ activeModal, setActiveModal, userId, debugM
 }
 
 function ProfileModal() {
-  const [user, setUser] = useState<{ name?: string; email?: string; currency?: number; playtime_seconds?: number } | null>(null);
-  const [xp, setXp] = useState<{ level: number; xp: number; xpToNext: number; progress: number } | null>(null);
+  const [user, setUser] = useState<{ name?: string; email?: string; currency?: number; playtime_seconds?: number; xp?: { level: number; xp: number; xpToNext: number; progress: number } } | null>(null);
   useEffect(() => {
     fetch('/api/profile').then(r => r.json()).then(d => setUser(d)).catch(() => {});
-    fetch('/api/xp').then(r => r.json()).then(d => setXp(d)).catch(() => {});
   }, []);
   if (!user) return <p className="text-slate-400">Loading...</p>;
   const fmtPlaytime = (s: number = 0) => {
@@ -46,13 +44,13 @@ function ProfileModal() {
           <p className="text-slate-400 text-sm">{user.email}</p>
         </div>
       </div>
-      {xp && (
+      {user.xp && (
         <div className="border-t border-slate-700 pt-4">
-          <p className="text-slate-400 text-sm">Level {xp.level}</p>
+          <p className="text-slate-400 text-sm">Level {user.xp.level}</p>
           <div className="w-full bg-slate-700 rounded-full h-2.5 mt-1.5">
-            <div className="bg-amber-500 h-2.5 rounded-full transition-all" style={{ width: `${xp.progress * 100}%` }} />
+            <div className="bg-amber-500 h-2.5 rounded-full transition-all" style={{ width: `${user.xp.progress * 100}%` }} />
           </div>
-          <p className="text-slate-500 text-xs mt-1">{xp.xp} XP &bull; {xp.xpToNext} XP to next level</p>
+          <p className="text-slate-500 text-xs mt-1">{user.xp.xp} XP &bull; {user.xp.xpToNext} XP to next level</p>
         </div>
       )}
       <div className="border-t border-slate-700 pt-4">

@@ -417,6 +417,95 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
   return { root: group, nameSprite, body, shadow: new THREE.Object3D() as unknown as THREE.Mesh, leftPupil, rightPupil, antennaTip, leftArm, rightArm, leftLeg, rightLeg };
 }
 
+export function buildPlayerVisual(clothColor: number, name: string) {
+  const group = new THREE.Group();
+
+  const skinMat = new THREE.MeshToonMaterial({ color: 0xf5d6c6, gradientMap: createGradientTexture(3) });
+  const clothMat = new THREE.MeshToonMaterial({ color: clothColor, gradientMap: createGradientTexture(3) });
+  const darkMat = new THREE.MeshToonMaterial({ color: 0x1f2937, gradientMap: createGradientTexture(3) });
+  const hairMat = new THREE.MeshToonMaterial({ color: 0x3a2a1a, gradientMap: createGradientTexture(3) });
+
+  const leftLegPivot = new THREE.Group();
+  leftLegPivot.position.set(-0.08, 0, 0.20);
+  group.add(leftLegPivot);
+  const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.22, 8), darkMat);
+  leftLeg.rotation.x = Math.PI / 2;
+  leftLeg.position.set(0, 0, -0.06);
+  leftLegPivot.add(leftLeg);
+  const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.03), darkMat);
+  leftFoot.position.set(0, 0, -0.185);
+  leftLegPivot.add(leftFoot);
+
+  const rightLegPivot = new THREE.Group();
+  rightLegPivot.position.set(0.08, 0, 0.20);
+  group.add(rightLegPivot);
+  const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.22, 8), darkMat);
+  rightLeg.rotation.x = Math.PI / 2;
+  rightLeg.position.set(0, 0, -0.06);
+  rightLegPivot.add(rightLeg);
+  const rightFoot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.03), darkMat);
+  rightFoot.position.set(0, 0, -0.185);
+  rightLegPivot.add(rightFoot);
+
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.13, 0.22, 12), clothMat);
+  torso.rotation.x = Math.PI / 2;
+  torso.position.set(0, 0, 0.35);
+  group.add(torso);
+
+  const leftArmPivot = new THREE.Group();
+  leftArmPivot.position.set(-0.12, 0, 0.43);
+  leftArmPivot.rotation.y = 0.42;
+  group.add(leftArmPivot);
+  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.05, 0.24, 8), clothMat);
+  leftArm.rotation.x = -Math.PI / 2;
+  leftArm.position.set(0, 0, -0.12);
+  leftArmPivot.add(leftArm);
+  const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), skinMat);
+  leftHand.position.set(0, 0.12, 0);
+  leftArm.add(leftHand);
+
+  const rightArmPivot = new THREE.Group();
+  rightArmPivot.position.set(0.12, 0, 0.43);
+  rightArmPivot.rotation.y = -0.42;
+  group.add(rightArmPivot);
+  const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.05, 0.24, 8), clothMat);
+  rightArm.rotation.x = -Math.PI / 2;
+  rightArm.position.set(0, 0, -0.12);
+  rightArmPivot.add(rightArm);
+  const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), skinMat);
+  rightHand.position.set(0, 0.12, 0);
+  rightArm.add(rightHand);
+
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.06, 8), skinMat);
+  neck.rotation.x = Math.PI / 2;
+  neck.position.set(0, 0, 0.51);
+  group.add(neck);
+
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 12), skinMat);
+  head.position.set(0, 0, 0.57);
+  group.add(head);
+
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 16), hairMat);
+  hair.position.set(0, -0.08, 0.59);
+  group.add(hair);
+
+  for (let s = -1; s <= 1; s += 2) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    eye.position.set(s * 0.035, 0.066, 0.53);
+    group.add(eye);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 8), new THREE.MeshBasicMaterial({ color: 0x050505 }));
+    pupil.position.set(s * 0.035, 0.075, 0.53);
+    group.add(pupil);
+  }
+
+  const nameSprite = createNameSprite(name, new THREE.Color(clothColor));
+  nameSprite.position.set(0, 0, 1.8);
+  if (name) group.add(nameSprite);
+  applyShadows(group, true, true);
+
+  return { root: group, nameSprite, torso, leftLegPivot, rightLegPivot, leftArmPivot, rightArmPivot, leftArm, rightArm };
+}
+
 export function createGrid(size: number, step: number, color: number) {
   const points: number[] = [];
   for (let i = -size; i <= size; i += step) {
@@ -1022,27 +1111,57 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
     shop.add(sideWall);
   }
 
-  // Roof — thicker slab with overhang and trim
-  const roofBase = new THREE.Mesh(
-    new THREE.BoxGeometry(bw + 0.8, bd + 0.6, 0.12),
-    roofMat
+  // Peaked roof (gable) with sloped panels
+  const wallZ = 0.1 + bh;
+  const rh = 0.5;
+  const ew = bw + 0.6;
+  const eh = bd / 2 + 0.3;
+  const ridgeZ = wallZ + rh;
+  const roofTrimMat = createToonMaterial(0x7c2d12);
+  const roofSideMat = new THREE.MeshToonMaterial({
+    color: 0xc2410c,
+    gradientMap: createGradientTexture(5),
+    side: THREE.DoubleSide,
+  });
+  for (const side of [-1, 1]) {
+    const verts = new Float32Array([
+      -ew / 2, 0, ridgeZ,
+      ew / 2, 0, ridgeZ,
+      -ew / 2, side * eh, wallZ,
+      ew / 2, side * eh, wallZ,
+    ]);
+    const idx = [0, 1, 2, 1, 3, 2];
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const slope = new THREE.Mesh(geo, roofSideMat);
+    slope.castShadow = true;
+    shop.add(slope);
+  }
+  // Ridge beam
+  const ridgeBeam = new THREE.Mesh(
+    new THREE.BoxGeometry(ew, 0.08, 0.06),
+    roofTrimMat
   );
-  roofBase.position.set(0, 0, 0.1 + bh + 0.06);
-  shop.add(roofBase);
-
-  const roofTrim = new THREE.Mesh(
-    new THREE.BoxGeometry(bw + 0.9, bd + 0.7, 0.04),
-    createToonMaterial(0x7c2d12)
-  );
-  roofTrim.position.set(0, 0, 0.1 + bh + 0.14);
-  shop.add(roofTrim);
-
-  const roofRidge = new THREE.Mesh(
-    new THREE.BoxGeometry(bw - 1.0, 0.08, 0.06),
-    createToonMaterial(0x7c2d12)
-  );
-  roofRidge.position.set(0, -bd / 2 + 0.3, 0.1 + bh + 0.16);
-  shop.add(roofRidge);
+  ridgeBeam.position.set(0, 0, ridgeZ);
+  ridgeBeam.castShadow = true;
+  shop.add(ridgeBeam);
+  // Gable end fill (triangles)
+  for (const side of [-1, 1]) {
+    const verts = new Float32Array([
+      side * ew / 2, 0, ridgeZ,
+      side * ew / 2, -eh, wallZ,
+      side * ew / 2, eh, wallZ,
+    ]);
+    const idx = [0, 1, 2];
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const gable = new THREE.Mesh(geo, roofSideMat);
+    shop.add(gable);
+  }
 
   const fwY = bd / 2;
   const doorW = 0.8, doorH = 0.9;
@@ -1139,14 +1258,13 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
   signTex.minFilter = THREE.LinearFilter;
   signTex.flipY = false;
 
-  const roofTopZ = 0.1 + bh + 0.16;
-  const signZ = roofTopZ + 0.44;
+  const signZ = ridgeZ + 0.12;
   for (let px = -1; px <= 1; px += 2) {
     const pole = new THREE.Mesh(
-      new THREE.BoxGeometry(0.04, 0.04, 0.36),
+      new THREE.BoxGeometry(0.04, 0.04, 0.10),
       createToonMaterial(0x1a1a1a)
     );
-    pole.position.set(px * 0.9, fwY, roofTopZ + 0.18);
+    pole.position.set(px * 0.9, fwY, ridgeZ + 0.01 + 0.05);
     shop.add(pole);
   }
   const signBoard = new THREE.Mesh(

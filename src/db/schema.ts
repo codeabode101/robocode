@@ -17,6 +17,7 @@ export const playerPositions = sqliteTable('player_positions', {
     .references(() => users.id),
   x: real('x').notNull(),
   y: real('y').notNull(),
+  rotation: real('rotation').default(0),
   map: text('map').notNull().default('default'),
   updated_at: text('updated_at').notNull().default("datetime('now')"),
 });

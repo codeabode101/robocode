@@ -9,6 +9,7 @@ interface PlayerPosition {
   y: number;
   name?: string;
   room?: string;
+  rotation?: number;
   lastSeenAt: number;
 }
 
@@ -79,6 +80,7 @@ export function useMultiplayer(
             y: Number(parsed?.y) || 0,
             name: typeof parsed?.name === 'string' ? parsed.name : prev[remoteUserId]?.name,
             room: typeof parsed?.room === 'string' ? parsed.room : prev[remoteUserId]?.room,
+            rotation: typeof parsed?.rotation === 'number' ? parsed.rotation : prev[remoteUserId]?.rotation,
             lastSeenAt: Date.now(),
           },
         };
@@ -207,9 +209,28 @@ export function useMultiplayer(
 
     apinator.connect();
 
-    const handleVisibility = () => { if (document.visibilityState === 'visible') tryReconnect(); };
-    window.addEventListener('focus', tryReconnect);
-    window.addEventListener('online', tryReconnect);
+    const staleInterval = window.setInterval(() => {
+      const cutoff = Date.now() - 10000;
+      setPlayers((prev) => {
+        const next = { ...prev };
+        let changed = false;
+        for (const [id, p] of Object.entries(next)) {
+          if (p.lastSeenAt < cutoff) {
+            delete next[id];
+            changed = true;
+          }
+        }
+        if (changed) {
+          setPlayerCount(1 + Object.keys(next).length);
+          return next;
+        }
+        return prev;
+      });
+    }, 5000);
+
+    const handleVisibility = () => { if (document.visibilityState === 'visible') forceReconnect(); };
+    window.addEventListener('focus', forceReconnect);
+    window.addEventListener('online', forceReconnect);
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
@@ -218,6 +239,7 @@ export function useMultiplayer(
       subscribedRef.current = false;
       eventQueueRef.current = [];
       window.clearTimeout(subTimeout);
+      window.clearInterval(staleInterval);
       stopReconnect();
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', tryReconnect);
@@ -253,9 +275,8 @@ export function useMultiplayer(
     }
   }
 
-  const sendPosition = useCallback((x: number, y: number, room?: string) => {
-    triggerEvent('client-player-move', { x, y, room });
-    fetch('/api/move', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ x, y, room }) }).catch(() => {});
+  const sendPosition = useCallback((x: number, y: number, room?: string, rotation?: number) => {
+    triggerEvent('client-player-move', { x, y, room, rotation });
   }, []);
 
   return {
