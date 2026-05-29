@@ -1058,17 +1058,19 @@ export function animateRepairSparky(visual: RobotVisual, time: number, repairPha
 }
 
 export function animateSparkyWave(visual: RobotVisual, time: number) {
-  const bob = Math.sin(time * 3) * 0.01;
+  const bob = Math.sin(time * 2.5) * 0.008;
   visual.body.position.y = 0.3 + bob;
-  if (visual.antennaTip) visual.antennaTip.position.y = 0.82 + Math.sin(time * 12) * 0.02;
+  if (visual.antennaTip) visual.antennaTip.position.y = 0.82 + Math.sin(time * 8) * 0.015;
 
   // Pupils look toward player
   visual.leftPupil.position.set(-0.07 + 0.02, 0.6 + 0.01, 0.75);
   visual.rightPupil.position.set(0.07 + 0.02, 0.6 + 0.01, 0.75);
 
-  // Wave: right arm up, slight wobble
-  visual.rightArm.rotation.z = 0.5 + Math.sin(time * 6) * 0.15;
+  // Wave: right arm raised ~60° with side-to-side sway
+  visual.rightArm.rotation.z = -Math.PI / 3 + Math.sin(time * 4) * 0.3;
   visual.rightArm.rotation.x = -0.3;
+
+  // Left arm hangs naturally
   visual.leftArm.rotation.z = 0.3;
   visual.leftArm.rotation.x = 0;
 }

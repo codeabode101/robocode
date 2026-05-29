@@ -74,7 +74,10 @@ function SettingsModal({ userId, debugMode, setDebugMode }: { userId: string; de
     if (!confirm('This will delete all your progress (tutorial, XP, money). Are you sure?')) return;
     if (!confirm('Really? This cannot be undone.')) return;
     const r = await fetch('/api/profile/reset', { method: 'POST' });
-    if (r.ok) { alert('Progress reset. Reload to start fresh.'); window.location.reload(); }
+    if (r.ok) {
+      try { localStorage.removeItem('rb_robot_name'); localStorage.removeItem('rb_first_tx_done'); } catch {}
+      alert('Progress reset. Reload to start fresh.'); window.location.reload();
+    }
     else { const d = await r.json(); alert(d.error || 'Failed to reset progress.'); }
   };
   return (

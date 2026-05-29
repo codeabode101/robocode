@@ -58,9 +58,13 @@ interface DataTemplate {
 // Type A: Expression only — variables are shown, player writes the computation
 // Type B: Full declaration — player writes everything
 
+const COLORS = ['Red', 'Blue', 'Green', 'Gold', 'Silver', 'Bronze', 'Crimson', 'Violet', 'Amber', 'Teal'];
+const NAMES = ['Buddy', 'Max', 'Charlie', 'Rocky', 'Daisy', 'Luna', 'Cooper', 'Milo', 'Ollie', 'Zoe'];
+
 function randomizeValue(val: string): string {
   if (val === '$age') return String(randInt(10, 75));
   if (val === '$smallAge') return String(randInt(3, 12));
+  if (val === '$size') return String(randInt(1, 12));
   if (val === '$temp') return String(randInt(350, 410) / 10);
   if (val === '$a') return String(randInt(5, 50));
   if (val === '$b') return String(randInt(5, 50));
@@ -68,6 +72,8 @@ function randomizeValue(val: string): string {
   if (val === '$score') return String(randInt(50, 100));
   if (val === '$foodMult') return String(randInt(3, 8));
   if (val === '$healthScore') return String(randInt(60, 99));
+  if (val === '$color') return COLORS[randInt(0, COLORS.length - 1)];
+  if (val === '$name') return NAMES[randInt(0, NAMES.length - 1)];
   return val;
 }
 
@@ -76,21 +82,21 @@ function randomizeCodeLine(line: string): string {
 }
 
 const DATA_TEMPLATES: DataTemplate[] = [
-  // Type A — Expression only
+  // Type A — Expression only (variables given, player writes computation)
   {
-    givenInfo: ['int age = $age;'],
-    expectedCode: ['int foodPortion = $age + 3;'],
-    description: 'Portion size is age plus 3.',
+    givenInfo: ['int size = $size;'],
+    expectedCode: ['int doublePortion = $size * 2;'],
+    description: 'Double the portion size.',
   },
   {
-    givenInfo: ['int age = $age;'],
-    expectedCode: ['boolean isAdult = $age >= 18;'],
-    description: 'Check if age is 18 or older.',
+    givenInfo: ['String color = "$color";'],
+    expectedCode: ['int colorLen = color.length();'],
+    description: 'Find the length of the color name.',
   },
   {
-    givenInfo: ['int age = $age;', 'boolean healthy = true;'],
-    expectedCode: ['int score = $age * 2;'],
-    description: 'Health score is age times 2.',
+    givenInfo: ['String name = "$name";'],
+    expectedCode: ['String shout = name.toUpperCase();'],
+    description: 'Convert the pet name to uppercase.',
   },
   {
     givenInfo: ['double temp = $temp;'],
@@ -107,11 +113,16 @@ const DATA_TEMPLATES: DataTemplate[] = [
     expectedCode: ['int totalFood = $dogs * $foodMult;'],
     description: 'Total food is dogs times portion multiplier.',
   },
-  // Type B — Full declaration
+  // Type B — Full declaration (player writes everything)
   {
     givenInfo: [],
-    expectedCode: ['int age = $smallAge;', 'int foodPortion = $age + 3;'],
-    description: 'Declare the age variable, then compute the food portion.',
+    expectedCode: ['int size = $size;', 'int doublePortion = $size * 2;'],
+    description: 'Declare the size variable, then double it.',
+  },
+  {
+    givenInfo: [],
+    expectedCode: ['String color = "$color";', 'int colorLen = color.length();'],
+    description: 'Declare the color, then find its length.',
   },
   {
     givenInfo: [],
@@ -122,11 +133,6 @@ const DATA_TEMPLATES: DataTemplate[] = [
     givenInfo: [],
     expectedCode: ['int score = $score;', 'int bonus = (int) Math.sqrt($score);'],
     description: 'Declare the score, then compute its square root as int.',
-  },
-  {
-    givenInfo: [],
-    expectedCode: ['boolean healthy = true;', 'int healthScore = $healthScore;'],
-    description: 'Declare a boolean for health status and an int for the score.',
   },
 ];
 
@@ -243,6 +249,15 @@ function lineMatches(codeLine: string, expectedLine: string): string | null {
     }
   }
 
+  // Check declared variable name matches expected
+  const varMatchE = e.match(/^\s*(?:String|int|double|boolean|char)\s+([A-Za-z_][A-Za-z0-9_]*)/);
+  if (varMatchE) {
+    const expectedVar = varMatchE[1];
+    if (!varMatchC || varMatchC[1] !== expectedVar) {
+      return `Variable name should be \`${expectedVar}\`, not \`${varMatchC ? varMatchC[1] : '(none found)'}\`.`;
+    }
+  }
+
   // Check method calls match
   const methodPattern = /\.(length|charAt|substring|indexOf|equals|compareTo|abs|pow|sqrt|max|random|parseInt|nextInt)\(/g;
   const cMethods = [...c.matchAll(methodPattern)].map(m => m[1]);
@@ -250,17 +265,6 @@ function lineMatches(codeLine: string, expectedLine: string): string | null {
   if (eMethods.length > 0) {
     for (const m of eMethods) {
       if (!c.includes(`.${m}(`)) return `Call .${m}() on the appropriate variable.`;
-    }
-  }
-
-  // Check key variable names appear
-  const cVars = c.match(/\b[a-z][a-zA-Z0-9]*\b/g) || [];
-  const eVars = e.match(/\b[a-z][a-zA-Z0-9]*\b/g) || [];
-  for (const ev of eVars) {
-    if (!['parseInt', 'nextInt', 'in', 'abs', 'max', 'min', 'pow', 'sqrt', 'random'].includes(ev) &&
-        !c.includes(ev) && !ev.match(/^\d+$/)) {
-      // Check if it's a variable used in the expected but not a keyword or number
-      // Allow this — the variable name might differ
     }
   }
 

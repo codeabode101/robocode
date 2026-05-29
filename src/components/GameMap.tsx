@@ -92,6 +92,25 @@ const PLAYER_RADIUS = 0.48;
 const MOVE_SPEED = 7.4;
 const NETWORK_SYNC_MS = 50;
 const NPC_POSITION = new THREE.Vector2(-2.87, -6.1);
+
+const SPARKY_INTRO_CONVO = [
+  {
+    text: "Woah! Hey there! Can you help me? I found something amazing in my apartment!",
+    choices: [{ label: 'Sure thing!', next: 2 }, { label: 'No...', next: 1 }],
+  },
+  {
+    text: "I really need your help, please. So here's what we do...",
+    choices: [{ label: "Okay, let's go!", next: 2 }],
+  },
+  {
+    text: "I found an old robot in my apartment — just sitting there, dusty, no name. I think we can bring it back to life!",
+    choices: [{ label: 'Continue', next: 3 }],
+  },
+  {
+    text: "Follow me upstairs — I'll show you! Door's right over here ↖️",
+    choices: [{ label: "Let's go!", next: -1 }],
+  },
+];
 const REMOTE_LERP = 0.35;
 const PLAYER_EYE_HEIGHT = 1.5;
 const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
@@ -247,6 +266,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const remoteAvatarsRef = useRef<Record<string, RemoteAvatar>>({});
   const keyStateRef = useRef<Set<string>>(new Set());
   const tutorialPhasesRef = useRef<TutorialPhase[]>(unit1Phases);
+  const tutorialStepRef = useRef(0);
   const robotNameRef = useRef('Scrap');
   const showTutorialRef = useRef(false);
   const tutorialCompleteRef = useRef(false);
@@ -261,6 +281,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const petShopRef = useRef<THREE.Group | null>(null);
   const obstacleHitboxesRef = useRef<Hitbox[]>([]);
   const yawRef = useRef(0);
+  const cameraPitchRef = useRef(0.8);
+  const zoomOffsetRef = useRef(0);
   const roomObstacleHitboxesRef = useRef<Hitbox[]>([]);
   const workshopObstaclesRef = useRef<Hitbox[]>([]);
   const shopObstaclesRef = useRef<Hitbox[]>([]);
@@ -306,6 +328,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyGoHomeRef = useRef(false);
   const sparkyHomeArrivedRef = useRef(false);
   const sparkyHomeTargetRef = useRef(new THREE.Vector2(-9.6, -5.7));
+  const sparkyHomeWaypointsRef = useRef<THREE.Vector2[]>([]);
+  const sparkyHomeWaypointIdxRef = useRef(0);
   const outdoorSparkyRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
   const scrapPartMeshRef = useRef<THREE.Mesh | null>(null);
   const sparkyInstallPhaseRef = useRef<'walk-to-bench' | 'weld' | 'attach-part' | 'walk-back' | 'done' | null>(null);
@@ -314,11 +338,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyInstallNextStageRef = useRef<SparkyQuestStage | null>(null);
   const sparkyEventTriggeredRef = useRef(false);
   const sparkyAcknowledgedRef = useRef(false);
+  const sparkyIntroStepRef = useRef(-1);
   const repairTimerRef = useRef(0);
   const repairKioskRef = useRef<THREE.Group | null>(null);
   const eventParticlesRef = useRef<THREE.Group | null>(null);
   const cameraTargetPosRef = useRef(new THREE.Vector3());
   const cameraLookTargetRef = useRef(new THREE.Vector3());
+  const speechBubbleRef = useRef<HTMLDivElement>(null);
+  const sparkyBaseQuatRef = useRef<THREE.Quaternion | null>(null);
+  const sparkyFacingRef = useRef(0);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -366,6 +394,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [arenaOutput, setArenaOutput] = useState('');
   const [arenaBattleActive, setArenaBattleActive] = useState(false);
   const [sparkyModal, setSparkyModal] = useState<string | null>(null);
+  const [sparkyIntroStep, setSparkyIntroStep] = useState(-1);
   const [showSparkyExamples, setShowSparkyExamples] = useState(false);
   const [showTransportModal, setShowTransportModal] = useState(false);
   const [transportMessage, setTransportMessage] = useState<string | null>(null);
@@ -618,7 +647,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   useEffect(() => {
     showTutorialRef.current = showTutorial;
+    if (showTutorial && document.pointerLockElement) {
+      document.exitPointerLock();
+    }
   }, [showTutorial]);
+
+  useEffect(() => {
+    tutorialStepRef.current = tutorialStep;
+  }, [tutorialStep]);
+
+  useEffect(() => {
+    sparkyIntroStepRef.current = sparkyIntroStep;
+  }, [sparkyIntroStep]);
 
   useEffect(() => {
     tutorialCompleteRef.current = tutorialComplete;
@@ -668,10 +708,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         setFirstTransactionDone(true);
         firstTransactionDoneRef.current = true;
       }
-      if (!localStorage.getItem('rb_controls_seen')) {
-        setShowControlsModal(true);
-      }
     } catch {}
+    setShowControlsModal(true);
   }, []);
 
   // Load profile data — prevents tutorial re-trigger
@@ -692,7 +730,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         backpackRef.current = data.backpack;
         lastConfirmedBackpackRef.current = data.backpack;
       }
-      if (data.questStage && data.questStage !== 'intro') {
+      if (data.questStage) {
         let mappedStage = String(data.questStage) as SparkyQuestStage;
         if (data.workshopIntroDone) setWorkshopIntroSeen(true);
         setSparkyQuestStage(mappedStage);
@@ -703,11 +741,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           tutorialCompleteRef.current = false; showTutorialRef.current = false;
           sparkyEventTriggeredRef.current = false;
           sparkyAcknowledgedRef.current = false;
-          // Spawn across the street from Sparky — diagonal, not facing him directly
-          localPositionRef.current.set(-3, -9.8);
-          if (localRobotRef.current) {
-            localRobotRef.current.root.position.set(-3, -9.8, 0.24);
-          }
         } else if (mappedStage === 'unit1') {
           setTutorialComplete(false); setShopUnlocked(true);
           tutorialCompleteRef.current = false; showTutorialRef.current = false;
@@ -716,13 +749,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           tutorialCompleteRef.current = true; showTutorialRef.current = false;
         }
       }
-      if (data.questStage === 'intro' && data.tutorials?.length > 0) {
+      const nonQuestTutorials = data.tutorials?.filter((c: string) => !c.startsWith('_quest_'));
+      if (data.questStage === 'intro' && nonQuestTutorials?.length > 0) {
         setTutorialComplete(true); setShopUnlocked(true);
         updateQuestStage('unit1-done');
         tutorialCompleteRef.current = true; showTutorialRef.current = false;
       }
-      // Restore saved position (for non-intro stages where position wasn't hardcoded)
-      if (data.position && data.questStage !== 'intro') {
+      // Always restore from last saved position (cloud), regardless of quest stage
+      if (data.position) {
         const pos = new THREE.Vector2(data.position.x, data.position.y);
         localPositionRef.current.copy(pos);
         if (typeof data.position.rotation === 'number') {
@@ -750,11 +784,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (localRobotRef.current) {
             localRobotRef.current.root.position.set(pos.x, pos.y, 0.28);
           }
+          sparkyHomeArrivedRef.current = true;
+          if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
+          if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
         } else {
           if (localRobotRef.current) {
             localRobotRef.current.root.position.set(pos.x, pos.y, 0.24);
           }
         }
+      }
+      // Intro spawn override: only when saved position is the default (0,0) — first load after reset
+      if (data.questStage === 'intro' && data.position && data.position.x === 0 && data.position.y === 0) {
+        localPositionRef.current.set(-5.53, -9.63);
+        if (localRobotRef.current) {
+          localRobotRef.current.root.position.set(-5.53, -9.63, 0.24);
+        }
+        yawRef.current = Math.atan2(-2.87 - (-5.53), -5.3 - (-9.63));
       }
       profileLoadedRef.current = true;
       const savedName = localStorage.getItem('rb_robot_name');
@@ -773,27 +818,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
   }, [tutorialComplete, sparkyQuestStage]);
 
-  // Periodic sync (30s safety net for crash recovery) + beforeunload
-  useEffect(() => {
-    const onUnload = () => {
-      const data: Record<string, unknown> = {};
-      const pRoom = inWorkshopRoomRef.current ? 'workshop' : inArenaRoomRef.current ? 'arena' : inApartmentRoomRef.current ? 'apartment' : inShopRoomRef.current ? 'shop' : 'outside';
-      if (pRoom !== 'outside') {
-        const spawns: Record<string, { x: number; y: number }> = { workshop: ROOM_SPAWN, arena: ARENA_ROOM_SPAWN, apartment: APARTMENT_SPAWN, shop: { x: 0, y: 1.2 } };
-        const s = spawns[pRoom];
-        data.position = { x: s.x, y: s.y, room: pRoom, rotation: yawRef.current };
-      } else {
-        data.position = { x: localPositionRef.current.x, y: localPositionRef.current.y, room: 'outside', rotation: yawRef.current };
-      }
-      data.questStage = sparkyQuestStageRef.current;
-      data.backpack = backpackRef.current;
-      data.money = moneyRef.current;
-      data.playtime = Math.floor(sessionPlaytimeRef.current);
-      navigator.sendBeacon('/api/sync', new Blob([JSON.stringify(data)], { type: 'application/json' }));
-    };
-    window.addEventListener('beforeunload', onUnload);
-    return () => window.removeEventListener('beforeunload', onUnload);
-  }, []);
+  // Periodic sync (30s safety net for crash recovery)
+  // (no beforeunload beacon — would re-save stale data after reset)
 
   useEffect(() => {
     heldSlotIndexRef.current = heldSlotIndex;
@@ -1262,7 +1288,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     workshopDoorMarkerRef.current = doorMarker;
 
     const aptDoorAnchor = new THREE.Group();
-    aptDoorAnchor.position.set(-9.6, -5.8, 2.5);
+    aptDoorAnchor.position.set(-9.6, -4.9, 2.5);
     outdoorGroup.add(aptDoorAnchor);
     const aptDoorMarker = addExclamationMarker(aptDoorAnchor);
     aptDoorMarker.visible = true;
@@ -1795,7 +1821,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     apartmentDoorHitboxRef.current = {
       shape: 'circle',
-      center: { x: -9.6, y: -5.8 },
+      center: { x: -9.6, y: -4.9 },
       radius: 0.5,
     };
 
@@ -1866,6 +1892,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(sparky.root);
     if (sparky.body) sparky.body.visible = true;
     outdoorSparkyRef.current = sparky;
+    sparkyBaseQuatRef.current = sparky.root.quaternion.clone();
     // Neck connector so head doesn't float
     const sparkyNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.2, 8), createToonMaterial(0xfacc15));
     sparkyNeck.rotation.x = Math.PI / 2;
@@ -2202,6 +2229,63 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (isTextInput) {
         return;
       }
+
+      // Number keys 1/2 pick conversation choice
+      if (sparkyIntroStepRef.current >= 0 && (event.key === '1' || event.key === '2')) {
+        event.preventDefault();
+        const convo = SPARKY_INTRO_CONVO[sparkyIntroStepRef.current];
+        const choiceIdx = event.key === '2' && convo.choices.length > 1 ? 1 : 0;
+        const next = convo.choices[choiceIdx].next;
+        if (next === -1) {
+          setSparkyIntroStep(-1);
+          if (!sparkyHomeArrivedRef.current) {
+            const s = outdoorSparkyRef.current;
+            if (s) {
+              const sx = s.root.position.x;
+              const sy = s.root.position.y;
+              sparkyHomeWaypointsRef.current = [
+                new THREE.Vector2(sx, -6.5),
+                new THREE.Vector2(-9.6, -6.5),
+                new THREE.Vector2(-9.6, -5.7),
+              ];
+              sparkyHomeWaypointIdxRef.current = 0;
+            }
+            sparkyGoHomeRef.current = true;
+          }
+        } else {
+          setSparkyIntroStep(next);
+        }
+        return;
+      }
+
+      // During the tutorial, Space advances the dialog (handled by TutorialOverlay) — skip room interactions
+      if (showTutorialRef.current && event.code === 'Space') {
+        event.preventDefault();
+        return;
+      }
+
+      // Advance Sparky dialogue on any key press
+      if (showTutorialRef.current) {
+        const step = tutorialStepRef.current;
+        const phases = tutorialPhasesRef.current;
+        const phase = phases[step];
+        if (phase && phase.kind === 'dialogue') {
+          event.preventDefault();
+          const next = step + 1;
+          const nextPhase = phases[next];
+          if (nextPhase && nextPhase.kind === 'challenge') {
+            setTutorialStep(next);
+            setCode(nextPhase.starterCode);
+          } else {
+            setShowTutorial(false);
+            setTutorialStep(0);
+            setOutput('');
+            setSuccess(false);
+          }
+          return;
+        }
+      }
+
       if (event.code === 'Space' && inWorkshopRoomRef.current) {
         event.preventDefault();
         interactionRequestedRef.current = true;
@@ -2240,7 +2324,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
         return;
       }
-      if (event.code === 'Space' && !inWorkshopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current) {
+      if (event.code === 'Space' && sparkyIntroStepRef.current < 0 && !inWorkshopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current) {
         event.preventDefault();
         worldInteractionRequestedRef.current = true;
         return;
@@ -2273,6 +2357,34 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     mountElement.addEventListener('mousedown', handleFocusClick);
+
+    const rendererEl = renderer.domElement;
+
+    // Pointer Lock — capture mouse on click, orbit while locked
+    const isLockedRef = { current: false };
+    rendererEl.addEventListener('pointerdown', () => {
+      if (document.pointerLockElement !== rendererEl) {
+        rendererEl.requestPointerLock();
+      }
+    });
+    const onLockChange = () => {
+      isLockedRef.current = document.pointerLockElement === rendererEl;
+    };
+    document.addEventListener('pointerlockchange', onLockChange);
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!isLockedRef.current) return;
+      yawRef.current += e.movementX * 0.012;
+      cameraPitchRef.current = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraPitchRef.current + e.movementY * 0.005));
+    };
+    rendererEl.addEventListener('pointermove', onPointerMove);
+
+    // Wheel / two-finger scroll → look up/down
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      cameraPitchRef.current = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraPitchRef.current + e.deltaY * 0.003));
+    };
+    rendererEl.addEventListener('wheel', onWheel, { passive: false });
 
     const createCustomerRequest = (customerName: string): CustomerRequest => {
       const blockedSignature = lastWorkshopRequestSigRef.current;
@@ -2417,32 +2529,40 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       let moveDir2 = new THREE.Vector2(0, 0);
       if (!showTutorialRef.current) {
         const keys = keyStateRef.current;
-        let forward = 0, turn = 0;
+        let forward = 0, strafe = 0;
         if (keys.has('arrowup') || keys.has('w')) forward += 1;
         if (keys.has('arrowdown') || keys.has('s')) forward -= 1;
-        if (keys.has('arrowleft') || keys.has('a')) turn -= 1;
-        if (keys.has('arrowright') || keys.has('d')) turn += 1;
+        if (keys.has('arrowleft') || keys.has('a')) strafe -= 1;
+        if (keys.has('arrowright') || keys.has('d')) strafe += 1;
 
-        if (turn) yawRef.current += turn * 2.5 * delta;
-        if (forward) {
+        if (forward || strafe) {
           moved = true;
-          const sin = Math.sin(yawRef.current), cos = Math.cos(yawRef.current);
-          moveDir2.set(sin * forward, cos * forward);
+          const camSin = Math.sin(yawRef.current), camCos = Math.cos(yawRef.current);
+          moveDir2.set(
+            camSin * forward + camCos * strafe,
+            camCos * forward - camSin * strafe
+          );
           const candidate = localPositionRef.current.clone().add(moveDir2.multiplyScalar(MOVE_SPEED * delta));
           if (inWorkshopRoomRef.current) {
             candidate.x = Math.max(-4.82, Math.min(4.82, candidate.x));
-            candidate.y = Math.max(-4.82, Math.min(4.82, candidate.y));
-            const hitsRoomObstacle = collidesWithAny(candidate, roomObstacleHitboxesRef.current) ||
-            workshopCustomersRef.current.some(npc => {
-              const dx = candidate.x - npc.position.x;
-              const dy = candidate.y - npc.position.y;
-              return dx * dx + dy * dy < 0.09;
-            });
-            if (!hitsRoomObstacle) {
-              localPositionRef.current.copy(candidate);
-              localRobot.root.position.set(candidate.x, candidate.y, 0.28);
-            } else {
+            candidate.y = Math.max(-5.3, Math.min(4.82, candidate.y));
+            // Walk into south exit door → leave workshop
+            if (candidate.y < -5.1) {
+              leaveWorkshopRoom();
               moved = false;
+            } else {
+              const hitsRoomObstacle = collidesWithAny(candidate, roomObstacleHitboxesRef.current) ||
+              workshopCustomersRef.current.some(npc => {
+                const dx = candidate.x - npc.position.x;
+                const dy = candidate.y - npc.position.y;
+                return dx * dx + dy * dy < 0.09;
+              });
+              if (!hitsRoomObstacle) {
+                localPositionRef.current.copy(candidate);
+                localRobot.root.position.set(candidate.x, candidate.y, 0.28);
+              } else {
+                moved = false;
+              }
             }
           } else if (inArenaRoomRef.current) {
             candidate.x = Math.max(-5.8, Math.min(5.8, candidate.x));
@@ -2490,12 +2610,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else {
             const maxRadius = ISLAND_RADIUS - PLAYER_RADIUS - 0.35;
             if (candidate.length() > maxRadius) candidate.setLength(maxRadius);
+            const canEnterBuildings = sparkyQuestStageRef.current !== 'intro' || sparkyHomeArrivedRef.current;
             const hitsObstacle = collidesWithAny(candidate, obstacleHitboxesRef.current) ||
+              (!canEnterBuildings && apartmentDoorHitboxRef.current && isInsideHitbox(candidate, apartmentDoorHitboxRef.current)) ||
               Object.values(remoteAvatarsRef.current).some(a => a.room === 'outside' &&
                 candidate.distanceTo(a.target) < 0.3);
             const workshopDoor = workshopDoorHitboxRef.current;
             const atWorkshopDoor =
               Boolean(shopUnlockedRef.current) &&
+              canEnterBuildings &&
               workshopDoor !== null &&
               workshopDoorArmedRef.current &&
               isInsideHitbox(candidate, workshopDoor);
@@ -2506,6 +2629,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
             const arenaDoor = arenaDoorHitboxRef.current;
             const atArenaDoor =
+              canEnterBuildings &&
               arenaDoor !== null &&
               arenaDoorArmedRef.current &&
               isInsideHitbox(candidate, arenaDoor);
@@ -2517,6 +2641,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const apartmentDoor = apartmentDoorHitboxRef.current;
             const aptStage = sparkyQuestStageRef.current;
             const atApartmentDoor =
+              canEnterBuildings &&
               apartmentDoor !== null &&
               apartmentDoorArmedRef.current &&
               isInsideHitbox(candidate, apartmentDoor);
@@ -2527,6 +2652,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
             const shopDoor = shopDoorHitboxRef.current;
             const atShopDoor =
+              canEnterBuildings &&
               shopDoor !== null &&
               shopDoorArmedRef.current &&
               isInsideHitbox(candidate, shopDoor);
@@ -2760,8 +2886,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (worldInteractionRequestedRef.current) {
           worldInteractionRequestedRef.current = false;
           if (distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
-            if (stage === 'intro') {
-              setSparkyModal("Oh! Hey there! I'm Sparky. I found something amazing in my apartment. Follow me upstairs — I'll show you! (Door's right over here ↖️)");
+            if (stage === 'intro' && !sparkyGoHomeRef.current) {
+              setSparkyIntroStep(0);
             } else if (stage === 'unit1' || stage === 'unit2') {
               showTutorialRef.current = true;
               setShowTutorial(true);
@@ -2783,24 +2909,31 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
         }
 
-        setInteractionPromptName(outsidePrompt);
+        setInteractionPromptName(sparkyIntroStepRef.current >= 0 ? null : outsidePrompt);
         if (!outsidePrompt && workshopOutput && !inWorkshopRoomRef.current) setWorkshopOutput('');
         interactionCandidateIdRef.current = null;
       }
 
       if (sparkyGoHomeRef.current && !sparkyHomeArrivedRef.current) {
-        const target = sparkyHomeTargetRef.current;
-        const dist = sparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
-        if (dist > 0.15) {
-          const dir = new THREE.Vector2(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
-          const step = 1.8 * delta;
-          const candidate = new THREE.Vector2(
-            sparky.root.position.x + dir.x * step,
-            sparky.root.position.y + dir.y * step
-          );
-          if (!collidesWithAny(candidate, obstacleHitboxesRef.current)) {
-            sparky.root.position.x = candidate.x;
-            sparky.root.position.y = candidate.y;
+        const waypoints = sparkyHomeWaypointsRef.current;
+        const idx = sparkyHomeWaypointIdxRef.current;
+        if (waypoints.length > 0 && idx < waypoints.length) {
+          const target = waypoints[idx];
+          const dist = sparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
+          if (dist < 0.15) {
+            sparkyHomeWaypointIdxRef.current++;
+          } else {
+            const dir = new THREE.Vector2(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
+            const step = 1.8 * delta;
+            const candidate = new THREE.Vector2(
+              sparky.root.position.x + dir.x * step,
+              sparky.root.position.y + dir.y * step
+            );
+            if (!collidesWithAny(candidate, obstacleHitboxesRef.current)) {
+              sparky.root.position.x = candidate.x;
+              sparky.root.position.y = candidate.y;
+              animateRobotVisual(sparky, worldTime, 0.3, -0.2, 0.1);
+            }
           }
         } else {
           // Arrived — swap to indoor Sparky
@@ -2855,6 +2988,58 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
         }
       }
+      // Sparky slowly turns toward player during conversation, turns back after
+      const baseQuat = sparkyBaseQuatRef.current;
+      if (baseQuat && sparky.root.visible) {
+        const dx = sparkyIntroStepRef.current >= 0
+          ? localPositionRef.current.x - sparky.root.position.x
+          : (sparkyGoHomeRef.current && !sparkyHomeArrivedRef.current && sparkyHomeWaypointIdxRef.current < sparkyHomeWaypointsRef.current.length
+            ? sparkyHomeWaypointsRef.current[sparkyHomeWaypointIdxRef.current].x - sparky.root.position.x
+            : 0);
+        const dy = sparkyIntroStepRef.current >= 0
+          ? localPositionRef.current.y - sparky.root.position.y
+          : (sparkyGoHomeRef.current && !sparkyHomeArrivedRef.current && sparkyHomeWaypointIdxRef.current < sparkyHomeWaypointsRef.current.length
+            ? sparkyHomeWaypointsRef.current[sparkyHomeWaypointIdxRef.current].y - sparky.root.position.y
+            : 0);
+        const targetFacing = dx === 0 && dy === 0 ? 0 : -Math.atan2(dx, dy);
+        const diff = targetFacing - sparkyFacingRef.current;
+        const wrappedDiff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        sparkyFacingRef.current += wrappedDiff * 0.04;
+        if (Math.abs(sparkyFacingRef.current) > 0.001) {
+          const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), sparkyFacingRef.current);
+          sparky.root.quaternion.copy(baseQuat).premultiply(facingQ);
+        } else {
+          sparkyFacingRef.current = 0;
+          sparky.root.quaternion.copy(baseQuat);
+        }
+      }
+      // Sparky waves during intro conversation + speech bubble above head
+      if (sparkyIntroStepRef.current >= 0 && sparky.root.visible) {
+        animateSparkyWave(sparky, worldTime);
+
+        // Get Sparky's head world position from antenna tip
+        sparky.root.updateWorldMatrix(true, false);
+        camera.updateMatrixWorld(true);
+        const headPos = new THREE.Vector3();
+        sparky.antennaTip.getWorldPosition(headPos);
+        headPos.project(camera);
+        if (speechBubbleRef.current) {
+          if (headPos.z > 1) {
+            speechBubbleRef.current.style.display = 'none';
+          } else {
+            speechBubbleRef.current.style.display = '';
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const x = (headPos.x * 0.5 + 0.5) * vw;
+            const y = (-headPos.y * 0.5 + 0.5) * vh;
+            speechBubbleRef.current.style.left = `${x}px`;
+            speechBubbleRef.current.style.top = `${y}px`;
+            speechBubbleRef.current.style.transform = 'translate(-50%, -100%) translateY(-8px)';
+          }
+        }
+      } else if (speechBubbleRef.current) {
+        speechBubbleRef.current.style.display = 'none';
+      }
       sparky.root.position.z = 0.24 + Math.sin(worldTime * 4) * 0.04;
       if (sparkyQuestStageRef.current === 'intro' && !sparkyGoHomeRef.current) {
         // Don't override repair animation with walk animation
@@ -2862,6 +3047,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         animateRobotVisual(sparky, worldTime, 0.5, -0.3, 0.15);
       }
       if (sparkyQuestMarkerRef.current) {
+        sparkyQuestMarkerRef.current.visible = sparkyIntroStepRef.current < 0;
         sparkyQuestMarkerRef.current.position.y = 1.0 + Math.sin(worldTime * 5.2) * 0.08;
       }
       animateRobotVisual(owner, worldTime * 0.9, 0.12, -0.2, -0.1);
@@ -3237,33 +3423,33 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         apartmentRoomGroup.visible = inApartmentRoomRef.current;
         if (shopRoomGroupRef.current) shopRoomGroupRef.current.visible = inShopRoomRef.current;
         scene.background = new THREE.Color(roomBg);
-        const yaw = yawRef.current;
+        const camYaw = yawRef.current;
+        const camPitch = cameraPitchRef.current;
         const px = localPositionRef.current.x;
         const py = localPositionRef.current.y;
-        const sin = Math.sin(yaw), cos = Math.cos(yaw);
+        const sinYaw = Math.sin(camYaw), cosYaw = Math.cos(camYaw);
+        const sinPitch = Math.sin(camPitch), cosPitch = Math.cos(camPitch);
         const inside = inWorkshopRoomRef.current || inShopRoomRef.current || inArenaRoomRef.current || inApartmentRoomRef.current;
         const room = inside ? currentRoom : 'outside';
         const zoom = computeCameraZoom(
-          camera.position.x, camera.position.y,
+          px, py,
           inside, room,
           buildingFootprints as BuildingFootprint[],
         );
+        const cd = Math.max(0.1, zoom.camDist + zoomOffsetRef.current);
+        const camZ = zoom.height + sinPitch * cd;
         cameraTargetPosRef.current.set(
-          px - sin * zoom.camDist,
-          py - cos * zoom.camDist,
-          zoom.height
+          px - sinYaw * cosPitch * cd,
+          py - cosYaw * cosPitch * cd,
+          Math.max(0.05, camZ)
         );
         cameraLookTargetRef.current.set(
-          px + sin * zoom.lookDist,
-          py + cos * zoom.lookDist,
+          px,
+          py,
           inside ? 0.5 : 0.6
         );
-        camera.position.lerp(cameraTargetPosRef.current, 0.1);
+        camera.position.copy(cameraTargetPosRef.current);
         camera.lookAt(cameraLookTargetRef.current);
-        if (Math.abs(camera.fov - zoom.fov) > 0.01) {
-          camera.fov = zoom.fov;
-          camera.updateProjectionMatrix();
-        }
 
         // Clamp camera inside room so it never sees past walls into the void
         if (inside) {
@@ -3358,6 +3544,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       mountElement.removeEventListener('mousedown', handleFocusClick);
+      document.removeEventListener('pointerlockchange', onLockChange);
+      rendererEl.removeEventListener('pointermove', onPointerMove);
+      rendererEl.removeEventListener('wheel', onWheel);
       Object.values(remoteAvatarsRef.current).forEach((avatar) => disposeObject(avatar.root));
       remoteAvatarsRef.current = {};
       disposeObject(localRobot.root);
@@ -3674,7 +3863,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setCode('');
     setOutput('');
     setSuccess(false);
-    const outsideDoor = new THREE.Vector2(-9.6, -5.8);
+    const outsideDoor = new THREE.Vector2(-9.6, -5.5);
     localPositionRef.current.copy(outsideDoor);
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.24);
@@ -3886,7 +4075,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} showSparkyExamples={() => setShowSparkyExamples(true)} leaveWorkshopRoom={leaveWorkshopRoom} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />
+      <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} showSparkyExamples={() => setShowSparkyExamples(true)} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />
 
       <ArenaOverlay inArenaRoom={inArenaRoom} arenaPlayers={arenaPlayers} arenaChallenge={arenaChallenge} arenaCode={arenaCode} setArenaCode={setArenaCode} arenaOutput={arenaOutput} arenaBattleActive={arenaBattleActive} challengePlayer={challengePlayer} acceptChallenge={acceptChallenge} declineChallenge={declineChallenge} submitArenaCode={submitArenaCode} leaveArenaRoom={leaveArenaRoom} currentUserId={userId} />
 
@@ -3937,7 +4126,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       )}
 
       {sparkyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => { setSparkyModal(null); if (sparkyQuestStageRef.current === 'intro' && !sparkyHomeArrivedRef.current) sparkyGoHomeRef.current = true; }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => setSparkyModal(null)}>
           <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6">
             <div className="flex items-start gap-4 mb-5">
               <div className="text-4xl">🤖</div>
@@ -3947,10 +4136,76 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               </div>
             </div>
             <div className="flex justify-end">
-              <button className="rounded-lg bg-amber-500 px-6 py-3 text-lg font-semibold text-slate-900 hover:bg-amber-400" onClick={() => { setSparkyModal(null); if (sparkyQuestStageRef.current === 'intro' && !sparkyHomeArrivedRef.current) sparkyGoHomeRef.current = true; }}>Got it!</button>
+              <button className="rounded-lg bg-amber-500 px-6 py-3 text-lg font-semibold text-slate-900 hover:bg-amber-400" onClick={() => setSparkyModal(null)}>Got it!</button>
             </div>
           </div>
         </div>
+      )}
+
+      {sparkyIntroStep >= 0 && (
+        <>
+          {/* Speech bubble + choices above Sparky (projected via ref) */}
+          <div
+            ref={speechBubbleRef}
+            className="fixed z-50 pointer-events-none"
+            style={{ display: 'none', left: 0, top: 0, transform: 'translate(-50%, -100%) translateY(-8px)' }}
+          >
+            <div className="relative pointer-events-auto">
+              {/* Speech bubble (determines container size — stays centered above Sparky) */}
+              <div className="relative rounded-2xl border border-amber-400/50 bg-slate-900/95 px-4 py-3 shadow-2xl backdrop-blur-sm" style={{ width: '260px' }}>
+                <div className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-b border-r border-amber-400/50 bg-slate-900/95" />
+                <div className="flex items-start gap-2">
+                  <div className="text-2xl">🤖</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-amber-300">Sparky</div>
+                    <p className="mt-0.5 text-sm text-slate-100 leading-snug">{SPARKY_INTRO_CONVO[sparkyIntroStep].text}</p>
+                  </div>
+                </div>
+              </div>
+              {/* Left choice buttons */}
+              <div className="absolute flex flex-col gap-2" style={{ right: 'calc(100% + 8px)', top: 0 }}>
+                {SPARKY_INTRO_CONVO[sparkyIntroStep].choices.filter((_, i) => i % 2 === 0).map((choice, idx) => (
+                  <button
+                    key={choice.label}
+                    className="flex items-center gap-2 rounded-xl border border-amber-400/40 bg-slate-800/90 px-3 py-2 shadow-lg backdrop-blur-sm transition-colors hover:border-amber-400 hover:bg-slate-700/90 whitespace-nowrap"
+                    onClick={() => {
+                      if (choice.next === -1) { setSparkyIntroStep(-1); if (!sparkyHomeArrivedRef.current) { const __s = outdoorSparkyRef.current; if (__s) { const __sx = __s.root.position.x; const __sy = __s.root.position.y; sparkyHomeWaypointsRef.current = [new THREE.Vector2(__sx, -6.5), new THREE.Vector2(-9.6, -6.5), new THREE.Vector2(-9.6, -5.7)]; sparkyHomeWaypointIdxRef.current = 0; } sparkyGoHomeRef.current = true; } }
+                      else { setSparkyIntroStep(choice.next); }
+                    }}
+                  >
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-slate-900 shrink-0">
+                      {idx * 2 + 1}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-100">{choice.label}</span>
+                  </button>
+                ))}
+              </div>
+              {/* Right choice buttons */}
+              <div className="absolute flex flex-col gap-2" style={{ left: 'calc(100% + 8px)', top: 0 }}>
+                {SPARKY_INTRO_CONVO[sparkyIntroStep].choices.filter((_, i) => i % 2 === 1).map((choice, idx) => (
+                  <button
+                    key={choice.label}
+                    className="flex items-center gap-2 rounded-xl border border-amber-400/40 bg-slate-800/90 px-3 py-2 shadow-lg backdrop-blur-sm transition-colors hover:border-amber-400 hover:bg-slate-700/90 whitespace-nowrap"
+                    onClick={() => {
+                      if (choice.next === -1) { setSparkyIntroStep(-1); if (!sparkyHomeArrivedRef.current) { const __s = outdoorSparkyRef.current; if (__s) { const __sx = __s.root.position.x; const __sy = __s.root.position.y; sparkyHomeWaypointsRef.current = [new THREE.Vector2(__sx, -6.5), new THREE.Vector2(-9.6, -6.5), new THREE.Vector2(-9.6, -5.7)]; sparkyHomeWaypointIdxRef.current = 0; } sparkyGoHomeRef.current = true; } }
+                      else { setSparkyIntroStep(choice.next); }
+                    }}
+                  >
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-slate-900 shrink-0">
+                      {idx * 2 + 2}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-100">{choice.label}</span>
+                  </button>
+                ))}
+              </div>
+              {sparkyIntroStep === 0 && (
+                <p className="absolute text-center text-xs text-amber-400/70 whitespace-nowrap" style={{ left: '50%', transform: 'translateX(-50%)', top: 'calc(100% + 10px)' }}>
+                  Press the number or click!
+                </p>
+              )}
+            </div>
+          </div>
+        </>
       )}
       {showTransportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => { setShowTransportModal(false); setTransportMessage(null); }}>
@@ -4065,13 +4320,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       )}
 
       {showControlsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4" onClick={() => {
-          setShowControlsModal(false);
-          try { localStorage.setItem('rb_controls_seen', '1'); } catch {}
-        }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4" onClick={() => setShowControlsModal(false)}>
           <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-cyan-300/50 shadow-2xl p-8 text-slate-100">
-            <h2 className="text-xl font-bold text-cyan-300 mb-6 text-center">How to move around</h2>
-            <div className="flex justify-center gap-12 mb-6">
+            <h2 className="text-xl font-bold text-cyan-300 mb-6 text-center">How to play</h2>
+            <div className="flex justify-center gap-8 mb-6">
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xs text-slate-400 mb-2">Arrow Keys</span>
                 <div className="grid grid-cols-3 gap-1">
@@ -4095,11 +4347,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 </div>
               </div>
             </div>
-            <p className="text-slate-400 text-sm text-center mb-6">Use arrow keys or WASD to walk around the island and explore!</p>
+            <div className="flex items-center justify-center gap-3 mb-6 animate-fade-in">
+              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-300 animate-slide-x">
+                <path d="M12 2a7 7 0 0 0-7 7v6a7 7 0 0 0 14 0V9a7 7 0 0 0-7-7z"/>
+                <path d="M12 12V9"/>
+              </svg>
+              <p className="text-slate-200 text-sm">Move your mouse to look around</p>
+            </div>
             <div className="flex justify-center">
               <button className="rounded-lg bg-cyan-500 px-8 py-3 text-lg font-semibold text-slate-900 hover:bg-cyan-400" onClick={() => {
                 setShowControlsModal(false);
-                try { localStorage.setItem('rb_controls_seen', '1'); } catch {}
               }}>Got it!</button>
             </div>
           </div>
