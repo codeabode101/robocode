@@ -11,7 +11,6 @@ interface Props {
   runWorkshopCode: () => void;
   reopenWorkshopIntro: () => void;
   showSparkyExamples: () => void;
-  leaveWorkshopRoom: () => void;
   bonusFraction: number;
   bonusDuration: number;
   firstTransactionDone: boolean;
@@ -19,7 +18,7 @@ interface Props {
 
 export default function WorkshopPanel({
   activeCustomer, workshopCode, setWorkshopCode, workshopOutput,
-  inWorkshopRoom, runWorkshopCode, reopenWorkshopIntro, showSparkyExamples, leaveWorkshopRoom,
+  inWorkshopRoom, runWorkshopCode, reopenWorkshopIntro, showSparkyExamples,
   bonusFraction, bonusDuration, firstTransactionDone,
 }: Props) {
   const bonusAmount = Math.round(5 * bonusFraction);
@@ -97,7 +96,6 @@ export default function WorkshopPanel({
       {inWorkshopRoom && (
         <div className="absolute right-4 top-20 z-40 flex gap-3">
           <button type="button" className="rounded bg-slate-700 px-4 py-2.5 text-base font-semibold text-white hover:bg-slate-600" onClick={reopenWorkshopIntro}>Workshop guide</button>
-          <button type="button" className="rounded bg-blue-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-blue-400" onClick={leaveWorkshopRoom}>Exit workshop</button>
         </div>
       )}
     </>

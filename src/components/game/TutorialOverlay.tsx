@@ -1,6 +1,6 @@
 'use client';
 
-import { type RefObject } from 'react';
+import { type RefObject, useRef, useEffect } from 'react';
 import type { TutorialPhase } from './types';
 import Editor from './Editor';
 
@@ -56,6 +56,21 @@ export default function TutorialOverlay({
       setTutorialStep(0);
     }
   };
+
+  const handleOkayRef = useRef(handleOkay);
+  handleOkayRef.current = handleOkay;
+
+  useEffect(() => {
+    if (!showTutorial) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== 'Space') return;
+      if (e.target instanceof HTMLElement && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) return;
+      e.preventDefault();
+      handleOkayRef.current();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showTutorial]);
 
   const bubbleBtnText = isCodeDone ? 'Next →' : isChallenge ? 'Run Code' : 'Okay.';
 
