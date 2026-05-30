@@ -1445,7 +1445,7 @@ export function addExclamationMarker(parent: THREE.Group) {
   const marker = createExclamationMarker();
   marker.renderOrder = 61;
   const s = parent.scale.x;
-  const worldSize = 0.22;
+  const worldSize = 0.5;
   marker.scale.set(worldSize / s, worldSize / s, 1);
   if (parent.rotation.x >= 1) {
     marker.position.set(0, 1.0, 0.46);
