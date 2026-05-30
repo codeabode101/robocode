@@ -1316,9 +1316,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     workshopDoorMarkerRef.current = doorMarker;
 
     const aptDoorAnchor = new THREE.Group();
-    aptDoorAnchor.position.set(-9.6, -4.9, 2.5);
+    aptDoorAnchor.position.set(-9.6, -4.9, 1.8);
     outdoorGroup.add(aptDoorAnchor);
     const aptDoorMarker = addExclamationMarker(aptDoorAnchor);
+    aptDoorMarker.scale.set(0.5, 0.5, 1);
+    aptDoorMarker.position.set(0, 0, -0.3);
     aptDoorMarker.visible = true;
     apartmentDoorMarkerRef.current = aptDoorMarker;
 
@@ -3824,7 +3826,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const needsPart = !!partId && !backpack.includes(partId);
       workshopDoorMarkerRef.current.visible = (sparkyQuestStage === 'unit1-done' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3-done') && !needsPart && !inWorkshopRoom;
     }
-    if (apartmentDoorMarkerRef.current) apartmentDoorMarkerRef.current.visible = !inApartmentRoom && sparkyQuestStage !== 'intro';
+    if (apartmentDoorMarkerRef.current) {
+      const showAptMarker = !inApartmentRoom && (
+        sparkyQuestStage === 'intro' ||
+        sparkyQuestStage === 'unit1-done' ||
+        sparkyQuestStage === 'unit2-done' ||
+        sparkyQuestStage === 'unit3-done'
+      );
+      apartmentDoorMarkerRef.current.visible = showAptMarker;
+    }
     if (shopDoorMarkerRef.current) {
       const partId = PART_FOR_STAGE[sparkyQuestStage];
       shopDoorMarkerRef.current.visible = !!partId && !backpack.includes(partId) && !inShopRoom;
