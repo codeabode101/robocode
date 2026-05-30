@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
       currency: users.currency,
       playtime_seconds: users.playtime_seconds,
       backpack_json: users.backpack_json,
+      cutscene_done: users.cutscene_done,
     }).from(users).where(eq(users.id, userId)).limit(1).then(r => r[0]);
 
     // Auto-create user record if missing (e.g., after migration reset)
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
         VALUES (${userId}, ${email}, ${name}, 'migrated', 0)
         ON CONFLICT (id) DO NOTHING
       `);
-      user = { name, email, currency: 0, playtime_seconds: 0, backpack_json: '[]' };
+      user = { name, email, currency: 0, playtime_seconds: 0, backpack_json: '[]', cutscene_done: 0 };
     }
 
     const tutorials = await db.select({ concept: tutorialProgress.concept })
@@ -91,6 +92,7 @@ export async function GET(request: NextRequest) {
       workshopIntroDone: concepts.includes('_workshop_intro'),
       backpack,
       position: pos ? { x: pos.x, y: pos.y, room: pos.map, rotation: pos.rotation } : null,
+      cutsceneDone: user.cutscene_done === 1,
       xp: xpData,
     });
   } catch (err) {

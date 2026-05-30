@@ -17,7 +17,7 @@ import {
   createRobotVisual, buildPlayerVisual, createHumanVisual, createPartsShop, createPartModel, createApartmentBuilding, animateRobotVisual, LABEL_BUILD_TAG, WALK_BOB_SPEED,
   addExclamationMarker, createRepairKiosk, animateRepairKiosk, animateRepairSparky, animateSparkyWave,
 } from '@/components/game/scene';
-import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest, computeCameraZoom } from '@/components/game/helpers';
+import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest, computeCameraZoom, createCardboardBox, createLaptop, createWire, animateWirePulse, openBoxLid } from '@/components/game/helpers';
 import type { BuildingFootprint } from '@/components/game/helpers';
 import { buildObstacles } from '@/components/game/city';
 import { unit1Phases, unit2Phases } from '@/components/game/tutorialData';
@@ -347,6 +347,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const speechBubbleRef = useRef<HTMLDivElement>(null);
   const sparkyBaseQuatRef = useRef<THREE.Quaternion | null>(null);
   const sparkyFacingRef = useRef(0);
+
+  const aptCutscenePhaseRef = useRef<'idle' | 'walk-west' | 'open-box' | 'lift-scrap' | 'link-computer' | 'done'>('idle');
+  const aptCutsceneTimerRef = useRef(0);
+  const cutsceneBoxRef = useRef<THREE.Group | null>(null);
+  const cutsceneBoxLidRef = useRef<THREE.Mesh | null>(null);
+  const brokenScrapRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
+  const computerRef = useRef<THREE.Group | null>(null);
+  const wireRef = useRef<THREE.Mesh | null>(null);
+  const cinemCamActiveRef = useRef(false);
+  const cutsceneDoneRef = useRef(false);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -730,6 +740,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         backpackRef.current = data.backpack;
         lastConfirmedBackpackRef.current = data.backpack;
       }
+      if (data.cutsceneDone) {
+        cutsceneDoneRef.current = true;
+      }
       if (data.questStage) {
         let mappedStage = String(data.questStage) as SparkyQuestStage;
         if (data.workshopIntroDone) setWorkshopIntroSeen(true);
@@ -787,6 +800,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           sparkyHomeArrivedRef.current = true;
           if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
           if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
+          if (data.cutsceneDone || cutsceneDoneRef.current) {
+            cutsceneDoneRef.current = true;
+            if (scrapRobotRef.current) scrapRobotRef.current.root.visible = true;
+            // Auto-start tutorial if in intro stage after cutscene
+            if (sparkyQuestStageRef.current === 'intro') {
+              setTimeout(() => {
+                showTutorialRef.current = true;
+                setShowTutorial(true);
+                setTutorialStep(0);
+                setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
+                setOutput('');
+                setSuccess(false);
+              }, 500);
+            }
+          }
         } else {
           if (localRobotRef.current) {
             localRobotRef.current.root.position.set(pos.x, pos.y, 0.24);
@@ -2154,6 +2182,45 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       lamp.position.set(-2.2, -2.5, 0.62);
       apartmentRoomGroup.add(lamp);
 
+      // Cardboard box (cutscene) — hidden initially
+      const boxResult = createCardboardBox();
+      boxResult.group.position.set(-2.8, 1.8, 0.2);
+      boxResult.group.visible = false;
+      apartmentRoomGroup.add(boxResult.group);
+      cutsceneBoxRef.current = boxResult.group;
+      cutsceneBoxLidRef.current = boxResult.lid;
+
+      // Broken Scrap (cutscene) — hidden initially
+      const brokenScrap = createRobotVisual(new THREE.Color(0x2a1a0a), '');
+      brokenScrap.root.scale.set(0.55, 0.55, 0.55);
+      brokenScrap.root.position.set(-2.8, 1.8, 0.85);
+      brokenScrap.root.rotation.z = 0.4;
+      brokenScrap.root.visible = false;
+      brokenScrap.nameSprite.visible = false;
+      if (brokenScrap.leftPupil) brokenScrap.leftPupil.material.color.setHex(0x111111);
+      if (brokenScrap.rightPupil) brokenScrap.rightPupil.material.color.setHex(0x111111);
+      if (brokenScrap.antennaTip) brokenScrap.antennaTip.material.color.setHex(0x333333);
+      apartmentRoomGroup.add(brokenScrap.root);
+      brokenScrapRef.current = brokenScrap;
+
+      // Computer (cutscene) — hidden initially
+      const computer = createLaptop();
+      computer.position.set(0, 0, 0);
+      computer.visible = false;
+      apartmentRoomGroup.add(computer);
+      computerRef.current = computer;
+
+      // Hide existing scrapRobot on workbench until cutscene done
+      scrapRobot.root.visible = cutsceneDoneRef.current;
+
+      // Wire (cutscene) — hidden initially
+      const wireStart = new THREE.Vector3(0, 0, 0);
+      const wireEnd = new THREE.Vector3(0, 0, 0.5);
+      const wire = createWire(wireStart, wireEnd);
+      wire.visible = false;
+      apartmentRoomGroup.add(wire);
+      wireRef.current = wire;
+
       // Sparky inside apartment (hidden until Sparky walks home)
       const aptSparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
       aptSparky.root.scale.set(0.7, 0.7, 0.7);
@@ -2227,6 +2294,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const target = event.target as HTMLElement | null;
       const isTextInput = target !== null && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.isContentEditable);
       if (isTextInput) {
+        return;
+      }
+
+      // Block all keyboard input during cutscene
+      if (aptCutscenePhaseRef.current !== 'idle') {
+        event.preventDefault();
         return;
       }
 
@@ -2527,7 +2600,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       let moved = false;
       let moveDir2 = new THREE.Vector2(0, 0);
-      if (!showTutorialRef.current) {
+      if (aptCutscenePhaseRef.current !== 'idle') {
+        // Cutscene active — freeze player
+        keyStateRef.current.clear();
+      } else if (!showTutorialRef.current) {
         const keys = keyStateRef.current;
         let forward = 0, strafe = 0;
         if (keys.has('arrowup') || keys.has('w')) forward += 1;
@@ -2733,7 +2809,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 { shape: 'box', center: { x: -3.4, y: -1.8 }, halfWidth: 0.45, halfHeight: 0.12 },
                 { shape: 'box', center: { x: -2.2, y: -2.5 }, halfWidth: 0.25, halfHeight: 0.25 },
               ];
-              if (aptStage === 'intro' || aptStage === 'unit1' || aptStage === 'unit2') {
+              if (aptStage === 'intro' && !cutsceneDoneRef.current && sparkyHomeArrivedRef.current) {
+                // Start cutscene instead of tutorial
+                cinemCamActiveRef.current = true;
+                aptCutscenePhaseRef.current = 'walk-west';
+                aptCutsceneTimerRef.current = 0;
+                if (cutsceneBoxRef.current) cutsceneBoxRef.current.visible = true;
+                if (brokenScrapRef.current) brokenScrapRef.current.root.visible = true;
+                const csSparky = apartmentSparkyRef.current;
+                if (csSparky) {
+                  csSparky.root.visible = true;
+                  csSparky.root.position.set(0.2, 2.2, 0.22);
+                }
+                document.exitPointerLock();
+              } else if (aptStage === 'intro' || aptStage === 'unit1' || aptStage === 'unit2') {
                 showTutorialRef.current = true;
                 setShowTutorial(true);
                 setTutorialStep(0);
@@ -3068,7 +3157,124 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           aptSparky.root.position.z = 0.24 + Math.sin(worldTime * 3) * 0.04;
           animateRobotVisual(aptSparky, worldTime, 0.3, -0.2, 0.1);
         }
-        if (sparkyInstallPhaseRef.current && aptSparky) {
+        // Cutscene phase
+        if (aptCutscenePhaseRef.current !== 'idle') {
+          const aptSparkyCS = apartmentSparkyRef.current;
+          const phase = aptCutscenePhaseRef.current;
+
+          if (phase === 'walk-west') {
+            const target = new THREE.Vector2(-2.8, 2.2);
+            if (aptSparkyCS) {
+              const dist = aptSparkyCS.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.22));
+              if (dist > 0.08) {
+                const dir = new THREE.Vector2(target.x - aptSparkyCS.root.position.x, target.y - aptSparkyCS.root.position.y).normalize();
+                aptSparkyCS.root.position.x += dir.x * MOVE_SPEED * 0.3 * delta;
+                aptSparkyCS.root.position.y += dir.y * MOVE_SPEED * 0.3 * delta;
+                animateRobotVisual(aptSparkyCS, worldTime, 0.3, -0.2, 0.1);
+              } else {
+                aptCutscenePhaseRef.current = 'open-box';
+                aptCutsceneTimerRef.current = 0;
+                aptSparkyCS.root.position.set(target.x, target.y, 0.22);
+              }
+            }
+          } else if (phase === 'open-box') {
+            aptCutsceneTimerRef.current += delta;
+            const progress = Math.min(1, aptCutsceneTimerRef.current / 1.5);
+            if (cutsceneBoxLidRef.current) {
+              openBoxLid(cutsceneBoxLidRef.current, progress);
+            }
+            if (aptSparkyCS) {
+              aptSparkyCS.root.rotation.z = Math.sin(worldTime * 2) * 0.05;
+              animateRobotVisual(aptSparkyCS, worldTime, 0.15, -0.1, 0.05);
+            }
+            if (progress >= 1) {
+              aptCutscenePhaseRef.current = 'lift-scrap';
+              aptCutsceneTimerRef.current = 0;
+            }
+          } else if (phase === 'lift-scrap') {
+            aptCutsceneTimerRef.current += delta;
+            const progress = Math.min(1, aptCutsceneTimerRef.current / 2.0);
+            if (brokenScrapRef.current) {
+              const startZ = 0.85;
+              const endZ = 0.24;
+              const zPos = startZ + (endZ - startZ) * progress;
+              const xPos = -2.8 + 0.0 * progress;
+              const yPos = 1.8 + (1.2 - 1.8) * progress;
+              brokenScrapRef.current.root.position.set(xPos, yPos, zPos);
+              brokenScrapRef.current.root.rotation.z = 0.4 * (1 - progress) + 0.1 * progress;
+              brokenScrapRef.current.root.visible = true;
+            }
+            if (aptSparkyCS) {
+              aptSparkyCS.root.rotation.z = Math.sin(worldTime * 3) * 0.08;
+              animateRobotVisual(aptSparkyCS, worldTime, 0.2, -0.15, 0.08);
+            }
+            if (progress >= 1) {
+              aptCutscenePhaseRef.current = 'link-computer';
+              aptCutsceneTimerRef.current = 0;
+              if (computerRef.current) {
+                computerRef.current.visible = true;
+                computerRef.current.position.set(-2.5, 2.2, 0.6);
+                computerRef.current.rotation.z = -0.2;
+              }
+              if (brokenScrapRef.current) {
+                brokenScrapRef.current.root.position.set(-2.8, 1.2, 0.24);
+                brokenScrapRef.current.root.rotation.z = 0.1;
+              }
+            }
+          } else if (phase === 'link-computer') {
+            aptCutsceneTimerRef.current += delta;
+            const progress = Math.min(1, aptCutsceneTimerRef.current / 2.5);
+            // Animate wire growing from computer to Scrap's head
+            if (wireRef.current && computerRef.current && brokenScrapRef.current) {
+              const compPos = new THREE.Vector3(-2.5, 2.2, 0.6);
+              const scrapPos = new THREE.Vector3(-2.8, 1.2, 0.4);
+              const currentEnd = new THREE.Vector3().lerpVectors(compPos, scrapPos, progress);
+              wireRef.current.visible = true;
+              // Update wire position/scale to connect computer to scrap
+              const mid = new THREE.Vector3().addVectors(compPos, currentEnd).multiplyScalar(0.5);
+              const dir = new THREE.Vector3().subVectors(currentEnd, compPos);
+              const len = dir.length();
+              dir.normalize();
+              wireRef.current.position.copy(mid);
+              wireRef.current.scale.set(1, 1, len > 0.01 ? len : 0.01);
+              const up = new THREE.Vector3(0, 0, 1);
+              const quat = new THREE.Quaternion().setFromUnitVectors(up, dir);
+              wireRef.current.quaternion.copy(quat);
+            }
+            animateWirePulse(wireRef.current!, worldTime);
+            if (aptSparkyCS) {
+              aptSparkyCS.root.rotation.z = -0.15 + Math.sin(worldTime * 2) * 0.03;
+              animateRobotVisual(aptSparkyCS, worldTime, 0.1, 0.3, -0.1);
+            }
+            if (progress >= 1) {
+              aptCutscenePhaseRef.current = 'done';
+              aptCutsceneTimerRef.current = 0;
+            }
+          } else if (phase === 'done') {
+            // Hide cutscene objects, show workbench scrap
+            if (cutsceneBoxRef.current) cutsceneBoxRef.current.visible = false;
+            if (brokenScrapRef.current) brokenScrapRef.current.root.visible = false;
+            if (computerRef.current) computerRef.current.visible = false;
+            if (wireRef.current) wireRef.current.visible = false;
+            if (scrapRobotRef.current) scrapRobotRef.current.root.visible = true;
+            cinemCamActiveRef.current = false;
+            aptCutscenePhaseRef.current = 'idle';
+            cutsceneDoneRef.current = true;
+            try { localStorage.setItem('rb_cutscene_done', '1'); } catch {}
+            apiSync({ cutsceneDone: true });
+            // Start tutorial
+            showTutorialRef.current = true;
+            setShowTutorial(true);
+            setTutorialStep(0);
+            setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
+            setOutput('');
+            setSuccess(false);
+            if (aptSparkyCS) {
+              aptSparkyCS.root.rotation.z = 0;
+              aptSparkyCS.root.position.set(0.2, 2.2, 0.22);
+            }
+          }
+        } else if (sparkyInstallPhaseRef.current && aptSparky) {
           const phase = sparkyInstallPhaseRef.current;
           if (phase === 'walk-to-bench') {
             const target = new THREE.Vector2(2.9, 0.3);
@@ -3431,6 +3637,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const sinPitch = Math.sin(camPitch), cosPitch = Math.cos(camPitch);
         const inside = inWorkshopRoomRef.current || inShopRoomRef.current || inArenaRoomRef.current || inApartmentRoomRef.current;
         const room = inside ? currentRoom : 'outside';
+        if (cinemCamActiveRef.current) {
+          camera.position.set(0, 3.5, 2.2);
+          camera.lookAt(-1, 2, 0.5);
+        } else {
         const zoom = computeCameraZoom(
           px, py,
           inside, room,
@@ -3450,6 +3660,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         );
         camera.position.copy(cameraTargetPosRef.current);
         camera.lookAt(cameraLookTargetRef.current);
+        }
 
         // Clamp camera inside room so it never sees past walls into the void
         if (inside) {

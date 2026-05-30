@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   }
 
-  const { questStage, backpack, money, position, playtime } = body;
+  const { questStage, backpack, money, position, playtime, cutsceneDone } = body;
 
   try {
     const email = (payload.email as string) || `${userId}@sync`;
@@ -51,6 +51,12 @@ export async function POST(request: NextRequest) {
     if (typeof playtime === 'number') {
       await db.run(sql`
         UPDATE users SET playtime_seconds = ${Math.max(0, Math.round(playtime))} WHERE id = ${userId}
+      `);
+    }
+
+    if (typeof cutsceneDone === 'boolean') {
+      await db.run(sql`
+        UPDATE users SET cutscene_done = ${cutsceneDone ? 1 : 0} WHERE id = ${userId}
       `);
     }
 
