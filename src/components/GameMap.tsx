@@ -341,6 +341,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyIntroStepRef = useRef(-1);
   const repairTimerRef = useRef(0);
   const repairKioskRef = useRef<THREE.Group | null>(null);
+  const sparkyWalkHomeTimerRef = useRef(0);
   const eventParticlesRef = useRef<THREE.Group | null>(null);
   const cameraTargetPosRef = useRef(new THREE.Vector3());
   const cameraLookTargetRef = useRef(new THREE.Vector3());
@@ -348,7 +349,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyBaseQuatRef = useRef<THREE.Quaternion | null>(null);
   const sparkyFacingRef = useRef(0);
 
-  const aptCutscenePhaseRef = useRef<'idle' | 'walk-west' | 'open-box' | 'lift-scrap' | 'link-computer' | 'done'>('idle');
+  const aptCutscenePhaseRef = useRef<'idle' | 'walk-west' | 'open-box' | 'lift-rise' | 'lift-carry' | 'lift-lower' | 'fetch-laptop' | 'link-computer' | 'done'>('idle');
+  const aptSparkyFacingRef = useRef(0);
+  const aptFetchArrivedRef = useRef(false);
+  const aptLaptopPlacedRef = useRef(false);
   const aptCutsceneTimerRef = useRef(0);
   const cutsceneBoxRef = useRef<THREE.Group | null>(null);
   const cutsceneBoxLidRef = useRef<THREE.Mesh | null>(null);
@@ -2185,18 +2189,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Cardboard box (cutscene) — hidden initially
       const boxResult = createCardboardBox();
-      boxResult.group.position.set(-2.8, 1.8, 0.2);
+      boxResult.group.position.set(-2.8, 1.8, 0.24);
       boxResult.group.visible = false;
       apartmentRoomGroup.add(boxResult.group);
       cutsceneBoxRef.current = boxResult.group;
       cutsceneBoxLidRef.current = boxResult.lid;
 
-      // Broken Scrap (cutscene) — hidden initially
+      // Broken Scrap at box position (direct child of apartmentRoomGroup, not box) — hidden until lid opens
       const brokenScrap = createRobotVisual(new THREE.Color(0x2a1a0a), '');
-      brokenScrap.root.scale.set(0.55, 0.55, 0.55);
-      brokenScrap.root.position.set(-2.8, 1.8, 0.85);
-      brokenScrap.root.rotation.z = 0.4;
-      brokenScrap.root.visible = false;
+      brokenScrap.root.scale.set(0.4, 0.4, 0.4);
+      brokenScrap.root.position.set(-2.8, 1.8, 0.32);
+      brokenScrap.root.rotation.set(0, 0, 0.4);
       brokenScrap.nameSprite.visible = false;
       if (brokenScrap.leftPupil) brokenScrap.leftPupil.material.color.setHex(0x111111);
       if (brokenScrap.rightPupil) brokenScrap.rightPupil.material.color.setHex(0x111111);
@@ -2204,9 +2207,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       apartmentRoomGroup.add(brokenScrap.root);
       brokenScrapRef.current = brokenScrap;
 
-      // Computer (cutscene) — hidden initially
+      // Computer (cutscene) — on the small table initially, hidden
       const computer = createLaptop();
-      computer.position.set(0, 0, 0);
+      computer.position.set(-2.2, -2.5, 0.55);
       computer.visible = false;
       apartmentRoomGroup.add(computer);
       computerRef.current = computer;
@@ -2214,10 +2217,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Hide existing scrapRobot on workbench until cutscene done
       scrapRobot.root.visible = cutsceneDoneRef.current;
 
-      // Wire (cutscene) — hidden initially
-      const wireStart = new THREE.Vector3(0, 0, 0);
-      const wireEnd = new THREE.Vector3(0, 0, 0.5);
-      const wire = createWire(wireStart, wireEnd);
+      // Wire (cutscene) — hidden initially, positioned to connect computer to Scrap
+      const wireCompPos = new THREE.Vector3(-2.95, 0.8, 0.25);
+      const wireScrapPos = new THREE.Vector3(-2.6, 1.2, 0.35);
+      const wireDist = wireCompPos.distanceTo(wireScrapPos);
+      const wire = createWire(wireDist * 1.15);
+      {
+        const mid = new THREE.Vector3().addVectors(wireCompPos, wireScrapPos).multiplyScalar(0.5);
+        wire.position.copy(mid);
+        const dir = new THREE.Vector3().subVectors(wireScrapPos, wireCompPos).normalize();
+        const up = new THREE.Vector3(0, 0, 1);
+        const quat = new THREE.Quaternion().setFromUnitVectors(up, dir);
+        wire.quaternion.copy(quat);
+      }
       wire.visible = false;
       apartmentRoomGroup.add(wire);
       wireRef.current = wire;
@@ -2393,6 +2405,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           localRobot.root.position.set(6.0, -9.0, 0.24);
           shopDoorArmedRef.current = false;
           roomObstacleHitboxesRef.current = [];
+          apiSync({ position: { x: 6.0, y: -9.0, rotation: null, room: 'outside' } });
         } else {
           interactionRequestedRef.current = true;
         }
@@ -2672,6 +2685,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               localRobot.root.position.set(6.0, -9.0, 0.24);
               shopDoorArmedRef.current = false;
               roomObstacleHitboxesRef.current = [];
+              apiSync({ position: { x: 6.0, y: -9.0, rotation: null, room: 'outside' } });
               keyStateRef.current.clear();
               moved = false;
             } else {
@@ -2809,18 +2823,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 { shape: 'box', center: { x: -2.8, y: 2.2 }, halfWidth: 0.9, halfHeight: 0.45 },
                 { shape: 'box', center: { x: -3.4, y: -1.8 }, halfWidth: 0.45, halfHeight: 0.12 },
                 { shape: 'box', center: { x: -2.2, y: -2.5 }, halfWidth: 0.25, halfHeight: 0.25 },
+                { shape: 'box', center: { x: -2.2, y: 1.5 }, halfWidth: 0.2, halfHeight: 0.15 },
               ];
               if (aptStage === 'intro' && !cutsceneDoneRef.current && sparkyHomeArrivedRef.current) {
-                // Start cutscene instead of tutorial
+                // Start cutscene — only the box is visible
                 cinemCamActiveRef.current = true;
                 aptCutscenePhaseRef.current = 'walk-west';
                 aptCutsceneTimerRef.current = 0;
                 if (cutsceneBoxRef.current) cutsceneBoxRef.current.visible = true;
-                if (brokenScrapRef.current) brokenScrapRef.current.root.visible = true;
                 const csSparky = apartmentSparkyRef.current;
                 if (csSparky) {
                   csSparky.root.visible = true;
                   csSparky.root.position.set(0.2, 2.2, 0.22);
+                  const initDir = new THREE.Vector2(-2.8 - 0.2, 0.8 - 2.2).normalize();
+                  aptSparkyFacingRef.current = -Math.atan2(initDir.x, initDir.y);
+                  const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                  if (sparkyBaseQuatRef.current) csSparky.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
                 }
                 document.exitPointerLock();
               } else if (aptStage === 'intro' || aptStage === 'unit1' || aptStage === 'unit2') {
@@ -3005,6 +3023,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
 
       if (sparkyGoHomeRef.current && !sparkyHomeArrivedRef.current) {
+        if (sparkyWalkHomeTimerRef.current === 0) sparkyWalkHomeTimerRef.current = performance.now();
+        if (performance.now() - sparkyWalkHomeTimerRef.current > 15000) {
+          sparkyHomeWaypointIdxRef.current = sparkyHomeWaypointsRef.current.length;
+        }
         const waypoints = sparkyHomeWaypointsRef.current;
         const idx = sparkyHomeWaypointIdxRef.current;
         if (waypoints.length > 0 && idx < waypoints.length) {
@@ -3027,6 +3049,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
         } else {
           // Arrived — swap to indoor Sparky
+          sparkyWalkHomeTimerRef.current = 0;
           sparkyHomeArrivedRef.current = true;
           sparky.root.visible = false;
           if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
@@ -3081,7 +3104,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
       // Sparky slowly turns toward player during conversation, turns back after
       const baseQuat = sparkyBaseQuatRef.current;
-      if (baseQuat && sparky.root.visible) {
+      if (baseQuat && sparky.root.visible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
         const dx = sparkyIntroStepRef.current >= 0
           ? localPositionRef.current.x - sparky.root.position.x
           : (sparkyGoHomeRef.current && !sparkyHomeArrivedRef.current && sparkyHomeWaypointIdxRef.current < sparkyHomeWaypointsRef.current.length
@@ -3155,7 +3178,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Apartment Sparky animation + part installation animation
       if (inApartmentRoomRef.current) {
         const aptSparky = apartmentSparkyRef.current;
-        if (aptSparky && aptSparky.root.visible) {
+        if (aptSparky && aptSparky.root.visible && aptCutscenePhaseRef.current === 'idle') {
           aptSparky.root.position.z = 0.24 + Math.sin(worldTime * 3) * 0.04;
           animateRobotVisual(aptSparky, worldTime, 0.3, -0.2, 0.1);
         }
@@ -3165,106 +3188,217 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const phase = aptCutscenePhaseRef.current;
 
           if (phase === 'walk-west') {
-            const target = new THREE.Vector2(-2.8, 2.2);
+            const target = new THREE.Vector2(-2.8, 0.8);
             if (aptSparkyCS) {
               const dist = aptSparkyCS.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.22));
               if (dist > 0.08) {
                 const dir = new THREE.Vector2(target.x - aptSparkyCS.root.position.x, target.y - aptSparkyCS.root.position.y).normalize();
-                aptSparkyCS.root.position.x += dir.x * MOVE_SPEED * 0.3 * delta;
-                aptSparkyCS.root.position.y += dir.y * MOVE_SPEED * 0.3 * delta;
-                animateRobotVisual(aptSparkyCS, worldTime, 0.3, -0.2, 0.1);
+                aptSparkyCS.root.position.x += dir.x * MOVE_SPEED * 0.15 * delta;
+                aptSparkyCS.root.position.y += dir.y * MOVE_SPEED * 0.15 * delta;
+                const moveFacing = -Math.atan2(dir.x, dir.y);
+                aptSparkyFacingRef.current = dist < 0.4 ? (moveFacing * (dist / 0.4)) : moveFacing;
+                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+                animateRobotVisual(aptSparkyCS, worldTime, 0.2, -0.2, 0.1);
               } else {
                 aptCutscenePhaseRef.current = 'open-box';
                 aptCutsceneTimerRef.current = 0;
                 aptSparkyCS.root.position.set(target.x, target.y, 0.22);
+                aptSparkyFacingRef.current = 0;
+                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0);
+                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
               }
             }
           } else if (phase === 'open-box') {
             aptCutsceneTimerRef.current += delta;
-            const progress = Math.min(1, aptCutsceneTimerRef.current / 1.5);
+            const progress = Math.min(1, aptCutsceneTimerRef.current / 2.0);
             if (cutsceneBoxLidRef.current) {
               openBoxLid(cutsceneBoxLidRef.current, progress);
             }
             if (aptSparkyCS) {
-              aptSparkyCS.root.rotation.z = Math.sin(worldTime * 2) * 0.05;
-              animateRobotVisual(aptSparkyCS, worldTime, 0.15, -0.1, 0.05);
+              animateRobotVisual(aptSparkyCS, worldTime, 0, -0.15, -0.1);
             }
             if (progress >= 1) {
-              aptCutscenePhaseRef.current = 'lift-scrap';
+              aptCutscenePhaseRef.current = 'lift-rise';
               aptCutsceneTimerRef.current = 0;
             }
-          } else if (phase === 'lift-scrap') {
+          } else if (phase === 'lift-rise') {
             aptCutsceneTimerRef.current += delta;
-            const progress = Math.min(1, aptCutsceneTimerRef.current / 2.0);
+            const progress = Math.min(1, aptCutsceneTimerRef.current / 1.5);
             if (brokenScrapRef.current) {
-              const startZ = 0.85;
-              const endZ = 0.24;
-              const zPos = startZ + (endZ - startZ) * progress;
-              const xPos = -2.8 + 0.0 * progress;
-              const yPos = 1.8 + (1.2 - 1.8) * progress;
-              brokenScrapRef.current.root.position.set(xPos, yPos, zPos);
-              brokenScrapRef.current.root.rotation.z = 0.4 * (1 - progress) + 0.1 * progress;
-              brokenScrapRef.current.root.visible = true;
+              const z = 0.32 + (0.55 - 0.32) * progress;
+              brokenScrapRef.current.root.position.z = z;
+              brokenScrapRef.current.root.rotation.z = 0.4 * (1 - progress) + 0.2 * progress;
             }
             if (aptSparkyCS) {
-              aptSparkyCS.root.rotation.z = Math.sin(worldTime * 3) * 0.08;
-              animateRobotVisual(aptSparkyCS, worldTime, 0.2, -0.15, 0.08);
+              aptSparkyCS.root.position.z = 0.22 - 0.06 * progress;
+              aptSparkyCS.body.rotation.x = -0.25 * progress;
+              aptSparkyCS.leftArm.rotation.x = -1.5 * progress;
+              aptSparkyCS.rightArm.rotation.x = -1.5 * progress;
+              animateRobotVisual(aptSparkyCS, worldTime, 0, 0.15, -0.05);
             }
             if (progress >= 1) {
-              aptCutscenePhaseRef.current = 'link-computer';
-              aptCutsceneTimerRef.current = 0;
-              if (computerRef.current) {
-                computerRef.current.visible = true;
-                computerRef.current.position.set(-2.5, 2.2, 0.6);
-                computerRef.current.rotation.z = -0.2;
-              }
               if (brokenScrapRef.current) {
-                brokenScrapRef.current.root.position.set(-2.8, 1.2, 0.24);
-                brokenScrapRef.current.root.rotation.z = 0.1;
+                brokenScrapRef.current.root.position.set(-2.8, 1.8, 0.55);
+                brokenScrapRef.current.root.rotation.z = 0.2;
+              }
+              aptCutscenePhaseRef.current = 'lift-carry';
+              aptCutsceneTimerRef.current = 0;
+            }
+          } else if (phase === 'lift-carry') {
+            aptCutsceneTimerRef.current += delta;
+            const progress = Math.min(1, aptCutsceneTimerRef.current / 2.5);
+            if (brokenScrapRef.current) {
+              const x = -2.8 + (-2.6 + 2.8) * progress;
+              const y = 1.8 + (1.2 - 1.8) * progress;
+              brokenScrapRef.current.root.position.x = x;
+              brokenScrapRef.current.root.position.y = y;
+              brokenScrapRef.current.root.rotation.z = 0.2 * (1 - progress) + 0.12 * progress;
+            }
+            if (aptSparkyCS) {
+              aptSparkyCS.root.position.x = -2.8;
+              aptSparkyCS.root.position.y = 0.8 + (0.45 - 0.8) * progress;
+              aptSparkyCS.root.position.z = 0.16;
+              aptSparkyFacingRef.current = 0;
+              const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+              if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+              animateRobotVisual(aptSparkyCS, worldTime, 0.2, -0.1, 0.0);
+              aptSparkyCS.leftArm.rotation.x = -1.5;
+              aptSparkyCS.rightArm.rotation.x = -1.5;
+            }
+            if (progress >= 1) {
+              if (brokenScrapRef.current) {
+                brokenScrapRef.current.root.position.set(-2.6, 1.2, 0.55);
+                brokenScrapRef.current.root.rotation.z = 0.12;
+              }
+              if (aptSparkyCS) {
+                aptSparkyCS.root.position.y = 0.45;
+              }
+              aptCutscenePhaseRef.current = 'lift-lower';
+              aptCutsceneTimerRef.current = 0;
+            }
+          } else if (phase === 'lift-lower') {
+            aptCutsceneTimerRef.current += delta;
+            const progress = Math.min(1, aptCutsceneTimerRef.current / 1.5);
+            if (brokenScrapRef.current) {
+              const z = 0.55 + (0.24 - 0.55) * progress;
+              brokenScrapRef.current.root.position.z = z;
+              brokenScrapRef.current.root.rotation.z = 0.12 * (1 - progress) + 0.08 * progress;
+            }
+            if (aptSparkyCS) {
+              aptSparkyCS.root.position.z = 0.16 + 0.06 * progress;
+              aptSparkyCS.body.rotation.x = -0.25 * (1 - progress);
+              aptSparkyCS.leftArm.rotation.x = -1.5 * (1 - progress);
+              aptSparkyCS.rightArm.rotation.x = -1.5 * (1 - progress);
+              animateRobotVisual(aptSparkyCS, worldTime, 0, 0.1, 0.05);
+            }
+            if (progress >= 1) {
+              if (brokenScrapRef.current) {
+                brokenScrapRef.current.root.position.set(-2.6, 1.2, 0.24);
+                brokenScrapRef.current.root.rotation.z = 0.08;
+              }
+              if (aptSparkyCS) {
+                aptSparkyCS.root.position.z = 0.22;
+                aptSparkyCS.body.rotation.x = 0;
+                aptSparkyCS.leftArm.rotation.x = 0;
+                aptSparkyCS.rightArm.rotation.x = 0;
+              }
+              aptCutscenePhaseRef.current = 'fetch-laptop';
+              aptCutsceneTimerRef.current = 0;
+            }
+          } else if (phase === 'fetch-laptop') {
+            aptCutsceneTimerRef.current += delta;
+            const EAST_TARGET = new THREE.Vector2(0, 0.8);
+            const WEST_TARGET = new THREE.Vector2(-2.8, 0.8);
+            if (aptSparkyCS) {
+              const t = aptCutsceneTimerRef.current;
+              if (t < 2.0) {
+                const walkT = t / 2.0;
+                aptSparkyCS.root.position.x = -2.8 + (EAST_TARGET.x + 2.8) * walkT;
+                aptSparkyCS.root.position.y = 0.45 + (EAST_TARGET.y - 0.45) * walkT;
+                const eastQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.PI * 0.5);
+                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(eastQ);
+                  animateRobotVisual(aptSparkyCS, worldTime, 0.5, -0.1, 0.0);
+                } else if (t < 2.5) {
+                const turnT = (t - 2.0) / 0.5;
+                const angle = -Math.PI * 0.5 + turnT * Math.PI;
+                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), angle);
+                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+                animateRobotVisual(aptSparkyCS, worldTime, 0, 0, 0);
+                if (t >= 2.4) {
+                  if (computerRef.current) {
+                    computerRef.current.visible = true;
+                    computerRef.current.position.set(aptSparkyCS.root.position.x - 0.15, aptSparkyCS.root.position.y, 0.35);
+                    computerRef.current.rotation.z = Math.PI - 0.2;
+                  }
+                }
+              } else {
+                const walkT = (t - 2.5) / 2.5;
+                if (walkT < 1.0) {
+                  aptSparkyCS.root.position.x = EAST_TARGET.x + (WEST_TARGET.x - EAST_TARGET.x) * walkT;
+                  aptSparkyCS.root.position.y = EAST_TARGET.y + (WEST_TARGET.y - EAST_TARGET.y) * walkT;
+                  const westQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI * 0.5);
+                  if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(westQ);
+                  animateRobotVisual(aptSparkyCS, worldTime, 0.5, -0.1, 0.0);
+                  if (computerRef.current) {
+                    computerRef.current.position.set(aptSparkyCS.root.position.x - 0.15, aptSparkyCS.root.position.y, 0.35);
+                  }
+                } else {
+                  aptSparkyCS.root.position.set(WEST_TARGET.x, WEST_TARGET.y, 0.22);
+                  const westQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI * 0.5);
+                  if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(westQ);
+                  if (computerRef.current) {
+                    computerRef.current.position.set(-2.95, 0.8, 0.24);
+                    computerRef.current.rotation.z = Math.PI - 0.2;
+                    const mat = (computerRef.current.children[0] as THREE.Mesh)?.material as THREE.MeshBasicMaterial | undefined;
+                    if (mat) mat.opacity = 1;
+                  }
+                  aptCutscenePhaseRef.current = 'link-computer';
+                  aptCutsceneTimerRef.current = 0;
+                }
               }
             }
           } else if (phase === 'link-computer') {
             aptCutsceneTimerRef.current += delta;
-            const progress = Math.min(1, aptCutsceneTimerRef.current / 2.5);
-            // Animate wire growing from computer to Scrap's head
-            if (wireRef.current && computerRef.current && brokenScrapRef.current) {
-              const compPos = new THREE.Vector3(-2.5, 2.2, 0.6);
-              const scrapPos = new THREE.Vector3(-2.8, 1.2, 0.4);
-              const currentEnd = new THREE.Vector3().lerpVectors(compPos, scrapPos, progress);
+            const progress = Math.min(1, aptCutsceneTimerRef.current / 3.0);
+            if (computerRef.current) {
+              computerRef.current.visible = true;
+              computerRef.current.position.set(-2.95, 0.8, 0.24);
+              computerRef.current.rotation.z = Math.PI - 0.2;
+            }
+            if (wireRef.current) {
               wireRef.current.visible = true;
-              // Update wire position/scale to connect computer to scrap
-              const mid = new THREE.Vector3().addVectors(compPos, currentEnd).multiplyScalar(0.5);
-              const dir = new THREE.Vector3().subVectors(currentEnd, compPos);
-              const len = dir.length();
-              dir.normalize();
-              wireRef.current.position.copy(mid);
-              wireRef.current.scale.set(1, 1, len > 0.01 ? len : 0.01);
-              const up = new THREE.Vector3(0, 0, 1);
-              const quat = new THREE.Quaternion().setFromUnitVectors(up, dir);
-              wireRef.current.quaternion.copy(quat);
+              const wireMat = wireRef.current.material as THREE.MeshToonMaterial;
+              wireMat.opacity = progress * 0.9;
+              wireMat.transparent = true;
             }
             animateWirePulse(wireRef.current!, worldTime);
             if (aptSparkyCS) {
-              aptSparkyCS.root.rotation.z = -0.15 + Math.sin(worldTime * 2) * 0.03;
-              animateRobotVisual(aptSparkyCS, worldTime, 0.1, 0.3, -0.1);
+              aptSparkyCS.body.rotation.x = Math.sin(worldTime * 2) * 0.03;
+              const linkFacing = -Math.atan2(-0.15, 0);
+              aptSparkyFacingRef.current += (linkFacing - aptSparkyFacingRef.current) * 0.05;
+              const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+              if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+              animateRobotVisual(aptSparkyCS, worldTime, 0, 0.3, -0.1);
             }
             if (progress >= 1) {
               aptCutscenePhaseRef.current = 'done';
               aptCutsceneTimerRef.current = 0;
             }
           } else if (phase === 'done') {
-            // Hide cutscene objects, show workbench scrap
             if (cutsceneBoxRef.current) cutsceneBoxRef.current.visible = false;
             if (brokenScrapRef.current) brokenScrapRef.current.root.visible = false;
             if (computerRef.current) computerRef.current.visible = false;
-            if (wireRef.current) wireRef.current.visible = false;
+            if (wireRef.current) {
+              wireRef.current.visible = false;
+              (wireRef.current.material as THREE.MeshToonMaterial).opacity = 0;
+            }
             if (scrapRobotRef.current) scrapRobotRef.current.root.visible = true;
             cinemCamActiveRef.current = false;
             aptCutscenePhaseRef.current = 'idle';
             cutsceneDoneRef.current = true;
             try { localStorage.setItem('rb_cutscene_done', '1'); } catch {}
             apiSync({ cutsceneDone: true });
-            // Start tutorial
             showTutorialRef.current = true;
             setShowTutorial(true);
             setTutorialStep(0);
@@ -3272,8 +3406,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             setOutput('');
             setSuccess(false);
             if (aptSparkyCS) {
-              aptSparkyCS.root.rotation.z = 0;
+              aptSparkyCS.body.rotation.x = 0;
               aptSparkyCS.root.position.set(0.2, 2.2, 0.22);
+              if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current);
             }
           }
         } else if (sparkyInstallPhaseRef.current && aptSparky) {
@@ -3640,8 +3775,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const inside = inWorkshopRoomRef.current || inShopRoomRef.current || inArenaRoomRef.current || inApartmentRoomRef.current;
         const room = inside ? currentRoom : 'outside';
         if (cinemCamActiveRef.current) {
-          camera.position.set(0, 3.5, 2.2);
-          camera.lookAt(-1, 2, 0.5);
+          const phase = aptCutscenePhaseRef.current;
+          const csSparky = apartmentSparkyRef.current;
+          if (csSparky) {
+            const sp = csSparky.root.position;
+            if (phase === 'link-computer') {
+              const camTarget = new THREE.Vector3(sp.x + 0.2, sp.y - 1.8, 3.5);
+              camera.position.lerp(camTarget, 0.04);
+              camera.lookAt(sp.x, sp.y, 0.3);
+            } else if (phase === 'fetch-laptop') {
+              camera.position.set(-2.7, 3.0, 1.6);
+              camera.lookAt(-2.5, 0.8, 0.3);
+            } else {
+              const camTarget = new THREE.Vector3(-2.7, 3.0, 2.2);
+              camera.position.lerp(camTarget, 0.04);
+              camera.lookAt(sp.x, sp.y, 0.3);
+            }
+          }
         } else {
         const zoom = computeCameraZoom(
           px, py,
@@ -4053,6 +4203,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.24);
     }
+    apiSync({ position: { x: outsideDoor.x, y: outsideDoor.y, rotation: null, room: 'outside' } });
   };
 
   const leaveArenaRoom = () => {
@@ -4071,6 +4222,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(adp.x, adp.y, 0.24);
     }
+    apiSync({ position: { x: adp.x, y: adp.y, rotation: null, room: 'outside' } });
   };
 
   const leaveApartmentRoom = () => {
@@ -4089,6 +4241,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.24);
     }
+    apiSync({ position: { x: outsideDoor.x, y: outsideDoor.y, rotation: null, room: 'outside' } });
   };
 
   const runApartmentSparkyInteraction = useCallback(() => {
@@ -4390,7 +4543,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                     key={choice.label}
                     className="flex items-center gap-2 rounded-xl border border-amber-400/40 bg-slate-800/90 px-3 py-2 shadow-lg backdrop-blur-sm transition-colors hover:border-amber-400 hover:bg-slate-700/90 whitespace-nowrap"
                     onClick={() => {
-                      if (choice.next === -1) { setSparkyIntroStep(-1); if (!sparkyHomeArrivedRef.current) { const __s = outdoorSparkyRef.current; if (__s) { const __sx = __s.root.position.x; const __sy = __s.root.position.y; sparkyHomeWaypointsRef.current = [new THREE.Vector2(__sx, -6.5), new THREE.Vector2(-9.6, -6.5), new THREE.Vector2(-9.6, -5.7)]; sparkyHomeWaypointIdxRef.current = 0; } sparkyGoHomeRef.current = true; } }
+                      if (choice.next === -1) { setSparkyIntroStep(-1); if (!sparkyHomeArrivedRef.current) { const __s = outdoorSparkyRef.current; if (__s) { const __sx = __s.root.position.x; const __sy = __s.root.position.y; sparkyHomeWaypointsRef.current = [new THREE.Vector2(__sx, -6.5), new THREE.Vector2(-9.6, -6.5), new THREE.Vector2(-9.6, -5.7)]; sparkyHomeWaypointIdxRef.current = 0; } sparkyWalkHomeTimerRef.current = 0; sparkyGoHomeRef.current = true; } }
                       else { setSparkyIntroStep(choice.next); }
                     }}
                   >
@@ -4408,7 +4561,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                     key={choice.label}
                     className="flex items-center gap-2 rounded-xl border border-amber-400/40 bg-slate-800/90 px-3 py-2 shadow-lg backdrop-blur-sm transition-colors hover:border-amber-400 hover:bg-slate-700/90 whitespace-nowrap"
                     onClick={() => {
-                      if (choice.next === -1) { setSparkyIntroStep(-1); if (!sparkyHomeArrivedRef.current) { const __s = outdoorSparkyRef.current; if (__s) { const __sx = __s.root.position.x; const __sy = __s.root.position.y; sparkyHomeWaypointsRef.current = [new THREE.Vector2(__sx, -6.5), new THREE.Vector2(-9.6, -6.5), new THREE.Vector2(-9.6, -5.7)]; sparkyHomeWaypointIdxRef.current = 0; } sparkyGoHomeRef.current = true; } }
+                      if (choice.next === -1) { setSparkyIntroStep(-1); if (!sparkyHomeArrivedRef.current) { const __s = outdoorSparkyRef.current; if (__s) { const __sx = __s.root.position.x; const __sy = __s.root.position.y; sparkyHomeWaypointsRef.current = [new THREE.Vector2(__sx, -6.5), new THREE.Vector2(-9.6, -6.5), new THREE.Vector2(-9.6, -5.7)]; sparkyHomeWaypointIdxRef.current = 0; } sparkyWalkHomeTimerRef.current = 0; sparkyGoHomeRef.current = true; } }
                       else { setSparkyIntroStep(choice.next); }
                     }}
                   >

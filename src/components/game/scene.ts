@@ -337,12 +337,12 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
   group.add(body);
 
   const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.28, 0.14), armMat);
-  leftArm.position.set(-0.37, 0.26, 0.5);
+  leftArm.position.set(-0.33, 0.26, 0.5);
   leftArm.rotation.z = 0.3;
   group.add(leftArm);
 
   const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.28, 0.14), armMat);
-  rightArm.position.set(0.37, 0.26, 0.5);
+  rightArm.position.set(0.33, 0.26, 0.5);
   rightArm.rotation.z = -0.3;
   group.add(rightArm);
 
