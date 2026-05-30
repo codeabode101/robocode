@@ -300,96 +300,117 @@ export function validateDataProcessingCode(input: string, steps: DataProcessingS
 export function createCardboardBox(): { group: THREE.Group; lid: THREE.Mesh } {
   const group = new THREE.Group();
   const boxMat = new THREE.MeshToonMaterial({ color: 0xc8944a });
+  const innerMat = new THREE.MeshToonMaterial({ color: 0x92400e });
   const tapeMat = new THREE.MeshToonMaterial({ color: 0x92400e });
 
-  // Base
-  const base = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.35), boxMat);
-  base.position.set(0, 0, 0.175);
-  group.add(base);
+  const t = 0.025;
+  const h = 0.325;
+  const w = 0.6;
 
-  // Tape stripes
+  // Bottom panel
+  const bottom = new THREE.Mesh(new THREE.BoxGeometry(w, w, t), innerMat);
+  bottom.position.set(0, 0, t / 2);
+  group.add(bottom);
+
+  // North wall
+  const north = new THREE.Mesh(new THREE.BoxGeometry(w, t, h), boxMat);
+  north.position.set(0, w / 2 - t / 2, t / 2 + h / 2);
+  group.add(north);
+
+  // South wall
+  const south = new THREE.Mesh(new THREE.BoxGeometry(w, t, h), boxMat);
+  south.position.set(0, -(w / 2 - t / 2), t / 2 + h / 2);
+  group.add(south);
+
+  // East wall
+  const east = new THREE.Mesh(new THREE.BoxGeometry(t, w, h), boxMat);
+  east.position.set(w / 2 - t / 2, 0, t / 2 + h / 2);
+  group.add(east);
+
+  // West wall
+  const west = new THREE.Mesh(new THREE.BoxGeometry(t, w, h), boxMat);
+  west.position.set(-(w / 2 - t / 2), 0, t / 2 + h / 2);
+  group.add(west);
+
+  // Tape stripes on side walls
   for (let s = -1; s <= 1; s += 2) {
-    const tape = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.62, 0.36), tapeMat);
-    tape.position.set(s * 0.28, 0, 0.175);
+    const tape = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.62, t), tapeMat);
+    tape.position.set(s * 0.28, 0, t + h);
     group.add(tape);
   }
 
-  // Flaps — lid is a single mesh representing the top flaps, pivoted at back edge
+  // Lid — hinged at north edge (pivotY = 0.2875)
   const lid = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.58, 0.04), boxMat);
-  lid.position.set(0, 0, 0.37);
+  lid.position.set(0, 0, t + h + 0.02);
   lid.userData.pivotX = 0;
-  lid.userData.pivotY = -0.29;
+  lid.userData.pivotY = 0.2875;
   group.add(lid);
 
-  // Lid tape
+  // Lid tape — parent to lid so it rotates with it
   const lidTape = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.5, 0.05), tapeMat);
-  lidTape.position.set(0, 0, 0.39);
-  group.add(lidTape);
+  lidTape.position.set(0, 0, t + h + 0.045);
+  lid.add(lidTape);
 
   return { group, lid };
 }
 
 export function openBoxLid(lid: THREE.Mesh, progress: number) {
-  const pivotX = (lid.userData.pivotX as number) || 0;
   const pivotY = (lid.userData.pivotY as number) || 0;
-  const angle = -progress * Math.PI / 2.2;
-  // Translate to pivot, rotate, translate back
-  lid.position.x = pivotX - pivotX * Math.cos(angle) + pivotY * Math.sin(angle);
-  lid.position.y = pivotY - pivotX * Math.sin(angle) - pivotY * Math.cos(angle);
-  lid.position.z = 0.37 + pivotX * Math.sin(angle);
-  lid.rotation.z = angle;
+  const lidZ = lid.position.z;
+  const angle = -progress * Math.PI / 3;
+  // Rotate around x-axis at the north edge (pivotY)
+  // Lid tilts upward from its north hinge
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
+  lid.position.y = pivotY * (1 - cosA);
+  lid.position.z = lidZ - pivotY * sinA;
+  lid.rotation.x = angle;
+  lid.rotation.z = 0;
 }
 
 export function createLaptop(): THREE.Group {
   const group = new THREE.Group();
-  const baseMat = new THREE.MeshToonMaterial({ color: 0x1e293b });
-  const screenMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
-  const emissiveMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.7 });
+  const baseMat = new THREE.MeshToonMaterial({ color: 0x334155 });
+  const lidMat = new THREE.MeshToonMaterial({ color: 0x1e293b });
+  const screenMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.8 });
+  const darkMat = new THREE.MeshToonMaterial({ color: 0x0f172a });
 
-  // Base (keyboard area)
-  const base = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.35, 0.035), baseMat);
-  base.position.set(0, 0, 0.017);
+  const baseW = 0.6, baseD = 0.35, baseH = 0.025;
+
+  const base = new THREE.Mesh(new THREE.BoxGeometry(baseW, baseD, baseH), baseMat);
+  base.position.set(0, 0, baseH / 2);
   group.add(base);
 
-  // Screen — rotated back ~110deg from horizontal
+  const kb = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.004), darkMat);
+  kb.position.set(0, -0.03, baseH + 0.002);
+  group.add(kb);
+
   const screenGroup = new THREE.Group();
-  screenGroup.position.set(0, 0, 0.017);
-  screenGroup.rotation.x = 1.92; // ~110 degrees
+  screenGroup.position.set(0, baseD / 2, 0);
+  screenGroup.rotation.x = -1.9;
 
-  const screenBack = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.35, 0.025), baseMat);
-  screenBack.position.set(0, 0, 0.26);
-  screenGroup.add(screenBack);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.20, 0.02), lidMat);
+  lid.position.set(0, 0, 0.12);
+  screenGroup.add(lid);
 
-  const screenFace = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.31, 0.01), emissiveMat);
-  screenFace.position.set(0, 0, 0.273);
-  screenGroup.add(screenFace);
+  const display = new THREE.Mesh(new THREE.BoxGeometry(0.50, 0.18, 0.006), screenMat);
+  display.position.set(0, 0, 0.133);
+  screenGroup.add(display);
 
   group.add(screenGroup);
   return group;
 }
 
-export function createWire(startPos: THREE.Vector3, endPos: THREE.Vector3): THREE.Mesh {
-  const mid = new THREE.Vector3().addVectors(startPos, endPos).multiplyScalar(0.5);
-  const dir = new THREE.Vector3().subVectors(endPos, startPos);
-  const len = dir.length();
-  dir.normalize();
-
+export function createWire(length = 0.55): THREE.Mesh {
   const wireMat = new THREE.MeshToonMaterial({
     color: 0x60a5fa,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0,
     emissive: 0x3b82f6,
     emissiveIntensity: 0.5,
   });
 
-  const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, len, 6), wireMat);
-  wire.position.copy(mid);
-
-  // Orient cylinder along direction
-  const up = new THREE.Vector3(0, 0, 1);
-  const quat = new THREE.Quaternion().setFromUnitVectors(up, dir);
-  wire.quaternion.copy(quat);
-
+  const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, length, 6), wireMat);
   return wire;
 }
 
