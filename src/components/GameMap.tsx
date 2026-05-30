@@ -1319,7 +1319,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     aptDoorAnchor.position.set(-9.6, -4.9, 1.8);
     outdoorGroup.add(aptDoorAnchor);
     const aptDoorMarker = addExclamationMarker(aptDoorAnchor);
-    aptDoorMarker.scale.set(0.5, 0.5, 1);
     aptDoorMarker.position.set(0, 0, -0.3);
     aptDoorMarker.visible = true;
     apartmentDoorMarkerRef.current = aptDoorMarker;
@@ -3032,6 +3031,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           sparky.root.visible = false;
           if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
           if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
+          if (apartmentDoorMarkerRef.current) apartmentDoorMarkerRef.current.visible = true;
         }
       } else if (!sparkyHomeArrivedRef.current) {
         if (sparkyQuestStageRef.current === 'intro' && !sparkyGoHomeRef.current) {
@@ -3827,7 +3827,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       workshopDoorMarkerRef.current.visible = (sparkyQuestStage === 'unit1-done' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3-done') && !needsPart && !inWorkshopRoom;
     }
     if (apartmentDoorMarkerRef.current) {
-      const showAptMarker = !inApartmentRoom && (
+      const showAptMarker = !inApartmentRoom && sparkyHomeArrivedRef.current && (
         sparkyQuestStage === 'intro' ||
         sparkyQuestStage === 'unit1-done' ||
         sparkyQuestStage === 'unit2-done' ||
