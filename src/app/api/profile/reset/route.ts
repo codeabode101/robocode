@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     await db.delete(playerPositions).where(eq(playerPositions.user_id, userId));
     await db.delete(inventory).where(eq(inventory.user_id, userId));
     await db.delete(conceptsUnlocked).where(eq(conceptsUnlocked.user_id, userId));
-    await db.run(sql`UPDATE users SET currency = 0, backpack_json = '[]', playtime_seconds = 0 WHERE id = ${userId}`);
+    await db.run(sql`UPDATE users SET currency = 0, backpack_json = '[]', playtime_seconds = 0, cutscene_done = 0 WHERE id = ${userId}`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Reset error:', error);
