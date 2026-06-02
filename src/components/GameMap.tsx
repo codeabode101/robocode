@@ -274,6 +274,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const apartmentDoorHitboxRef = useRef<CircleHitbox | null>(null);
   const apartmentDoorArmedRef = useRef(false);
   const apartmentDoorMarkerRef = useRef<THREE.Sprite | null>(null);
+  const aptExitMarkerRef = useRef<THREE.Sprite | null>(null);
   const apartmentSparkyRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
   const sparkyQuestMarkerRef = useRef<THREE.Sprite | null>(null);
   const workshopDoorMarkerRef = useRef<THREE.Sprite | null>(null);
@@ -452,7 +453,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [arenaCode, setArenaCode] = useState('');
   const [arenaOutput, setArenaOutput] = useState('');
   const [arenaBattleActive, setArenaBattleActive] = useState(false);
-  const [sparkyModal, setSparkyModal] = useState<string | null>(null);
+  const [showSparkyDlg, setShowSparkyDlg] = useState(false);
+  const [sparkyDlgFull, setSparkyDlgFull] = useState('');
+  const [sparkyDlgText, setSparkyDlgText] = useState('');
   const [sparkyIntroStep, setSparkyIntroStep] = useState(-1);
   const [showBatteryDlg, setShowBatteryDlg] = useState(false);
   const [batteryDlgStep, setBatteryDlgStep] = useState(0);
@@ -780,7 +783,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
   const missionText = useMemo(() => {
-    if (sparkyQuestStage === 'intro') return 'Talk to Sparky.';
+    if (sparkyQuestStage === 'intro') {
+      if (backpack.includes('letter')) return 'Show Sparky\'s letter to Rafiq at his workshop.';
+      return 'Talk to Sparky.';
+    }
     if (sparkyQuestStage === 'unit1') return 'Complete Unit 1 with Sparky.';
     if (sparkyQuestStage === 'unit1-done') {
       const owned = backpack.includes('sensor');
@@ -799,7 +805,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (sparkyQuestStage === 'unit4') return 'Complete Unit 4 with Sparky.';
     if (sparkyQuestStage === 'all-done') return 'Scrap is fully repaired!';
     return 'Explore the city!';
-  }, [sparkyQuestStage, money]);
+  }, [sparkyQuestStage, money, backpack]);
   const sparkyQuestStageRef = useRef<SparkyQuestStage>('intro');
   const firstTransactionDoneRef = useRef(false);
   const [firstTransactionDone, setFirstTransactionDone] = useState(false);
@@ -1101,6 +1107,33 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [showBatteryDlg, batteryDlgStep]);
+
+  // Sparky dialog typewriter effect
+  useEffect(() => {
+    if (!showSparkyDlg || !sparkyDlgFull) return;
+    setSparkyDlgText('');
+    let i = 0;
+    const msg = sparkyDlgFull;
+    const interval = setInterval(() => {
+      i++;
+      setSparkyDlgText(msg.slice(0, i));
+      if (i >= msg.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [showSparkyDlg, sparkyDlgFull]);
+
+  // Sparky dialog Enter key handler
+  useEffect(() => {
+    if (!showSparkyDlg) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        setShowSparkyDlg(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showSparkyDlg]);
 
   // Rafiq letter dialog typewriter effect
   useEffect(() => {
@@ -2905,6 +2938,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       aptDoorFrame.position.set(0, -4.00, 0.62);
       apartmentRoomGroup.add(aptDoorFrame);
       createExitSignMesh(0, -4.00, 1.3, apartmentRoomGroup, '#b45309', '#fef3c7', '#fde68a');
+      // Exclamation marker at apartment exit
+      const aptExitAnchor = new THREE.Group();
+      aptExitAnchor.position.set(0, -3.35, 1.3);
+      apartmentRoomGroup.add(aptExitAnchor);
+      const aptExitMarker = addExclamationMarker(aptExitAnchor);
+      aptExitMarker.visible = false;
+      aptExitMarkerRef.current = aptExitMarker;
     }
 
     {
@@ -3658,12 +3698,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               setOutput('');
               setSuccess(false);
             } else if (stage === 'unit1-done' || stage === 'unit2-done' || stage === 'unit3-done') {
-              setSparkyModal('Sparky is waiting in his apartment. Go upstairs and bring him the part!');
+              setSparkyDlgFull('Sparky is waiting in his apartment. Go upstairs and bring him the part!');
+              setShowSparkyDlg(true);
             } else if (stage === 'unit3' || stage === 'unit4') {
               const unitLabel = stage === 'unit3' ? 'Unit 3 (coming soon)' : 'Unit 4 (coming soon)';
-              setSparkyModal(`${unitLabel} isn't built yet! Check back later.`);
+              setSparkyDlgFull(`${unitLabel} isn't built yet! Check back later.`);
+              setShowSparkyDlg(true);
             } else if (stage === 'all-done') {
-              setSparkyModal('Scrap is fully repaired! Arena mode is unlocked — go battle your friends!');
+              setSparkyDlgFull('Scrap is fully repaired! Arena mode is unlocked — go battle your friends!');
+              setShowSparkyDlg(true);
             }
           } else if (transportHitboxRef.current && isInsideHitbox(localPositionRef.current, transportHitboxRef.current)) {
             setShowTransportModal(true);
@@ -4747,6 +4790,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             sceneBgOverrideRef.current = null;
             cinemCamActiveRef.current = false;
             aptCutscenePhaseRef.current = 'idle';
+            setShopUnlocked(true);
             cutsceneDoneRef.current = true;
             try { localStorage.setItem('rb_cutscene_done', '1'); } catch {}
             apiSync({ cutsceneDone: true });
@@ -4765,7 +4809,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const dir = new THREE.Vector2(target.x - aptSparky.root.position.x, target.y - aptSparky.root.position.y).normalize();
               aptSparky.root.position.x += dir.x * MOVE_SPEED * 0.7 * delta;
               aptSparky.root.position.y += dir.y * MOVE_SPEED * 0.7 * delta;
-              setSparkyModal('Sparky walks to Scrap with the battery...');
+              setSparkyDlgFull('Sparky walks to Scrap with the battery...');
+              setShowSparkyDlg(true);
             } else {
               installBatteryPhaseRef.current = 'open-chest';
               installBatteryTimerRef.current = 0;
@@ -4775,14 +4820,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (scrapRobotRef.current) {
               scrapRobotRef.current.root.rotation.z = 0.08 + Math.sin(installBatteryTimerRef.current * 20) * 0.02;
             }
-            setSparkyModal('Opening Scrap\'s chest panel...');
+            setSparkyDlgFull('Opening Scrap\'s chest panel...');
+            setShowSparkyDlg(true);
             if (installBatteryTimerRef.current > 1.0) {
               installBatteryPhaseRef.current = 'place-battery';
               installBatteryTimerRef.current = 0;
             }
           } else if (ibPhase === 'place-battery') {
             installBatteryTimerRef.current += delta;
-            setSparkyModal('Placing the battery...');
+            setSparkyDlgFull('Placing the battery...');
+            setShowSparkyDlg(true);
             // Create battery glow mesh on Scrap's chest
             if (installBatteryTimerRef.current > 0.8) {
               const scrap = scrapRobotRef.current;
@@ -4805,7 +4852,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const intensity = 0.3 + Math.sin(installBatteryTimerRef.current * 6) * 0.15;
               (glow.material as THREE.MeshBasicMaterial).opacity = intensity;
             }
-            setSparkyModal('Battery installed! Scrap is powering up...');
+            setSparkyDlgFull('Battery installed! Scrap is powering up...');
+            setShowSparkyDlg(true);
             if (installBatteryTimerRef.current > 2.0) {
               installBatteryPhaseRef.current = 'done';
             }
@@ -4818,8 +4866,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               setHeldSlotIndex(null);
               heldSlotIndexRef.current = null;
             }
-            setSparkyModal('Think you need a sensor — go buy one at the Parts Shop near the lake.');
-            setTimeout(() => setSparkyModal(null), 4000);
+            setSparkyDlgFull('Think you need a sensor — go buy one at the Parts Shop near the lake.');
+            setShowSparkyDlg(true);
+            setTimeout(() => setShowSparkyDlg(false), 4000);
           }
         } else if (sparkyInstallPhaseRef.current && aptSparky) {
           const phase = sparkyInstallPhaseRef.current;
@@ -4830,12 +4879,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const dir = new THREE.Vector2(target.x - aptSparky.root.position.x, target.y - aptSparky.root.position.y).normalize();
               aptSparky.root.position.x += dir.x * MOVE_SPEED * 0.7 * delta;
               aptSparky.root.position.y += dir.y * MOVE_SPEED * 0.7 * delta;
-              setSparkyModal(`${PARTS_CATALOG.find(p => p.id === sparkyInstallPartIdRef.current)?.name} — Sparky walks to the workbench...`);
+              setSparkyDlgFull(`${PARTS_CATALOG.find(p => p.id === sparkyInstallPartIdRef.current)?.name} — Sparky walks to the workbench...`);
+              setShowSparkyDlg(true);
             } else {
               sparkyInstallPhaseRef.current = 'weld';
               sparkyInstallTimerRef.current = 0;
               setSparkleBurst(true);
-              setSparkyModal('Welding! ⚡');
+              setSparkyDlgFull('Welding! ⚡');
+              setShowSparkyDlg(true);
             }
           } else if (phase === 'weld') {
             sparkyInstallTimerRef.current += delta;
@@ -4877,7 +4928,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (sparkyInstallTimerRef.current > 0.6) {
               sparkyInstallPhaseRef.current = 'walk-back';
               sparkyInstallTimerRef.current = 0;
-              setSparkyModal('Part installed! Sparky steps back...');
+              setSparkyDlgFull('Part installed! Sparky steps back...');
+              setShowSparkyDlg(true);
             }
           } else if (phase === 'walk-back') {
             const homePos = new THREE.Vector2(0.2, 2.2);
@@ -4904,10 +4956,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             updateBackpack(newBackpack);
             updateQuestStage(nextUnit);
 
-            setSparkyModal(`⚡ ${part.name} installed! ${unitLabel} lessons unlocked!`);
+            setSparkyDlgFull(`⚡ ${part.name} installed! ${unitLabel} lessons unlocked!`);
+            setShowSparkyDlg(true);
 
             setTimeout(() => {
-              setSparkyModal(null);
+              setShowSparkyDlg(false);
               if (nextUnit === 'unit2') {
                 setTutorialPhases(unit2Phases);
                 tutorialPhasesRef.current = unit2Phases;
@@ -5437,6 +5490,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       arenaDoorHitboxRef.current = null;
       apartmentDoorHitboxRef.current = null;
       apartmentDoorMarkerRef.current = null;
+      aptExitMarkerRef.current = null;
       shopDoorMarkerRef.current = null;
       apartmentSparkyRef.current = null;
       if (scrapPartMeshRef.current) {
@@ -5461,7 +5515,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (workshopDoorMarkerRef.current) {
       const partId = PART_FOR_STAGE[sparkyQuestStage];
       const needsPart = !!partId && !backpack.includes(partId);
-      workshopDoorMarkerRef.current.visible = (sparkyQuestStage === 'unit1-done' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3-done') && !needsPart && !inWorkshopRoom;
+      workshopDoorMarkerRef.current.visible = ((sparkyQuestStage === 'unit1-done' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3-done') || (cutsceneDoneRef.current && backpack.includes('letter'))) && !needsPart && !inWorkshopRoom;
     }
     if (apartmentDoorMarkerRef.current) {
       const showAptMarker = !inApartmentRoom && sparkyHomeArrivedRef.current && (
@@ -5471,6 +5525,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         sparkyQuestStage === 'unit3-done'
       );
       apartmentDoorMarkerRef.current.visible = showAptMarker;
+    }
+    if (aptExitMarkerRef.current) {
+      const showAptExit = inApartmentRoom && sparkyHomeArrivedRef.current && (
+        sparkyQuestStage === 'intro' ||
+        sparkyQuestStage === 'unit1-done' ||
+        sparkyQuestStage === 'unit2-done' ||
+        sparkyQuestStage === 'unit3-done'
+      );
+      aptExitMarkerRef.current.visible = showAptExit;
     }
     if (shopDoorMarkerRef.current) {
       const partId = PART_FOR_STAGE[sparkyQuestStage];
@@ -5643,7 +5706,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
             if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
             if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
-            setSparkyModal('Scrap can speak! But his voice module is still glitchy. Earn $10 at the workshop, buy a Voice Module at the Parts Shop, then bring it to Sparky in the apartment.');
+            setSparkyDlgFull('Scrap can speak! But his voice module is still glitchy. Earn $10 at the workshop, buy a Voice Module at the Parts Shop, then bring it to Sparky in the apartment.');
+            setShowSparkyDlg(true);
           } else {
             setOutput('✅ Variables & Data Types complete! Scrap\'s motor diagnostics are online. He needs a new sensor part — buy one at the shop and bring it to the apartment.');
             setTutorialComplete(true);
@@ -5652,7 +5716,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
             if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
             if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
-            setSparkyModal('Scrap\'s motor diagnostics are working! But his sensor is fried. Earn $5 at the workshop, buy a new Sensor at the Parts Shop, then bring it to Sparky in the apartment.');
+            setSparkyDlgFull('Scrap\'s motor diagnostics are working! But his sensor is fried. Earn $5 at the workshop, buy a new Sensor at the Parts Shop, then bring it to Sparky in the apartment.');
+            setShowSparkyDlg(true);
           }
           setSparkleBurst(false);
           leaveApartmentRoom();
@@ -5745,7 +5810,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (installBatteryPhaseRef.current) return;
         installBatteryPhaseRef.current = 'walk-to-scrap';
         installBatteryTimerRef.current = 0;
-        setSparkyModal('Sparky takes the battery to Scrap...');
+        setSparkyDlgFull('Sparky takes the battery to Scrap...');
+        setShowSparkyDlg(true);
         return;
       }
       const partId = PART_FOR_STAGE[stage];
@@ -5758,15 +5824,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         sparkyInstallNextStageRef.current = nextUnit;
         sparkyInstallPhaseRef.current = 'walk-to-bench';
         sparkyInstallTimerRef.current = 0;
-        setSparkyModal(`${part!.name} — Sparky walks to the workbench...`);
+        setSparkyDlgFull(`${part!.name} — Sparky walks to the workbench...`);
+        setShowSparkyDlg(true);
       } else {
-        setSparkyModal(`Sparky needs a ${part!.name} for Scrap. You can buy one at the Parts Shop near the lake.`);
+        setSparkyDlgFull(`Sparky needs a ${part!.name} for Scrap. You can buy one at the Parts Shop near the lake.`);
+        setShowSparkyDlg(true);
       }
     } else if (stage === 'unit3' || stage === 'unit4') {
       const unitLabel = stage === 'unit3' ? 'Unit 3 (coming soon)' : 'Unit 4 (coming soon)';
-      setSparkyModal(`${unitLabel} isn't built yet! Check back later.`);
+      setSparkyDlgFull(`${unitLabel} isn't built yet! Check back later.`);
+      setShowSparkyDlg(true);
     } else if (stage === 'all-done') {
-      setSparkyModal('Scrap is fully repaired! Arena mode is unlocked — go battle your friends!');
+      setSparkyDlgFull('Scrap is fully repaired! Arena mode is unlocked — go battle your friends!');
+      setShowSparkyDlg(true);
     }
   }, []);
 
@@ -6033,22 +6103,39 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      {sparkyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => setSparkyModal(null)}>
-          <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6">
-            <div className="flex items-start gap-4 mb-5">
-              <div className="text-4xl">🤖</div>
-              <div className="flex-1">
-                <h2 className="text-white text-2xl font-bold">Sparky</h2>
-                <p className="mt-2 text-lg text-slate-100 whitespace-pre-line">{sparkyModal}</p>
+      {showSparkyDlg && (() => {
+        return (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
+          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
+          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
+            style={{ height: '30vh' }}>
+            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-8 h-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4 3.6-8 8-8s8 4 8 8" />
+                </svg>
+                <span className="text-amber-300 font-bold text-xl tracking-wide">Sparky</span>
               </div>
-            </div>
-            <div className="flex justify-end">
-              <button className="rounded-lg bg-amber-500 px-6 py-3 text-lg font-semibold text-slate-900 hover:bg-amber-400" onClick={() => setSparkyModal(null)}>Got it!</button>
+              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem] whitespace-pre-line">
+                {sparkyDlgText}<span className="animate-pulse text-amber-400/80">▌</span>
+              </p>
+              <div className="flex justify-end mt-4">
+                <button className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 transition-colors active:scale-95"
+                  onClick={() => setShowSparkyDlg(false)}>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="14 7 9 12 14 17" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                    <line x1="3" y1="12" x2="5" y2="12" />
+                  </svg>
+                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Speech bubble + choices above Sparky (projected via ref) */}
       <div
