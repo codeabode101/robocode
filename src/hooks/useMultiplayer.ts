@@ -279,12 +279,15 @@ export function useMultiplayer(
     triggerEvent('client-player-move', { x, y, room, rotation });
   }, []);
 
+  const positionBroadcastRef = useRef<() => void>(() => {});
+
   return {
     players,
     connected,
     playerCount,
     sendPosition,
     triggerEvent,
+    positionBroadcastRef,
     arenaPlayers,
     setArenaPlayers,
     arenaChallenge,

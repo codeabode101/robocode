@@ -17,12 +17,13 @@ import {
   createRobotVisual, buildPlayerVisual, createHumanVisual, createPartsShop, createPartModel, createApartmentBuilding, animateRobotVisual, LABEL_BUILD_TAG, WALK_BOB_SPEED,
   addExclamationMarker, createRepairKiosk, animateRepairKiosk, animateRepairSparky, animateSparkyWave,
 } from '@/components/game/scene';
-import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest, computeCameraZoom, createCardboardBox, createLaptop, createWire, animateWirePulse, openBoxLid } from '@/components/game/helpers';
+import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest, computeCameraZoom, createCardboardBox, createLaptop, createWire, createWireCoil, animateWirePulse, openBoxLid, isInsideHitbox, collidesWithAny, escapeHtml, highlightJava } from '@/components/game/helpers';
 import type { BuildingFootprint } from '@/components/game/helpers';
 import { buildObstacles } from '@/components/game/city';
 import { unit1Phases, unit2Phases } from '@/components/game/tutorialData';
 import { PARTS_CATALOG, PART_FOR_STAGE, DATA_CUSTOMER_NAMES } from '@/components/game/types';
 import type { ScrapPartId } from '@/components/game/types';
+import { gameStore, useGameStoreKey } from '@/store/useGameState';
 
 // If URL contains ?nocache=1 and no cache-bust, unregister service workers and reload
 if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
@@ -93,6 +94,7 @@ const MOVE_SPEED = 7.4;
 const NETWORK_SYNC_MS = 50;
 const NPC_POSITION = new THREE.Vector2(-2.87, -6.1);
 
+const REMOTE_LERP = 0.35;
 const SPARKY_INTRO_CONVO = [
   {
     text: "Woah! Hey there! Can you help me? I found something amazing in my apartment!",
@@ -111,7 +113,15 @@ const SPARKY_INTRO_CONVO = [
     choices: [{ label: "Let's go!", next: -1 }],
   },
 ];
-const REMOTE_LERP = 0.35;
+const BATTERY_DLG_STEPS = [
+  "Oh no! The battery's completely dead... we need a new one.",
+  "I've written a letter to Rafiq at the robot shop. Take this to him — he'll sort you out with a job so you can earn enough for a battery.",
+  "Rafiq's shop is just outside, down the street. Show him my letter and he'll know what to do. Good luck!",
+];
+const RAFIQ_LETTER_STEPS = [
+  "Let's see here... 'Sparky sent me'... Ah, that old bot finally gave up, eh?",
+  "Well, I could use a hand around the shop. Help my customers with their robot requests — write some Java code for 'em — and I'll pay you. Fair?",
+];
 const PLAYER_EYE_HEIGHT = 1.5;
 const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
 const ARENA_ROOM_SPAWN = new THREE.Vector2(0, 3.7);
@@ -172,54 +182,6 @@ type BoxHitbox = {
 
 type Hitbox = CircleHitbox | BoxHitbox;
 
-function isInsideHitbox(point: THREE.Vector2, hitbox: Hitbox) {
-  if (hitbox.shape === 'circle') {
-    return Math.hypot(point.x - hitbox.center.x, point.y - hitbox.center.y) <= hitbox.radius;
-  }
-  const dx = Math.abs(point.x - hitbox.center.x);
-  const dy = Math.abs(point.y - hitbox.center.y);
-  return dx <= hitbox.halfWidth && dy <= hitbox.halfHeight;
-}
-
-function collidesWithAny(point: THREE.Vector2, hitboxes: Hitbox[]) {
-  return hitboxes.some((hitbox) => isInsideHitbox(point, hitbox));
-}
-
-function escapeHtml(input: string) {
-  return input
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
-
-function highlightJava(input: string) {
-  const tokenPattern =
-    /"(?:[^"\\\n]|\\.)*"|\b(String|int|double|boolean|char|float|long|short|byte)\b|\b([A-Za-z_][A-Za-z0-9_]*)\b(?=\s*=)/g;
-  let output = '';
-  let lastIndex = 0;
-
-  for (const match of input.matchAll(tokenPattern)) {
-    const value = match[0];
-    const index = match.index ?? 0;
-    output += escapeHtml(input.slice(lastIndex, index));
-
-    if (value.startsWith('"')) {
-      output += `<span style="color:#f59e0b">${escapeHtml(value)}</span>`;
-    } else if (match[1]) {
-      output += `<span style="color:#60a5fa">${escapeHtml(value)}</span>`;
-    } else {
-      output += `<span style="color:#a78bfa">${escapeHtml(value)}</span>`;
-    }
-
-    lastIndex = index + value.length;
-  }
-
-  output += escapeHtml(input.slice(lastIndex));
-  return output;
-}
-
 type ArenaPlayer = {
   id: string;
   name: string;
@@ -257,7 +219,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const codeInputRef = useRef<HTMLTextAreaElement>(null);
   const codePreviewRef = useRef<HTMLPreElement>(null);
   const mp = useMultiplayer(userId, apinatorAppKey, apinatorCluster);
-  const { players, connected, playerCount, sendPosition, triggerEvent } = mp;
+  const { players, connected, playerCount, sendPosition, triggerEvent, positionBroadcastRef } = mp;
+  positionBroadcastRef.current = () => {
+    const room = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apartment' : inShopRoomRef.current ? 'shop' : 'outside';
+    const spawns: Record<string, { x: number; y: number }> = { workshop: ROOM_SPAWN, arena: ARENA_ROOM_SPAWN, apartment: APARTMENT_SPAWN, shop: { x: 0, y: 1.2 } };
+    const pos = room !== 'outside' ? spawns[room] : { x: localPositionRef.current.x, y: localPositionRef.current.y };
+    sendPosition(pos.x, pos.y, room, yawRef.current);
+  };
 
   const localPositionRef = useRef(new THREE.Vector2(0, 0));
   const localRobotRef = useRef<RobotVisual | null>(null);
@@ -325,11 +293,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const transportHitboxRef = useRef<CircleHitbox | null>(null);
   const sparkyPathIndexRef = useRef(0);
   const sparkyWaitTimerRef = useRef(0);
-  const sparkyGoHomeRef = useRef(false);
-  const sparkyHomeArrivedRef = useRef(false);
-  const sparkyHomeTargetRef = useRef(new THREE.Vector2(-9.6, -5.7));
-  const sparkyHomeWaypointsRef = useRef<THREE.Vector2[]>([]);
-  const sparkyHomeWaypointIdxRef = useRef(0);
   const outdoorSparkyRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
   const scrapPartMeshRef = useRef<THREE.Mesh | null>(null);
   const sparkyInstallPhaseRef = useRef<'walk-to-bench' | 'weld' | 'attach-part' | 'walk-back' | 'done' | null>(null);
@@ -338,10 +301,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyInstallNextStageRef = useRef<SparkyQuestStage | null>(null);
   const sparkyEventTriggeredRef = useRef(false);
   const sparkyAcknowledgedRef = useRef(false);
-  const sparkyIntroStepRef = useRef(-1);
   const repairTimerRef = useRef(0);
   const repairKioskRef = useRef<THREE.Group | null>(null);
-  const sparkyWalkHomeTimerRef = useRef(0);
   const eventParticlesRef = useRef<THREE.Group | null>(null);
   const cameraTargetPosRef = useRef(new THREE.Vector3());
   const cameraLookTargetRef = useRef(new THREE.Vector3());
@@ -349,20 +310,44 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyBaseQuatRef = useRef<THREE.Quaternion | null>(null);
   const sparkyFacingRef = useRef(0);
 
-  const aptCutscenePhaseRef = useRef<'idle' | 'walk-west' | 'open-box' | 'lift-rise' | 'lift-carry' | 'lift-lower' | 'fetch-laptop' | 'link-computer' | 'done'>('idle');
+  const aptCutscenePhaseRef = useRef<'idle' | 'walk-west' | 'open-box' | 'lift-rise' | 'lift-carry' | 'lift-lower' | 'fetch-laptop' | 'link-computer' | 'electrocute' | 'walk-to-laptop' | 'string-tutorial' | 'laptop-ui' | 'antenna-glow' | 'date-coding' | 'reboot' | 'version-coding' | 'pre-boot' | 'boot-coding' | 'boot' | 'battery-scene' | 'done'>('idle');
   const aptSparkyFacingRef = useRef(0);
-  const aptFetchArrivedRef = useRef(false);
-  const aptLaptopPlacedRef = useRef(false);
   const aptCutsceneTimerRef = useRef(0);
   const cutsceneBoxRef = useRef<THREE.Group | null>(null);
   const cutsceneBoxLidRef = useRef<THREE.Mesh | null>(null);
-  const brokenScrapRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
+
   const computerRef = useRef<THREE.Group | null>(null);
   const wireRef = useRef<THREE.Mesh | null>(null);
+  const coilRef = useRef<THREE.Object3D | null>(null);
+  const tackFxRef = useRef<THREE.Group | null>(null);
+  const tackFxPhaseRef = useRef(0);
   const cinemCamActiveRef = useRef(false);
   const cutsceneDoneRef = useRef(false);
+  const sparkyGoHomeRef = useRef(false);
+  const sparkyHomeArrivedRef = useRef(false);
+  const sparkyHomeTargetRef = useRef(new THREE.Vector2(-9.6, -5.7));
+  const sparkyHomeWaypointsRef = useRef<THREE.Vector2[]>([]);
+  const sparkyHomeWaypointIdxRef = useRef(0);
+  const sparkyIntroStepRef = useRef(-1);
+  const sparkyWalkHomeTimerRef = useRef(0);
+  const chestGlowRef = useRef<THREE.Mesh | null>(null);
+  const awakenSoundPlayedRef = useRef(false);
+  const electrocuteDlgShownRef = useRef(false);
+  const stringDlgIsHelpRef = useRef(false);
+  const dateDlgShownRef = useRef(false);
+  const dateCodingShownRef = useRef(false);
+  const batteryDlgShownRef = useRef(false);
+  const versionDlgShownRef = useRef(false);
+  const versionCodingShownRef = useRef(false);
+  const bootDlgShownRef = useRef(false);
+  const bootCodingShownRef = useRef(false);
+  const smokeParticlesRef = useRef<THREE.Mesh[]>([]);
+  const beepOscillatorRef = useRef<OscillatorNode | null>(null);
+  const aptSparkyWalkWpRef = useRef(0);
 
   const sceneRef = useRef<THREE.Scene | null>(null);
+  const antennaGlowLightRef = useRef<THREE.PointLight | null>(null);
+  const antennaGlowSpriteRef = useRef<THREE.Sprite | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const animateFnRef = useRef<((now: number) => void) | null>(null);
@@ -370,6 +355,70 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const animFrameCounterRef = useRef(0);
   const tabHiddenRef = useRef(false);
   const tabHiddenAtRef = useRef(0);
+
+  const playAwakenSound = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      // Thump — low sine burst
+      const thump = ctx.createOscillator();
+      thump.type = 'sine';
+      thump.frequency.setValueAtTime(80, ctx.currentTime);
+      thump.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.15);
+      const g1 = ctx.createGain();
+      g1.gain.setValueAtTime(0.6, ctx.currentTime);
+      g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      thump.connect(g1).connect(ctx.destination);
+      thump.start(ctx.currentTime);
+      thump.stop(ctx.currentTime + 0.15);
+      // Rising chime — 300→1200Hz sweep
+      const chime = ctx.createOscillator();
+      chime.type = 'sine';
+      chime.frequency.setValueAtTime(300, ctx.currentTime + 0.1);
+      chime.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.9);
+      const g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0, ctx.currentTime + 0.1);
+      g2.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.3);
+      g2.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.9);
+      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+      chime.connect(g2).connect(ctx.destination);
+      chime.start(ctx.currentTime + 0.1);
+      chime.stop(ctx.currentTime + 1.2);
+    } catch {}
+  };
+
+  const playStartupChime = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const notes = [523, 659, 784, 1047];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.2);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, ctx.currentTime + i * 0.2);
+        g.gain.linearRampToValueAtTime(0.25, ctx.currentTime + i * 0.2 + 0.02);
+        g.gain.linearRampToValueAtTime(0, ctx.currentTime + i * 0.2 + 0.14);
+        osc.connect(g).connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.2);
+        osc.stop(ctx.currentTime + i * 0.2 + 0.15);
+      });
+    } catch {}
+  };
+
+  const playBootBeep = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.15, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      osc.connect(g).connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.08);
+    } catch {}
+  };
 
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
@@ -383,7 +432,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [inShopRoom, setInShopRoom] = useState(false);
   const inShopRoomRef = useRef(false);
   const [roomEntryFlash, setRoomEntryFlash] = useState(false);
-  const [money, setMoney] = useState(0);
+  const money = useGameStoreKey('money');
   const [sparkyQuestStage, setSparkyQuestStage] = useState<SparkyQuestStage>('intro');
   const [tutorialPhases, setTutorialPhases] = useState<TutorialPhase[]>(unit1Phases);
   const [robotName, setRobotName] = useState('Scrap');
@@ -409,12 +458,75 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [arenaBattleActive, setArenaBattleActive] = useState(false);
   const [sparkyModal, setSparkyModal] = useState<string | null>(null);
   const [sparkyIntroStep, setSparkyIntroStep] = useState(-1);
+  const [batteryDlgStep, setBatteryDlgStep] = useState(-1);
+  const [rafiqLetterStep, setRafiqLetterStep] = useState(-1);
   const [showSparkyExamples, setShowSparkyExamples] = useState(false);
+  const [showElectrocuteDlg, setShowElectrocuteDlg] = useState(false);
+  const [electrocuteStep, setElectrocuteStep] = useState(0);
+  const [electrocuteText, setElectrocuteText] = useState('');
+  const [playerName, setPlayerName] = useState('');
+  const cutsceneDlgSteps = useMemo(() => [
+    { speaker: 'Sparky', text: "I'll get electrocuted if I code Scrap..." },
+    { speaker: 'Sparky', text: '...can you code him?' },
+    { speaker: playerName || 'You', text: 'Okay...' },
+  ], [playerName]);
+  const [showStringDlg, setShowStringDlg] = useState(false);
+  const [stringDlgStep, setStringDlgStep] = useState(0);
+  const [stringDlgText, setStringDlgText] = useState('');
+  const stringDlgSteps = useMemo(() => [
+    { speaker: 'Sparky', text: 'He needs a name so we can send commands to him.' },
+    { speaker: 'Sparky', text: 'You can pick any name you want — that\'s what he\'ll be called.' },
+    { speaker: 'Sparky', text: 'Use a `String` in code. Like this: `String name = "Scrap";`' },
+    { speaker: 'Sparky', text: '`String` stores text. `name` is the variable. `"Scrap"` is the value.' },
+  ], []);
+  const dateDlgSteps = useMemo(() => [
+    { speaker: 'Sparky', text: 'Nice! He\'s online. Now let\'s calibrate his internal clock — he needs to know today\'s date.' },
+    { speaker: 'Sparky', text: 'Use `int` variables — they store whole numbers. Put EACH on its own separate line: `int year = 2026;` then `int month = 5;`' },
+    { speaker: 'Sparky', text: 'Oh — and months start at 0 in code! January is 0, February is 1, up to December which is 11. The laptop shows a chart to help.' },
+  ], []);
+  const dateHelpSteps = useMemo(() => [
+    { speaker: 'Sparky', text: 'Type each `int` on its own line. Like: `int year = 2026;` then press Enter and type `int month = 5;`' },
+    { speaker: 'Sparky', text: 'Look at the month chart below the editor. January is 0, February is 1, March is 2... pick the number that matches right now.' },
+    { speaker: 'Sparky', text: 'Make sure your values match today\'s actual date! Check your computer\'s clock if you\'re not sure.' },
+  ], []);
+  const versionDlgSteps = useMemo(() => [
+    { speaker: 'Sparky', text: 'Uh oh — the bot is still glitching! Its version number is corrupted and its operational mode is undefined.' },
+    { speaker: 'Sparky', text: 'We need to update the version to 1.0. For numbers that have decimals, we use `double`.' },
+    { speaker: 'Sparky', text: 'Now declare a `double` called `version` with value `1.0`, and a `String` called `mode` with a word meaning \'working correctly\'. Each on its own line!' },
+  ], []);
+  const versionHelpSteps = useMemo(() => [
+    { speaker: 'Sparky', text: 'Decimals are numbers with a dot — like 1.5, 2.75, 0.99. `double` is the Java type for storing them. So `double version = 1.0;` declares a decimal variable called `version`.' },
+    { speaker: 'Sparky', text: '`String mode = "normal";` — `mode` describes the bot\'s operational state. Fill in the word that\'s the opposite of \'glitching\' or \'broken\'.' },
+  ], []);
+  const bootDlgSteps = useMemo(() => [
+    { speaker: 'Sparky', text: 'The firmware\'s in place and the mode is set. Time to bring him online!' },
+    { speaker: 'Sparky', text: 'We need a `boolean` called `ready`. A `boolean` is like a light switch — it can only be ON or OFF. In Java, those are the keywords `true` and `false`.' },
+    { speaker: 'Sparky', text: 'Declare `ready` as the \'on\' value. You know the format — type, name, equals, value — all on one line!' },
+  ], []);
+  const bootHelpSteps = useMemo(() => [
+    { speaker: 'Sparky', text: '`boolean` is the simplest type — it only holds `true` or `false`. Think of it like an LED: either lit or not lit.' },
+    { speaker: 'Sparky', text: 'We want `ready` to be `true` — the robot is powered and good to go. The line should look familiar: `boolean ready = true;`' },
+  ], []);
+  const [showLaptopUI, setShowLaptopUI] = useState(false);
+  const [laptopCode, setLaptopCode] = useState('String name = "[Put Your Robot Name Here]";');
+  const [laptopOutput, setLaptopOutput] = useState('');
+  const [laptopSuccess, setLaptopSuccess] = useState(false);
+  const [laptopMode, setLaptopMode] = useState<'name' | 'date' | 'version' | 'boot'>('name');
+  const [laptopWindowCSS, setLaptopWindowCSS] = useState('70vw');
+  const [showDateDlg, setShowDateDlg] = useState(false);
+  const [dateDlgStep, setDateDlgStep] = useState(0);
+  const [dateDlgText, setDateDlgText] = useState('');
+  const [showVersionDlg, setShowVersionDlg] = useState(false);
+  const [versionDlgStep, setVersionDlgStep] = useState(0);
+  const [versionDlgText, setVersionDlgText] = useState('');
+  const [showDecimalExplain, setShowDecimalExplain] = useState(false);
+  const [showBootDlg, setShowBootDlg] = useState(false);
+  const [bootDlgStep, setBootDlgStep] = useState(0);
+  const [bootDlgText, setBootDlgText] = useState('');
   const [showTransportModal, setShowTransportModal] = useState(false);
   const [transportMessage, setTransportMessage] = useState<string | null>(null);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [backpack, setBackpack] = useState<ScrapPartId[]>([]);
-  const backpackRef = useRef<ScrapPartId[]>([]);
+  const backpack = useGameStoreKey('backpack');
   const [heldSlotIndex, setHeldSlotIndex] = useState<number | null>(null);
   const heldSlotIndexRef = useRef<number | null>(null);
   const heldItemGroupRef = useRef<THREE.Group | null>(null);
@@ -422,6 +534,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [showWasmHint, setShowWasmHint] = useState(true);
   const [shopkeeperGreeting, setShopkeeperGreeting] = useState<string | null>(null);
   const [showControlsModal, setShowControlsModal] = useState(false);
+  const [showSemicolonArrow, setShowSemicolonArrow] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const modalOpenRef = useRef(false);
   modalOpenRef.current = activeModal !== null;
@@ -463,18 +576,204 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   }, [apiSync]);
 
   const updateBackpack = useCallback((items: ScrapPartId[]) => {
-    setBackpack(items);
-    backpackRef.current = items;
+    gameStore.set('backpack', items);
     apiSync({ backpack: items });
     lastConfirmedBackpackRef.current = items;
   }, [apiSync]);
 
   const updateMoney = useCallback((val: number) => {
-    setMoney(val);
-    moneyRef.current = val;
+    gameStore.set('money', val);
     apiSync({ money: val });
     lastConfirmedMoneyRef.current = val;
   }, [apiSync]);
+
+  function validateJavaLines(
+    code: string,
+    specs: { type: string; name: string; validate: (value: string) => string | null }[]
+  ): { valid: boolean; message: string; showArrow: boolean } {
+    const lines = code.trim().split('\n').filter(l => l.trim());
+    if (lines.length !== specs.length) {
+      return { valid: false, message: `❌ Enter exactly ${specs.length} line${specs.length > 1 ? 's' : ''}.`, showArrow: false };
+    }
+    const typeAliases: Record<string, string> = {
+      'string': 'String', 'str': 'String',
+      'Int': 'int', 'integer': 'int',
+      'Double': 'double', 'float': 'double',
+      'Bool': 'boolean', 'bool': 'boolean', 'Boolean': 'boolean',
+    };
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      const spec = specs[i];
+      if (/[[\]]/.test(line)) {
+        return { valid: false, message: '❌ Those `[]` just mean "fill in a value"!', showArrow: false };
+      }
+      if (!line.endsWith(';')) {
+        return { valid: false, message: '❌ Missing a semicolon at the end of the line!', showArrow: true };
+      }
+      const m = line.match(/^\s*(\w+)\s+(\w+)\s*=\s*(.+)\s*;\s*$/);
+      if (!m) {
+        if (/==/.test(line)) return { valid: false, message: '❌ Use single `=` for assignment, not `==`.', showArrow: false };
+        return { valid: false, message: `❌ Check line ${i + 1} — should be \`type name = value;\`.`, showArrow: false };
+      }
+      const userType = m[1];
+      const userName = m[2];
+      const value = m[3];
+      const alias = typeAliases[userType];
+      if (alias) {
+        return { valid: false, message: `❌ Use \`${alias}\` (not \`${userType}\`).`, showArrow: false };
+      }
+      if (userType !== spec.type && userType.toLowerCase() === spec.type.toLowerCase()) {
+        return { valid: false, message: `❌ \`${spec.type}\` is all lowercase in Java.`, showArrow: false };
+      }
+      if (userType !== spec.type) {
+        return { valid: false, message: `❌ Expected \`${spec.type}\`, not \`${userType}\`.`, showArrow: false };
+      }
+      if (userName !== spec.name) {
+        return { valid: false, message: `❌ The variable should be \`${spec.name}\`, not \`${userName}\`.`, showArrow: false };
+      }
+      // Type-specific pre-checks
+      if (spec.type === 'boolean') {
+        if (/^"[^"]*"$/.test(value)) return { valid: false, message: '❌ Remove the `"` marks — booleans don\'t use quotes.', showArrow: false };
+        if (value === 'True' || value === 'TRUE') return { valid: false, message: '❌ Java is case-sensitive — use lowercase `true`.', showArrow: false };
+        if (value !== 'true' && value !== 'false') return { valid: false, message: '❌ `boolean` can only be `true` or `false`.', showArrow: false };
+      }
+      if (spec.type === 'String') {
+        if (!/^"[^"]*"$/.test(value)) return { valid: false, message: '❌ String values need double quotes like `"value"`.', showArrow: false };
+        if (value === '""') return { valid: false, message: '❌ The value can\'t be empty!', showArrow: false };
+      }
+      if (spec.type === 'double') {
+        if (/^"[^"]*"$/.test(value)) return { valid: false, message: '❌ Remove the `"` marks — `double` values are just numbers.', showArrow: false };
+        if (isNaN(Number(value))) return { valid: false, message: '❌ `double` expects a number like `1.0`.', showArrow: false };
+      }
+      if (spec.type === 'int') {
+        if (/^"[^"]*"$/.test(value)) return { valid: false, message: '❌ Remove the `"` marks — `int` values are just numbers.', showArrow: false };
+        if (!/^-?\d+$/.test(value)) return { valid: false, message: '❌ `int` expects a whole number without decimals.', showArrow: false };
+      }
+      const err = spec.validate(value);
+      if (err) return { valid: false, message: `❌ ${err}`, showArrow: false };
+    }
+    return { valid: true, message: '', showArrow: false };
+  }
+
+  const handleLaptopRun = useCallback(() => {
+    if (laptopMode === 'name') {
+      const result = validateJavaLines(laptopCode, [
+        { type: 'String', name: 'name', validate: (value) => {
+          const content = value.slice(1, -1);
+          if (content === '[Put Your Robot Name Here]') return 'That\'s the placeholder — give your robot a real name!';
+          if (!content.trim()) return 'The name can\'t be empty!';
+          return null;
+        }},
+      ]);
+      if (!result.valid) {
+        setLaptopOutput(result.message);
+        setLaptopSuccess(false);
+        setShowSemicolonArrow(result.showArrow);
+        return;
+      }
+      const val = laptopCode.trim().match(/^\s*String\s+\w+\s*=\s*"([^"]*)"\s*;\s*$/)?.[1] || '';
+      setLaptopOutput(`✅ "${val}" — what a great name!`);
+      setLaptopSuccess(true);
+      setRobotName(val);
+      robotNameRef.current = val;
+      gameStore.set('robotName', val);
+      apiSync({ robotName: val });
+      try { localStorage.setItem('rb_robot_name', val); } catch {}
+      setTimeout(() => {
+        setShowLaptopUI(false);
+        aptCutscenePhaseRef.current = 'antenna-glow';
+        aptCutsceneTimerRef.current = 0;
+        dateDlgShownRef.current = false;
+      }, 1500);
+    } else if (laptopMode === 'date') {
+      const now = new Date();
+      const expectedYear = now.getFullYear();
+      const expectedMonth = now.getMonth();
+      const expectedDay = now.getDate();
+      const monthName = now.toLocaleString('default', { month: 'long' });
+      const result = validateJavaLines(laptopCode, [
+        { type: 'int', name: 'year', validate: (value) => {
+          if (parseInt(value, 10) !== expectedYear) return `The year should be ${expectedYear} — check your computer's clock!`;
+          return null;
+        }},
+        { type: 'int', name: 'month', validate: (value) => {
+          if (parseInt(value, 10) !== expectedMonth) return 'That\'s not today\'s month. Check the chart below.';
+          return null;
+        }},
+        { type: 'int', name: 'day', validate: (value) => {
+          if (parseInt(value, 10) !== expectedDay) return `Today is day ${expectedDay} — check your computer's clock!`;
+          return null;
+        }},
+      ]);
+      if (!result.valid) {
+        setLaptopOutput(result.message);
+        setLaptopSuccess(false);
+        setShowSemicolonArrow(result.showArrow);
+        return;
+      }
+      setLaptopOutput(`✅ Calibrated! Today is ${monthName} ${expectedDay}, ${expectedYear}. (int month = ${expectedMonth})`);
+      setLaptopSuccess(true);
+      const lines = laptopCode.trim().split('\n').filter(l => l.trim());
+      for (const line of lines) {
+        const m = line.match(/^\s*int\s+(year|month|day)\s*=\s*(-?\d+)\s*;\s*$/);
+        if (m) {
+          if (m[1] === 'year') gameStore.set('calibrationYear', parseInt(m[2], 10));
+          if (m[1] === 'month') gameStore.set('calibrationMonth', parseInt(m[2], 10));
+          if (m[1] === 'day') gameStore.set('calibrationDay', parseInt(m[2], 10));
+        }
+      }
+      setTimeout(() => {
+        setShowLaptopUI(false);
+        aptCutscenePhaseRef.current = 'reboot';
+        aptCutsceneTimerRef.current = 0;
+      }, 1500);
+    } else if (laptopMode === 'version') {
+      const result = validateJavaLines(laptopCode, [
+        { type: 'double', name: 'version', validate: (value) => {
+          if (Number(value) !== 1.0) return 'Set version to 1.0.';
+          return null;
+        }},
+        { type: 'String', name: 'mode', validate: (value) => {
+          const content = value.slice(1, -1);
+          if (content.toLowerCase() !== 'normal') return 'The mode should be "normal".';
+          return null;
+        }},
+      ]);
+      if (!result.valid) {
+        setLaptopOutput(result.message);
+        setLaptopSuccess(false);
+        setShowSemicolonArrow(result.showArrow);
+        return;
+      }
+      setLaptopOutput('✅ Version 1.0, mode = normal. The bot is stable!');
+      setLaptopSuccess(true);
+      setTimeout(() => {
+        setShowLaptopUI(false);
+        aptCutscenePhaseRef.current = 'pre-boot';
+        aptCutsceneTimerRef.current = 0;
+      }, 1500);
+    } else if (laptopMode === 'boot') {
+      const result = validateJavaLines(laptopCode, [
+        { type: 'boolean', name: 'ready', validate: (value) => {
+          if (value !== 'true') return 'ready should be `true` (powered on).';
+          return null;
+        }},
+      ]);
+      if (!result.valid) {
+        setLaptopOutput(result.message);
+        setLaptopSuccess(false);
+        setShowSemicolonArrow(result.showArrow);
+        return;
+      }
+      setLaptopOutput('✅ Ready = true. Initiating boot sequence...');
+      setLaptopSuccess(true);
+      setTimeout(() => {
+        setShowLaptopUI(false);
+        aptCutscenePhaseRef.current = 'boot';
+        aptCutsceneTimerRef.current = 0;
+      }, 1500);
+    }
+  }, [laptopCode, laptopMode, apiSync]);
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
   const missionText = useMemo(() => {
@@ -498,7 +797,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (sparkyQuestStage === 'all-done') return 'Scrap is fully repaired!';
     return 'Explore the city!';
   }, [sparkyQuestStage, money]);
-  const moneyRef = useRef(0);
   const sparkyQuestStageRef = useRef<SparkyQuestStage>('intro');
   const firstTransactionDoneRef = useRef(false);
   const [firstTransactionDone, setFirstTransactionDone] = useState(false);
@@ -709,10 +1007,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     inApartmentRoomRef.current = inApartmentRoom;
   }, [inApartmentRoom]);
 
-  useEffect(() => {
-    moneyRef.current = money;
-  }, [money]);
-
   const profileLoadedRef = useRef(false);
 
   // Load persisted state
@@ -726,6 +1020,224 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setShowControlsModal(true);
   }, []);
 
+  // Electrocute dialog Enter key handler
+  useEffect(() => {
+    if (!showElectrocuteDlg) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const nextStep = electrocuteStep + 1;
+        if (nextStep < cutsceneDlgSteps.length) {
+          setElectrocuteStep(nextStep);
+        } else {
+          setShowElectrocuteDlg(false);
+          electrocuteDlgShownRef.current = false;
+          aptCutscenePhaseRef.current = 'walk-to-laptop';
+          aptCutsceneTimerRef.current = 0;
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showElectrocuteDlg, electrocuteStep, cutsceneDlgSteps.length]);
+
+  // Electrocute dialog typewriter effect
+  useEffect(() => {
+    if (!showElectrocuteDlg) return;
+    const step = cutsceneDlgSteps[electrocuteStep];
+    if (!step) return;
+    setElectrocuteText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setElectrocuteText(step.text.slice(0, i));
+      if (i >= step.text.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [electrocuteStep, showElectrocuteDlg, cutsceneDlgSteps]);
+
+  // String tutorial dialog Enter key handler
+  useEffect(() => {
+    if (!showStringDlg) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const nextStep = stringDlgStep + 1;
+        if (nextStep < stringDlgSteps.length) {
+          setStringDlgStep(nextStep);
+        } else {
+          setShowStringDlg(false);
+          if (stringDlgIsHelpRef.current) {
+            stringDlgIsHelpRef.current = false;
+            setShowLaptopUI(true);
+          } else {
+            aptCutscenePhaseRef.current = 'laptop-ui';
+            aptCutsceneTimerRef.current = 0;
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showStringDlg, stringDlgStep, stringDlgSteps.length]);
+
+  // Date dialog Enter key handler
+  useEffect(() => {
+    if (!showDateDlg) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const steps = stringDlgIsHelpRef.current ? dateHelpSteps : dateDlgSteps;
+        const nextStep = dateDlgStep + 1;
+        if (nextStep < steps.length) {
+          setDateDlgStep(nextStep);
+        } else {
+          setShowDateDlg(false);
+          if (stringDlgIsHelpRef.current) {
+            stringDlgIsHelpRef.current = false;
+            setShowLaptopUI(true);
+          } else {
+            dateCodingShownRef.current = false;
+            aptCutscenePhaseRef.current = 'date-coding';
+            aptCutsceneTimerRef.current = 0;
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showDateDlg, dateDlgStep, stringDlgIsHelpRef.current, dateHelpSteps.length, dateDlgSteps.length]);
+
+  // Date dialog typewriter effect
+  useEffect(() => {
+    if (!showDateDlg) return;
+    const steps = stringDlgIsHelpRef.current ? dateHelpSteps : dateDlgSteps;
+    const step = steps[dateDlgStep];
+    if (!step) return;
+    setDateDlgText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setDateDlgText(step.text.slice(0, i));
+      if (i >= step.text.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [dateDlgStep, showDateDlg, stringDlgIsHelpRef.current]);
+
+  // String tutorial dialog typewriter effect
+  useEffect(() => {
+    if (!showStringDlg) return;
+    const step = stringDlgSteps[stringDlgStep];
+    if (!step) return;
+    setStringDlgText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setStringDlgText(step.text.slice(0, i));
+      if (i >= step.text.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [stringDlgStep, showStringDlg, stringDlgSteps]);
+
+  // Version dialog Enter key handler
+  useEffect(() => {
+    if (!showVersionDlg) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const steps = stringDlgIsHelpRef.current ? versionHelpSteps : versionDlgSteps;
+        const nextStep = versionDlgStep + 1;
+        if (nextStep < steps.length) {
+          setVersionDlgStep(nextStep);
+        } else {
+          setShowVersionDlg(false);
+          if (stringDlgIsHelpRef.current) {
+            stringDlgIsHelpRef.current = false;
+            setShowLaptopUI(true);
+          } else {
+            versionCodingShownRef.current = false;
+            aptCutscenePhaseRef.current = 'version-coding';
+            aptCutsceneTimerRef.current = 0;
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showVersionDlg, versionDlgStep, stringDlgIsHelpRef.current, versionHelpSteps.length, versionDlgSteps.length]);
+
+  // Version dialog typewriter effect
+  useEffect(() => {
+    if (!showVersionDlg) return;
+    const steps = stringDlgIsHelpRef.current ? versionHelpSteps : versionDlgSteps;
+    const step = steps[versionDlgStep];
+    if (!step) return;
+    setVersionDlgText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setVersionDlgText(step.text.slice(0, i));
+      if (i >= step.text.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [versionDlgStep, showVersionDlg, stringDlgIsHelpRef.current]);
+
+  // Decimal explainer keyboard handler (Escape to close)
+  useEffect(() => {
+    if (!showDecimalExplain) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        e.preventDefault();
+        setShowDecimalExplain(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showDecimalExplain]);
+
+  // Boot dialog Enter key handler
+  useEffect(() => {
+    if (!showBootDlg) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const steps = stringDlgIsHelpRef.current ? bootHelpSteps : bootDlgSteps;
+        const nextStep = bootDlgStep + 1;
+        if (nextStep < steps.length) {
+          setBootDlgStep(nextStep);
+        } else {
+          setShowBootDlg(false);
+          if (stringDlgIsHelpRef.current) {
+            stringDlgIsHelpRef.current = false;
+            setShowLaptopUI(true);
+          } else {
+            bootCodingShownRef.current = false;
+            aptCutscenePhaseRef.current = 'boot-coding';
+            aptCutsceneTimerRef.current = 0;
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showBootDlg, bootDlgStep, stringDlgIsHelpRef.current, bootHelpSteps.length, bootDlgSteps.length]);
+
+  // Boot dialog typewriter effect
+  useEffect(() => {
+    if (!showBootDlg) return;
+    const steps = stringDlgIsHelpRef.current ? bootHelpSteps : bootDlgSteps;
+    const step = steps[bootDlgStep];
+    if (!step) return;
+    setBootDlgText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setBootDlgText(step.text.slice(0, i));
+      if (i >= step.text.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [bootDlgStep, showBootDlg, stringDlgIsHelpRef.current]);
+
   // Load profile data — prevents tutorial re-trigger
   useEffect(() => {
     let retries = 6;
@@ -735,13 +1247,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }).then(data => {
       if (data.error) throw new Error(data.error);
       console.log('📦 Profile loaded:', { questStage: data.questStage, backpack: data.backpack, currency: data.currency });
+      if (data.name) setPlayerName(data.name);
       // Always restore money and backpack regardless of questStage
-      setMoney(data.currency ?? 0);
-      moneyRef.current = data.currency ?? 0;
+      gameStore.set('money', data.currency ?? 0);
       lastConfirmedMoneyRef.current = data.currency ?? 0;
       if (Array.isArray(data.backpack)) {
-        setBackpack(data.backpack);
-        backpackRef.current = data.backpack;
+        gameStore.set('backpack', data.backpack);
         lastConfirmedBackpackRef.current = data.backpack;
       }
       if (data.cutsceneDone) {
@@ -801,7 +1312,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (localRobotRef.current) {
             localRobotRef.current.root.position.set(pos.x, pos.y, 0.28);
           }
-          sparkyHomeArrivedRef.current = true;
           if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
           if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
           if (data.cutsceneDone || cutsceneDoneRef.current) {
@@ -1333,7 +1843,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(shopDoorAnchor);
     const shopDoorMarker = addExclamationMarker(shopDoorAnchor);
     const shopPartId = PART_FOR_STAGE[sparkyQuestStageRef.current];
-    shopDoorMarker.visible = !!shopPartId && !backpackRef.current.includes(shopPartId);
+    shopDoorMarker.visible = !!shopPartId && !gameStore.get('backpack').includes(shopPartId);
     shopDoorMarkerRef.current = shopDoorMarker;
 
     // Transport store at (-18.75, -12) — within left grass block, clears sidewalks
@@ -1902,7 +2412,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     localGroup.add(heldItemGroup);
     heldItemGroupRef.current = heldItemGroup;
 
-    const scrapRobot = createRobotVisual(new THREE.Color(0x4a3f35), robotNameRef.current);
+    const scrapRobot = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
     scrapRobot.root.scale.set(0.7, 0.7, 0.7);
     scrapRobot.root.position.set(NPC_POSITION.x + 1.5, NPC_POSITION.y - 1.2, 0.24);
     scrapRobot.root.rotation.z = 0.15;
@@ -2133,14 +2643,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       workbench.position.set(2.2, -0.2, 0.52);
       apartmentRoomGroup.add(workbench);
 
-      // Scrap on workbench
-      scrapRobot.root.scale.set(0.65, 0.65, 0.65);
-      scrapRobot.root.position.set(2.2, -0.2, 0.85);
-      scrapRobot.root.rotation.z = 0.15;
+      // Scrap inside box — Sparky's find, hidden by box walls until lid opens
+      scrapRobot.root.scale.set(0.4, 0.4, 0.4);
+      scrapRobot.root.position.set(-2.8, 1.8, 0.26);
+      scrapRobot.root.rotation.set(Math.PI / 2, 0, 0.4);
       scrapRobot.nameSprite.visible = false;
-      if (scrapRobot.leftPupil) scrapRobot.leftPupil.material.color.setHex(0x222222);
-      if (scrapRobot.rightPupil) scrapRobot.rightPupil.material.color.setHex(0x222222);
-      if (scrapRobot.antennaTip) scrapRobot.antennaTip.material.color.setHex(0x555555);
+      if (scrapRobot.leftPupil) scrapRobot.leftPupil.material.color.setHex(0x111111);
+      if (scrapRobot.rightPupil) scrapRobot.rightPupil.material.color.setHex(0x111111);
+      if (scrapRobot.antennaTip) scrapRobot.antennaTip.material.color.setHex(0x333333);
       apartmentRoomGroup.add(scrapRobot.root);
 
       // Bed
@@ -2195,44 +2705,42 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       cutsceneBoxRef.current = boxResult.group;
       cutsceneBoxLidRef.current = boxResult.lid;
 
-      // Broken Scrap at box position (direct child of apartmentRoomGroup, not box) — hidden until lid opens
-      const brokenScrap = createRobotVisual(new THREE.Color(0x2a1a0a), '');
-      brokenScrap.root.scale.set(0.4, 0.4, 0.4);
-      brokenScrap.root.position.set(-2.8, 1.8, 0.32);
-      brokenScrap.root.rotation.set(0, 0, 0.4);
-      brokenScrap.nameSprite.visible = false;
-      if (brokenScrap.leftPupil) brokenScrap.leftPupil.material.color.setHex(0x111111);
-      if (brokenScrap.rightPupil) brokenScrap.rightPupil.material.color.setHex(0x111111);
-      if (brokenScrap.antennaTip) brokenScrap.antennaTip.material.color.setHex(0x333333);
-      apartmentRoomGroup.add(brokenScrap.root);
-      brokenScrapRef.current = brokenScrap;
 
-      // Computer (cutscene) — on the small table initially, hidden
+
+      // Computer (cutscene) — hidden until fetch-laptop phase
       const computer = createLaptop();
-      computer.position.set(-2.2, -2.5, 0.55);
+      computer.position.set(-3.4, 1.2, 0.24);
       computer.visible = false;
       apartmentRoomGroup.add(computer);
       computerRef.current = computer;
 
-      // Hide existing scrapRobot on workbench until cutscene done
-      scrapRobot.root.visible = cutsceneDoneRef.current;
+      scrapRobot.root.visible = true;
 
-      // Wire (cutscene) — hidden initially, positioned to connect computer to Scrap
-      const wireCompPos = new THREE.Vector3(-2.95, 0.8, 0.25);
-      const wireScrapPos = new THREE.Vector3(-2.6, 1.2, 0.35);
-      const wireDist = wireCompPos.distanceTo(wireScrapPos);
-      const wire = createWire(wireDist * 1.15);
-      {
-        const mid = new THREE.Vector3().addVectors(wireCompPos, wireScrapPos).multiplyScalar(0.5);
-        wire.position.copy(mid);
-        const dir = new THREE.Vector3().subVectors(wireScrapPos, wireCompPos).normalize();
-        const up = new THREE.Vector3(0, 0, 1);
-        const quat = new THREE.Quaternion().setFromUnitVectors(up, dir);
-        wire.quaternion.copy(quat);
-      }
+      // Wire (cutscene) — hidden initially, positioned dynamically in link-computer phase
+      const wire = createWire(1.0);
       wire.visible = false;
       apartmentRoomGroup.add(wire);
       wireRef.current = wire;
+
+      // Wire coil (cutscene) — hidden initially, shown at Sparky's hand during placement
+      const coil = createWireCoil();
+      coil.visible = false;
+      apartmentRoomGroup.add(coil);
+      coilRef.current = coil;
+
+      // Tack sparkle effect (reused)
+      const fx = new THREE.Group();
+      const fxMat = new THREE.MeshBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 1 });
+      for (let i = 0; i < 12; i++) {
+        const s = new THREE.Mesh(new THREE.SphereGeometry(0.012, 4, 4), fxMat.clone());
+        s.position.set((Math.random() - 0.5) * 0.08, (Math.random() - 0.5) * 0.08, (Math.random() - 0.5) * 0.08);
+        s.userData.vel = new THREE.Vector3((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3);
+        fx.add(s);
+      }
+      fx.visible = false;
+      apartmentRoomGroup.add(fx);
+      tackFxRef.current = fx;
+      tackFxPhaseRef.current = 0;
 
       // Sparky inside apartment (hidden until Sparky walks home)
       const aptSparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
@@ -2379,8 +2887,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
       if (event.code === 'Space' && inApartmentRoomRef.current) {
         event.preventDefault();
-        // Check Sparky interaction inside apartment (only when he's home)
-        if (sparkyHomeArrivedRef.current) {
+        // Check Sparky interaction inside apartment
+        if (apartmentSparkyRef.current) {
           const aptSparky = apartmentSparkyRef.current;
           if (aptSparky && aptSparky.root.visible) {
             const distToAptSparky = localPositionRef.current.distanceTo(new THREE.Vector2(0.2, 2.2));
@@ -2411,7 +2919,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
         return;
       }
-      if (event.code === 'Space' && sparkyIntroStepRef.current < 0 && !inWorkshopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current) {
+      if (event.code === 'Space' && !inWorkshopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current) {
         event.preventDefault();
         worldInteractionRequestedRef.current = true;
         return;
@@ -2427,7 +2935,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (slotNum >= 1 && slotNum <= 9) {
         event.preventDefault();
         const slotIndex = slotNum - 1;
-        if (slotIndex < backpackRef.current.length) {
+        if (slotIndex < gameStore.get('backpack').length) {
           const next = heldSlotIndexRef.current === slotIndex ? null : slotIndex;
           setHeldSlotIndex(next);
           heldSlotIndexRef.current = next;
@@ -2466,7 +2974,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
     rendererEl.addEventListener('pointermove', onPointerMove);
 
-    // Wheel / two-finger scroll → look up/down
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       cameraPitchRef.current = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraPitchRef.current + e.deltaY * 0.003));
@@ -2825,7 +3332,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 { shape: 'box', center: { x: -2.2, y: -2.5 }, halfWidth: 0.25, halfHeight: 0.25 },
                 { shape: 'box', center: { x: -2.2, y: 1.5 }, halfWidth: 0.2, halfHeight: 0.15 },
               ];
-              if (aptStage === 'intro' && !cutsceneDoneRef.current && sparkyHomeArrivedRef.current) {
+              if (aptStage === 'intro' && !cutsceneDoneRef.current) {
                 // Start cutscene — only the box is visible
                 cinemCamActiveRef.current = true;
                 aptCutscenePhaseRef.current = 'walk-west';
@@ -2840,6 +3347,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
                   if (sparkyBaseQuatRef.current) csSparky.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
                 }
+                // Position player avatar to walk alongside Sparky
+                if (localRobotRef.current) {
+                  localPositionRef.current.set(0, 1.2);
+                  localRobotRef.current.root.position.set(0, 1.2, 0.28);
+                  localGroup.position.set(0, 1.2, 0.28);
+                }
+                yawRef.current = Math.atan2(-2.3, 0.53); // face toward walk direction
                 document.exitPointerLock();
               } else if (aptStage === 'intro' || aptStage === 'unit1' || aptStage === 'unit2') {
                 showTutorialRef.current = true;
@@ -2883,8 +3397,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           body: JSON.stringify({
             position: { x: pos.x, y: pos.y, room: pRoom, rotation: yawRef.current },
             questStage: sparkyQuestStageRef.current,
-            backpack: backpackRef.current,
-            money: moneyRef.current,
+            backpack: gameStore.get('backpack'),
+            money: gameStore.get('money'),
             playtime: Math.floor(sessionPlaytimeRef.current),
           }),
         }).catch(() => {});
@@ -2930,9 +3444,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Held item 3D model
       const heldGroup = heldItemGroupRef.current;
-      if (heldGroup && heldSlotIndexRef.current !== null && heldSlotIndexRef.current < backpackRef.current.length) {
+      if (heldGroup && heldSlotIndexRef.current !== null && heldSlotIndexRef.current < gameStore.get('backpack').length) {
         heldGroup.visible = true;
-        const partId = backpackRef.current[heldSlotIndexRef.current];
+        const partId = gameStore.get('backpack')[heldSlotIndexRef.current];
         if (heldGroup.userData.partId !== partId) {
           while (heldGroup.children.length) heldGroup.remove(heldGroup.children[0]);
           const model = createPartModel(partId);
@@ -3017,7 +3531,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
         }
 
-        setInteractionPromptName(sparkyIntroStepRef.current >= 0 ? null : outsidePrompt);
+        setInteractionPromptName(outsidePrompt);
         if (!outsidePrompt && workshopOutput && !inWorkshopRoomRef.current) setWorkshopOutput('');
         interactionCandidateIdRef.current = null;
       }
@@ -3048,7 +3562,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           }
         } else {
-          // Arrived — swap to indoor Sparky
           sparkyWalkHomeTimerRef.current = 0;
           sparkyHomeArrivedRef.current = true;
           sparky.root.visible = false;
@@ -3058,51 +3571,45 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       } else if (!sparkyHomeArrivedRef.current) {
         if (sparkyQuestStageRef.current === 'intro' && !sparkyGoHomeRef.current) {
-          // Pre-conversation intro: Sparky repairs at kiosk
           repairTimerRef.current += delta;
           animateRepairSparky(sparky, worldTime, repairTimerRef.current);
           if (repairKioskRef.current) animateRepairKiosk(repairKioskRef.current, worldTime);
-          // Antenna light pulse (emissive sphere on antenna tip)
           if (sparky.antennaTip) {
             sparky.antennaTip.material.color.setHSL(0.12, 0.9, 0.5 + Math.sin(worldTime * 5) * 0.3);
           }
-          // Attention capture event (20-40s after spawn)
           if (worldTime > 25 && !sparkyEventTriggeredRef.current) {
             sparkyEventTriggeredRef.current = true;
             triggerAttentionEvent();
           }
-          // Post-event: Sparky acknowledges player
           if (sparkyAcknowledgedRef.current) {
             animateSparkyWave(sparky, worldTime);
           }
-          // Repair gesture sounds
           if (repairTimerRef.current > 3 && repairTimerRef.current < 3.5 && Math.random() < 0.3) {
             playToolClank();
           }
         } else {
-            sparkyWaitTimerRef.current += delta;
-            if (sparkyWaitTimerRef.current > 1.5 && !showTutorialRef.current) {
-              const target = SPARKY_PATH[sparkyPathIndexRef.current];
-              const dist = sparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
-              if (dist < 0.15) {
-                sparkyPathIndexRef.current = (sparkyPathIndexRef.current + 1) % SPARKY_PATH.length;
-                sparkyWaitTimerRef.current = 0;
-              } else {
-                const dir = new THREE.Vector2(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
-                const step = 1.8 * delta;
-                const candidate = new THREE.Vector2(
-                  sparky.root.position.x + dir.x * step,
-                  sparky.root.position.y + dir.y * step
-                );
-                if (!collidesWithAny(candidate, obstacleHitboxesRef.current)) {
-                  sparky.root.position.x = candidate.x;
-                  sparky.root.position.y = candidate.y;
-                }
+          sparkyWaitTimerRef.current += delta;
+          if (sparkyWaitTimerRef.current > 1.5 && !showTutorialRef.current) {
+            const target = SPARKY_PATH[sparkyPathIndexRef.current];
+            const dist = sparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
+            if (dist < 0.15) {
+              sparkyPathIndexRef.current = (sparkyPathIndexRef.current + 1) % SPARKY_PATH.length;
+              sparkyWaitTimerRef.current = 0;
+            } else {
+              const dir = new THREE.Vector2(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
+              const step = 1.8 * delta;
+              const candidate = new THREE.Vector2(
+                sparky.root.position.x + dir.x * step,
+                sparky.root.position.y + dir.y * step
+              );
+              if (!collidesWithAny(candidate, obstacleHitboxesRef.current)) {
+                sparky.root.position.x = candidate.x;
+                sparky.root.position.y = candidate.y;
               }
             }
+          }
         }
       }
-      // Sparky slowly turns toward player during conversation, turns back after
       const baseQuat = sparkyBaseQuatRef.current;
       if (baseQuat && sparky.root.visible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
         const dx = sparkyIntroStepRef.current >= 0
@@ -3127,29 +3634,24 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           sparky.root.quaternion.copy(baseQuat);
         }
       }
-      // Sparky waves during intro conversation + speech bubble above head
-      if (sparkyIntroStepRef.current >= 0 && sparky.root.visible) {
+      if (sparky.root.visible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
         animateSparkyWave(sparky, worldTime);
-
-        // Get Sparky's head world position from antenna tip
-        sparky.root.updateWorldMatrix(true, false);
-        camera.updateMatrixWorld(true);
+      }
+      if (speechBubbleRef.current && sparkyIntroStepRef.current >= 0) {
         const headPos = new THREE.Vector3();
         sparky.antennaTip.getWorldPosition(headPos);
         headPos.project(camera);
-        if (speechBubbleRef.current) {
-          if (headPos.z > 1) {
-            speechBubbleRef.current.style.display = 'none';
-          } else {
-            speechBubbleRef.current.style.display = '';
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
-            const x = (headPos.x * 0.5 + 0.5) * vw;
-            const y = (-headPos.y * 0.5 + 0.5) * vh;
-            speechBubbleRef.current.style.left = `${x}px`;
-            speechBubbleRef.current.style.top = `${y}px`;
-            speechBubbleRef.current.style.transform = 'translate(-50%, -100%) translateY(-8px)';
-          }
+        if (headPos.z > 1) {
+          speechBubbleRef.current.style.display = 'none';
+        } else {
+          speechBubbleRef.current.style.display = '';
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+          const x = (headPos.x * 0.5 + 0.5) * vw;
+          const y = (-headPos.y * 0.5 + 0.5) * vh;
+          speechBubbleRef.current.style.left = `${x}px`;
+          speechBubbleRef.current.style.top = `${y}px`;
+          speechBubbleRef.current.style.transform = 'translate(-50%, -100%) translateY(-8px)';
         }
       } else if (speechBubbleRef.current) {
         speechBubbleRef.current.style.display = 'none';
@@ -3161,7 +3663,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         animateRobotVisual(sparky, worldTime, 0.5, -0.3, 0.15);
       }
       if (sparkyQuestMarkerRef.current) {
-        sparkyQuestMarkerRef.current.visible = sparkyIntroStepRef.current < 0;
+        sparkyQuestMarkerRef.current.visible = sparkyQuestStageRef.current === 'intro' && sparky.root.visible;
         sparkyQuestMarkerRef.current.position.y = 1.0 + Math.sin(worldTime * 5.2) * 0.08;
       }
       animateRobotVisual(owner, worldTime * 0.9, 0.12, -0.2, -0.1);
@@ -3188,11 +3690,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const phase = aptCutscenePhaseRef.current;
 
           if (phase === 'walk-west') {
-            const target = new THREE.Vector2(-2.8, 0.8);
+            const sparkyWps = [new THREE.Vector2(-3.2, 2.2), new THREE.Vector2(-3.2, 0.8)];
+            const playerTarget = new THREE.Vector2(-2.3, 1.73);
+            const wpIdx = aptSparkyWalkWpRef.current;
             if (aptSparkyCS) {
-              const dist = aptSparkyCS.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.22));
-              if (dist > 0.08) {
-                const dir = new THREE.Vector2(target.x - aptSparkyCS.root.position.x, target.y - aptSparkyCS.root.position.y).normalize();
+              const spTgt = sparkyWps[Math.min(wpIdx, sparkyWps.length - 1)];
+              const dist = aptSparkyCS.root.position.distanceTo(new THREE.Vector3(spTgt.x, spTgt.y, 0.22));
+              if (dist > 0.08 && wpIdx < sparkyWps.length) {
+                const dir = new THREE.Vector2(spTgt.x - aptSparkyCS.root.position.x, spTgt.y - aptSparkyCS.root.position.y).normalize();
                 aptSparkyCS.root.position.x += dir.x * MOVE_SPEED * 0.15 * delta;
                 aptSparkyCS.root.position.y += dir.y * MOVE_SPEED * 0.15 * delta;
                 const moveFacing = -Math.atan2(dir.x, dir.y);
@@ -3200,13 +3705,42 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0.2, -0.2, 0.1);
+              } else if (wpIdx < sparkyWps.length - 1) {
+                aptSparkyWalkWpRef.current = wpIdx + 1;
+                aptSparkyCS.root.position.set(spTgt.x, spTgt.y, 0.22);
               } else {
                 aptCutscenePhaseRef.current = 'open-box';
                 aptCutsceneTimerRef.current = 0;
-                aptSparkyCS.root.position.set(target.x, target.y, 0.22);
+                aptSparkyCS.root.position.set(sparkyWps[sparkyWps.length - 1].x, sparkyWps[sparkyWps.length - 1].y, 0.22);
                 aptSparkyFacingRef.current = 0;
                 const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+              }
+            }
+            // Player walks to spectator position (camera-left of box, in line with it)
+            const pDist = localPositionRef.current.distanceTo(playerTarget);
+            if (pDist > 0.08) {
+              const pDir = new THREE.Vector2(playerTarget.x - localPositionRef.current.x, playerTarget.y - localPositionRef.current.y).normalize();
+              localPositionRef.current.x += pDir.x * MOVE_SPEED * 0.15 * delta;
+              localPositionRef.current.y += pDir.y * MOVE_SPEED * 0.15 * delta;
+              yawRef.current = Math.atan2(pDir.x, pDir.y); // face walk direction
+              if (localRobotRef.current) {
+                localRobotRef.current.root.position.set(localPositionRef.current.x, localPositionRef.current.y, 0.28);
+                if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
+                if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
+                const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
+                localRobotRef.current.leftArm.rotation.x = -Math.PI / 2 + armSwing;
+                localRobotRef.current.rightArm.rotation.x = -Math.PI / 2 - armSwing;
+              }
+            } else {
+              // Arrived — face the box
+              yawRef.current = Math.atan2(-0.5, 0.5); // toward box center
+              if (localRobotRef.current) {
+                localRobotRef.current.root.position.set(-2.3, 1.73, 0.28);
+                if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = 0;
+                if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = 0;
+                localRobotRef.current.leftArm.rotation.x = -Math.PI / 2;
+                localRobotRef.current.rightArm.rotation.x = -Math.PI / 2;
               }
             }
           } else if (phase === 'open-box') {
@@ -3225,10 +3759,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (phase === 'lift-rise') {
             aptCutsceneTimerRef.current += delta;
             const progress = Math.min(1, aptCutsceneTimerRef.current / 1.5);
-            if (brokenScrapRef.current) {
-              const z = 0.32 + (0.55 - 0.32) * progress;
-              brokenScrapRef.current.root.position.z = z;
-              brokenScrapRef.current.root.rotation.z = 0.4 * (1 - progress) + 0.2 * progress;
+            if (scrapRobotRef.current) {
+              const z = 0.26 + (0.55 - 0.26) * progress;
+              scrapRobotRef.current.root.position.z = z;
+              scrapRobotRef.current.root.rotation.z = 0.4 * (1 - progress) + 0.2 * progress;
             }
             if (aptSparkyCS) {
               aptSparkyCS.root.position.z = 0.22 - 0.06 * progress;
@@ -3238,9 +3772,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               animateRobotVisual(aptSparkyCS, worldTime, 0, 0.15, -0.05);
             }
             if (progress >= 1) {
-              if (brokenScrapRef.current) {
-                brokenScrapRef.current.root.position.set(-2.8, 1.8, 0.55);
-                brokenScrapRef.current.root.rotation.z = 0.2;
+              if (scrapRobotRef.current) {
+                scrapRobotRef.current.root.position.set(-2.8, 1.8, 0.55);
+                scrapRobotRef.current.root.rotation.z = 0.2;
               }
               aptCutscenePhaseRef.current = 'lift-carry';
               aptCutsceneTimerRef.current = 0;
@@ -3248,12 +3782,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (phase === 'lift-carry') {
             aptCutsceneTimerRef.current += delta;
             const progress = Math.min(1, aptCutsceneTimerRef.current / 2.5);
-            if (brokenScrapRef.current) {
+            if (scrapRobotRef.current) {
               const x = -2.8 + (-2.6 + 2.8) * progress;
               const y = 1.8 + (1.2 - 1.8) * progress;
-              brokenScrapRef.current.root.position.x = x;
-              brokenScrapRef.current.root.position.y = y;
-              brokenScrapRef.current.root.rotation.z = 0.2 * (1 - progress) + 0.12 * progress;
+              scrapRobotRef.current.root.position.x = x;
+              scrapRobotRef.current.root.position.y = y;
+              scrapRobotRef.current.root.rotation.z = 0.2 * (1 - progress) + 0.12 * progress;
             }
             if (aptSparkyCS) {
               aptSparkyCS.root.position.x = -2.8;
@@ -3267,9 +3801,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               aptSparkyCS.rightArm.rotation.x = -1.5;
             }
             if (progress >= 1) {
-              if (brokenScrapRef.current) {
-                brokenScrapRef.current.root.position.set(-2.6, 1.2, 0.55);
-                brokenScrapRef.current.root.rotation.z = 0.12;
+              if (scrapRobotRef.current) {
+                scrapRobotRef.current.root.position.set(-2.6, 1.2, 0.55);
+                scrapRobotRef.current.root.rotation.z = 0.12;
               }
               if (aptSparkyCS) {
                 aptSparkyCS.root.position.y = 0.45;
@@ -3280,10 +3814,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (phase === 'lift-lower') {
             aptCutsceneTimerRef.current += delta;
             const progress = Math.min(1, aptCutsceneTimerRef.current / 1.5);
-            if (brokenScrapRef.current) {
+            if (scrapRobotRef.current) {
               const z = 0.55 + (0.24 - 0.55) * progress;
-              brokenScrapRef.current.root.position.z = z;
-              brokenScrapRef.current.root.rotation.z = 0.12 * (1 - progress) + 0.08 * progress;
+              scrapRobotRef.current.root.position.z = z;
+              scrapRobotRef.current.root.rotation.z = 0.12 * (1 - progress) + 0.08 * progress;
             }
             if (aptSparkyCS) {
               aptSparkyCS.root.position.z = 0.16 + 0.06 * progress;
@@ -3293,9 +3827,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               animateRobotVisual(aptSparkyCS, worldTime, 0, 0.1, 0.05);
             }
             if (progress >= 1) {
-              if (brokenScrapRef.current) {
-                brokenScrapRef.current.root.position.set(-2.6, 1.2, 0.24);
-                brokenScrapRef.current.root.rotation.z = 0.08;
+              if (scrapRobotRef.current) {
+                scrapRobotRef.current.root.position.set(-2.6, 1.2, 0.24);
+                scrapRobotRef.current.root.rotation.z = 0.08;
               }
               if (aptSparkyCS) {
                 aptSparkyCS.root.position.z = 0.22;
@@ -3308,51 +3842,50 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else if (phase === 'fetch-laptop') {
             aptCutsceneTimerRef.current += delta;
-            const EAST_TARGET = new THREE.Vector2(0, 0.8);
-            const WEST_TARGET = new THREE.Vector2(-2.8, 0.8);
+            const EAST_TARGET = new THREE.Vector2(0, 0.5);
+            const WEST_TARGET = new THREE.Vector2(-2.8, 0.5);
             if (aptSparkyCS) {
               const t = aptCutsceneTimerRef.current;
-              if (t < 2.0) {
-                const walkT = t / 2.0;
-                aptSparkyCS.root.position.x = -2.8 + (EAST_TARGET.x + 2.8) * walkT;
-                aptSparkyCS.root.position.y = 0.45 + (EAST_TARGET.y - 0.45) * walkT;
-                const eastQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.PI * 0.5);
-                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(eastQ);
-                  animateRobotVisual(aptSparkyCS, worldTime, 0.5, -0.1, 0.0);
-                } else if (t < 2.5) {
-                const turnT = (t - 2.0) / 0.5;
-                const angle = -Math.PI * 0.5 + turnT * Math.PI;
-                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), angle);
+              if (t < 2.5) {
+                const walkT = t / 2.5;
+                aptSparkyCS.root.position.x = WEST_TARGET.x + (EAST_TARGET.x - WEST_TARGET.x) * walkT;
+                aptSparkyCS.root.position.y = WEST_TARGET.y;
+                aptSparkyFacingRef.current = -Math.PI * 0.5;
+                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+                animateRobotVisual(aptSparkyCS, worldTime, 0.5, -0.1, 0.0);
+              } else if (t < 3.0) {
+                const turnT = (t - 2.5) / 0.5;
+                aptSparkyFacingRef.current = -Math.PI * 0.5 + turnT * Math.PI;
+                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0, 0, 0);
-                if (t >= 2.4) {
-                  if (computerRef.current) {
-                    computerRef.current.visible = true;
-                    computerRef.current.position.set(aptSparkyCS.root.position.x - 0.15, aptSparkyCS.root.position.y, 0.35);
-                    computerRef.current.rotation.z = Math.PI - 0.2;
-                  }
+                if (t >= 2.8 && computerRef.current && computerRef.current.parent !== aptSparkyCS.root) {
+                  aptSparkyCS.root.attach(computerRef.current);
+                  computerRef.current.scale.set(1 / 0.7, 1 / 0.7, 1 / 0.7);
+                  computerRef.current.position.set(0, 0.47, 1.0);
+                  const invQ = aptSparkyCS.root.quaternion.clone().invert();
+                  const worldUp = new THREE.Vector3(0, 0, 1);
+                  const localUp = worldUp.applyQuaternion(invQ);
+                  const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), localUp);
+                  const rot180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
+                  computerRef.current.quaternion.copy(lapQuat.multiply(rot180));
+                  computerRef.current.visible = true;
                 }
               } else {
-                const walkT = (t - 2.5) / 2.5;
+                const walkT = (t - 3.0) / 2.5;
                 if (walkT < 1.0) {
                   aptSparkyCS.root.position.x = EAST_TARGET.x + (WEST_TARGET.x - EAST_TARGET.x) * walkT;
-                  aptSparkyCS.root.position.y = EAST_TARGET.y + (WEST_TARGET.y - EAST_TARGET.y) * walkT;
-                  const westQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI * 0.5);
-                  if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(westQ);
+                  aptSparkyCS.root.position.y = WEST_TARGET.y;
+                  aptSparkyFacingRef.current = Math.PI * 0.5;
+                  const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                  if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
                   animateRobotVisual(aptSparkyCS, worldTime, 0.5, -0.1, 0.0);
-                  if (computerRef.current) {
-                    computerRef.current.position.set(aptSparkyCS.root.position.x - 0.15, aptSparkyCS.root.position.y, 0.35);
-                  }
                 } else {
                   aptSparkyCS.root.position.set(WEST_TARGET.x, WEST_TARGET.y, 0.22);
-                  const westQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI * 0.5);
-                  if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(westQ);
-                  if (computerRef.current) {
-                    computerRef.current.position.set(-2.95, 0.8, 0.24);
-                    computerRef.current.rotation.z = Math.PI - 0.2;
-                    const mat = (computerRef.current.children[0] as THREE.Mesh)?.material as THREE.MeshBasicMaterial | undefined;
-                    if (mat) mat.opacity = 1;
-                  }
+                  aptSparkyFacingRef.current = Math.PI * 0.5;
+                  const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                  if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
                   aptCutscenePhaseRef.current = 'link-computer';
                   aptCutsceneTimerRef.current = 0;
                 }
@@ -3360,51 +3893,698 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else if (phase === 'link-computer') {
             aptCutsceneTimerRef.current += delta;
-            const progress = Math.min(1, aptCutsceneTimerRef.current / 3.0);
-            if (computerRef.current) {
-              computerRef.current.visible = true;
-              computerRef.current.position.set(-2.95, 0.8, 0.24);
-              computerRef.current.rotation.z = Math.PI - 0.2;
-            }
-            if (wireRef.current) {
-              wireRef.current.visible = true;
-              const wireMat = wireRef.current.material as THREE.MeshToonMaterial;
-              wireMat.opacity = progress * 0.9;
-              wireMat.transparent = true;
-            }
-            animateWirePulse(wireRef.current!, worldTime);
+            const t = aptCutsceneTimerRef.current;
+
+            // Sub-phase progress values
+            const rotDuration = 2.5;
+            const lowerStart = 2.0;
+            const lowerDuration = 2.5;
+            const coilAppear = 3.0;
+            const walkNorthStart = 3.5;
+            const walkNorthDuration = 1.0;
+            const tack1Start = 4.5;
+            const tack1Duration = 0.5;
+            const walkEastStart = 5.0;
+            const walkEastDuration = 3.5;
+            const tack2Start = 8.5;
+            const tack2Duration = 0.5;
+
+            const rotProgress = Math.min(1, t / rotDuration);
+            const lowerProgress = Math.max(0, Math.min(1, (t - lowerStart) / lowerDuration));
+            const walkNorthProgress = Math.max(0, Math.min(1, (t - walkNorthStart) / walkNorthDuration));
+            const tack1Progress = Math.max(0, Math.min(1, (t - tack1Start) / tack1Duration));
+            const walkEastProgress = Math.max(0, Math.min(1, (t - walkEastStart) / walkEastDuration));
+            const tack2Progress = Math.max(0, Math.min(1, (t - tack2Start) / tack2Duration));
+
+            const laptopApproach = new THREE.Vector3(-3.4, 0.65, 0.22);
+            const scrapApproach = new THREE.Vector3(-2.6, 0.55, 0.22);
+
             if (aptSparkyCS) {
-              aptSparkyCS.body.rotation.x = Math.sin(worldTime * 2) * 0.03;
-              const linkFacing = -Math.atan2(-0.15, 0);
-              aptSparkyFacingRef.current += (linkFacing - aptSparkyFacingRef.current) * 0.05;
+              // === Phase 1: Rotate Sparky west→north ===
+              const startAngle = Math.PI * 0.5;
+              const endAngle = 0;
+              const easedRot = rotProgress < 1 ? rotProgress * rotProgress * (3 - 2 * rotProgress) : 1;
+              aptSparkyFacingRef.current = startAngle + (endAngle - startAngle) * easedRot;
               const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
               if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
-              animateRobotVisual(aptSparkyCS, worldTime, 0, 0.3, -0.1);
+
+              // Sparky sidesteps west from -2.8 to -3.4 during rotation
+              const startX = -2.8;
+              const endX = -3.4;
+              aptSparkyCS.root.position.x = startX + (endX - startX) * easedRot;
+
+              // Laptop stays at fixed local (0, 0.47, 1.0) — orbits naturally with Sparky
+              if (computerRef.current && computerRef.current.parent === aptSparkyCS.root) {
+                computerRef.current.position.set(0, 0.47, 1.0);
+                const invQ = aptSparkyCS.root.quaternion.clone().invert();
+                const localUp = new THREE.Vector3(0, 0, 1).applyQuaternion(invQ);
+                const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), localUp);
+                const rot180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
+                computerRef.current.quaternion.copy(lapQuat.multiply(rot180));
+              }
+
+              // === Detach laptop at start of lowering ===
+              if (lowerProgress > 0 && computerRef.current && computerRef.current.parent === aptSparkyCS.root) {
+                const worldPos = new THREE.Vector3();
+                computerRef.current.getWorldPosition(worldPos);
+                apartmentRoomGroup.attach(computerRef.current);
+                computerRef.current.scale.set(1, 1, 1);
+                computerRef.current.position.copy(worldPos);
+                computerRef.current.quaternion.identity();
+                computerRef.current.userData.lowerStartZ = worldPos.z;
+              }
+
+              // === Coil appears at Sparky's hand ===
+              if (t >= coilAppear && coilRef.current && !coilRef.current.visible) {
+                coilRef.current.visible = true;
+              }
+
+              // === Walk north to laptop ===
+              if (walkNorthProgress > 0 && walkNorthProgress < 1) {
+                const startWalk = new THREE.Vector3(-3.4, 0.5, 0.22);
+                const easedWalk = walkNorthProgress * walkNorthProgress * (3 - 2 * walkNorthProgress);
+                aptSparkyCS.root.position.lerpVectors(startWalk, laptopApproach, easedWalk);
+                aptSparkyFacingRef.current = 0;
+                const wfQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0);
+                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(wfQ);
+                animateRobotVisual(aptSparkyCS, worldTime, 0.3, 0, 0);
+              }
+
+              // === Tack 1: Sparkle at laptop port ===
+              if (tack1Progress > 0 && tack1Progress < 1) {
+                aptSparkyCS.root.position.copy(laptopApproach);
+                aptSparkyFacingRef.current += (0 - aptSparkyFacingRef.current) * 0.08;
+                const nfQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(nfQ);
+                // Animate tack fx
+                if (tackFxRef.current) {
+                  if (tackFxPhaseRef.current === 0) {
+                    tackFxRef.current.position.set(-3.4, 1.025, 0.253);
+                    tackFxRef.current.visible = true;
+                    tackFxRef.current.scale.set(1, 1, 1);
+                    tackFxRef.current.children.forEach((c: THREE.Object3D) => {
+                      ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 1;
+                      const vel = c.userData.vel as THREE.Vector3;
+                      vel.set((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3);
+                    });
+                    tackFxPhaseRef.current = 1;
+                  }
+                  const sfx = tack1Progress < 0.5 ? tack1Progress / 0.5 : (1 - (tack1Progress - 0.5) / 0.5);
+                  tackFxRef.current.children.forEach((c: THREE.Object3D) => {
+                    const vel = c.userData.vel as THREE.Vector3;
+                    c.position.x += vel.x * delta;
+                    c.position.y += vel.y * delta;
+                    c.position.z += vel.z * delta;
+                    ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 1 - tack1Progress;
+                  });
+                  tackFxRef.current.scale.setScalar(1 + sfx * 2);
+                }
+                // Right arm reaches toward laptop port
+                animateRobotVisual(aptSparkyCS, worldTime, 0, 0.3, -0.1);
+                aptSparkyCS.rightArm.rotation.x = -0.8;
+                aptSparkyCS.rightArm.rotation.z = 0.05;
+              }
+
+              // === Walk east to scrap ===
+              if (walkEastProgress > 0 && walkEastProgress < 1) {
+                const easedWalk2 = walkEastProgress * walkEastProgress * (3 - 2 * walkEastProgress);
+                aptSparkyCS.root.position.lerpVectors(laptopApproach, scrapApproach, easedWalk2);
+                aptSparkyFacingRef.current = -Math.PI * 0.5; // face east
+                const wfQ2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(wfQ2);
+                animateRobotVisual(aptSparkyCS, worldTime, 0.3, 0, 0);
+              }
+
+              // === Tack 2: Sparkle at scrap port ===
+              if (tack2Progress > 0 && tack2Progress < 1) {
+                aptSparkyCS.root.position.copy(scrapApproach);
+                aptSparkyFacingRef.current += (0 - aptSparkyFacingRef.current) * 0.08;
+                const nfQ2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(nfQ2);
+                if (tackFxRef.current) {
+                  if (tackFxPhaseRef.current === 1) {
+                    tackFxRef.current.position.set(-2.6, 0.976, 0.36);
+                    tackFxRef.current.visible = true;
+                    tackFxRef.current.scale.set(1, 1, 1);
+                    tackFxRef.current.children.forEach((c: THREE.Object3D) => {
+                      ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 1;
+                      const vel = c.userData.vel as THREE.Vector3;
+                      vel.set((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3);
+                    });
+                    tackFxPhaseRef.current = 2;
+                  }
+                  const sfx2 = tack2Progress < 0.5 ? tack2Progress / 0.5 : (1 - (tack2Progress - 0.5) / 0.5);
+                  tackFxRef.current.children.forEach((c: THREE.Object3D) => {
+                    const vel = c.userData.vel as THREE.Vector3;
+                    c.position.x += vel.x * delta;
+                    c.position.y += vel.y * delta;
+                    c.position.z += vel.z * delta;
+                    ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 1 - tack2Progress;
+                  });
+                  tackFxRef.current.scale.setScalar(1 + sfx2 * 2);
+                }
+                animateRobotVisual(aptSparkyCS, worldTime, 0, 0.3, -0.1);
+                aptSparkyCS.rightArm.rotation.x = -0.6;
+                aptSparkyCS.rightArm.rotation.z = -0.2;
+              }
+
+              // === Default arm pose during rotation/lowering ===
+              if (rotProgress < 1 && lowerProgress === 0) {
+                animateRobotVisual(aptSparkyCS, worldTime, 0, 0.3, -0.1);
+                aptSparkyCS.rightArm.rotation.x = -0.3;
+                aptSparkyCS.leftArm.rotation.x = -0.3;
+              }
+
+              aptSparkyCS.body.rotation.x = Math.sin(worldTime * 2) * 0.03;
             }
-            if (progress >= 1) {
+
+            // === Lower laptop straight down ===
+            if (computerRef.current && lowerProgress > 0 && lowerProgress < 1 && computerRef.current.parent === apartmentRoomGroup) {
+              const startZ = (computerRef.current.userData.lowerStartZ as number) ?? computerRef.current.position.z;
+              const endZ = 0.24;
+              const easedLower = lowerProgress * lowerProgress * (3 - 2 * lowerProgress);
+              computerRef.current.position.z = startZ + (endZ - startZ) * easedLower;
+            }
+
+            // === Coil follows Sparky's right hand ===
+            if (coilRef.current && coilRef.current.visible && aptSparkyCS) {
+              const coilOffset = new THREE.Vector3(0.33, 0.12, 0.5).applyQuaternion(
+                new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current)
+              );
+              const invQ = aptSparkyCS.root.quaternion.clone().invert();
+              const coilUp = new THREE.Vector3(0, 0, 1).applyQuaternion(invQ);
+              coilRef.current.quaternion.setFromUnitVectors(coilUp, new THREE.Vector3(0, 0, 1));
+              coilRef.current.position.set(
+                aptSparkyCS.root.position.x + coilOffset.x * 0.7,
+                aptSparkyCS.root.position.y + coilOffset.y * 0.7,
+                0.38
+              );
+            }
+
+            // === Wire: laptop → hand during tack1, laptop → scrap after tack2 ===
+            if (wireRef.current && computerRef.current) {
+              if (tack2Progress >= 1) {
+                // Fully connected: laptop → scrap (permanent)
+                wireRef.current.visible = true;
+                const lapPort = new THREE.Vector3(-3.4, 1.025, 0.253);
+                const scrapPos = new THREE.Vector3(-2.6, 0.976, 0.36);
+                const mid = new THREE.Vector3().addVectors(lapPort, scrapPos).multiplyScalar(0.5);
+                wireRef.current.position.copy(mid);
+                const dir = new THREE.Vector3().subVectors(scrapPos, lapPort);
+                const dist = dir.length();
+                dir.normalize();
+                wireRef.current.scale.set(1, dist, 1);
+                const up = new THREE.Vector3(0, 1, 0);
+                wireRef.current.quaternion.setFromUnitVectors(up, dir);
+                animateWirePulse(wireRef.current, worldTime);
+              } else if (tack2Progress > 0) {
+                wireRef.current.visible = true;
+                const scrapPos = new THREE.Vector3(-2.6, 0.976, 0.36);
+                const lapPos = new THREE.Vector3(-3.4, 1.025, 0.253);
+                const fullWireT = tack2Progress;
+                const curEnd = new THREE.Vector3().lerpVectors(
+                  coilRef.current?.position ?? scrapPos,
+                  scrapPos,
+                  fullWireT
+                );
+                const mid = new THREE.Vector3().addVectors(lapPos, curEnd).multiplyScalar(0.5);
+                wireRef.current.position.copy(mid);
+                const dir = new THREE.Vector3().subVectors(curEnd, lapPos);
+                const dist = dir.length();
+                dir.normalize();
+                wireRef.current.scale.set(1, dist, 1);
+                const up = new THREE.Vector3(0, 1, 0);
+                wireRef.current.quaternion.setFromUnitVectors(up, dir);
+                animateWirePulse(wireRef.current, worldTime);
+              } else if (tack1Progress > 0) {
+                wireRef.current.visible = true;
+                const lapPort = new THREE.Vector3(-3.4, 1.025, 0.253);
+                const handPos = coilRef.current?.position ?? lapPort;
+                const mid = new THREE.Vector3().addVectors(lapPort, handPos).multiplyScalar(0.5);
+                wireRef.current.position.copy(mid);
+                const dir = new THREE.Vector3().subVectors(handPos, lapPort);
+                const dist = dir.length();
+                dir.normalize();
+                wireRef.current.scale.set(1, dist, 1);
+                const up = new THREE.Vector3(0, 1, 0);
+                wireRef.current.quaternion.setFromUnitVectors(up, dir);
+                animateWirePulse(wireRef.current, worldTime);
+              }
+            }
+
+            // === Done — hide coil (Sparky puts it away) ===
+            if (t >= tack2Start + tack2Duration + 0.5) {
+              if (coilRef.current) coilRef.current.visible = false;
+              aptCutscenePhaseRef.current = 'electrocute';
+              aptCutsceneTimerRef.current = 0;
+            }
+          } else if (phase === 'electrocute') {
+            aptCutsceneTimerRef.current += delta;
+            const et = aptCutsceneTimerRef.current;
+            // Wire emissive lerp blue -> red
+            if (wireRef.current) {
+              const wireMat = (wireRef.current as THREE.Mesh).material as THREE.MeshStandardMaterial;
+              const tColor = Math.min(1, et / 1.5);
+              wireMat.emissive.setHSL(0, 1, tColor * 0.3);
+            }
+            // Sparky body emissive pulses red
+            if (aptSparkyCS) {
+              const sparkPulse = et < 3 ? Math.max(0, Math.sin(et * 8 * Math.PI)) : 0;
+              aptSparkyCS.root.traverse((child) => {
+                const m = (child as THREE.Mesh);
+                if (m.isMesh && m.material) {
+                  const mat = m.material as THREE.MeshStandardMaterial;
+                  if (mat.emissive) mat.emissive.setHSL(0, 1, sparkPulse * 0.4);
+                }
+              });
+            }
+            // After 3s: show dialogue modal
+            if (et >= 3.0 && !electrocuteDlgShownRef.current) {
+              electrocuteDlgShownRef.current = true;
+              document.exitPointerLock();
+              setShowElectrocuteDlg(true);
+              setElectrocuteStep(0);
+              if (aptSparkyCS) {
+                aptSparkyCS.root.traverse((child) => {
+                  const m = (child as THREE.Mesh);
+                  if (m.isMesh && m.material) {
+                    const mat = m.material as THREE.MeshStandardMaterial;
+                    if (mat.emissive) mat.emissive.setHSL(0, 0, 0);
+                  }
+                });
+              }
+            }
+          } else if (phase === 'walk-to-laptop') {
+            aptCutsceneTimerRef.current += delta;
+            // Player walks south then west to stand in front of laptop screen
+            const wlTgt = new THREE.Vector2(-3.4, 0.6);
+            const wlDir = new THREE.Vector2(
+              wlTgt.x - localPositionRef.current.x,
+              wlTgt.y - localPositionRef.current.y
+            );
+            const wlAbsX = Math.abs(wlDir.x), wlAbsY = Math.abs(wlDir.y);
+            if (wlAbsX > 0.08 || wlAbsY > 0.08) {
+              const wlStep = MOVE_SPEED * 0.15 * delta;
+              if (wlAbsY > 0.08) {
+                const sy = Math.sign(wlDir.y);
+                localPositionRef.current.y += sy * Math.min(wlStep, wlAbsY);
+                yawRef.current = Math.atan2(0, sy);
+              } else {
+                const sx = Math.sign(wlDir.x);
+                localPositionRef.current.x += sx * Math.min(wlStep, wlAbsX);
+                yawRef.current = Math.atan2(sx, 0);
+              }
+              if (localRobotRef.current) {
+                localRobotRef.current.root.position.set(
+                  localPositionRef.current.x, localPositionRef.current.y, 0.28
+                );
+                if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
+                if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
+                const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
+                localRobotRef.current.leftArm.rotation.x = -Math.PI / 2 + armSwing;
+                localRobotRef.current.rightArm.rotation.x = -Math.PI / 2 - armSwing;
+              }
+            } else {
+              localPositionRef.current.set(wlTgt.x, wlTgt.y);
+              if (localRobotRef.current) {
+                localRobotRef.current.root.position.set(wlTgt.x, wlTgt.y, 0.28);
+                if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = 0;
+                if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = 0;
+                localRobotRef.current.leftArm.rotation.x = -Math.PI / 2;
+                localRobotRef.current.rightArm.rotation.x = -Math.PI / 2;
+              }
+              yawRef.current = Math.atan2(0, 1); // face north toward laptop screen
+            }
+            // Sparky walks west of the laptop
+            const slTgt = new THREE.Vector2(-3.5, 1.2);
+            if (aptSparkyCS) {
+              const slDist = Math.hypot(
+                aptSparkyCS.root.position.x - slTgt.x,
+                aptSparkyCS.root.position.y - slTgt.y
+              );
+              if (slDist > 0.08) {
+                const slDir = new THREE.Vector2(
+                  slTgt.x - aptSparkyCS.root.position.x,
+                  slTgt.y - aptSparkyCS.root.position.y
+                ).normalize();
+                aptSparkyCS.root.position.x += slDir.x * MOVE_SPEED * 0.15 * delta;
+                aptSparkyCS.root.position.y += slDir.y * MOVE_SPEED * 0.15 * delta;
+                const slFacing = -Math.atan2(slDir.x, slDir.y);
+                aptSparkyFacingRef.current = slFacing;
+                const slQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), slFacing);
+                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(slQ);
+                animateRobotVisual(aptSparkyCS, worldTime, 0.15, -0.15, 0.08);
+              } else {
+                aptSparkyCS.root.position.set(slTgt.x, slTgt.y, 0.22);
+              }
+            }
+            // Both arrived (2D distance, ignore z) → transition
+            const playerArrived = Math.hypot(
+              localPositionRef.current.x - wlTgt.x,
+              localPositionRef.current.y - wlTgt.y
+            ) <= 0.08;
+            const sparkyArrived = aptSparkyCS && Math.hypot(
+              aptSparkyCS.root.position.x - slTgt.x,
+              aptSparkyCS.root.position.y - slTgt.y
+            ) <= 0.08;
+            if (playerArrived && sparkyArrived) {
+              aptCutscenePhaseRef.current = 'string-tutorial';
+              aptCutsceneTimerRef.current = 0;
+              document.exitPointerLock();
+              setShowStringDlg(true);
+              setStringDlgStep(0);
+            }
+          } else if (phase === 'string-tutorial') {
+            aptCutsceneTimerRef.current += delta;
+          } else if (phase === 'laptop-ui') {
+            aptCutsceneTimerRef.current += delta;
+            const luElapsed = aptCutsceneTimerRef.current;
+            if (luElapsed > 0.5 && !showLaptopUI) {
+              document.exitPointerLock();
+              setShowLaptopUI(true);
+            }
+          } else if (phase === 'antenna-glow') {
+            aptCutsceneTimerRef.current += delta;
+            const t = aptCutsceneTimerRef.current;
+            if (scrapRobotRef.current) {
+              const mat = scrapRobotRef.current.antennaTip.material as THREE.MeshToonMaterial | undefined;
+              if (mat) {
+                mat.emissive = new THREE.Color(0x00ff88);
+                mat.emissiveIntensity = Math.max(0, Math.sin(t * 8)) * 0.8;
+              }
+              // Create PointLight + glow sprite on first frame
+              if (t < 0.05 && sceneRef.current) {
+                const tip = scrapRobotRef.current.antennaTip;
+                const worldPos = new THREE.Vector3();
+                tip.getWorldPosition(worldPos);
+                // PointLight illuminates nearby surfaces
+                const light = new THREE.PointLight(0x00ff88, 0, 1.5);
+                light.position.copy(worldPos);
+                sceneRef.current.add(light);
+                antennaGlowLightRef.current = light;
+                // Radial gradient sprite for the visible halo
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d')!;
+                const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+                gradient.addColorStop(0, 'rgba(0,255,136,1)');
+                gradient.addColorStop(0.2, 'rgba(0,255,136,0.8)');
+                gradient.addColorStop(0.5, 'rgba(0,255,136,0.3)');
+                gradient.addColorStop(1, 'rgba(0,255,136,0)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 64, 64);
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+                const sprite = new THREE.Sprite(spriteMat);
+                sprite.position.copy(worldPos);
+                sprite.scale.set(0.3, 0.3, 1);
+                sceneRef.current.add(sprite);
+                antennaGlowSpriteRef.current = sprite;
+              }
+              // Pulse glow sprite and light in sync with emissive
+              const glowIntensity = Math.max(0, Math.sin(t * 8));
+              if (antennaGlowLightRef.current) antennaGlowLightRef.current.intensity = glowIntensity * 0.4;
+              if (antennaGlowSpriteRef.current) {
+                const sm = antennaGlowSpriteRef.current.material as THREE.SpriteMaterial;
+                sm.opacity = glowIntensity * 0.5;
+                antennaGlowSpriteRef.current.scale.setScalar(0.2 + glowIntensity * 0.25);
+              }
+            }
+            if (t > 3.0 && !dateDlgShownRef.current) {
+              dateDlgShownRef.current = true;
+              setShowDateDlg(true);
+              setDateDlgStep(0);
+              document.exitPointerLock();
+            }
+          } else if (phase === 'date-coding') {
+            aptCutsceneTimerRef.current += delta;
+            const dcElapsed = aptCutsceneTimerRef.current;
+            if (dcElapsed > 0.5 && !dateCodingShownRef.current) {
+              dateCodingShownRef.current = true;
+              setLaptopMode('date');
+              setLaptopCode('');
+              setLaptopOutput('');
+              setLaptopSuccess(false);
+              setShowLaptopUI(true);
+            }
+          } else if (phase === 'reboot') {
+            aptCutsceneTimerRef.current += delta;
+            const t = aptCutsceneTimerRef.current;
+            if (scrapRobotRef.current) {
+              // Rapid green flash on antenna
+              const mat = scrapRobotRef.current.antennaTip.material as THREE.MeshToonMaterial | undefined;
+              if (mat) {
+                mat.emissive = new THREE.Color(0x00ff88);
+                mat.emissiveIntensity = Math.max(0, Math.sin(t * 20)) * 0.9;
+              }
+              // Create PointLight on first frame
+              if (t < 0.05 && sceneRef.current && !antennaGlowLightRef.current) {
+                const tip = scrapRobotRef.current.antennaTip;
+                const worldPos = new THREE.Vector3();
+                tip.getWorldPosition(worldPos);
+                const light = new THREE.PointLight(0x00ff88, 0, 1.5);
+                light.position.copy(worldPos);
+                sceneRef.current.add(light);
+                antennaGlowLightRef.current = light;
+              }
+              // Pulse light
+              if (antennaGlowLightRef.current) {
+                antennaGlowLightRef.current.intensity = Math.max(0, Math.sin(t * 20)) * 0.6;
+              }
+              // Violent shake — random position jitter + rapid rotation snapping
+              const phase = Math.floor(t * 30); // ~30 new random values per second for stuttery feel
+              const seed1 = Math.sin(phase * 1.7) * 0.5 + 0.5;
+              const seed2 = Math.cos(phase * 2.3) * 0.5 + 0.5;
+              const seed3 = Math.sin(phase * 3.1) * 0.5 + 0.5;
+              const amp = Math.min(1, t / 0.3) * (1 - Math.max(0, (t - 1.8) / 0.4));
+              scrapRobotRef.current.root.position.x = -2.6 + (seed1 - 0.5) * 0.06 * amp;
+              scrapRobotRef.current.root.position.z = 0.24 + (seed2 - 0.5) * 0.06 * amp;
+              scrapRobotRef.current.root.rotation.x = Math.PI / 2 + (seed3 - 0.5) * 0.15 * amp;
+              scrapRobotRef.current.root.rotation.z = 0.08 + (seed2 - 0.5) * 0.12 * amp;
+            }
+            // Show version dialog after shake
+            if (t > 2.5 && !versionDlgShownRef.current) {
+              versionDlgShownRef.current = true;
+              setShowVersionDlg(true);
+              setVersionDlgStep(0);
+              document.exitPointerLock();
+              if (antennaGlowLightRef.current) {
+                sceneRef.current?.remove(antennaGlowLightRef.current);
+                antennaGlowLightRef.current = null;
+              }
+            }
+          } else if (phase === 'version-coding') {
+            aptCutsceneTimerRef.current += delta;
+            const vcElapsed = aptCutsceneTimerRef.current;
+            if (vcElapsed > 0.5 && !versionCodingShownRef.current) {
+              versionCodingShownRef.current = true;
+              setLaptopMode('version');
+              setLaptopCode('');
+              setLaptopOutput('');
+              setLaptopSuccess(false);
+              setShowLaptopUI(true);
+            }
+          } else if (phase === 'pre-boot') {
+            aptCutsceneTimerRef.current += delta;
+            const t = aptCutsceneTimerRef.current;
+            if (scrapRobotRef.current) {
+              // Reset position first frame
+              if (t < 0.05) {
+                scrapRobotRef.current.root.position.set(-2.6, 1.2, 0.24);
+                scrapRobotRef.current.root.rotation.x = Math.PI / 2;
+                scrapRobotRef.current.root.rotation.z = 0.08;
+                scrapRobotRef.current.root.scale.set(0.65, 0.65, 0.65);
+                scrapRobotRef.current.root.visible = true;
+                playStartupChime();
+                // Recreate antenna PointLight
+                if (sceneRef.current) {
+                  const tip = scrapRobotRef.current.antennaTip;
+                  const worldPos = new THREE.Vector3();
+                  tip.getWorldPosition(worldPos);
+                  const light = new THREE.PointLight(0x00ff88, 0, 1.5);
+                  light.position.copy(worldPos);
+                  sceneRef.current.add(light);
+                  antennaGlowLightRef.current = light;
+                }
+              }
+              // Pulse antenna slowly
+              const mat = scrapRobotRef.current.antennaTip.material as THREE.MeshToonMaterial | undefined;
+              if (mat) {
+                mat.emissive = new THREE.Color(0x00ff88);
+                mat.emissiveIntensity = Math.max(0, Math.sin(t * 3)) * 0.6;
+              }
+              if (antennaGlowLightRef.current) {
+                antennaGlowLightRef.current.intensity = Math.max(0, Math.sin(t * 3)) * 0.3;
+              }
+              // Beep at pulse peaks (~every 1s)
+              if (t > 0.05) {
+                const prevPeak = Math.floor((t - delta) * 3);
+                const currPeak = Math.floor(t * 3);
+                if (prevPeak !== currPeak && Math.sin(t * 3) > 0.8) {
+                  playBootBeep();
+                }
+              }
+            }
+            // Sparky dialog after chime + some pulses
+            if (t > 3.0 && !bootDlgShownRef.current) {
+              bootDlgShownRef.current = true;
+              setShowBootDlg(true);
+              setBootDlgStep(0);
+              document.exitPointerLock();
+              if (antennaGlowLightRef.current) {
+                sceneRef.current?.remove(antennaGlowLightRef.current);
+                antennaGlowLightRef.current = null;
+              }
+              const mat = scrapRobotRef.current?.antennaTip.material as THREE.MeshToonMaterial | undefined;
+              if (mat) { mat.emissive = new THREE.Color(0x000000); mat.emissiveIntensity = 0; }
+            }
+          } else if (phase === 'boot-coding') {
+            aptCutsceneTimerRef.current += delta;
+            const bcElapsed = aptCutsceneTimerRef.current;
+            if (bcElapsed > 0.5 && !bootCodingShownRef.current) {
+              bootCodingShownRef.current = true;
+              setLaptopMode('boot');
+              setLaptopCode('');
+              setLaptopOutput('');
+              setLaptopSuccess(false);
+              setShowLaptopUI(true);
+            }
+          } else if (phase === 'boot') {
+            aptCutsceneTimerRef.current += delta;
+            const t = aptCutsceneTimerRef.current;
+            // Eye flash + jolt on first frame
+            if (t < 0.05 && scrapRobotRef.current) {
+              if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
+              if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
+              scrapRobotRef.current.root.position.x = -2.6 + (Math.random() - 0.5) * 0.04;
+              scrapRobotRef.current.root.position.z = 0.24 + (Math.random() - 0.5) * 0.04;
+            }
+            // Fade eyes off after 0.3s
+            if (t > 0.3 && t < 0.6 && scrapRobotRef.current) {
+              const fade = (t - 0.3) / 0.3;
+              const eyeVal = Math.floor(0x22 * (1 - fade)) * 0x10000 + Math.floor(0xd3 * (1 - fade)) * 0x100 + Math.floor(0xee * (1 - fade));
+              if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(eyeVal);
+              if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(eyeVal);
+            }
+            // Smoke puffs at 0.3s, 0.6s, 0.9s
+            const puffTimes = [0.3, 0.6, 0.9];
+            for (const pt of puffTimes) {
+              if (t > pt && t < pt + delta + 0.01 && t < pt + 0.05 && scrapRobotRef.current && sceneRef.current) {
+                for (let i = 0; i < 4; i++) {
+                  const size = 0.05 + Math.random() * 0.04;
+                  const puff = new THREE.Mesh(
+                    new THREE.CircleGeometry(size, 8),
+                    new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.5, depthWrite: false })
+                  );
+                  const bx = scrapRobotRef.current.root.position.x + (Math.random() - 0.5) * 0.06;
+                  const by = scrapRobotRef.current.root.position.y + (Math.random() - 0.5) * 0.06;
+                  puff.position.set(bx, by, 0.7);
+                  puff.userData = { spawnTime: t, riseSpeed: 0.3 + Math.random() * 0.2, driftX: (Math.random() - 0.5) * 0.15, driftY: (Math.random() - 0.5) * 0.15 };
+                  sceneRef.current.add(puff);
+                  smokeParticlesRef.current.push(puff);
+                }
+              }
+            }
+            // Animate existing smoke particles
+            for (let i = smokeParticlesRef.current.length - 1; i >= 0; i--) {
+              const p = smokeParticlesRef.current[i];
+              const age = t - (p.userData.spawnTime as number);
+              if (age > 1.2) {
+                sceneRef.current?.remove(p);
+                p.geometry.dispose();
+                (p.material as THREE.Material).dispose();
+                smokeParticlesRef.current.splice(i, 1);
+              } else {
+                p.position.z = 0.24 + age * (p.userData.riseSpeed as number);
+                p.position.x = (p.userData.spawnX ?? p.position.x) + (p.userData.driftX as number) * age;
+                p.position.y = (p.userData.spawnY ?? p.position.y) + (p.userData.driftY as number) * age;
+                if (!p.userData.spawnX) { p.userData.spawnX = p.position.x; p.userData.spawnY = p.position.y; }
+                const s = 1 + age * 3;
+                p.scale.set(s, s, 1);
+                (p.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.5 * (1 - age / 1.2));
+              }
+            }
+            // Transition to battery-scene
+            if (t > 2.0) {
+              // Cleanup any remaining smoke
+              for (const p of smokeParticlesRef.current) {
+                sceneRef.current?.remove(p);
+                p.geometry.dispose();
+                (p.material as THREE.Material).dispose();
+              }
+              smokeParticlesRef.current = [];
+              aptCutscenePhaseRef.current = 'battery-scene';
+              aptCutsceneTimerRef.current = 0;
+            }
+          } else if (phase === 'battery-scene') {
+            aptCutsceneTimerRef.current += delta;
+            const t = aptCutsceneTimerRef.current;
+            // Scrap falls over at start
+            if (t < 0.1 && scrapRobotRef.current) {
+              scrapRobotRef.current.root.rotation.z = 0.3 + Math.random() * 0.1;
+              scrapRobotRef.current.root.position.z = 0.2;
+              if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x000000);
+              if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x000000);
+            }
+            // Show Sparky battery dialog at 0.5s
+            if (t > 0.5 && !batteryDlgShownRef.current) {
+              batteryDlgShownRef.current = true;
+              setBatteryDlgStep(0);
+            }
+            // Transition to done after dialog completes
+            if (t > 5.0) {
               aptCutscenePhaseRef.current = 'done';
               aptCutsceneTimerRef.current = 0;
             }
           } else if (phase === 'done') {
             if (cutsceneBoxRef.current) cutsceneBoxRef.current.visible = false;
-            if (brokenScrapRef.current) brokenScrapRef.current.root.visible = false;
             if (computerRef.current) computerRef.current.visible = false;
             if (wireRef.current) {
               wireRef.current.visible = false;
-              (wireRef.current.material as THREE.MeshToonMaterial).opacity = 0;
             }
-            if (scrapRobotRef.current) scrapRobotRef.current.root.visible = true;
+            if (coilRef.current) coilRef.current.visible = false;
+            if (tackFxRef.current) {
+              tackFxRef.current.visible = false;
+              tackFxRef.current.scale.set(1, 1, 1);
+              tackFxRef.current.children.forEach((c: THREE.Object3D) => {
+                c.position.set(0, 0, 0);
+                ((c as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 1;
+              });
+            }
+            tackFxPhaseRef.current = 0;
+            if (scrapRobotRef.current) {
+              scrapRobotRef.current.root.scale.set(0.65, 0.65, 0.65);
+              scrapRobotRef.current.root.position.set(-2.6, 1.2, 0.24);
+              scrapRobotRef.current.root.rotation.x = Math.PI / 2;
+              scrapRobotRef.current.root.rotation.z = 0.08;
+              scrapRobotRef.current.root.visible = true;
+              const mat = scrapRobotRef.current.antennaTip.material as THREE.MeshToonMaterial | undefined;
+              if (mat) { mat.emissive = new THREE.Color(0x000000); mat.emissiveIntensity = 0; }
+            }
+            // Cleanup antenna glow
+            if (antennaGlowLightRef.current) {
+              sceneRef.current?.remove(antennaGlowLightRef.current);
+              antennaGlowLightRef.current = null;
+            }
+            // Cleanup any lingering smoke particles
+            for (const p of smokeParticlesRef.current) {
+              sceneRef.current?.remove(p);
+              p.geometry.dispose();
+              (p.material as THREE.Material).dispose();
+            }
+            smokeParticlesRef.current = [];
+            if (antennaGlowSpriteRef.current) {
+              sceneRef.current?.remove(antennaGlowSpriteRef.current);
+              (antennaGlowSpriteRef.current.material as THREE.SpriteMaterial).map?.dispose();
+              antennaGlowSpriteRef.current.material.dispose();
+              antennaGlowSpriteRef.current = null;
+            }
             cinemCamActiveRef.current = false;
             aptCutscenePhaseRef.current = 'idle';
             cutsceneDoneRef.current = true;
             try { localStorage.setItem('rb_cutscene_done', '1'); } catch {}
             apiSync({ cutsceneDone: true });
-            showTutorialRef.current = true;
-            setShowTutorial(true);
-            setTutorialStep(0);
-            setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
-            setOutput('');
-            setSuccess(false);
             if (aptSparkyCS) {
               aptSparkyCS.body.rotation.x = 0;
               aptSparkyCS.root.position.set(0.2, 2.2, 0.22);
@@ -3490,7 +4670,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const part = PARTS_CATALOG.find(p => p.id === partId)!;
             const unitLabel = nextUnit === 'unit2' ? 'Variables & Data Types' : nextUnit === 'unit3' ? 'String Methods' : 'Unit 4';
 
-            const newBackpack = backpackRef.current.filter(id => id !== partId);
+            const newBackpack = gameStore.get('backpack').filter(id => id !== partId);
             updateBackpack(newBackpack);
             updateQuestStage(nextUnit);
 
@@ -3510,7 +4690,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
             }, 2000);
 
-            if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(backpackRef.current[heldSlotIndexRef.current]))) {
+            if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
               setHeldSlotIndex(null);
               heldSlotIndexRef.current = null;
             }
@@ -3555,11 +4735,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setInteractionPromptName(closestCandidate ? closestCandidate.request.customerName : null);
         }
 
-        // Rafiq interaction — re-open workshop intro on Space
+        // Rafiq interaction — letter reception or workshop intro
         const distToRafiq = Math.hypot(localPositionRef.current.x - ROOM_OWNER_POS.x, localPositionRef.current.y - ROOM_OWNER_POS.y);
         if (interactionRequestedRef.current && distToRafiq < 1.8) {
           interactionRequestedRef.current = false;
-          reopenWorkshopIntro();
+          const bp = gameStore.get('backpack');
+          if (bp.includes('letter' as ScrapPartId)) {
+            // Rafiq reads the letter and gives employment
+            const newBackpack = bp.filter(id => id !== 'letter');
+            gameStore.set('backpack', newBackpack);
+            apiSync({ backpack: newBackpack });
+            lastConfirmedBackpackRef.current = newBackpack;
+            setRafiqLetterStep(0);
+          } else {
+            reopenWorkshopIntro();
+          }
         }
 
         if (interactionRequestedRef.current && closestCandidate) {
@@ -3594,7 +4784,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           interactionRequestedRef.current = false;
           const stage = sparkyQuestStageRef.current;
           const partId = PART_FOR_STAGE[stage];
-          if (partId && !backpackRef.current.includes(partId)) {
+          if (partId && !gameStore.get('backpack').includes(partId)) {
             setShopkeeperGreeting(`Welcome! What can I get for you today? I've got just the part Scrap needs.`);
           } else {
             setShopkeeperGreeting(`Welcome back! Take a look around — let me know if anything catches your eye.`);
@@ -3680,7 +4870,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const bonus = lockedBonusRef.current;
             lockedBonusRef.current = 0;
             bonusTimerRef.current = null;
-            const newMoney = moneyRef.current + 2 + bonus;
+            const newMoney = gameStore.get('money') + 2 + bonus;
             updateMoney(newMoney);
             playHappyChime();
             const bonusText = bonus > 0 ? ` (+$${bonus} speed bonus!)` : '';
@@ -3779,13 +4969,76 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const csSparky = apartmentSparkyRef.current;
           if (csSparky) {
             const sp = csSparky.root.position;
-            if (phase === 'link-computer') {
-              const camTarget = new THREE.Vector3(sp.x + 0.2, sp.y - 1.8, 3.5);
+            if (phase === 'fetch-laptop') {
+              camera.position.set(-3.0, 2.5, 1.5);
+              camera.lookAt(-3.0, 1.15, 0.3);
+            } else if (phase === 'link-computer' || phase === 'electrocute') {
+              const camTarget = new THREE.Vector3(-3.0, 2.5, 1.5);
               camera.position.lerp(camTarget, 0.04);
-              camera.lookAt(sp.x, sp.y, 0.3);
-            } else if (phase === 'fetch-laptop') {
-              camera.position.set(-2.7, 3.0, 1.6);
-              camera.lookAt(-2.5, 0.8, 0.3);
+              camera.lookAt(-3.0, 1.15, 0.3);
+            } else if (phase === 'walk-to-laptop') {
+              const camTarget = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y + 1.3, 2.0);
+              camera.position.lerp(camTarget, 0.04);
+              camera.lookAt(localPositionRef.current.x, localPositionRef.current.y - 0.8, 0.3);
+            } else if (phase === 'string-tutorial') {
+              const camTarget = new THREE.Vector3(-3.4, 1.6, 1.8);
+              camera.position.lerp(camTarget, 0.04);
+              camera.lookAt(-3.4, 0.5, 0.3);
+            } else if (phase === 'laptop-ui') {
+              if (computerRef.current) {
+                const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
+                const dp = new THREE.Vector3();
+                display.getWorldPosition(dp);
+                camera.position.set(dp.x, dp.y - 0.35, dp.z);
+                camera.lookAt(dp);
+              }
+            } else if (phase === 'antenna-glow') {
+              const t = aptCutsceneTimerRef.current;
+              if (t < 2.0) {
+                camera.position.lerp(new THREE.Vector3(-3.0, 0.8, 1.5), 0.06);
+                camera.lookAt(-2.6, 1.2, 0.34);
+              } else {
+                if (computerRef.current) {
+                  const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
+                  const dp = new THREE.Vector3();
+                  display.getWorldPosition(dp);
+                  camera.position.lerp(new THREE.Vector3(dp.x, dp.y - 0.35, dp.z), 0.04);
+                  camera.lookAt(dp);
+                }
+              }
+            } else if (phase === 'date-coding') {
+              if (computerRef.current) {
+                const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
+                const dp = new THREE.Vector3();
+                display.getWorldPosition(dp);
+                camera.position.set(dp.x, dp.y - 0.35, dp.z);
+                camera.lookAt(dp);
+              }
+            } else if (phase === 'reboot') {
+              camera.position.lerp(new THREE.Vector3(-3.0, 0.8, 1.5), 0.06);
+              camera.lookAt(-2.6, 1.2, 0.34);
+            } else if (phase === 'version-coding') {
+              if (computerRef.current) {
+                const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
+                const dp = new THREE.Vector3();
+                display.getWorldPosition(dp);
+                camera.position.set(dp.x, dp.y - 0.35, dp.z);
+                camera.lookAt(dp);
+              }
+            } else if (phase === 'pre-boot') {
+              camera.position.lerp(new THREE.Vector3(-3.0, 0.8, 1.5), 0.06);
+              camera.lookAt(-2.6, 1.2, 0.34);
+            } else if (phase === 'boot-coding') {
+              if (computerRef.current) {
+                const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
+                const dp = new THREE.Vector3();
+                display.getWorldPosition(dp);
+                camera.position.set(dp.x, dp.y - 0.35, dp.z);
+                camera.lookAt(dp);
+              }
+            } else if (phase === 'boot') {
+              camera.position.lerp(new THREE.Vector3(-3.0, 0.8, 1.5), 0.06);
+              camera.lookAt(-2.6, 1.2, 0.34);
             } else {
               const camTarget = new THREE.Vector3(-2.7, 3.0, 2.2);
               camera.position.lerp(camTarget, 0.04);
@@ -3812,7 +5065,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         );
         camera.position.copy(cameraTargetPosRef.current);
         camera.lookAt(cameraLookTargetRef.current);
-        }
 
         // Clamp camera inside room so it never sees past walls into the void
         if (inside) {
@@ -3838,8 +5090,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
         }
 
-        // Broadcast position via WebSocket every 50ms for multiplayer
-        if (now >= sendAtRef.current) {
+        // Broadcast position via WebSocket when moving (or every 50ms if moving)
+        if (moved && now >= sendAtRef.current) {
           sendAtRef.current = now + NETWORK_SYNC_MS;
           const sendPos = (() => {
             if (inWorkshopRoomRef.current) return { x: ROOM_SPAWN.x, y: ROOM_SPAWN.y, room: 'workshop' };
@@ -3850,6 +5102,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           })();
           sendPosition(sendPos.x, sendPos.y, sendPos.room, yawRef.current);
         }
+      }
 
       renderer.render(scene, camera);
       rafRef.current = window.requestAnimationFrame(animate);
@@ -3890,7 +5143,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const watchdogId = window.setInterval(() => {
       if (document.hidden || tabHiddenRef.current) return;
       const elapsed = performance.now() - lastAnimFrameRef.current;
-      if (elapsed > 3000) {
+      if (elapsed > 3000 && rafRef.current !== null) {
         console.warn('⚠️ Restarting frozen animation loop — last frame', elapsed.toFixed(0), 'ms ago');
         if (animateFnRef.current) {
           if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
@@ -3977,7 +5230,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       workshopDoorMarkerRef.current.visible = (sparkyQuestStage === 'unit1-done' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3-done') && !needsPart && !inWorkshopRoom;
     }
     if (apartmentDoorMarkerRef.current) {
-      const showAptMarker = !inApartmentRoom && sparkyHomeArrivedRef.current && (
+      const showAptMarker = !inApartmentRoom && (
         sparkyQuestStage === 'intro' ||
         sparkyQuestStage === 'unit1-done' ||
         sparkyQuestStage === 'unit2-done' ||
@@ -4139,7 +5392,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (scrap.leftPupil) scrap.leftPupil.material.color.setHex(eyeBright);
           if (scrap.rightPupil) scrap.rightPupil.material.color.setHex(eyeBright);
           if (done >= 6 && scrap.antennaTip) scrap.antennaTip.material.color.setHex(0x22dd22);
-          if (done >= 8) scrap.root.rotation.z = 0;
+          if (done >= 8) scrap.root.rotation.set(0, 0, 0);
           if (done >= 10 && scrap.antennaTip) scrap.antennaTip.material.color.setHex(0x44ff44);
         }
 
@@ -4153,7 +5406,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             setTutorialComplete(true);
             setShopUnlocked(true);
             updateQuestStage('unit2-done');
-            sparkyHomeArrivedRef.current = true;
             if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
             if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
             if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
@@ -4163,7 +5415,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             setTutorialComplete(true);
             setShopUnlocked(true);
             updateQuestStage('unit1-done');
-            sparkyHomeArrivedRef.current = true;
             if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
             if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
             if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
@@ -4256,7 +5507,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     } else if (stage === 'unit1-done' || stage === 'unit2-done' || stage === 'unit3-done') {
       const partId = PART_FOR_STAGE[stage];
       const part = PARTS_CATALOG.find(p => p.id === partId);
-      const owned = backpackRef.current.includes(partId);
+      const owned = gameStore.get('backpack').includes(partId);
       if (owned) {
         if (sparkyInstallPhaseRef.current) return; // already installing
         const nextUnit: SparkyQuestStage = stage === 'unit1-done' ? 'unit2' : stage === 'unit2-done' ? 'unit3' : 'unit4';
@@ -4409,6 +5660,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     try { localStorage.removeItem('rb_ws_intro'); } catch {}
   };
 
+  useEffect(() => {
+    if (!showLaptopUI) return;
+    const updateWidth = () => {
+      const aspect = window.innerWidth / window.innerHeight;
+      const vFov = 65 * Math.PI / 180;
+      const dist = 0.35;
+      const displayW = 0.50;
+      const viewW = 2 * dist * Math.tan(vFov / 2) * aspect;
+      const fraction = (displayW / viewW) * 0.92;
+      setLaptopWindowCSS(`${(fraction * 100).toFixed(1)}vw`);
+    };
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, [showLaptopUI]);
+
   return (
     <div className="relative" suppressHydrationWarning>
       {showSparkyExamples && inWorkshopRoom && (
@@ -4516,27 +5783,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      {sparkyIntroStep >= 0 && (
-        <>
-          {/* Speech bubble + choices above Sparky (projected via ref) */}
-          <div
-            ref={speechBubbleRef}
-            className="fixed z-50 pointer-events-none"
-            style={{ display: 'none', left: 0, top: 0, transform: 'translate(-50%, -100%) translateY(-8px)' }}
-          >
-            <div className="relative pointer-events-auto">
-              {/* Speech bubble (determines container size — stays centered above Sparky) */}
-              <div className="relative rounded-2xl border border-amber-400/50 bg-slate-900/95 px-4 py-3 shadow-2xl backdrop-blur-sm" style={{ width: '260px' }}>
-                <div className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-b border-r border-amber-400/50 bg-slate-900/95" />
-                <div className="flex items-start gap-2">
-                  <div className="text-2xl">🤖</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-amber-300">Sparky</div>
-                    <p className="mt-0.5 text-sm text-slate-100 leading-snug">{SPARKY_INTRO_CONVO[sparkyIntroStep].text}</p>
-                  </div>
-                </div>
+      {/* Speech bubble + choices above Sparky (projected via ref) */}
+      <div
+        ref={speechBubbleRef}
+        className="fixed z-50 pointer-events-none"
+        style={{ display: 'none', left: 0, top: 0, transform: 'translate(-50%, -100%) translateY(-8px)' }}
+      >
+        <div className="relative pointer-events-auto">
+          <div className="relative rounded-2xl border border-amber-400/50 bg-slate-900/95 px-4 py-3 shadow-2xl backdrop-blur-sm" style={{ width: '260px' }}>
+            <div className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-b border-r border-amber-400/50 bg-slate-900/95" />
+            <div className="flex items-start gap-2">
+              <div className="text-2xl">🤖</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold text-amber-300">Sparky</div>
+                <p className="mt-0.5 text-sm text-slate-100 leading-snug">{sparkyIntroStep >= 0 ? SPARKY_INTRO_CONVO[sparkyIntroStep].text : ''}</p>
               </div>
-              {/* Left choice buttons */}
+            </div>
+          </div>
+          {sparkyIntroStep >= 0 && (
+            <>
               <div className="absolute flex flex-col gap-2" style={{ right: 'calc(100% + 8px)', top: 0 }}>
                 {SPARKY_INTRO_CONVO[sparkyIntroStep].choices.filter((_, i) => i % 2 === 0).map((choice, idx) => (
                   <button
@@ -4554,7 +5819,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   </button>
                 ))}
               </div>
-              {/* Right choice buttons */}
               <div className="absolute flex flex-col gap-2" style={{ left: 'calc(100% + 8px)', top: 0 }}>
                 {SPARKY_INTRO_CONVO[sparkyIntroStep].choices.filter((_, i) => i % 2 === 1).map((choice, idx) => (
                   <button
@@ -4577,10 +5841,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   Press the number or click!
                 </p>
               )}
-            </div>
-          </div>
-        </>
-      )}
+            </>
+          )}
+        </div>
+      </div>
+
       {showTransportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => { setShowTransportModal(false); setTransportMessage(null); }}>
           <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
@@ -4660,7 +5925,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                               disabled={money < part.cost}
                               onClick={() => {
                                 if (money < part.cost) return;
-                                const newBackpack = [...backpackRef.current, part.id];
+                                const newBackpack = [...gameStore.get('backpack'), part.id];
                                 const newMoney = money - part.cost;
                                 updateMoney(newMoney);
                                 updateBackpack(newBackpack);
@@ -4737,6 +6002,486 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
+      {batteryDlgStep >= 0 && batteryDlgStep < BATTERY_DLG_STEPS.length && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="text-3xl">🤖</div>
+              <div>
+                <div className="text-sm font-bold text-amber-300">Sparky</div>
+                <p className="mt-1 text-lg text-slate-100 leading-snug">{BATTERY_DLG_STEPS[batteryDlgStep]}</p>
+              </div>
+            </div>
+            <div className="flex justify-end mt-6">
+              <button className="rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-400"
+                onClick={() => {
+                  if (batteryDlgStep < BATTERY_DLG_STEPS.length - 1) {
+                    setBatteryDlgStep(s => s + 1);
+                  } else {
+                    // Give letter to player
+                    const bp = gameStore.get('backpack');
+                    if (!bp.includes('letter' as ScrapPartId)) {
+                      const newBackpack: ScrapPartId[] = [...bp, 'letter'];
+                      gameStore.set('backpack', newBackpack);
+                      apiSync({ backpack: newBackpack });
+                      lastConfirmedBackpackRef.current = newBackpack;
+                    }
+                    setBatteryDlgStep(-1);
+                  }
+                }}>
+                {batteryDlgStep < BATTERY_DLG_STEPS.length - 1 ? 'Continue →' : 'Got it!'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rafiqLetterStep >= 0 && rafiqLetterStep < RAFIQ_LETTER_STEPS.length && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="text-3xl">🧑‍🔧</div>
+              <div>
+                <div className="text-sm font-bold text-amber-300">Rafiq</div>
+                <p className="mt-1 text-lg text-slate-100 leading-snug">{RAFIQ_LETTER_STEPS[rafiqLetterStep]}</p>
+              </div>
+            </div>
+            <div className="flex justify-end mt-6">
+              <button className="rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-400"
+                onClick={() => {
+                  if (rafiqLetterStep < RAFIQ_LETTER_STEPS.length - 1) {
+                    setRafiqLetterStep(s => s + 1);
+                  } else {
+                    setRafiqLetterStep(-1);
+                    reopenWorkshopIntro();
+                  }
+                }}>
+                {rafiqLetterStep < RAFIQ_LETTER_STEPS.length - 1 ? 'Continue →' : 'Let\'s work!'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showElectrocuteDlg && (() => {
+        const cur = cutsceneDlgSteps[electrocuteStep] ?? cutsceneDlgSteps[0];
+        return (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
+          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
+          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
+            style={{ height: '30vh' }}>
+            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
+              <div className="flex items-center gap-2 mb-2">
+                {cur.speaker === 'Sparky' ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
+                    <rect x="3" y="11" width="18" height="10" rx="2" />
+                    <circle cx="12" cy="5" r="2" />
+                    <path d="M12 7v4" />
+                    <line x1="8" y1="16" x2="8" y2="16" />
+                    <line x1="16" y1="16" x2="16" y2="16" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
+                    <circle cx="12" cy="8" r="4" />
+                    <path d="M4 20c0-4 3.6-8 8-8s8 4 8 8" />
+                  </svg>
+                )}
+                <span className="text-amber-300 font-bold text-xl tracking-wide">{cur.speaker}</span>
+              </div>
+              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
+                {electrocuteText}<span className="animate-pulse text-amber-400/80">▌</span>
+              </p>
+              <div className="flex justify-end mt-4">
+                <button
+                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
+                  onClick={() => {
+                    const nextStep = electrocuteStep + 1;
+                    if (nextStep < cutsceneDlgSteps.length) {
+                      setElectrocuteStep(nextStep);
+                    } else {
+                      setShowElectrocuteDlg(false);
+                      electrocuteDlgShownRef.current = false;
+                      aptCutscenePhaseRef.current = 'walk-to-laptop';
+                      aptCutsceneTimerRef.current = 0;
+                    }
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="14 7 9 12 14 17" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                    <line x1="3" y1="12" x2="5" y2="12" />
+                  </svg>
+                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
+      {showStringDlg && (() => {
+        const cur = stringDlgSteps[stringDlgStep] ?? stringDlgSteps[0];
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
+            <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
+            <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
+              style={{ height: '30vh' }}>
+              <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
+                    <rect x="3" y="11" width="18" height="10" rx="2" />
+                    <circle cx="12" cy="5" r="2" />
+                    <path d="M12 7v4" />
+                    <line x1="8" y1="16" x2="8" y2="16" />
+                    <line x1="16" y1="16" x2="16" y2="16" />
+                  </svg>
+                  <span className="text-amber-300 font-bold text-xl tracking-wide">Sparky</span>
+                </div>
+                <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
+                  {stringDlgText.split(/(`[^`]+`)/).map((seg, i) =>
+                    seg.startsWith('`') && seg.endsWith('`')
+                      ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
+                      : seg
+                  )}<span className="animate-pulse text-amber-400/80">▌</span>
+                </p>
+                <div className="flex justify-end mt-4">
+                  <button
+                    className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
+                    onClick={() => {
+                      const nextStep = stringDlgStep + 1;
+                      if (nextStep < stringDlgSteps.length) {
+                        setStringDlgStep(nextStep);
+                      } else {
+                        setShowStringDlg(false);
+                        if (stringDlgIsHelpRef.current) {
+                          stringDlgIsHelpRef.current = false;
+                          setShowLaptopUI(true);
+                        } else {
+                          aptCutscenePhaseRef.current = 'laptop-ui';
+                          aptCutsceneTimerRef.current = 0;
+                        }
+                      }
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="14 7 9 12 14 17" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                      <line x1="3" y1="12" x2="5" y2="12" />
+                    </svg>
+                    <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {showDateDlg && (() => {
+        const steps = stringDlgIsHelpRef.current ? dateHelpSteps : dateDlgSteps;
+        const cur = steps[dateDlgStep] ?? steps[0];
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
+            <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
+            <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
+              style={{ height: '30vh' }}>
+              <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
+                    <rect x="3" y="11" width="18" height="10" rx="2" />
+                    <circle cx="12" cy="5" r="2" />
+                    <path d="M12 7v4" />
+                    <line x1="8" y1="16" x2="8" y2="16" />
+                    <line x1="16" y1="16" x2="16" y2="16" />
+                  </svg>
+                  <span className="text-amber-300 font-bold text-xl tracking-wide">Sparky</span>
+                </div>
+                <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
+                  {dateDlgText.split(/(`[^`]+`)/).map((seg, i) =>
+                    seg.startsWith('`') && seg.endsWith('`')
+                      ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
+                      : seg
+                  )}<span className="animate-pulse text-amber-400/80">▌</span>
+                </p>
+                <div className="flex justify-end mt-4">
+                  <button
+                    className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
+                    onClick={() => {
+                      const nextStep = dateDlgStep + 1;
+                      if (nextStep < steps.length) {
+                        setDateDlgStep(nextStep);
+                      } else {
+                        setShowDateDlg(false);
+                        if (stringDlgIsHelpRef.current) {
+                          stringDlgIsHelpRef.current = false;
+                          setShowLaptopUI(true);
+                        } else {
+                          dateCodingShownRef.current = false;
+                          aptCutscenePhaseRef.current = 'date-coding';
+                          aptCutsceneTimerRef.current = 0;
+                        }
+                      }
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="14 7 9 12 14 17" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                      <line x1="3" y1="12" x2="5" y2="12" />
+                    </svg>
+                    <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {showVersionDlg && (() => {
+        const steps = stringDlgIsHelpRef.current ? versionHelpSteps : versionDlgSteps;
+        const cur = steps[versionDlgStep] ?? steps[0];
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
+            <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
+            <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
+              style={{ height: '30vh' }}>
+              <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
+                    <rect x="3" y="11" width="18" height="10" rx="2" />
+                    <circle cx="12" cy="5" r="2" />
+                    <path d="M12 7v4" />
+                    <line x1="8" y1="16" x2="8" y2="16" />
+                    <line x1="16" y1="16" x2="16" y2="16" />
+                  </svg>
+                  <span className="text-amber-300 font-bold text-xl tracking-wide">Sparky</span>
+                </div>
+                <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
+                  {versionDlgText.split(/(`[^`]+`)/).map((seg, i) =>
+                    seg.startsWith('`') && seg.endsWith('`')
+                      ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
+                      : seg
+                  )}<span className="animate-pulse text-amber-400/80">▌</span>
+                </p>
+                {!stringDlgIsHelpRef.current && versionDlgStep === 1 && (
+                  <button
+                    className="mt-2 text-sm text-amber-400/80 underline underline-offset-2 hover:text-amber-300 transition-colors"
+                    onClick={() => setShowDecimalExplain(true)}
+                  >
+                    (What is a decimal?)
+                  </button>
+                )}
+                <div className="flex justify-end mt-4">
+                  <button
+                    className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
+                    onClick={() => {
+                      const nextStep = versionDlgStep + 1;
+                      if (nextStep < steps.length) {
+                        setVersionDlgStep(nextStep);
+                      } else {
+                        setShowVersionDlg(false);
+                        if (stringDlgIsHelpRef.current) {
+                          stringDlgIsHelpRef.current = false;
+                          setShowLaptopUI(true);
+                        } else {
+                          versionCodingShownRef.current = false;
+                          aptCutscenePhaseRef.current = 'version-coding';
+                          aptCutsceneTimerRef.current = 0;
+                        }
+                      }
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="14 7 9 12 14 17" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                      <line x1="3" y1="12" x2="5" y2="12" />
+                    </svg>
+                    <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {showBootDlg && (() => {
+        const steps = stringDlgIsHelpRef.current ? bootHelpSteps : bootDlgSteps;
+        const cur = steps[bootDlgStep] ?? steps[0];
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
+            <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
+            <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
+              style={{ height: '30vh' }}>
+              <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
+                    <rect x="3" y="11" width="18" height="10" rx="2" />
+                    <circle cx="12" cy="5" r="2" />
+                    <path d="M12 7v4" />
+                    <line x1="8" y1="16" x2="8" y2="16" />
+                    <line x1="16" y1="16" x2="16" y2="16" />
+                  </svg>
+                  <span className="text-amber-300 font-bold text-xl tracking-wide">Sparky</span>
+                </div>
+                <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
+                  {bootDlgText.split(/(`[^`]+`)/).map((seg, i) =>
+                    seg.startsWith('`') && seg.endsWith('`')
+                      ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
+                      : seg
+                  )}<span className="animate-pulse text-amber-400/80">▌</span>
+                </p>
+                <div className="flex justify-end mt-4">
+                  <button
+                    className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
+                    onClick={() => {
+                      const nextStep = bootDlgStep + 1;
+                      if (nextStep < steps.length) {
+                        setBootDlgStep(nextStep);
+                      } else {
+                        setShowBootDlg(false);
+                        if (stringDlgIsHelpRef.current) {
+                          stringDlgIsHelpRef.current = false;
+                          setShowLaptopUI(true);
+                        } else {
+                          bootCodingShownRef.current = false;
+                          aptCutscenePhaseRef.current = 'boot-coding';
+                          aptCutsceneTimerRef.current = 0;
+                        }
+                      }
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="14 7 9 12 14 17" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                      <line x1="3" y1="12" x2="5" y2="12" />
+                    </svg>
+                    <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {showLaptopUI && (
+        <>
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden pointer-events-auto select-none" style={{ width: laptopWindowCSS, maxWidth: '100vw' }}>
+            {/* Title bar */}
+            <div className="flex items-center gap-2 bg-slate-800 px-4 py-3 border-b border-slate-700">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+              </div>
+              <span className="text-slate-400 text-sm font-medium ml-2">{laptopMode === 'date' ? 'Enter today\'s date:' : laptopMode === 'version' ? 'Update bot firmware' : laptopMode === 'boot' ? 'Boot sequence' : 'Enter a name:'}</span>
+            </div>
+            {/* Code editor */}
+            <div className="p-4">
+              {laptopMode === 'version' && (
+                <p className="text-slate-300 text-sm mb-2">Declare a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">double</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">version</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">1.0</code>, then a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">String</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">mode</code> set to a word meaning 'properly working'.</p>
+              )}
+              {laptopMode === 'boot' && (
+                <p className="text-slate-300 text-sm mb-2">Declare a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">boolean</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">ready</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">true</code>.</p>
+              )}
+              <textarea
+                className="w-full bg-slate-950 text-amber-300 font-mono text-sm p-3 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-500/60 resize-none"
+                rows={laptopMode === 'date' ? 4 : laptopMode === 'version' ? 4 : laptopMode === 'boot' ? 2 : 3}
+                value={laptopCode}
+                onChange={(e) => { setLaptopCode(e.target.value); setLaptopOutput(''); setLaptopSuccess(false); setShowSemicolonArrow(false); }}
+                autoFocus
+              />
+              {showSemicolonArrow && (
+                <div className="flex justify-center mt-2">
+                  <span className="text-red-400 text-2xl animate-bounce">⬆</span>
+                  <span className="text-red-400 text-sm font-bold ml-1.5">Forgot a ; here</span>
+                </div>
+              )}
+              {laptopMode === 'date' && (
+                <div className="sticky bottom-0 mt-2 text-xs bg-slate-800/90 rounded-lg border border-slate-700/50 overflow-hidden">
+                  <div className="grid grid-cols-2 gap-x-4 p-2 leading-relaxed">
+                    <div className="text-slate-400">January</div><div className="text-amber-300 font-mono text-right">0</div>
+                    <div className="text-slate-400">February</div><div className="text-amber-300 font-mono text-right">1</div>
+                    <div className="text-slate-400">March</div><div className="text-amber-300 font-mono text-right">2</div>
+                    <div className="text-slate-400">April</div><div className="text-amber-300 font-mono text-right">3</div>
+                    <div className="text-slate-400">May</div><div className="text-amber-300 font-mono text-right">4</div>
+                    <div className="text-slate-400 font-semibold text-white">June</div><div className="text-amber-300 font-mono text-right font-semibold text-amber-200">5</div>
+                    <div className="text-slate-400">July</div><div className="text-amber-300 font-mono text-right">6</div>
+                    <div className="text-slate-400">August</div><div className="text-amber-300 font-mono text-right">7</div>
+                    <div className="text-slate-400">September</div><div className="text-amber-300 font-mono text-right">8</div>
+                    <div className="text-slate-400">October</div><div className="text-amber-300 font-mono text-right">9</div>
+                    <div className="text-slate-400">November</div><div className="text-amber-300 font-mono text-right">10</div>
+                    <div className="text-slate-400">December</div><div className="text-amber-300 font-mono text-right">11</div>
+                  </div>
+                </div>
+              )}
+              {laptopMode === 'version' && (
+                <div className="mt-2 text-xs bg-slate-800/90 rounded-lg border border-slate-700/50 p-2 space-y-1">
+                  <div className="text-slate-400"><span className="text-amber-300 font-mono">double</span> — decimal numbers like <span className="text-amber-300 font-mono">1.0</span></div>
+                  <div className="text-slate-400"><span className="text-amber-300 font-mono">String</span> — text in double quotes like <span className="text-amber-300 font-mono">"normal"</span></div>
+                  <div className="text-slate-400">Each on its own line, ending with <span className="text-amber-300 font-mono">;</span></div>
+                </div>
+              )}
+              {laptopMode === 'boot' && (
+                <div className="mt-2 text-xs bg-slate-800/90 rounded-lg border border-slate-700/50 p-2">
+                  <div className="text-slate-400"><span className="text-amber-300 font-mono">boolean</span> — only <span className="text-amber-300 font-mono">true</span> or <span className="text-amber-300 font-mono">false</span>, like an on/off switch</div>
+                </div>
+              )}
+              {/* Output */}
+              {laptopOutput && (
+                <div className={`mt-3 p-3 rounded-lg text-base font-medium ${laptopSuccess ? 'bg-green-900/40 text-green-300 border border-green-700/50' : 'bg-red-900/40 text-red-300 border border-red-700/50'}`}>
+                  {laptopOutput}
+                </div>
+              )}
+              {/* Buttons */}
+              <div className="flex justify-end mt-4">
+                <button
+                  className={`flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-bold transition-colors ${laptopSuccess ? 'bg-green-600 text-white cursor-default' : 'bg-amber-500 text-slate-900 hover:bg-amber-400'}`}
+                  onClick={laptopSuccess ? undefined : handleLaptopRun}
+                  disabled={laptopSuccess}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                  {laptopSuccess ? 'Done!' : 'Run'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button
+          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 rounded-2xl border-2 border-amber-400/70 bg-gradient-to-r from-amber-500 to-orange-500 px-12 py-5 text-2xl font-bold text-white shadow-lg shadow-amber-500/30 hover:from-amber-400 hover:to-orange-400 hover:shadow-amber-400/40 transition-all"
+          onClick={() => {
+            setShowLaptopUI(false);
+            stringDlgIsHelpRef.current = true;
+            if (laptopMode === 'date') {
+              setShowDateDlg(true);
+              setDateDlgStep(0);
+            } else if (laptopMode === 'version') {
+              setShowVersionDlg(true);
+              setVersionDlgStep(0);
+            } else if (laptopMode === 'boot') {
+              setShowBootDlg(true);
+              setBootDlgStep(0);
+            } else {
+              setShowStringDlg(true);
+              setStringDlgStep(0);
+            }
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          Need help?
+        </button>
+        </>
+      )}
+
       {backpack.length > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
           {backpack.slice(0, 9).map((partId, i) => {
@@ -4759,6 +6504,60 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       <TutorialOverlay showTutorial={showTutorial} tutorialStep={tutorialStep} setTutorialStep={setTutorialStep} code={code} setCode={setCode} highlightedCode={highlightedCode} output={output} setOutput={setOutput} success={success} setSuccess={setSuccess} sparkleBurst={sparkleBurst} codeInputRef={codeInputRef} codePreviewRef={codePreviewRef} onEditorScroll={onEditorScroll} checkAnswer={checkAnswer} setShowTutorial={setShowTutorial} tutorialPhases={tutorialPhases} />
 
       {activeModal && <ModalShell activeModal={activeModal} setActiveModal={setActiveModal} userId={userId} debugMode={debugMode} setDebugMode={setDebugMode} />}
+
+      {showDecimalExplain && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm select-none" onClick={() => setShowDecimalExplain(false)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📐</span>
+                <span className="text-lg font-bold text-slate-100">What is a decimal?</span>
+              </div>
+              <button className="text-slate-500 hover:text-slate-300 transition-colors" onClick={() => setShowDecimalExplain(false)}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            {/* Body */}
+            <div className="px-6 py-5 space-y-5">
+              {/* Pie visual */}
+              <div className="flex items-center gap-5">
+                <div className="w-24 h-24 rounded-full" style={{ background: 'conic-gradient(#f59e0b 0deg 180deg, #334155 180deg 360deg)' }} />
+                <div className="text-sm text-slate-300 leading-relaxed">
+                  <div>A whole pie = <span className="text-amber-300 font-mono font-bold">1</span></div>
+                  <div>Cut in half → each piece = <span className="text-amber-300 font-mono font-bold">0.5</span></div>
+                  <div className="text-slate-500 text-xs mt-1">That's one half, or <span className="font-mono">½</span></div>
+                </div>
+              </div>
+              {/* Fraction → Decimal table */}
+              <div>
+                <div className="text-xs text-slate-400 uppercase tracking-wide mb-2 font-medium">Fraction → Decimal</div>
+                <div className="grid grid-cols-4 gap-2 text-sm font-mono">
+                  <div className="bg-slate-800 rounded-lg px-3 py-2 text-center"><span className="text-amber-300">½</span> <span className="text-slate-500 mx-1">=</span> <span className="text-emerald-300">0.5</span></div>
+                  <div className="bg-slate-800 rounded-lg px-3 py-2 text-center"><span className="text-amber-300">¼</span> <span className="text-slate-500 mx-1">=</span> <span className="text-emerald-300">0.25</span></div>
+                  <div className="bg-slate-800 rounded-lg px-3 py-2 text-center"><span className="text-amber-300">¾</span> <span className="text-slate-500 mx-1">=</span> <span className="text-emerald-300">0.75</span></div>
+                  <div className="bg-slate-800 rounded-lg px-3 py-2 text-center"><span className="text-amber-300">⅓</span> <span className="text-slate-500 mx-1">≈</span> <span className="text-emerald-300">0.33</span></div>
+                </div>
+              </div>
+              {/* Explanation */}
+              <div className="text-sm text-slate-300 leading-relaxed space-y-1 bg-slate-800/50 rounded-lg px-4 py-3 border border-slate-700/50">
+                <div><span className="text-sky-300 font-semibold">Integers</span> = whole numbers <span className="text-slate-500 font-mono">(1, 2, 10)</span></div>
+                <div><span className="text-sky-300 font-semibold">Decimals</span> = numbers with a dot <span className="text-slate-500 font-mono">(0.5, 1.0, 3.14)</span></div>
+                <div className="text-amber-300 font-medium mt-1">In Java: use <code className="font-mono bg-slate-800 px-1.5 rounded">double</code> for decimals!</div>
+              </div>
+            </div>
+            {/* Footer */}
+            <div className="flex justify-end px-6 py-4 border-t border-slate-700 bg-slate-800/50">
+              <button
+                className="flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2 text-sm font-bold text-slate-900 hover:bg-amber-400 transition-colors"
+                onClick={() => setShowDecimalExplain(false)}
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
