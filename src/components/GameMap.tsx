@@ -114,13 +114,13 @@ const SPARKY_INTRO_CONVO = [
   },
 ];
 const BATTERY_DLG_STEPS = [
-  "Oh no! The battery's completely dead... we need a new one.",
-  "I've written a letter to Rafiq at the robot shop. Take this to him — he'll sort you out with a job so you can earn enough for a battery.",
-  "Rafiq's shop is just outside, down the street. Show him my letter and he'll know what to do. Good luck!",
+  { speaker: 'Sparky', text: "Oh no! The battery's completely dead... we need a new one." },
+  { speaker: 'Sparky', text: "I've written a letter to Rafiq at the robot shop. Take this to him — he'll sort you out with a job so you can earn enough for a battery." },
+  { speaker: 'Sparky', text: "Rafiq's shop is just outside, down the street. Show him my letter and he'll know what to do. Good luck!" },
 ];
 const RAFIQ_LETTER_STEPS = [
-  "Let's see here... 'Sparky sent me'... Ah, that old bot finally gave up, eh?",
-  "Well, I could use a hand around the shop. Help my customers with their robot requests — write some Java code for 'em — and I'll pay you. Fair?",
+  { speaker: 'Rafiq', text: "Let's see here... 'Sparky sent me'... Ah, that old bot finally gave up, eh?" },
+  { speaker: 'Rafiq', text: "Well, I could use a hand around the shop. Help my customers with their robot requests — write some Java code for 'em — and I'll pay you. Fair?" },
 ];
 const PLAYER_EYE_HEIGHT = 1.5;
 const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
@@ -152,19 +152,10 @@ const REQUEST_PATTERNS = [
   ['name', 'size'],
   ['color', 'size'],
 ] as const;
-const WORKSHOP_INTRO_PAGES = [
-  {
-    title: "Welcome to Rafiq's Robots",
-    body: 'Customers browse robots here. Walk up to one and press Space to start a job.',
-  },
-  {
-    title: 'Do the Java task',
-    body: 'Each customer asks for different properties (name, color, size). Write code that matches exactly.',
-  },
-  {
-    title: 'Get paid at register',
-    body: 'After correct code, they follow you. Lead them to the register to collect your money.',
-  },
+const WORKSHOP_INTRO_STEPS = [
+  { speaker: 'Rafiq', text: "Welcome! Customers browse robots here. Walk up to one and press Space to start a job." },
+  { speaker: 'Rafiq', text: "Each customer asks for different properties (name, color, size). Write code that matches exactly." },
+  { speaker: 'Rafiq', text: "After correct code, they follow you. Lead them to the register to collect your money." },
 ] as const;
 
 type CircleHitbox = {
@@ -271,6 +262,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const scrapRobotRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
   const scrapChallengesDoneRef = useRef(0);
   const miniRobotRefs = useRef<ReturnType<typeof createRobotVisual>[]>([]);
+  const sceneBgOverrideRef = useRef<number | null>(null);
 
   const outdoorGroupRef = useRef<THREE.Group | null>(null);
   const workshopRoomGroupRef = useRef<THREE.Group | null>(null);
@@ -299,6 +291,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyInstallTimerRef = useRef(0);
   const sparkyInstallPartIdRef = useRef<ScrapPartId | null>(null);
   const sparkyInstallNextStageRef = useRef<SparkyQuestStage | null>(null);
+  const installBatteryPhaseRef = useRef<'idle' | 'walk-to-scrap' | 'open-chest' | 'place-battery' | 'chest-glow' | 'done'>(null);
+  const installBatteryTimerRef = useRef(0);
+  const batteryInstalledRef = useRef(false);
+  const batteryGlowRef = useRef<THREE.Mesh | null>(null);
   const sparkyEventTriggeredRef = useRef(false);
   const sparkyAcknowledgedRef = useRef(false);
   const repairTimerRef = useRef(0);
@@ -458,12 +454,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [arenaBattleActive, setArenaBattleActive] = useState(false);
   const [sparkyModal, setSparkyModal] = useState<string | null>(null);
   const [sparkyIntroStep, setSparkyIntroStep] = useState(-1);
-  const [batteryDlgStep, setBatteryDlgStep] = useState(-1);
-  const [rafiqLetterStep, setRafiqLetterStep] = useState(-1);
+  const [showBatteryDlg, setShowBatteryDlg] = useState(false);
+  const [batteryDlgStep, setBatteryDlgStep] = useState(0);
+  const [batteryDlgText, setBatteryDlgText] = useState('');
+  const [showRafiqLetterDlg, setShowRafiqLetterDlg] = useState(false);
+  const [rafiqLetterStep, setRafiqLetterStep] = useState(0);
+  const [rafiqLetterText, setRafiqLetterText] = useState('');
+  const [showWhoDlg, setShowWhoDlg] = useState(false);
+  const [whoText, setWhoText] = useState('');
   const [showSparkyExamples, setShowSparkyExamples] = useState(false);
   const [showElectrocuteDlg, setShowElectrocuteDlg] = useState(false);
   const [electrocuteStep, setElectrocuteStep] = useState(0);
   const [electrocuteText, setElectrocuteText] = useState('');
+  const [workshopIntroText, setWorkshopIntroText] = useState('');
   const [playerName, setPlayerName] = useState('');
   const cutsceneDlgSteps = useMemo(() => [
     { speaker: 'Sparky', text: "I'll get electrocuted if I code Scrap..." },
@@ -1055,6 +1058,143 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }, 35);
     return () => clearInterval(interval);
   }, [electrocuteStep, showElectrocuteDlg, cutsceneDlgSteps]);
+
+  // Battery dialog typewriter effect
+  useEffect(() => {
+    if (!showBatteryDlg) return;
+    const step = BATTERY_DLG_STEPS[batteryDlgStep];
+    if (!step) return;
+    setBatteryDlgText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setBatteryDlgText(step.text.slice(0, i));
+      if (i >= step.text.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [batteryDlgStep, showBatteryDlg]);
+
+  // Battery dialog Enter key handler
+  useEffect(() => {
+    if (!showBatteryDlg) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const nextStep = batteryDlgStep + 1;
+        if (nextStep < BATTERY_DLG_STEPS.length) {
+          setBatteryDlgStep(nextStep);
+        } else {
+          // Give letter to player
+          const bp = gameStore.get('backpack');
+          if (!bp.includes('letter' as ScrapPartId)) {
+            const newBackpack: ScrapPartId[] = [...bp, 'letter'];
+            gameStore.set('backpack', newBackpack);
+            apiSync({ backpack: newBackpack });
+            lastConfirmedBackpackRef.current = newBackpack;
+          }
+          setShowBatteryDlg(false);
+          aptCutscenePhaseRef.current = 'done';
+          aptCutsceneTimerRef.current = 0;
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showBatteryDlg, batteryDlgStep]);
+
+  // Rafiq letter dialog typewriter effect
+  useEffect(() => {
+    if (!showRafiqLetterDlg) return;
+    const step = RAFIQ_LETTER_STEPS[rafiqLetterStep];
+    if (!step) return;
+    setRafiqLetterText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setRafiqLetterText(step.text.slice(0, i));
+      if (i >= step.text.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [rafiqLetterStep, showRafiqLetterDlg]);
+
+  // Rafiq letter dialog Enter key handler
+  useEffect(() => {
+    if (!showRafiqLetterDlg) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const nextStep = rafiqLetterStep + 1;
+        if (nextStep < RAFIQ_LETTER_STEPS.length) {
+          setRafiqLetterStep(nextStep);
+        } else {
+          setShowRafiqLetterDlg(false);
+          reopenWorkshopIntro();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showRafiqLetterDlg, rafiqLetterStep]);
+
+  // Workshop intro typewriter effect
+  useEffect(() => {
+    if (!inWorkshopRoom || workshopIntroSeen || !profileLoadedRef.current) return;
+    const step = WORKSHOP_INTRO_STEPS[workshopIntroStep];
+    if (!step) return;
+    setWorkshopIntroText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setWorkshopIntroText(step.text.slice(0, i));
+      if (i >= step.text.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [workshopIntroStep, inWorkshopRoom, workshopIntroSeen]);
+
+  // Workshop intro Enter key handler
+  useEffect(() => {
+    if (!inWorkshopRoom || workshopIntroSeen || !profileLoadedRef.current) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const nextStep = workshopIntroStep + 1;
+        if (nextStep < WORKSHOP_INTRO_STEPS.length) {
+          setWorkshopIntroStep(nextStep);
+        } else {
+          finishWorkshopIntro();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [inWorkshopRoom, workshopIntroSeen, workshopIntroStep]);
+
+  // "Who are you?" dialog typewriter effect
+  const WHO_TEXT = "Who are you? This workshop is for employees only.";
+  useEffect(() => {
+    if (!showWhoDlg) return;
+    setWhoText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setWhoText(WHO_TEXT.slice(0, i));
+      if (i >= WHO_TEXT.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [showWhoDlg]);
+
+  // "Who are you?" dialog Enter key handler
+  useEffect(() => {
+    if (!showWhoDlg) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        setShowWhoDlg(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showWhoDlg]);
 
   // String tutorial dialog Enter key handler
   useEffect(() => {
@@ -4173,6 +4313,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               document.exitPointerLock();
               setShowElectrocuteDlg(true);
               setElectrocuteStep(0);
+              sceneBgOverrideRef.current = 0x4a7a9a;
               if (aptSparkyCS) {
                 aptSparkyCS.root.traverse((child) => {
                   const m = (child as THREE.Mesh);
@@ -4551,12 +4692,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             // Show Sparky battery dialog at 0.5s
             if (t > 0.5 && !batteryDlgShownRef.current) {
               batteryDlgShownRef.current = true;
+              setShowBatteryDlg(true);
               setBatteryDlgStep(0);
             }
-            // Transition to done after dialog completes
-            if (t > 5.0) {
+            // Safety timeout: advance after 30s regardless
+            if (t > 30.0) {
               aptCutscenePhaseRef.current = 'done';
               aptCutsceneTimerRef.current = 0;
+              setShowBatteryDlg(false);
             }
           } else if (phase === 'done') {
             if (cutsceneBoxRef.current) cutsceneBoxRef.current.visible = false;
@@ -4601,6 +4744,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               antennaGlowSpriteRef.current.material.dispose();
               antennaGlowSpriteRef.current = null;
             }
+            sceneBgOverrideRef.current = null;
             cinemCamActiveRef.current = false;
             aptCutscenePhaseRef.current = 'idle';
             cutsceneDoneRef.current = true;
@@ -4611,6 +4755,71 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               aptSparkyCS.root.position.set(0.2, 2.2, 0.22);
               if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current);
             }
+          }
+        } else if (installBatteryPhaseRef.current && aptSparky) {
+          const ibPhase = installBatteryPhaseRef.current;
+          if (ibPhase === 'walk-to-scrap') {
+            const target = new THREE.Vector2(-2.3, 1.2);
+            const dist = aptSparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
+            if (dist > 0.15) {
+              const dir = new THREE.Vector2(target.x - aptSparky.root.position.x, target.y - aptSparky.root.position.y).normalize();
+              aptSparky.root.position.x += dir.x * MOVE_SPEED * 0.7 * delta;
+              aptSparky.root.position.y += dir.y * MOVE_SPEED * 0.7 * delta;
+              setSparkyModal('Sparky walks to Scrap with the battery...');
+            } else {
+              installBatteryPhaseRef.current = 'open-chest';
+              installBatteryTimerRef.current = 0;
+            }
+          } else if (ibPhase === 'open-chest') {
+            installBatteryTimerRef.current += delta;
+            if (scrapRobotRef.current) {
+              scrapRobotRef.current.root.rotation.z = 0.08 + Math.sin(installBatteryTimerRef.current * 20) * 0.02;
+            }
+            setSparkyModal('Opening Scrap\'s chest panel...');
+            if (installBatteryTimerRef.current > 1.0) {
+              installBatteryPhaseRef.current = 'place-battery';
+              installBatteryTimerRef.current = 0;
+            }
+          } else if (ibPhase === 'place-battery') {
+            installBatteryTimerRef.current += delta;
+            setSparkyModal('Placing the battery...');
+            // Create battery glow mesh on Scrap's chest
+            if (installBatteryTimerRef.current > 0.8) {
+              const scrap = scrapRobotRef.current;
+              if (scrap && scrap.body && !batteryGlowRef.current) {
+                const glow = new THREE.Mesh(
+                  new THREE.SphereGeometry(0.05, 10, 10),
+                  new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.3 })
+                );
+                glow.position.set(0, 0, 0.24);
+                scrap.body.add(glow);
+                batteryGlowRef.current = glow;
+              }
+              installBatteryPhaseRef.current = 'chest-glow';
+              installBatteryTimerRef.current = 0;
+            }
+          } else if (ibPhase === 'chest-glow') {
+            installBatteryTimerRef.current += delta;
+            if (batteryGlowRef.current) {
+              const glow = batteryGlowRef.current;
+              const intensity = 0.3 + Math.sin(installBatteryTimerRef.current * 6) * 0.15;
+              (glow.material as THREE.MeshBasicMaterial).opacity = intensity;
+            }
+            setSparkyModal('Battery installed! Scrap is powering up...');
+            if (installBatteryTimerRef.current > 2.0) {
+              installBatteryPhaseRef.current = 'done';
+            }
+          } else if (ibPhase === 'done') {
+            installBatteryPhaseRef.current = null;
+            batteryInstalledRef.current = true;
+            const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
+            updateBackpack(newBackpack);
+            if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
+              setHeldSlotIndex(null);
+              heldSlotIndexRef.current = null;
+            }
+            setSparkyModal('Think you need a sensor — go buy one at the Parts Shop near the lake.');
+            setTimeout(() => setSparkyModal(null), 4000);
           }
         } else if (sparkyInstallPhaseRef.current && aptSparky) {
           const phase = sparkyInstallPhaseRef.current;
@@ -4756,17 +4965,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setInteractionPromptName(closestCandidate ? closestCandidate.request.customerName : null);
         }
 
-        // Rafiq interaction — letter reception or workshop intro
+        // Rafiq interaction — "Who are you?", letter reception, or workshop intro
         const distToRafiq = Math.hypot(localPositionRef.current.x - ROOM_OWNER_POS.x, localPositionRef.current.y - ROOM_OWNER_POS.y);
         if (interactionRequestedRef.current && distToRafiq < 1.8) {
           interactionRequestedRef.current = false;
           const bp = gameStore.get('backpack');
-          if (bp.includes('letter' as ScrapPartId)) {
+          if (!cutsceneDoneRef.current) {
+            // Pre-cutscene: Rafiq doesn't know you
+            setShowWhoDlg(true);
+          } else if (bp.includes('letter' as ScrapPartId)) {
             // Rafiq reads the letter and gives employment
             const newBackpack = bp.filter(id => id !== 'letter');
             gameStore.set('backpack', newBackpack);
             apiSync({ backpack: newBackpack });
             lastConfirmedBackpackRef.current = newBackpack;
+            setShowRafiqLetterDlg(true);
             setRafiqLetterStep(0);
           } else {
             reopenWorkshopIntro();
@@ -4976,7 +5189,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         arenaRoomGroup.visible = inArenaRoomRef.current;
         apartmentRoomGroup.visible = inApartmentRoomRef.current;
         if (shopRoomGroupRef.current) shopRoomGroupRef.current.visible = inShopRoomRef.current;
-        scene.background = new THREE.Color(roomBg);
+        scene.background = new THREE.Color(sceneBgOverrideRef.current ?? roomBg);
         const camYaw = yawRef.current;
         const camPitch = cameraPitchRef.current;
         const px = localPositionRef.current.x;
@@ -5526,9 +5739,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       setOutput('');
       setSuccess(false);
     } else if (stage === 'unit1-done' || stage === 'unit2-done' || stage === 'unit3-done') {
+      const bp = gameStore.get('backpack');
+      // Check battery first (cosmetic prerequisite)
+      if (stage === 'unit1-done' && bp.includes('battery') && !batteryInstalledRef.current) {
+        if (installBatteryPhaseRef.current) return;
+        installBatteryPhaseRef.current = 'walk-to-scrap';
+        installBatteryTimerRef.current = 0;
+        setSparkyModal('Sparky takes the battery to Scrap...');
+        return;
+      }
       const partId = PART_FOR_STAGE[stage];
       const part = PARTS_CATALOG.find(p => p.id === partId);
-      const owned = gameStore.get('backpack').includes(partId);
+      const owned = bp.includes(partId);
       if (owned) {
         if (sparkyInstallPhaseRef.current) return; // already installing
         const nextUnit: SparkyQuestStage = stage === 'unit1-done' ? 'unit2' : stage === 'unit2-done' ? 'unit3' : 'unit4';
@@ -5667,7 +5889,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   };
 
   const nextWorkshopIntroStep = () => {
-    if (workshopIntroStep >= WORKSHOP_INTRO_PAGES.length - 1) {
+    if (workshopIntroStep >= WORKSHOP_INTRO_STEPS.length - 1) {
       finishWorkshopIntro();
       return;
     }
@@ -5724,18 +5946,42 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      {inWorkshopRoom && !workshopIntroSeen && profileLoadedRef.current && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4">
-          <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6 text-slate-100">
-            <div className="text-2xl font-bold text-amber-300 mb-4">{WORKSHOP_INTRO_PAGES[workshopIntroStep].title}</div>
-            <div className="text-lg">{WORKSHOP_INTRO_PAGES[workshopIntroStep].body}</div>
-            <div className="mt-6 flex gap-3">
-              <button className="rounded bg-emerald-500 px-6 py-3 text-lg font-semibold text-white hover:bg-emerald-400" onClick={() => { if (workshopIntroStep >= WORKSHOP_INTRO_PAGES.length - 1) { finishWorkshopIntro(); } else setWorkshopIntroStep(s => s + 1); }}>{workshopIntroStep >= WORKSHOP_INTRO_PAGES.length - 1 ? 'Start working!' : 'Next →'}</button>
-              <button className="rounded bg-slate-700 px-6 py-3 text-lg font-semibold text-white hover:bg-slate-600" onClick={finishWorkshopIntro} autoFocus>Skip</button>
+      {inWorkshopRoom && !workshopIntroSeen && profileLoadedRef.current && (() => {
+        const cur = WORKSHOP_INTRO_STEPS[workshopIntroStep] ?? WORKSHOP_INTRO_STEPS[0];
+        return (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
+          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
+          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
+            style={{ height: '30vh' }}>
+            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
+              <div className="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4 3.6-8 8-8s8 4 8 8" />
+                </svg>
+                <span className="text-amber-300 font-bold text-xl tracking-wide">{cur.speaker}</span>
+              </div>
+              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
+                {workshopIntroText}<span className="animate-pulse text-amber-400/80">▌</span>
+              </p>
+              <div className="flex justify-end mt-4">
+                <button
+                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
+                  onClick={nextWorkshopIntroStep}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="14 7 9 12 14 17" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                    <line x1="3" y1="12" x2="5" y2="12" />
+                  </svg>
+                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} showSparkyExamples={() => setShowSparkyExamples(true)} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />
 
@@ -6023,66 +6269,142 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      {batteryDlgStep >= 0 && batteryDlgStep < BATTERY_DLG_STEPS.length && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4">
-          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="text-3xl">🤖</div>
-              <div>
-                <div className="text-sm font-bold text-amber-300">Sparky</div>
-                <p className="mt-1 text-lg text-slate-100 leading-snug">{BATTERY_DLG_STEPS[batteryDlgStep]}</p>
+      {showBatteryDlg && (() => {
+        const cur = BATTERY_DLG_STEPS[batteryDlgStep] ?? BATTERY_DLG_STEPS[0];
+        return (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
+          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
+          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
+            style={{ height: '30vh' }}>
+            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
+              <div className="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
+                  <rect x="3" y="11" width="18" height="10" rx="2" />
+                  <circle cx="12" cy="5" r="2" />
+                  <path d="M12 7v4" />
+                  <line x1="8" y1="16" x2="8" y2="16" />
+                  <line x1="16" y1="16" x2="16" y2="16" />
+                </svg>
+                <span className="text-amber-300 font-bold text-xl tracking-wide">{cur.speaker}</span>
               </div>
-            </div>
-            <div className="flex justify-end mt-6">
-              <button className="rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-400"
-                onClick={() => {
-                  if (batteryDlgStep < BATTERY_DLG_STEPS.length - 1) {
-                    setBatteryDlgStep(s => s + 1);
-                  } else {
-                    // Give letter to player
-                    const bp = gameStore.get('backpack');
-                    if (!bp.includes('letter' as ScrapPartId)) {
-                      const newBackpack: ScrapPartId[] = [...bp, 'letter'];
-                      gameStore.set('backpack', newBackpack);
-                      apiSync({ backpack: newBackpack });
-                      lastConfirmedBackpackRef.current = newBackpack;
+              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
+                {batteryDlgText}<span className="animate-pulse text-amber-400/80">▌</span>
+              </p>
+              <div className="flex justify-end mt-4">
+                <button
+                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
+                  onClick={() => {
+                    const nextStep = batteryDlgStep + 1;
+                    if (nextStep < BATTERY_DLG_STEPS.length) {
+                      setBatteryDlgStep(nextStep);
+                    } else {
+                      const bp = gameStore.get('backpack');
+                      if (!bp.includes('letter' as ScrapPartId)) {
+                        const newBackpack: ScrapPartId[] = [...bp, 'letter'];
+                        gameStore.set('backpack', newBackpack);
+                        apiSync({ backpack: newBackpack });
+                        lastConfirmedBackpackRef.current = newBackpack;
+                      }
+                      setShowBatteryDlg(false);
+                      aptCutscenePhaseRef.current = 'done';
+                      aptCutsceneTimerRef.current = 0;
                     }
-                    setBatteryDlgStep(-1);
-                  }
-                }}>
-                {batteryDlgStep < BATTERY_DLG_STEPS.length - 1 ? 'Continue →' : 'Got it!'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {rafiqLetterStep >= 0 && rafiqLetterStep < RAFIQ_LETTER_STEPS.length && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4">
-          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="text-3xl">🧑‍🔧</div>
-              <div>
-                <div className="text-sm font-bold text-amber-300">Rafiq</div>
-                <p className="mt-1 text-lg text-slate-100 leading-snug">{RAFIQ_LETTER_STEPS[rafiqLetterStep]}</p>
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="14 7 9 12 14 17" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                    <line x1="3" y1="12" x2="5" y2="12" />
+                  </svg>
+                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
+                </button>
               </div>
             </div>
-            <div className="flex justify-end mt-6">
-              <button className="rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-semibold text-white hover:bg-emerald-400"
-                onClick={() => {
-                  if (rafiqLetterStep < RAFIQ_LETTER_STEPS.length - 1) {
-                    setRafiqLetterStep(s => s + 1);
-                  } else {
-                    setRafiqLetterStep(-1);
-                    reopenWorkshopIntro();
-                  }
-                }}>
-                {rafiqLetterStep < RAFIQ_LETTER_STEPS.length - 1 ? 'Continue →' : 'Let\'s work!'}
-              </button>
+          </div>
+        </div>
+        );
+      })()}
+
+      {showWhoDlg && (() => {
+        return (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
+          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
+          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
+            style={{ height: '30vh' }}>
+            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
+              <div className="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4 3.6-8 8-8s8 4 8 8" />
+                </svg>
+                <span className="text-amber-300 font-bold text-xl tracking-wide">Rafiq</span>
+              </div>
+              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
+                {whoText}<span className="animate-pulse text-amber-400/80">▌</span>
+              </p>
+              <div className="flex justify-end mt-4">
+                <button
+                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
+                  onClick={() => setShowWhoDlg(false)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="14 7 9 12 14 17" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                    <line x1="3" y1="12" x2="5" y2="12" />
+                  </svg>
+                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
+
+      {showRafiqLetterDlg && (() => {
+        const cur = RAFIQ_LETTER_STEPS[rafiqLetterStep] ?? RAFIQ_LETTER_STEPS[0];
+        return (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
+          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
+          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
+            style={{ height: '30vh' }}>
+            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
+              <div className="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4 3.6-8 8-8s8 4 8 8" />
+                </svg>
+                <span className="text-amber-300 font-bold text-xl tracking-wide">{cur.speaker}</span>
+              </div>
+              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
+                {rafiqLetterText}<span className="animate-pulse text-amber-400/80">▌</span>
+              </p>
+              <div className="flex justify-end mt-4">
+                <button
+                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
+                  onClick={() => {
+                    const nextStep = rafiqLetterStep + 1;
+                    if (nextStep < RAFIQ_LETTER_STEPS.length) {
+                      setRafiqLetterStep(nextStep);
+                    } else {
+                      setShowRafiqLetterDlg(false);
+                      reopenWorkshopIntro();
+                    }
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="14 7 9 12 14 17" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                    <line x1="3" y1="12" x2="5" y2="12" />
+                  </svg>
+                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
 
       {showElectrocuteDlg && (() => {
         const cur = cutsceneDlgSteps[electrocuteStep] ?? cutsceneDlgSteps[0];

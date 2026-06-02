@@ -1383,6 +1383,26 @@ export function createPartModel(partId: string): THREE.Group {
       pin.position.set(i * 0.01, 0, -0.022);
       g.add(pin);
     }
+  } else if (partId === 'letter') {
+    const paper = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.03, 0.002),
+      new THREE.MeshToonMaterial({ color: 0xf5e6c8 })
+    );
+    paper.position.set(0, 0, 0);
+    g.add(paper);
+    const flap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.015, 0.001),
+      new THREE.MeshToonMaterial({ color: 0xe8d5a0 })
+    );
+    flap.position.set(0, 0.007, 0.001);
+    flap.rotation.x = -0.3;
+    g.add(flap);
+    const seal = new THREE.Mesh(
+      new THREE.CircleGeometry(0.006, 8),
+      new THREE.MeshBasicMaterial({ color: 0xdc2626 })
+    );
+    seal.position.set(0, 0, 0.002);
+    g.add(seal);
   } else if (partId === 'navigation') {
     // PCB
     const pcb = new THREE.Mesh(

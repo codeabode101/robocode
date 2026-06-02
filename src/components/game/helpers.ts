@@ -489,6 +489,16 @@ export function createPartIcon(partId: string): string {
       ctx.fillStyle = '#94a3b8';
       ctx.fillRect(20 + i * 12, 50, 4, 4);
     }
+  } else if (partId === 'letter') {
+    ctx.fillStyle = '#f5e6c8';
+    ctx.beginPath(); ctx.roundRect(8, 14, 48, 34, 3); ctx.fill();
+    ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(8, 14); ctx.lineTo(32, 32); ctx.lineTo(56, 14); ctx.stroke();
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath(); ctx.arc(32, 32, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#b8860b';
+    ctx.fillRect(12, 40, 40, 2);
+    ctx.fillRect(12, 44, 28, 2);
   } else if (partId === 'navigation') {
     ctx.fillStyle = '#1b5e20';
     ctx.fillRect(6, 8, 52, 48);
