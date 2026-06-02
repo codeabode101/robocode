@@ -414,6 +414,19 @@ export function createWire(length = 0.55): THREE.Mesh {
   return wire;
 }
 
+export function createWireCoil(): THREE.Mesh {
+  const mat = new THREE.MeshToonMaterial({
+    color: 0x60a5fa,
+    transparent: true,
+    opacity: 1,
+    emissive: 0x3b82f6,
+    emissiveIntensity: 0.5,
+  });
+  const coil = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 6, 12), mat);
+  coil.position.z = 0.1;
+  return coil;
+}
+
 export function animateWirePulse(wire: THREE.Mesh, time: number) {
   const intensity = 0.3 + 0.7 * Math.abs(Math.sin(time * 3));
   const mat = wire.material as THREE.MeshToonMaterial;

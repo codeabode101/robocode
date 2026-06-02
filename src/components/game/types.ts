@@ -67,7 +67,7 @@ export interface CustomerRequest {
 
 export type SparkyQuestStage = 'intro' | 'unit1' | 'unit1-done' | 'unit2' | 'unit2-done' | 'unit3' | 'unit3-done' | 'unit4' | 'all-done';
 
-export type ScrapPartId = 'sensor' | 'voice' | 'navigation';
+export type ScrapPartId = 'sensor' | 'voice' | 'navigation' | 'letter';
 
 export type ScrapPart = {
   id: ScrapPartId;
