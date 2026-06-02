@@ -11,7 +11,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **3D Rendering**: Three.js (r184), orthographic camera, toon-shaded
 - **Database**: Drizzle ORM + postgres.js (CockroachDB via DATABASE_URL)
 - **Auth**: WorkOS + jose (JWT in httpOnly cookies)
-- **Multiplayer**: Apinator (WebSocket receive + HTTP POST send via `@apinator/server` SDK for reliable event triggering; client events not relayed by Apinator server, so server-side trigger via `/api/multiplayer`)
+- **Multiplayer**: Apinator (`@apinator/client` WebSocket SDK) — bidirectional. Client sends position/events via `apinator.trigger()` directly through WebSocket. Receives remote players via `channel.bind()`. Players in different stages see each other on the same world map.
 - **Deploy**: Cloudflare Workers (via @opennextjs/cloudflare) and/or Vercel
 
 ## Directory Structure
@@ -133,3 +133,89 @@ If you, an AI agent, are about to run any database operation, STOP and think:
 - Am I about to drop tables? → DO NOT. Use ALTER TABLE instead.
 - Am I about to run a migration? → Check that it uses CREATE TABLE IF NOT EXISTS / ALTER TABLE ADD COLUMN IF NOT EXISTS.
 - Could this delete user data? → If yes, DON'T DO IT. Ask the user first.
+
+---
+
+## Session History (Jun 2 2026)
+
+### Goal
+Convert all post-cutscene dialogs to typewriter style, add letter icon + 3D model, and build the full battery-as-purchasable-component feature with install flow.
+
+### Constraints & Preferences
+- All modals after cutscene (battery dialog, Rafiq letter, workshop intro, Rafiq no-letter) must use the bottom-bar typewriter pattern (30vh, speaker icon, blinking cursor, Enter button).
+- Rafiq without the letter says "Who are you?" via typewriter dialog (pre-cutscene) or reopens workshop intro (post-cutscene).
+- Battery is a separate purchasable component (NOT a repair stage part like sensor/voice/nav). Purchasable at `unit1-done` stage for ~$20.
+- Letter must have a 2D icon (`createPartIcon`) and a 3D model (`createPartModel`) that appears in the player's hand when held.
+- No rot180 in carry/orbit phases (confirmed correct by user); placement has rot180 (180° rotated when lowered).
+- Door marker only shows after Sparky arrives home (`sparkyHomeArrivedRef.current` guard added to the `useEffect`).
+- DO NOT change the intro cutscene or tutorial teaching of 4 variables. Battery install is purely cosmetic — Scrap powers up, Sparky says "go buy a sensor."
+
+### Key Decisions
+- Battery component: sold at Parts Shop (6.0, -12.0), costs $20, requires `unit1-done` stage.
+- After buying battery → enter apartment → install-battery mini-cutscene (Sparky walks to Scrap, opens chest, places battery, chest glows).
+- After install: battery removed from backpack, `batteryInstalledRef = true`, Sparky modal: "Think you need a sensor — go buy one at the Parts Shop near the lake."
+- No quest stage change from battery install — sensor install still advances `unit1-done → unit2`.
+
+### Quest Progression
+```
+intro → cutscene → Rafiq workshop → tutorial (Variables & Data Types) → unit1-done
+  → { buy battery ($20) → install (cosmetic) } + { buy sensor ($5) → install → unit2 }
+  → String Methods tutorial → unit2-done → { buy voice ($10) → install → unit3 }
+  → ... → all-done
+```
+
+### Spatial Layout (Orthographic top-down, Z-up)
+| Location | Position | Size/Notes |
+|----------|----------|------------|
+| Player spawn | (0, -7) | Outdoor world, ISLAND_RADIUS=40 |
+| Parts Shop | (6.0, -12.0) | 8x4, door at (6.0, -10.2) |
+| Rafiq's Shop (workshop) | walls (-6, -11.8) hw=3.70 hh=1.20 | door at (-6, -10.3) |
+| Apartment building | (-6, -3.5) | 8x2.8, door at x=-3.6 |
+| Apartment spawn | (0, -1.5) | Room interior |
+| Sparky in apartment | (0.2, 2.2) | scale 0.7 |
+| Scrap in apartment | (-2.6, 1.2, 0.24) | scale 0.65, after cutscene |
+| Sparky outdoor | (-2.87, -6.1) | Repair kiosk |
+| Rafiq in workshop | (2.35, 1.95) | ROOM_OWNER_POS |
+| Workshop spawn | (0, -3.7) | Room interior |
+| Parts shop spawn | (0, 1.2) | Room interior |
+| Arena | (18.75, -12) | 7x3.5 |
+
+### Interaction Distances
+- Player collision radius: 0.48
+- Move speed: 7.4
+- Talk to Sparky: 1.7 (SPARKY_INTERACTION_DISTANCE)
+- Talk to Rafiq (workshop): 1.8 (hardcoded)
+- Talk to customers: 1.25
+- Register zone: 2.1 radius
+
+### Typewriter Dialog Pattern
+Reference: Electrocute dialog at GameMap.tsx ~6087-6142.
+State: `{ showXxxDlg: boolean, xxxStep: number, xxxText: string }`
+Steps: `{ speaker: string, text: string }[]`
+Effects: One for typewriter (35ms char interval), one for Enter key handler.
+JSX: fixed/inset-0/flex-col/justify-end, 30vh bottom bar, gradient bg, speaker SVG, blinking ▌cursor, Enter button.
+
+Full pattern reference:
+```ts
+// Typewriter effect
+useEffect(() => {
+  if (!showXxxDlg) return;
+  setXxxText('');
+  let i = 0;
+  const interval = setInterval(() => { i++; setXxxText(step.text.slice(0, i)); if (i >= step.text.length) clearInterval(interval); }, 35);
+  return () => clearInterval(interval);
+}, [xxxStep, showXxxDlg, xxxDlgSteps]);
+
+// Enter key handler
+useEffect(() => {
+  if (!showXxxDlg) return;
+  const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); if (nextStep < xxxDlgSteps.length) setXxxStep(nextStep); else { setShowXxxDlg(false); /* cleanup */ } } };
+  window.addEventListener('keydown', onKey);
+  return () => window.removeEventListener('keydown', onKey);
+}, [showXxxDlg, xxxStep, xxxDlgSteps.length]);
+```
+
+### Battery Install Mini-Cutscene
+Separate from `aptCutscenePhaseRef` — uses `installBatteryPhaseRef` with phases:
+`'idle' | 'walk-to-scrap' | 'open-chest' | 'place-battery' | 'chest-glow' | 'done'`
+Triggered in `runApartmentSparkyInteraction()` when stage='unit1-done', battery in backpack, not yet installed.
