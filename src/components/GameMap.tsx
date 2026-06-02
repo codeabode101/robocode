@@ -1834,7 +1834,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(aptDoorAnchor);
     const aptDoorMarker = addExclamationMarker(aptDoorAnchor);
     aptDoorMarker.position.set(0, 0, -0.3);
-    aptDoorMarker.visible = true;
+    aptDoorMarker.visible = false;
     apartmentDoorMarkerRef.current = aptDoorMarker;
 
     // Exclamation mark above the shop door, visible when player needs to buy a part
@@ -3868,8 +3868,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   const worldUp = new THREE.Vector3(0, 0, 1);
                   const localUp = worldUp.applyQuaternion(invQ);
                   const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), localUp);
-                  const rot180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
-                  computerRef.current.quaternion.copy(lapQuat.multiply(rot180));
+                  computerRef.current.quaternion.copy(lapQuat);
                   computerRef.current.visible = true;
                 }
               } else {
@@ -3939,8 +3938,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const invQ = aptSparkyCS.root.quaternion.clone().invert();
                 const localUp = new THREE.Vector3(0, 0, 1).applyQuaternion(invQ);
                 const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), localUp);
-                const rot180 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
-                computerRef.current.quaternion.copy(lapQuat.multiply(rot180));
+                computerRef.current.quaternion.copy(lapQuat);
               }
 
               // === Detach laptop at start of lowering ===
@@ -3950,7 +3948,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 apartmentRoomGroup.attach(computerRef.current);
                 computerRef.current.scale.set(1, 1, 1);
                 computerRef.current.position.copy(worldPos);
-                computerRef.current.quaternion.identity();
+                computerRef.current.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
                 computerRef.current.userData.lowerStartZ = worldPos.z;
               }
 
@@ -4141,11 +4139,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (phase === 'electrocute') {
             aptCutsceneTimerRef.current += delta;
             const et = aptCutsceneTimerRef.current;
-            // Wire emissive lerp blue -> red
+            // Wire emissive lerp blue -> red and color flashes red
             if (wireRef.current) {
               const wireMat = (wireRef.current as THREE.Mesh).material as THREE.MeshStandardMaterial;
               const tColor = Math.min(1, et / 1.5);
               wireMat.emissive.setHSL(0, 1, tColor * 0.3);
+              const sparkPulse = et < 3 ? Math.max(0, Math.sin(et * 8 * Math.PI)) : 0;
+              wireMat.color.setHSL(0.6 - sparkPulse * 0.6, 1, 0.3 + sparkPulse * 0.3);
             }
             // Sparky body emissive pulses red
             if (aptSparkyCS) {
@@ -4157,6 +4157,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   if (mat.emissive) mat.emissive.setHSL(0, 1, sparkPulse * 0.4);
                 }
               });
+            }
+            // Laptop screen pulses red
+            if (computerRef.current) {
+              const sparkPulse = et < 3 ? Math.max(0, Math.sin(et * 8 * Math.PI)) : 0;
+              const disp = computerRef.current.getObjectByName('laptop-display') as THREE.Mesh | null;
+              if (disp) {
+                const dm = disp.material as THREE.MeshBasicMaterial;
+                dm.color.setHSL(0, 1, 0.2 + sparkPulse * 0.4);
+              }
             }
             // After 3s: show dialogue modal
             if (et >= 3.0 && !electrocuteDlgShownRef.current) {
@@ -4172,6 +4181,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                     if (mat.emissive) mat.emissive.setHSL(0, 0, 0);
                   }
                 });
+              }
+              if (computerRef.current) {
+                const disp = computerRef.current.getObjectByName('laptop-display') as THREE.Mesh | null;
+                if (disp) {
+                  const dm = disp.material as THREE.MeshBasicMaterial;
+                  dm.color.setHSL(0.6, 1, 0.5);
+                }
+              }
+              if (wireRef.current) {
+                const wm = (wireRef.current as THREE.Mesh).material as THREE.MeshStandardMaterial;
+                wm.color.setHSL(0.6, 1, 0.3);
+                wm.emissive.setHSL(0.6, 1, 0.3);
               }
             }
           } else if (phase === 'walk-to-laptop') {
@@ -5230,7 +5251,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       workshopDoorMarkerRef.current.visible = (sparkyQuestStage === 'unit1-done' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3-done') && !needsPart && !inWorkshopRoom;
     }
     if (apartmentDoorMarkerRef.current) {
-      const showAptMarker = !inApartmentRoom && (
+      const showAptMarker = !inApartmentRoom && sparkyHomeArrivedRef.current && (
         sparkyQuestStage === 'intro' ||
         sparkyQuestStage === 'unit1-done' ||
         sparkyQuestStage === 'unit2-done' ||
