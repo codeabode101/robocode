@@ -4792,6 +4792,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             aptCutscenePhaseRef.current = 'idle';
             setShopUnlocked(true);
             cutsceneDoneRef.current = true;
+            // Force Sparky home — cutscene may finish before he finishes walking
+            sparkyHomeArrivedRef.current = true;
+            if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
+            if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
+            // Reset Scrap's eye pupils (set cyan during boot phase fade-out)
+            if (scrapRobotRef.current) {
+              if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x000000);
+              if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x000000);
+            }
             try { localStorage.setItem('rb_cutscene_done', '1'); } catch {}
             apiSync({ cutsceneDone: true });
             if (aptSparkyCS) {
