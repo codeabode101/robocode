@@ -5531,7 +5531,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       workshopDoorMarkerRef.current.visible = ((sparkyQuestStage === 'unit1-done' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3-done') || (cutsceneDoneRef.current && backpack.includes('letter'))) && !needsPart && !inWorkshopRoom;
     }
     if (apartmentDoorMarkerRef.current) {
-      const showAptMarker = !inApartmentRoom && sparkyHomeArrivedRef.current && (
+      const showAptMarker = !inApartmentRoom && sparkyHomeArrivedRef.current && !backpack.includes('letter') && (
         sparkyQuestStage === 'intro' ||
         sparkyQuestStage === 'unit1-done' ||
         sparkyQuestStage === 'unit2-done' ||
@@ -5540,7 +5540,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       apartmentDoorMarkerRef.current.visible = showAptMarker;
     }
     if (aptExitMarkerRef.current) {
-      const showAptExit = inApartmentRoom && sparkyHomeArrivedRef.current && (
+      const showAptExit = inApartmentRoom && sparkyHomeArrivedRef.current && !backpack.includes('letter') && (
         sparkyQuestStage === 'intro' ||
         sparkyQuestStage === 'unit1-done' ||
         sparkyQuestStage === 'unit2-done' ||
