@@ -1430,6 +1430,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
       if (data.cutsceneDone) {
         cutsceneDoneRef.current = true;
+        sparkyHomeArrivedRef.current = true;
+        if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
+        if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
+        if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
       }
       if (data.questStage) {
         let mappedStage = String(data.questStage) as SparkyQuestStage;
