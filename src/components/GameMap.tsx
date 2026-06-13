@@ -3469,11 +3469,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               workshopDoorArmedRef.current = false;
               inWorkshopRoomRef.current = true;
               setInWorkshopRoom(true);
-              // If player has Sparky's letter, suppress workshop intro to meet Rafiq first
+              // If player has Sparky's letter, start Rafiq meet cutscene immediately
               if (cutsceneDoneRef.current && (gameStore.get('backpack') as string[]).includes('letter')) {
                 workshopIntroSeenRef.current = true;
                 setWorkshopIntroSeen(true);
-                rafiqMeetAutoTriggeredRef.current = false;
+                rafiqMeetAutoTriggeredRef.current = true;
+                rafiqDlgOpenRef.current = true;
+                setShowRafiqLetterDlg(true);
+                setRafiqLetterStep(0);
               }
               setWorkshopIntroStep(0);
               setRoomEntryFlash(true);
@@ -5077,16 +5080,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
         }
 
-        // Auto-trigger Rafiq meet dialog when walking close (no Space press)
-        if (!showRafiqLetterDlg && distToRafiq < 1.8 && !rafiqMeetAutoTriggeredRef.current) {
-          const bp = gameStore.get('backpack');
-          if (cutsceneDoneRef.current && bp.includes('letter' as ScrapPartId)) {
-            rafiqMeetAutoTriggeredRef.current = true;
-            setShowRafiqLetterDlg(true);
-            setRafiqLetterStep(0);
-          }
-        }
-
         if (interactionRequestedRef.current && closestCandidate) {
           interactionRequestedRef.current = false;
           let nextRequest = closestCandidate.request;
@@ -5380,6 +5373,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               camera.lookAt(sp.x, sp.y, 0.3);
             }
           }
+        } else if (rafiqDlgOpenRef.current && inside && room === 'workshop') {
+          // Rafiq meet cutscene — zoom toward Rafiq's counter
+          const rafiqFocus = new THREE.Vector3(2.35, 1.95, 2.2);
+          camera.position.lerp(rafiqFocus, 0.04);
+          camera.lookAt(2.35, 1.95, 0.3);
         } else {
         const zoom = computeCameraZoom(
           px, py,
