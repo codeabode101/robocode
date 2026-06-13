@@ -118,9 +118,10 @@ const BATTERY_DLG_STEPS = [
   { speaker: 'Sparky', text: "I've written a letter to Rafiq at the robot shop. Take this to him — he'll sort you out with a job so you can earn enough for a battery." },
   { speaker: 'Sparky', text: "Rafiq's shop is just outside, down the street. Show him my letter and he'll know what to do. Good luck!" },
 ];
-const RAFIQ_LETTER_STEPS = [
-  { speaker: 'Rafiq', text: "Let's see here... 'Sparky sent me'... Ah, that old bot finally gave up, eh?" },
-  { speaker: 'Rafiq', text: "Well, I could use a hand around the shop. Help my customers with their robot requests — write some Java code for 'em — and I'll pay you. Fair?" },
+const RAFIQ_MEET_STEPS = [
+  { speaker: 'Rafiq', text: "Who are you? I don't recall having any appointments today." },
+  { speaker: 'Rafiq', text: "Wait — is that a letter from Sparky? Let me see... 'This is my friend, they need work.' Ah, good old Sparky." },
+  { speaker: 'Rafiq', text: "Well, I could use a hand around the shop. Help customers with robot requests — write some Java code — and I'll pay you. Look around, and talk to me when you're ready for an intro." },
 ];
 const PLAYER_EYE_HEIGHT = 1.5;
 const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
@@ -1135,10 +1136,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return () => window.removeEventListener('keydown', onKey);
   }, [showSparkyDlg]);
 
-  // Rafiq letter dialog typewriter effect
+  // Rafiq meet dialog typewriter effect
   useEffect(() => {
     if (!showRafiqLetterDlg) return;
-    const step = RAFIQ_LETTER_STEPS[rafiqLetterStep];
+    const step = RAFIQ_MEET_STEPS[rafiqLetterStep];
     if (!step) return;
     setRafiqLetterText('');
     let i = 0;
@@ -1150,14 +1151,24 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return () => clearInterval(interval);
   }, [rafiqLetterStep, showRafiqLetterDlg]);
 
-  // Rafiq letter dialog Enter key handler
+  // Rafiq meet dialog Enter key handler
+  const consumeLetterInDialog = () => {
+    const bp = gameStore.get('backpack');
+    if (bp.includes('letter' as ScrapPartId)) {
+      const newBackpack = bp.filter((id: string) => id !== 'letter');
+      gameStore.set('backpack', newBackpack);
+      apiSync({ backpack: newBackpack });
+      lastConfirmedBackpackRef.current = newBackpack;
+    }
+  };
   useEffect(() => {
     if (!showRafiqLetterDlg) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         const nextStep = rafiqLetterStep + 1;
-        if (nextStep < RAFIQ_LETTER_STEPS.length) {
+        if (nextStep < RAFIQ_MEET_STEPS.length) {
+          if (rafiqLetterStep === 0) consumeLetterInDialog();
           setRafiqLetterStep(nextStep);
         } else {
           setShowRafiqLetterDlg(false);
@@ -3452,6 +3463,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               workshopDoorArmedRef.current = false;
               inWorkshopRoomRef.current = true;
               setInWorkshopRoom(true);
+              // If player has Sparky's letter, suppress workshop intro to meet Rafiq first
+              if (cutsceneDoneRef.current && (gameStore.get('backpack') as string[]).includes('letter')) {
+                workshopIntroSeenRef.current = true;
+                setWorkshopIntroSeen(true);
+              }
               setWorkshopIntroStep(0);
               setRoomEntryFlash(true);
               if (roomEntryFlashTimeoutRef.current !== null) {
@@ -5046,11 +5062,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             // Pre-cutscene: Rafiq doesn't know you
             setShowWhoDlg(true);
           } else if (bp.includes('letter' as ScrapPartId)) {
-            // Rafiq reads the letter and gives employment
-            const newBackpack = bp.filter(id => id !== 'letter');
-            gameStore.set('backpack', newBackpack);
-            apiSync({ backpack: newBackpack });
-            lastConfirmedBackpackRef.current = newBackpack;
+            // Rafiq meet dialog — "Who are you?" → letter consumption at step 0→1
             setShowRafiqLetterDlg(true);
             setRafiqLetterStep(0);
           } else {
@@ -6468,7 +6480,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       })()}
 
       {showRafiqLetterDlg && (() => {
-        const cur = RAFIQ_LETTER_STEPS[rafiqLetterStep] ?? RAFIQ_LETTER_STEPS[0];
+        const cur = RAFIQ_MEET_STEPS[rafiqLetterStep] ?? RAFIQ_MEET_STEPS[0];
         return (
         <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
           <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
@@ -6490,7 +6502,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
                   onClick={() => {
                     const nextStep = rafiqLetterStep + 1;
-                    if (nextStep < RAFIQ_LETTER_STEPS.length) {
+                    if (nextStep < RAFIQ_MEET_STEPS.length) {
+                      if (rafiqLetterStep === 0) consumeLetterInDialog();
                       setRafiqLetterStep(nextStep);
                     } else {
                       setShowRafiqLetterDlg(false);
