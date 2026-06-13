@@ -795,10 +795,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const missionText = useMemo(() => {
     if (sparkyQuestStage === 'intro') {
       if (backpack.includes('letter')) return 'Show Sparky\'s letter to Rafiq at his workshop.';
-      if (!cutsceneDoneRef.current) return 'Talk to Sparky.';
       if (backpack.includes('battery')) return 'Talk to Sparky.';
       const amt = Math.min(gameStore.get('money') ?? 0, 10);
-      if (amt < 10) return `Earn $10 at the workshop ($${amt}/$10 earned)`;
+      if (amt < 10) {
+        if (workshopIntroSeen) return `Earn $10 at the workshop ($${amt}/$10 earned)`;
+        return 'Talk to Sparky.';
+      }
       return 'Go to the Parts Shop near the lake.';
     }
     if (sparkyQuestStage === 'intro-done') {
@@ -827,7 +829,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (sparkyQuestStage === 'unit4') return 'Complete Unit 4 with Sparky.';
     if (sparkyQuestStage === 'all-done') return 'Scrap is fully repaired!';
     return 'Explore the city!';
-  }, [sparkyQuestStage, money, backpack]);
+  }, [sparkyQuestStage, money, backpack, workshopIntroSeen]);
 
   const anyDialogActive = showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showBatteryDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showLaptopUI || (workshopIntroSeen === false && inWorkshopRoom);
 
@@ -6294,7 +6296,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         <div className="absolute bottom-4 left-4 max-w-[min(90vw,32rem)] rounded-lg border border-amber-300/40 bg-slate-950/80 px-5 py-4 text-base md:text-lg text-amber-100 shadow-lg">
           <div className="font-semibold text-amber-300">Mission</div>
           <div className="mt-1">{missionText}</div>
-          {(sparkyQuestStage === 'intro' && cutsceneDoneRef.current && !backpack.includes('letter') && !backpack.includes('battery') && (gameStore.get('money') ?? 0) < 10) && (
+          {(sparkyQuestStage === 'intro' && workshopIntroSeen && !backpack.includes('letter') && !backpack.includes('battery') && (gameStore.get('money') ?? 0) < 10) && (
             <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-700">
               <div className="h-full rounded-full bg-amber-400 transition-all duration-300" style={{ width: `${Math.min(100, ((gameStore.get('money') ?? 0) / 10) * 100)}%` }} />
             </div>
