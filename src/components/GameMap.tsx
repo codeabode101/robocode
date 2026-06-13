@@ -828,16 +828,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return 'Explore the city!';
   }, [sparkyQuestStage, money, backpack]);
 
-  // NEW MISSION full-screen modal
+  const anyDialogActive = showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showBatteryDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showLaptopUI || (workshopIntroSeen === false && inWorkshopRoom);
+
+  // NEW MISSION full-screen modal (only for qualitative changes, never during dialogs)
   useEffect(() => {
-    if (!prevMissionRef.current) { prevMissionRef.current = missionText; return; }
-    if (missionText !== prevMissionRef.current) {
-      prevMissionRef.current = missionText;
-      setMissionModal({show: true, msg: missionText});
-      const t = setTimeout(() => setMissionModal({show: false, msg: ''}), 2500);
-      return () => clearTimeout(t);
+    const key = missionText.replace(/\(\$[^)]+\)/g, '').trim();
+    if (!prevMissionRef.current) { prevMissionRef.current = key; return; }
+    if (key !== prevMissionRef.current) {
+      prevMissionRef.current = key;
+      if (!anyDialogActive) {
+        setMissionModal({show: true, msg: missionText});
+        const t = setTimeout(() => setMissionModal({show: false, msg: ''}), 2500);
+        return () => clearTimeout(t);
+      }
     }
-  }, [missionText]);
+  }, [missionText, anyDialogActive]);
 
   const sparkyQuestStageRef = useRef<SparkyQuestStage>('intro');
   const firstTransactionDoneRef = useRef(false);
@@ -6284,11 +6289,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      {missionText && (
+      {missionText && !anyDialogActive && (
         <div className="absolute bottom-4 left-4 max-w-[min(90vw,32rem)] rounded-lg border border-amber-300/40 bg-slate-950/80 px-5 py-4 text-base md:text-lg text-amber-100 shadow-lg">
           <div className="font-semibold text-amber-300">Mission</div>
           <div className="mt-1">{missionText}</div>
-          {sparkyQuestStage === 'unit1-done' && !backpack.includes('sensor') && (
+          {(sparkyQuestStage === 'intro' && !backpack.includes('letter') && (gameStore.get('money') ?? 0) < 10) && (
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-700">
+              <div className="h-full rounded-full bg-amber-400 transition-all duration-300" style={{ width: `${Math.min(100, ((gameStore.get('money') ?? 0) / 10) * 100)}%` }} />
+            </div>
+          )}
+          {(sparkyQuestStage === 'intro-done' && (gameStore.get('money') ?? 0) < 100) && (
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-700">
+              <div className="h-full rounded-full bg-amber-400 transition-all duration-300" style={{ width: `${Math.min(100, ((gameStore.get('money') ?? 0) / 100) * 100)}%` }} />
+            </div>
+          )}
+          {sparkyQuestStage === 'unit1-done' && !backpack.includes('sensor') && (gameStore.get('money') ?? 0) < 10 && (
             <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-700">
               <div className="h-full rounded-full bg-amber-400 transition-all duration-300" style={{ width: `${Math.min(100, ((gameStore.get('money') ?? 0) / 10) * 100)}%` }} />
             </div>
