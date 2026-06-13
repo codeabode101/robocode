@@ -1529,12 +1529,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         setShopUnlocked(true);
         shopUnlockedRef.current = true;
       }
-      const nonQuestTutorials = data.tutorials?.filter((c: string) => !c.startsWith('_quest_'));
-      if (data.questStage === 'intro' && nonQuestTutorials?.length > 0) {
-        setTutorialComplete(true); setShopUnlocked(true);
-        updateQuestStage('unit1-done');
-        tutorialCompleteRef.current = true; showTutorialRef.current = false;
-      }
       // Always restore from last saved position (cloud), regardless of quest stage
       if (data.position) {
         const pos = new THREE.Vector2(data.position.x, data.position.y);
@@ -5648,8 +5642,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       workshopDoorMarkerRef.current.visible = ((sparkyQuestStage === 'intro-done' || sparkyQuestStage === 'unit1-done' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3-done') || (cutsceneDoneRef.current && backpack.includes('letter'))) && !needsPart && !inWorkshopRoom;
     }
     const showBatteryPath = sparkyQuestStage === 'intro' && !backpack.includes('letter') && (gameStore.get('money') ?? 0) >= 10 && !backpack.includes('battery');
+    const ownsPartForStage = (stage: string) => {
+      const pid = PART_FOR_STAGE[stage];
+      return !pid || backpack.includes(pid);
+    };
     if (apartmentDoorMarkerRef.current) {
-      const showAptMarker = !inApartmentRoom && sparkyHomeArrivedRef.current && !backpack.includes('letter') && !showBatteryPath && (
+      const showAptMarker = !inApartmentRoom && sparkyHomeArrivedRef.current && !backpack.includes('letter') && !showBatteryPath && ownsPartForStage(sparkyQuestStage) && (
         sparkyQuestStage === 'intro' ||
         sparkyQuestStage === 'intro-done' ||
         sparkyQuestStage === 'unit1-done' ||
@@ -5659,7 +5657,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       apartmentDoorMarkerRef.current.visible = showAptMarker;
     }
     if (aptExitMarkerRef.current) {
-      const showAptExit = inApartmentRoom && sparkyHomeArrivedRef.current && !backpack.includes('letter') && !showBatteryPath && (
+      const showAptExit = inApartmentRoom && sparkyHomeArrivedRef.current && !backpack.includes('letter') && !showBatteryPath && ownsPartForStage(sparkyQuestStage) && (
         sparkyQuestStage === 'intro' ||
         sparkyQuestStage === 'intro-done' ||
         sparkyQuestStage === 'unit1-done' ||
