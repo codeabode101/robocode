@@ -1454,6 +1454,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           tutorialCompleteRef.current = true; showTutorialRef.current = false;
         }
       }
+      // Cutscene done overrides shop unlock — player can always enter workshop post-cutscene
+      if (data.cutsceneDone) {
+        setShopUnlocked(true);
+        shopUnlockedRef.current = true;
+      }
       const nonQuestTutorials = data.tutorials?.filter((c: string) => !c.startsWith('_quest_'));
       if (data.questStage === 'intro' && nonQuestTutorials?.length > 0) {
         setTutorialComplete(true); setShopUnlocked(true);
@@ -4794,6 +4799,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             sceneBgOverrideRef.current = null;
             cinemCamActiveRef.current = false;
             aptCutscenePhaseRef.current = 'idle';
+            shopUnlockedRef.current = true;
             setShopUnlocked(true);
             cutsceneDoneRef.current = true;
             // Force Sparky home — cutscene may finish before he finishes walking
