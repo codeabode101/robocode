@@ -3680,7 +3680,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (inApartmentRoomRef.current) return 0.28;
           if (inArenaRoomRef.current) return 0.28;
           if (inWorkshopRoomRef.current) return 0.26;
-          if (inShopRoomRef.current) return 0.28;
+          if (inShopRoomRef.current) return 0.08;
           return 0.24;
         })() + bob;
       } else {
@@ -3688,7 +3688,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (inApartmentRoomRef.current) return 0.28;
           if (inArenaRoomRef.current) return 0.28;
           if (inWorkshopRoomRef.current) return 0.26;
-          if (inShopRoomRef.current) return 0.28;
+          if (inShopRoomRef.current) return 0.08;
           return 0.24;
         })();
       }
@@ -3956,7 +3956,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
       animateRobotVisual(owner, worldTime * 0.9, 0.12, -0.2, -0.1);
       if (shopNpcRef.current) {
-        shopNpcRef.current.root.position.z = 0.28 + Math.sin(worldTime * 3) * 0.01;
+        shopNpcRef.current.root.position.z = 0.28 + Math.sin(worldTime * 3) * 0.04;
       }
       if (roomOwnerVisualRef.current) {
         animateRobotVisual(roomOwnerVisualRef.current, worldTime * 0.92, 0.14, -0.28, -0.2);
