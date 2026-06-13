@@ -473,6 +473,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [electrocuteStep, setElectrocuteStep] = useState(0);
   const [electrocuteText, setElectrocuteText] = useState('');
   const [workshopIntroText, setWorkshopIntroText] = useState('');
+  const [moneyAnim, setMoneyAnim] = useState<{active: boolean; bills: number; hits: number; total: number}>({active: false, bills: 0, hits: 0, total: 0});
+  const [missionModal, setMissionModal] = useState<{show: boolean; msg: string}>({show: false, msg: ''});
+  const prevMissionRef = useRef('');
   const [playerName, setPlayerName] = useState('');
   const cutsceneDlgSteps = useMemo(() => [
     { speaker: 'Sparky', text: "I'll get electrocuted if I code Scrap..." },
@@ -796,7 +799,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (sparkyQuestStage === 'unit1') return 'Complete Unit 1 with Sparky.';
     if (sparkyQuestStage === 'unit1-done') {
       const owned = backpack.includes('sensor');
-      return owned ? 'Give the sensor to Sparky!' : 'Buy the Sensor at the Parts Shop.';
+      if (owned) return 'Give the sensor to Sparky!';
+      const cur = Math.min(gameStore.get('money') ?? 0, 10);
+      return `Earn $10 at the workshop ($${cur}/$10 earned)`;
     }
     if (sparkyQuestStage === 'unit2') return 'Complete Unit 2 with Sparky.';
     if (sparkyQuestStage === 'unit2-done') {
@@ -812,6 +817,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (sparkyQuestStage === 'all-done') return 'Scrap is fully repaired!';
     return 'Explore the city!';
   }, [sparkyQuestStage, money, backpack]);
+
+  // NEW MISSION full-screen modal
+  useEffect(() => {
+    if (!prevMissionRef.current) { prevMissionRef.current = missionText; return; }
+    if (missionText !== prevMissionRef.current) {
+      prevMissionRef.current = missionText;
+      setMissionModal({show: true, msg: missionText});
+      const t = setTimeout(() => setMissionModal({show: false, msg: ''}), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [missionText]);
+
   const sparkyQuestStageRef = useRef<SparkyQuestStage>('intro');
   const firstTransactionDoneRef = useRef(false);
   const [firstTransactionDone, setFirstTransactionDone] = useState(false);
@@ -1144,6 +1161,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [showSparkyDlg]);
+
+  // Money collection animation — hits increment timer
+  useEffect(() => {
+    if (!moneyAnim.active || moneyAnim.hits >= moneyAnim.total) {
+      if (moneyAnim.active && moneyAnim.hits >= moneyAnim.total) {
+        const t = setTimeout(() => setMoneyAnim({active: false, bills: 0, hits: 0, total: 0}), 600);
+        return () => clearTimeout(t);
+      }
+      return;
+    }
+    const t = setTimeout(() => {
+      playHappyChime();
+      setMoneyAnim(prev => ({...prev, hits: prev.hits + 1}));
+    }, 120);
+    return () => clearTimeout(t);
+  }, [moneyAnim]);
 
   // Rafiq meet dialog typewriter effect
   useEffect(() => {
@@ -3318,7 +3351,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         fpsLastTimeRef.current = now;
       }
 
-      if (modalOpenRef.current || rafiqDlgOpenRef.current || (inWorkshopRoomRef.current && !workshopIntroSeenRef.current && profileLoadedRef.current)) {
+      if (modalOpenRef.current || (inWorkshopRoomRef.current && !workshopIntroSeenRef.current && profileLoadedRef.current)) {
         modalFrameCountRef.current += 1;
         if (modalFrameCountRef.current % 6 !== 0) {
           rafRef.current = window.requestAnimationFrame(animate);
@@ -3330,8 +3363,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       let moved = false;
       let moveDir2 = new THREE.Vector2(0, 0);
-      if (aptCutscenePhaseRef.current !== 'idle') {
-        // Cutscene active — freeze player
+      if (aptCutscenePhaseRef.current !== 'idle' || rafiqDlgOpenRef.current) {
+        // Cutscene or Rafiq dialog active — freeze player
         keyStateRef.current.clear();
       } else if (!showTutorialRef.current) {
         const keys = keyStateRef.current;
@@ -5204,6 +5237,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const newMoney = gameStore.get('money') + 2 + bonus;
             updateMoney(newMoney);
             playHappyChime();
+            const billCount = Math.min(7, 2 + bonus);
+            setMoneyAnim({active: true, bills: billCount, hits: 0, total: 2 + bonus});
             const bonusText = bonus > 0 ? ` (+$${bonus} speed bonus!)` : '';
             setWorkshopOutput(`✅ ${npc.request.customerName}: "Thank you!" You earned $2${bonusText}.`);
             if (currentCustomerIdRef.current === npc.id) {
@@ -6040,6 +6075,34 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   return (
     <div className="relative" suppressHydrationWarning>
+      <style>{`
+        @keyframes money-bill {
+          0% { transform: translate(0,0) scale(0.3) rotate(-10deg); opacity: 0; }
+          10% { transform: translate(0,-30px) scale(1.3) rotate(5deg); opacity: 1; }
+          20% { transform: translate(0,-10px) scale(1) rotate(-3deg); }
+          30% { transform: translate(0,-20px) scale(1.1) rotate(3deg); }
+          100% { transform: translate(60vw, 40vh) scale(0.3); opacity: 0; }
+        }
+        @keyframes fade-up {
+          0% { opacity: 0; transform: translateY(10px) scale(0.8); }
+          20% { opacity: 1; transform: translateY(0) scale(1); }
+          100% { opacity: 0; transform: translateY(-30px) scale(0.9); }
+        }
+        .animate-money-bill {
+          animation: money-bill 1.2s ease-out forwards;
+        }
+        .animate-fade-up {
+          animation: fade-up 1s ease-out forwards;
+        }
+        @keyframes modal-pop {
+          0% { opacity: 0; transform: scale(0.5) translateY(20px); }
+          60% { opacity: 1; transform: scale(1.05) translateY(-5px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-modal-pop {
+          animation: modal-pop 0.4s ease-out forwards;
+        }
+      `}</style>
       {showSparkyExamples && inWorkshopRoom && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => setShowSparkyExamples(false)}>
           <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6 text-slate-100" onClick={(e) => e.stopPropagation()}>
@@ -6149,6 +6212,34 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         <div className="absolute bottom-4 left-4 max-w-[min(90vw,32rem)] rounded-lg border border-amber-300/40 bg-slate-950/80 px-5 py-4 text-base md:text-lg text-amber-100 shadow-lg">
           <div className="font-semibold text-amber-300">Mission</div>
           <div className="mt-1">{missionText}</div>
+          {sparkyQuestStage === 'unit1-done' && !backpack.includes('sensor') && (
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-700">
+              <div className="h-full rounded-full bg-amber-400 transition-all duration-300" style={{ width: `${Math.min(100, ((gameStore.get('money') ?? 0) / 10) * 100)}%` }} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {moneyAnim.active && (
+        <div className="fixed inset-0 z-[80] pointer-events-none select-none overflow-hidden">
+          {Array.from({length: moneyAnim.bills}).map((_, i) => (
+            <div
+              key={i}
+              className="absolute text-4xl animate-money-bill"
+              style={{
+                left: `${42 + (i % 3) * 8}%`,
+                top: `${30 + Math.floor(i / 3) * 10}%`,
+                animationDelay: `${i * 0.08}s`,
+              }}
+            >
+              💵
+            </div>
+          ))}
+          {moneyAnim.hits > 0 && (
+            <div className="absolute bottom-28 right-8 text-3xl font-bold text-green-400 animate-fade-up">
+              +${moneyAnim.hits}
+            </div>
+          )}
         </div>
       )}
 
@@ -6862,7 +6953,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             {/* Code editor */}
             <div className="p-4">
               {laptopMode === 'version' && (
-                <p className="text-slate-300 text-sm mb-2">Declare a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">double</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">version</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">1.0</code>, then a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">String</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">mode</code> set to a word meaning 'properly working'.</p>
+                <p className="text-slate-300 text-sm mb-2">Declare a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">double</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">version</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">1.0</code>, then a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">String</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">mode</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">"normal"</code>.</p>
               )}
               {laptopMode === 'boot' && (
                 <p className="text-slate-300 text-sm mb-2">Declare a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">boolean</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">ready</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">true</code>.</p>
@@ -6896,13 +6987,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                     <div className="text-slate-400">November</div><div className="text-amber-300 font-mono text-right">10</div>
                     <div className="text-slate-400">December</div><div className="text-amber-300 font-mono text-right">11</div>
                   </div>
-                </div>
-              )}
-              {laptopMode === 'version' && (
-                <div className="mt-2 text-xs bg-slate-800/90 rounded-lg border border-slate-700/50 p-2 space-y-1">
-                  <div className="text-slate-400"><span className="text-amber-300 font-mono">double</span> — decimal numbers like <span className="text-amber-300 font-mono">1.0</span></div>
-                  <div className="text-slate-400"><span className="text-amber-300 font-mono">String</span> — text in double quotes like <span className="text-amber-300 font-mono">"normal"</span></div>
-                  <div className="text-slate-400">Each on its own line, ending with <span className="text-amber-300 font-mono">;</span></div>
                 </div>
               )}
               {laptopMode === 'boot' && (
@@ -6978,6 +7062,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           {backpack.length > 9 && (
             <div className="w-12 h-12 rounded-lg border-2 border-slate-600 bg-slate-900/80 flex items-center justify-center text-slate-500 text-sm">...</div>
           )}
+        </div>
+      )}
+
+      {missionModal.show && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70" onClick={() => setMissionModal({show: false, msg: ''})}>
+          <div className="text-center animate-modal-pop">
+            <div className="text-4xl font-bold text-amber-300 tracking-wider mb-4">⚡ NEW MISSION ⚡</div>
+            <div className="text-2xl text-slate-100 font-medium">{missionModal.msg}</div>
+            <div className="mt-6 text-sm text-slate-500 animate-pulse">click anywhere to continue</div>
+          </div>
         </div>
       )}
 
