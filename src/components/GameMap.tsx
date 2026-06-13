@@ -610,9 +610,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       'Double': 'double', 'float': 'double',
       'Bool': 'boolean', 'bool': 'boolean', 'Boolean': 'boolean',
     };
+    const unmatched = [...specs];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      const spec = specs[i];
       if (/[[\]]/.test(line)) {
         return { valid: false, message: '❌ Those `[]` just mean "fill in a value"!', showArrow: false };
       }
@@ -631,15 +631,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (alias) {
         return { valid: false, message: `❌ Use \`${alias}\` (not \`${userType}\`).`, showArrow: false };
       }
+      const spec = unmatched.find(s => s.name === userName);
+      if (!spec) {
+        const expected = unmatched.map(s => `\`${s.name}\``).join(', ');
+        return { valid: false, message: `❌ Unexpected variable \`${userName}\`. Expected one of: ${expected}.`, showArrow: false };
+      }
       if (userType !== spec.type && userType.toLowerCase() === spec.type.toLowerCase()) {
         return { valid: false, message: `❌ \`${spec.type}\` is all lowercase in Java.`, showArrow: false };
       }
       if (userType !== spec.type) {
-        return { valid: false, message: `❌ Expected \`${spec.type}\`, not \`${userType}\`.`, showArrow: false };
+        return { valid: false, message: `❌ \`${userName}\` should be type \`${spec.type}\`, not \`${userType}\`.`, showArrow: false };
       }
-      if (userName !== spec.name) {
-        return { valid: false, message: `❌ The variable should be \`${spec.name}\`, not \`${userName}\`.`, showArrow: false };
-      }
+      unmatched.splice(unmatched.indexOf(spec), 1);
       // Type-specific pre-checks
       if (spec.type === 'boolean') {
         if (/^"[^"]*"$/.test(value)) return { valid: false, message: '❌ Remove the `"` marks — booleans don\'t use quotes.', showArrow: false };
