@@ -4376,9 +4376,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 }
               });
             }
-            // Laptop screen pulses red
-            if (computerRef.current) {
-              const sparkPulse = et < 3 ? Math.max(0, Math.sin(et * 8 * Math.PI)) : 0;
+            // Laptop screen pulses red (only during first 3s — stays blue after)
+            if (et < 3 && computerRef.current) {
+              const sparkPulse = Math.max(0, Math.sin(et * 8 * Math.PI));
               const disp = computerRef.current.getObjectByName('laptop-display') as THREE.Mesh | null;
               if (disp) {
                 const dm = disp.material as THREE.MeshBasicMaterial;
