@@ -256,6 +256,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const worldInteractionRequestedRef = useRef(false);
   const interactionCandidateIdRef = useRef<string | null>(null);
   const workshopIntroSeenRef = useRef(false);
+  const rafiqMeetAutoTriggeredRef = useRef(false);
+  const rafiqDlgOpenRef = useRef(false);
   const roomOwnerVisualRef = useRef<RobotVisual | null>(null);
   const roomPetVisualRef = useRef<RobotVisual | null>(null);
   const roomCustomerGroupRef = useRef<THREE.Group | null>(null);
@@ -1012,6 +1014,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   useEffect(() => {
     workshopIntroSeenRef.current = workshopIntroSeen;
   }, [workshopIntroSeen]);
+
+  useEffect(() => {
+    rafiqDlgOpenRef.current = showRafiqLetterDlg;
+  }, [showRafiqLetterDlg]);
 
   useEffect(() => {
     inApartmentRoomRef.current = inApartmentRoom;
@@ -3309,7 +3315,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         fpsLastTimeRef.current = now;
       }
 
-      if (modalOpenRef.current || (inWorkshopRoomRef.current && !workshopIntroSeenRef.current && profileLoadedRef.current)) {
+      if (modalOpenRef.current || rafiqDlgOpenRef.current || (inWorkshopRoomRef.current && !workshopIntroSeenRef.current && profileLoadedRef.current)) {
         modalFrameCountRef.current += 1;
         if (modalFrameCountRef.current % 6 !== 0) {
           rafRef.current = window.requestAnimationFrame(animate);
@@ -3467,6 +3473,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (cutsceneDoneRef.current && (gameStore.get('backpack') as string[]).includes('letter')) {
                 workshopIntroSeenRef.current = true;
                 setWorkshopIntroSeen(true);
+                rafiqMeetAutoTriggeredRef.current = false;
               }
               setWorkshopIntroStep(0);
               setRoomEntryFlash(true);
@@ -5055,7 +5062,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
         // Rafiq interaction — "Who are you?", letter reception, or workshop intro
         const distToRafiq = Math.hypot(localPositionRef.current.x - ROOM_OWNER_POS.x, localPositionRef.current.y - ROOM_OWNER_POS.y);
-        if (interactionRequestedRef.current && distToRafiq < 1.8) {
+        if (!rafiqDlgOpenRef.current && interactionRequestedRef.current && distToRafiq < 1.8) {
           interactionRequestedRef.current = false;
           const bp = gameStore.get('backpack');
           if (!cutsceneDoneRef.current) {
@@ -5067,6 +5074,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             setRafiqLetterStep(0);
           } else {
             reopenWorkshopIntro();
+          }
+        }
+
+        // Auto-trigger Rafiq meet dialog when walking close (no Space press)
+        if (!showRafiqLetterDlg && distToRafiq < 1.8 && !rafiqMeetAutoTriggeredRef.current) {
+          const bp = gameStore.get('backpack');
+          if (cutsceneDoneRef.current && bp.includes('letter' as ScrapPartId)) {
+            rafiqMeetAutoTriggeredRef.current = true;
+            setShowRafiqLetterDlg(true);
+            setRafiqLetterStep(0);
           }
         }
 
