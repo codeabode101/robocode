@@ -2464,9 +2464,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       ];
 
       // Shopkeeper robot — same visual but scaled down to fit room
-      const shopNpc = createRobotVisual(new THREE.Color(0x60a5fa), 'Shopkeeper');
+      const shopNpc = createRobotVisual(new THREE.Color(0x60a5fa), 'Shopkeeper', 'north');
       shopNpc.root.scale.set(0.45, 0.45, 0.45);
-      shopNpc.root.position.set(0, -sD / 2 + 0.35, -0.124);
+      shopNpc.root.position.set(0, -sD / 2 + 0.35, 0.28);
       shopRoomGroup.add(shopNpc.root);
       shopNpcRef.current = shopNpc;
 
@@ -3956,7 +3956,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
       animateRobotVisual(owner, worldTime * 0.9, 0.12, -0.2, -0.1);
       if (shopNpcRef.current) {
-        shopNpcRef.current.root.position.z = 0.28 + Math.sin(worldTime * 3) * 0.04;
+        shopNpcRef.current.root.position.z = 0.28 + Math.sin(worldTime * 3) * 0.01;
       }
       if (roomOwnerVisualRef.current) {
         animateRobotVisual(roomOwnerVisualRef.current, worldTime * 0.92, 0.14, -0.28, -0.2);
