@@ -81,7 +81,7 @@ export const PARTS_CATALOG: ScrapPart[] = [
   { id: 'sensor', name: 'Sensor Part', cost: 5, questStage: 'unit1-done', description: 'A basic motion sensor for Scrap.' },
   { id: 'voice', name: 'Voice Module', cost: 10, questStage: 'unit2-done', description: 'A speech synthesizer module.' },
   { id: 'navigation', name: 'Navigation Chip', cost: 20, questStage: 'unit3-done', description: 'A GPS navigation chip.' },
-  { id: 'battery', name: 'Battery Pack', cost: 20, questStage: 'unit1-done', description: 'A fresh battery to power Scrap up.' },
+  { id: 'battery', name: 'Battery Pack', cost: 10, questStage: 'unit1-done', description: 'A fresh battery to power Scrap up.' },
 ];
 
 export const PART_FOR_STAGE: Record<string, ScrapPartId> = {
