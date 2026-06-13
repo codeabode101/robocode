@@ -1210,9 +1210,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         e.preventDefault();
         const nextStep = rafiqLetterStep + 1;
         if (nextStep < RAFIQ_MEET_STEPS.length) {
-          if (rafiqLetterStep === 0) consumeLetterInDialog();
           setRafiqLetterStep(nextStep);
         } else {
+          consumeLetterInDialog();
           setShowRafiqLetterDlg(false);
           reopenWorkshopIntro();
         }
@@ -6612,9 +6612,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   onClick={() => {
                     const nextStep = rafiqLetterStep + 1;
                     if (nextStep < RAFIQ_MEET_STEPS.length) {
-                      if (rafiqLetterStep === 0) consumeLetterInDialog();
                       setRafiqLetterStep(nextStep);
                     } else {
+                      consumeLetterInDialog();
                       setShowRafiqLetterDlg(false);
                       reopenWorkshopIntro();
                     }
