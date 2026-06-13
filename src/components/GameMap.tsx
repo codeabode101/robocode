@@ -282,6 +282,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyQuestMarkerRef = useRef<THREE.Sprite | null>(null);
   const workshopDoorMarkerRef = useRef<THREE.Sprite | null>(null);
   const shopDoorMarkerRef = useRef<THREE.Sprite | null>(null);
+  const shopWaypointMarkersRef = useRef<THREE.Sprite[]>([]);
   const shopDoorHitboxRef = useRef<CircleHitbox | null>(null);
   const shopDoorArmedRef = useRef(true);
   const shopRoomGroupRef = useRef<THREE.Group | null>(null);
@@ -794,14 +795,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const missionText = useMemo(() => {
     if (sparkyQuestStage === 'intro') {
       if (backpack.includes('letter')) return 'Show Sparky\'s letter to Rafiq at his workshop.';
+      const amt = Math.min(gameStore.get('money') ?? 0, 10);
+      if (amt < 10) return `Earn $10 at the workshop ($${amt}/$10 earned)`;
+      if (!backpack.includes('battery')) return 'Go to the Parts Shop near the lake.';
       return 'Talk to Sparky.';
+    }
+    if (sparkyQuestStage === 'intro-done') {
+      const amt = Math.min(gameStore.get('money') ?? 0, 100);
+      if (amt < 100) return `Earn $100 for Sparky's diagnostic prompt ($${amt}/$100 earned)`;
+      return 'Buy a sensor at the Parts Shop ($5).';
     }
     if (sparkyQuestStage === 'unit1') return 'Complete Unit 1 with Sparky.';
     if (sparkyQuestStage === 'unit1-done') {
       const owned = backpack.includes('sensor');
       if (owned) return 'Give the sensor to Sparky!';
-      const cur = Math.min(gameStore.get('money') ?? 0, 10);
-      return `Earn $10 at the workshop ($${cur}/$10 earned)`;
+      const amt = Math.min(gameStore.get('money') ?? 0, 10);
+      if (amt < 10) return `Earn $10 at the workshop ($${amt}/$10 earned)`;
+      return 'Buy a sensor at the Parts Shop ($5).';
     }
     if (sparkyQuestStage === 'unit2') return 'Complete Unit 2 with Sparky.';
     if (sparkyQuestStage === 'unit2-done') {
@@ -1210,9 +1220,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         e.preventDefault();
         const nextStep = rafiqLetterStep + 1;
         if (nextStep < RAFIQ_MEET_STEPS.length) {
+          if (rafiqLetterStep === 0) consumeLetterInDialog();
           setRafiqLetterStep(nextStep);
         } else {
-          consumeLetterInDialog();
           setShowRafiqLetterDlg(false);
           reopenWorkshopIntro();
         }
@@ -2080,6 +2090,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const shopPartId = PART_FOR_STAGE[sparkyQuestStageRef.current];
     shopDoorMarker.visible = !!shopPartId && !gameStore.get('backpack').includes(shopPartId);
     shopDoorMarkerRef.current = shopDoorMarker;
+
+    // Exclamation waypoints from workshop exit → shop entrance
+    shopWaypointMarkersRef.current = [];
+    const waypointPositions = [new THREE.Vector2(-3, -10.3), new THREE.Vector2(0, -10.3), new THREE.Vector2(3, -10.3)];
+    for (const wp of waypointPositions) {
+      const anchor = new THREE.Group();
+      anchor.position.set(wp.x, wp.y, 1.0);
+      outdoorGroup.add(anchor);
+      const marker = addExclamationMarker(anchor);
+      marker.visible = false;
+      shopWaypointMarkersRef.current.push(marker);
+    }
 
     // Transport store at (-18.75, -12) — within left grass block, clears sidewalks
     const bCx = -18.75, bCy = -12;
@@ -3735,6 +3757,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const showSparkyPrompt =
           sparkyOutsideVisible &&
           (stage === 'intro' ||
+           stage === 'intro-done' ||
            stage === 'unit1' ||
            stage === 'unit1-done' ||
            stage === 'unit2' ||
@@ -3759,7 +3782,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (worldInteractionRequestedRef.current) {
           worldInteractionRequestedRef.current = false;
           if (distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
-            if (stage === 'intro' && !sparkyGoHomeRef.current) {
+            if (stage === 'intro' && gameStore.get('backpack').includes('battery') && !sparkyGoHomeRef.current && !sparkyHomeArrivedRef.current) {
+              setSparkyDlgFull('You got the battery! Follow me — let\'s install it!');
+              setShowSparkyDlg(true);
+              const __s = outdoorSparkyRef.current;
+              if (__s) {
+                const __sx = __s.root.position.x;
+                const __sy = __s.root.position.y;
+                sparkyHomeWaypointsRef.current = [new THREE.Vector2(__sx, -6.5), new THREE.Vector2(-9.6, -6.5), new THREE.Vector2(-9.6, -5.7)];
+                sparkyHomeWaypointIdxRef.current = 0;
+              }
+              sparkyWalkHomeTimerRef.current = 0;
+              sparkyGoHomeRef.current = true;
+            } else if (stage === 'intro' && !sparkyGoHomeRef.current) {
               setSparkyIntroStep(0);
             } else if (stage === 'unit1' || stage === 'unit2') {
               showTutorialRef.current = true;
@@ -3768,6 +3803,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
               setOutput('');
               setSuccess(false);
+            } else if (stage === 'intro-done') {
+              const cur = gameStore.get('money') ?? 0;
+              if (cur >= 100) {
+                setSparkyDlgFull('You did it! Now buy a sensor from the Parts Shop near the lake ($5).');
+                setShowSparkyDlg(true);
+                updateQuestStage('unit1-done');
+              } else {
+                setSparkyDlgFull(`I need $100 to unlock Scrap's diagnostic prompt. Use .length() at the workshop to earn more per job! ($${cur}/$100)`);
+                setShowSparkyDlg(true);
+              }
             } else if (stage === 'unit1-done' || stage === 'unit2-done' || stage === 'unit3-done') {
               setSparkyDlgFull('Sparky is waiting in his apartment. Go upstairs and bring him the part!');
               setShowSparkyDlg(true);
@@ -4947,8 +4992,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               setHeldSlotIndex(null);
               heldSlotIndexRef.current = null;
             }
-            setSparkyDlgFull('Think you need a sensor — go buy one at the Parts Shop near the lake.');
-            setShowSparkyDlg(true);
+            if (sparkyQuestStageRef.current === 'intro') {
+              updateQuestStage('intro-done');
+              setSparkyDlgFull("Power's flowing! Now I need $100 to unlock Scrap's diagnostic prompt. I'll teach you .length() — use it to count characters at the workshop and earn more per job!");
+              setShowSparkyDlg(true);
+            } else {
+              setSparkyDlgFull('Think you need a sensor — go buy one at the Parts Shop near the lake.');
+              setShowSparkyDlg(true);
+            }
             setTimeout(() => setShowSparkyDlg(false), 4000);
           }
         } else if (sparkyInstallPhaseRef.current && aptSparky) {
@@ -5599,11 +5650,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (workshopDoorMarkerRef.current) {
       const partId = PART_FOR_STAGE[sparkyQuestStage];
       const needsPart = !!partId && !backpack.includes(partId);
-      workshopDoorMarkerRef.current.visible = ((sparkyQuestStage === 'unit1-done' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3-done') || (cutsceneDoneRef.current && backpack.includes('letter'))) && !needsPart && !inWorkshopRoom;
+      workshopDoorMarkerRef.current.visible = ((sparkyQuestStage === 'intro-done' || sparkyQuestStage === 'unit1-done' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3-done') || (cutsceneDoneRef.current && backpack.includes('letter'))) && !needsPart && !inWorkshopRoom;
     }
     if (apartmentDoorMarkerRef.current) {
       const showAptMarker = !inApartmentRoom && sparkyHomeArrivedRef.current && !backpack.includes('letter') && (
         sparkyQuestStage === 'intro' ||
+        sparkyQuestStage === 'intro-done' ||
         sparkyQuestStage === 'unit1-done' ||
         sparkyQuestStage === 'unit2-done' ||
         sparkyQuestStage === 'unit3-done'
@@ -5613,6 +5665,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (aptExitMarkerRef.current) {
       const showAptExit = inApartmentRoom && sparkyHomeArrivedRef.current && !backpack.includes('letter') && (
         sparkyQuestStage === 'intro' ||
+        sparkyQuestStage === 'intro-done' ||
         sparkyQuestStage === 'unit1-done' ||
         sparkyQuestStage === 'unit2-done' ||
         sparkyQuestStage === 'unit3-done'
@@ -5621,9 +5674,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
     if (shopDoorMarkerRef.current) {
       const partId = PART_FOR_STAGE[sparkyQuestStage];
-      shopDoorMarkerRef.current.visible = !!partId && !backpack.includes(partId) && !inShopRoom;
+      const showBatteryPath = sparkyQuestStage === 'intro' && !backpack.includes('letter') && (gameStore.get('money') ?? 0) >= 10 && !backpack.includes('battery');
+      shopDoorMarkerRef.current.visible = (!!partId && !backpack.includes(partId) && !inShopRoom) || showBatteryPath;
     }
-  }, [sparkyQuestStage, inWorkshopRoom, inApartmentRoom, inShopRoom, workshopIntroSeen, backpack]);
+    for (const m of shopWaypointMarkersRef.current) {
+      const showBatteryPath = sparkyQuestStage === 'intro' && !backpack.includes('letter') && (gameStore.get('money') ?? 0) >= 10 && !backpack.includes('battery');
+      m.visible = showBatteryPath && !inShopRoom;
+    }
+  }, [sparkyQuestStage, inWorkshopRoom, inApartmentRoom, inShopRoom, workshopIntroSeen, backpack, money]);
 
   useEffect(() => {
     if (!inArenaRoom) {
@@ -5887,9 +5945,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
       setOutput('');
       setSuccess(false);
+    } else if (stage === 'intro-done') {
+      const cur = gameStore.get('money') ?? 0;
+      if (cur >= 100) {
+        setSparkyDlgFull('You did it! Now buy a sensor from the Parts Shop near the lake ($5).');
+        setShowSparkyDlg(true);
+        updateQuestStage('unit1-done');
+      } else {
+        setSparkyDlgFull(`I need $100 to unlock Scrap's diagnostic prompt. Use .length() at the workshop to earn more per job! ($${cur}/$100)`);
+        setShowSparkyDlg(true);
+      }
+    } else if (stage === 'intro' && gameStore.get('backpack').includes('battery') && !batteryInstalledRef.current) {
+      if (installBatteryPhaseRef.current) return;
+      installBatteryPhaseRef.current = 'walk-to-scrap';
+      installBatteryTimerRef.current = 0;
+      setSparkyDlgFull('Sparky takes the battery to Scrap...');
+      setShowSparkyDlg(true);
     } else if (stage === 'unit1-done' || stage === 'unit2-done' || stage === 'unit3-done') {
       const bp = gameStore.get('backpack');
-      // Check battery first (cosmetic prerequisite)
+      // Check battery first
       if (stage === 'unit1-done' && bp.includes('battery') && !batteryInstalledRef.current) {
         if (installBatteryPhaseRef.current) return;
         installBatteryPhaseRef.current = 'walk-to-scrap';
@@ -6023,9 +6097,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const bonusNow = bonusTimerRef.current !== null
       ? Math.max(0, Math.round(5 * (1 - (performance.now() - bonusTimerRef.current) / 1000 / BONUS_DURATION)))
       : 0;
-    lockedBonusRef.current = bonusNow;
+    const lengthBonus = sparkyQuestStageRef.current === 'intro-done' && workshopCode.includes('.length') ? 2 : 0;
+    lockedBonusRef.current = bonusNow + lengthBonus;
     bonusTimerRef.current = null;
-    setWorkshopOutput(`✅ Nice. ${activeCustomer.customerName} is walking to the register now — meet them there for $2${bonusNow > 0 ? ` (+$${bonusNow} speed bonus!)` : ''}.`);
+    const lenText = lengthBonus > 0 ? ` +$${lengthBonus} .length() bonus` : '';
+    setWorkshopOutput(`✅ Nice. ${activeCustomer.customerName} is walking to the register now — meet them there for $2${bonusNow > 0 ? ` (+$${bonusNow} speed bonus!)` : ''}${lenText}.`);
     setWorkshopCode('');
     setActiveCustomer(null);
     (document.activeElement as HTMLElement)?.blur();
@@ -6612,9 +6688,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   onClick={() => {
                     const nextStep = rafiqLetterStep + 1;
                     if (nextStep < RAFIQ_MEET_STEPS.length) {
+                      if (rafiqLetterStep === 0) consumeLetterInDialog();
                       setRafiqLetterStep(nextStep);
                     } else {
-                      consumeLetterInDialog();
                       setShowRafiqLetterDlg(false);
                       reopenWorkshopIntro();
                     }
