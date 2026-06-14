@@ -1322,6 +1322,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         } else {
           setShowRafiqLetterDlg(false);
           reopenWorkshopIntro();
+          if (roomOwnerVisualRef.current) roomOwnerVisualRef.current.root.rotation.z = 0;
         }
       }
     };
@@ -3628,6 +3629,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 rafiqDlgOpenRef.current = true;
                 setShowRafiqLetterDlg(true);
                 setRafiqLetterStep(0);
+                if (roomOwnerVisualRef.current) roomOwnerVisualRef.current.root.rotation.z = Math.PI;
               }
               setWorkshopIntroStep(0);
               setRoomEntryFlash(true);
@@ -5519,10 +5521,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           }
         } else if (rafiqDlgOpenRef.current && inside && room === 'workshop') {
-          // Rafiq meet cutscene — front-facing shot of Rafiq
-          const rafiqFocus = new THREE.Vector3(0.0, 3.0, 1.0);
+          // Rafiq meet cutscene — side view showing player walking to Rafiq
+          const rafiqFocus = new THREE.Vector3(4.5, 0, 1.2);
           camera.position.lerp(rafiqFocus, 0.04);
-          camera.lookAt(2.35, 1.95, 0.3);
+          camera.lookAt(1.0, -1.0, 0.3);
         } else {
         const zoom = computeCameraZoom(
           px, py,
@@ -5707,6 +5709,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   }, [sendPosition, userId]);
 
   const syncMarkers = useCallback(() => {
+    // Hide all markers during cutscenes/dialogs
+    if (cinemCamActiveRef.current || rafiqDlgOpenRef.current) {
+      if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
+      if (workshopDoorMarkerRef.current) workshopDoorMarkerRef.current.visible = false;
+      if (shopDoorMarkerRef.current) shopDoorMarkerRef.current.visible = false;
+      if (apartmentDoorMarkerRef.current) apartmentDoorMarkerRef.current.visible = false;
+      if (aptExitMarkerRef.current) aptExitMarkerRef.current.visible = false;
+      if (workshopExitMarkerRef.current) workshopExitMarkerRef.current.visible = false;
+      if (shopExitMarkerRef.current) shopExitMarkerRef.current.visible = false;
+      if (rafiqMarkerRef.current) rafiqMarkerRef.current.visible = false;
+      return;
+    }
     const room: RoomType = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apartment' : inShopRoomRef.current ? 'shop' : 'outside';
     const bp = gameStore.get('backpack') as ScrapPartId[];
     const vis = computeMarkerVisibility(
@@ -6686,6 +6700,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                     } else {
                       setShowRafiqLetterDlg(false);
                       reopenWorkshopIntro();
+                      if (roomOwnerVisualRef.current) roomOwnerVisualRef.current.root.rotation.z = 0;
                     }
                   }}
                 >
