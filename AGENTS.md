@@ -218,4 +218,27 @@ useEffect(() => {
 ### Battery Install Mini-Cutscene
 Separate from `aptCutscenePhaseRef` — uses `installBatteryPhaseRef` with phases:
 `'idle' | 'walk-to-scrap' | 'open-chest' | 'place-battery' | 'chest-glow' | 'done'`
-Triggered in `runApartmentSparkyInteraction()` when stage='unit1-done', battery in backpack, not yet installed.
+Triggered in `runApartmentSparkyInteraction()` when battery in backpack, not yet installed.
+
+---
+
+## ⚠️ BRANCH SAFETY — READ BEFORE EDITING GameMap.tsx
+
+### ALWAYS work on a separate branch for risky edits.
+The file `GameMap.tsx` is ~7300 lines with complex state/ref/effect interdependencies.
+A bad edit can silently break the entire game. Protect `main` at all costs.
+
+### Current branch: `battery-only-flow`
+This branch strips out the tutorial system and old sensor/voice/nav progression.
+After battery install cutscene → Scrap follower → free roam. No tutorial, no Sparky dialogs about sensors.
+
+### Workflow:
+1. `git checkout -b <feature-name>` — create branch from `main`
+2. `git commit` after each logical change
+3. `git push -u origin <branch>` — if you need to share/deploy from branch
+4. Only merge to `main` after the user explicitly confirms and tests the branch
+
+### If something goes wrong:
+- `git checkout main` — return to known-good state
+- `git branch -D <broken-branch>` — delete the bad branch
+- `git checkout -b <new-feature>` — start fresh from main
