@@ -214,6 +214,37 @@ type CustomerNpc = {
   stage: 'walking-to-browse' | 'browsing' | 'awaiting-code' | 'follow-to-counter' | 'leaving';
 };
 
+type RoomType = 'outside' | 'workshop' | 'apartment' | 'shop' | 'arena';
+
+function computeMarkerVisibility(
+  room: RoomType,
+  stage: SparkyQuestStage,
+  backpack: ScrapPartId[],
+  money: number,
+  cutsceneDone: boolean,
+  sparkyHomeArrived: boolean,
+  workshopIntroSeen: boolean,
+  batteryInstalled: boolean,
+) {
+  const hasLetter = backpack.includes('letter');
+  const hasBattery = backpack.includes('battery');
+  return {
+    sparkyOutdoor: !cutsceneDone && room === 'outside',
+    workshopDoor: (
+      (room === 'outside') && (
+        hasLetter ||
+        (!hasBattery && !batteryInstalled && money < 10 && cutsceneDone)
+      )
+    ),
+    shopDoor: (room === 'outside') && !hasLetter && !hasBattery && !batteryInstalled && money >= 10 && cutsceneDone,
+    apartmentDoor: false,
+    apartmentExit: room === 'apartment' && (!hasBattery || batteryInstalled),
+    workshopExit: room === 'workshop' && !hasLetter && workshopIntroSeen,
+    shopExit: room === 'shop',
+    rafiqMarker: room === 'workshop' && (hasLetter || !workshopIntroSeen),
+  };
+}
+
 export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: GameMapProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const codeInputRef = useRef<HTMLTextAreaElement>(null);
@@ -292,6 +323,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyQuestMarkerRef = useRef<THREE.Sprite | null>(null);
   const workshopDoorMarkerRef = useRef<THREE.Sprite | null>(null);
   const shopDoorMarkerRef = useRef<THREE.Sprite | null>(null);
+  const rafiqMarkerRef = useRef<THREE.Sprite | null>(null);
+  const workshopExitMarkerRef = useRef<THREE.Sprite | null>(null);
+  const shopExitMarkerRef = useRef<THREE.Sprite | null>(null);
   const shopDoorHitboxRef = useRef<CircleHitbox | null>(null);
   const shopDoorArmedRef = useRef(true);
   const shopRoomGroupRef = useRef<THREE.Group | null>(null);
@@ -1558,7 +1592,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         cutsceneDoneRef.current = true;
         sparkyHomeArrivedRef.current = true;
         if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
-        if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
         if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
       }
       if (data.questStage) {
@@ -1659,12 +1692,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   useEffect(() => {
     heldSlotIndexRef.current = heldSlotIndex;
   }, [heldSlotIndex]);
-
-  useEffect(() => {
-    if (sparkyQuestMarkerRef.current) {
-      sparkyQuestMarkerRef.current.visible = false;
-    }
-  }, [sparkyQuestStage]);
 
   const joinedRef = useRef(false);
   useEffect(() => {
@@ -2119,7 +2146,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     doorAnchor.position.set(-6, -10.0, 1.0);
     outdoorGroup.add(doorAnchor);
     const doorMarker = addExclamationMarker(doorAnchor);
-    doorMarker.visible = sparkyQuestStageRef.current === 'unit1-done' || sparkyQuestStageRef.current === 'unit2-done' || sparkyQuestStageRef.current === 'unit3-done';
     workshopDoorMarkerRef.current = doorMarker;
 
     const aptDoorAnchor = new THREE.Group();
@@ -2135,8 +2161,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     shopDoorAnchor.position.set(6.0, -10.2, 1.0);
     outdoorGroup.add(shopDoorAnchor);
     const shopDoorMarker = addExclamationMarker(shopDoorAnchor);
-    const needsBattery = sparkyQuestStageRef.current !== 'intro' && !gameStore.get('backpack').includes('battery');
-    shopDoorMarker.visible = needsBattery;
     shopDoorMarkerRef.current = shopDoorMarker;
 
     // Transport store at (-18.75, -12) — within left grass block, clears sidewalks
@@ -2552,6 +2576,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       shopRoomGroup.add(exitFrame);
 
       createExitSignMesh(0, 1.8, 0.84, shopRoomGroup, '#dc2626', '#ffffff', '#fde68a');
+      const shopExitAnchor = new THREE.Group();
+      shopExitAnchor.position.set(0, 1.5, 0.9);
+      shopRoomGroup.add(shopExitAnchor);
+      const shopExitMarker = addExclamationMarker(shopExitAnchor);
+      shopExitMarker.visible = false;
+      shopExitMarkerRef.current = shopExitMarker;
     }
 
     // Multi-floor arena at (18.75, -12) — merged grass block x=[13.5,24]
@@ -2798,6 +2828,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     wsExitFrame.position.set(0, -5.15, 0.62);
     workshopRoomGroup.add(wsExitFrame);
     createExitSignMesh(0, -5.15, 1.3, workshopRoomGroup, '#eab308', '#1e293b', '#000000');
+    const wsExitAnchor = new THREE.Group();
+    wsExitAnchor.position.set(0, -4.6, 1.3);
+    workshopRoomGroup.add(wsExitAnchor);
+    const wsExitMarker = addExclamationMarker(wsExitAnchor);
+    wsExitMarker.visible = false;
+    workshopExitMarkerRef.current = wsExitMarker;
 
     const shelf = new THREE.Mesh(
       new THREE.BoxGeometry(1.65, 0.45, 1.45),
@@ -2891,6 +2927,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     owner.nameSprite.visible = false;
     workshopRoomGroup.add(owner.root);
     roomOwnerVisualRef.current = owner;
+    const rafiqMarker = addExclamationMarker(owner.root);
+    rafiqMarker.visible = false;
+    rafiqMarkerRef.current = rafiqMarker;
 
     const petDisplay = createRobotVisual(new THREE.Color(0x60a5fa), 'Shop Pet');
     petDisplay.root.scale.set(0.6, 0.6, 0.6);
@@ -3887,9 +3926,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           sparkyWalkHomeTimerRef.current = 0;
           sparkyHomeArrivedRef.current = true;
           sparky.root.visible = false;
-          if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
           if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
-          if (apartmentDoorMarkerRef.current) apartmentDoorMarkerRef.current.visible = true;
         }
       } else if (!sparkyHomeArrivedRef.current) {
         if (sparkyQuestStageRef.current === 'intro' && !sparkyGoHomeRef.current) {
@@ -4003,7 +4040,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         animateRobotVisual(sparky, worldTime, 0.5, -0.3, 0.15);
       }
       if (sparkyQuestMarkerRef.current) {
-        sparkyQuestMarkerRef.current.visible = sparkyQuestStageRef.current === 'intro' && sparky.root.visible;
         sparkyQuestMarkerRef.current.position.y = 1.0 + Math.sin(worldTime * 5.2) * 0.08;
       }
       animateRobotVisual(owner, worldTime * 0.9, 0.12, -0.2, -0.1);
@@ -4937,7 +4973,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             cutsceneDoneRef.current = true;
             sparkyHomeArrivedRef.current = true;
             if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
-            if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
             // Reset Scrap's eye pupils (set cyan during boot phase fade-out)
             if (scrapRobotRef.current) {
               if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x000000);
@@ -5649,6 +5684,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       apartmentDoorMarkerRef.current = null;
       aptExitMarkerRef.current = null;
       shopDoorMarkerRef.current = null;
+      workshopDoorMarkerRef.current = null;
+      rafiqMarkerRef.current = null;
+      workshopExitMarkerRef.current = null;
+      shopExitMarkerRef.current = null;
       apartmentSparkyRef.current = null;
       if (scrapPartMeshRef.current) {
         scrapPartMeshRef.current.parent?.remove(scrapPartMeshRef.current);
@@ -5667,39 +5706,28 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
   }, [sendPosition, userId]);
 
+  const syncMarkers = useCallback(() => {
+    const room: RoomType = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apartment' : inShopRoomRef.current ? 'shop' : 'outside';
+    const bp = gameStore.get('backpack') as ScrapPartId[];
+    const vis = computeMarkerVisibility(
+      room, sparkyQuestStageRef.current, bp,
+      gameStore.get('money') ?? 0, cutsceneDoneRef.current,
+      sparkyHomeArrivedRef.current, workshopIntroSeenRef.current,
+      batteryInstalledRef.current,
+    );
+    if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = vis.sparkyOutdoor;
+    if (workshopDoorMarkerRef.current) workshopDoorMarkerRef.current.visible = vis.workshopDoor;
+    if (shopDoorMarkerRef.current) shopDoorMarkerRef.current.visible = vis.shopDoor;
+    if (apartmentDoorMarkerRef.current) apartmentDoorMarkerRef.current.visible = vis.apartmentDoor;
+    if (aptExitMarkerRef.current) aptExitMarkerRef.current.visible = vis.apartmentExit;
+    if (workshopExitMarkerRef.current) workshopExitMarkerRef.current.visible = vis.workshopExit;
+    if (shopExitMarkerRef.current) shopExitMarkerRef.current.visible = vis.shopExit;
+    if (rafiqMarkerRef.current) rafiqMarkerRef.current.visible = vis.rafiqMarker;
+  }, []);
+
   useEffect(() => {
-    if (petShopRef.current) petShopRef.current.visible = true;
-    const needsBattery = !backpack.includes('battery');
-    const batteryAvailable = needsBattery && !backpack.includes('letter') && cutsceneDoneRef.current;
-    if (workshopDoorMarkerRef.current) {
-      const needsMoney = needsBattery && (gameStore.get('money') ?? 0) < 10 && cutsceneDoneRef.current;
-      workshopDoorMarkerRef.current.visible = needsMoney && !inWorkshopRoom;
-    }
-    const showBatteryPath = !backpack.includes('letter') && (gameStore.get('money') ?? 0) >= 10 && !backpack.includes('battery');
-    if (apartmentDoorMarkerRef.current) {
-      const showAptMarker = !inApartmentRoom && sparkyHomeArrivedRef.current && !showBatteryPath && (
-        (sparkyQuestStage === 'intro') ||
-        sparkyQuestStage === 'intro-done' ||
-        sparkyQuestStage === 'unit1-done' ||
-        sparkyQuestStage === 'unit2-done' ||
-        sparkyQuestStage === 'unit3-done'
-      );
-      apartmentDoorMarkerRef.current.visible = showAptMarker;
-    }
-    if (aptExitMarkerRef.current) {
-      const showAptExit = inApartmentRoom && sparkyHomeArrivedRef.current && !showBatteryPath && (
-        (sparkyQuestStage === 'intro') ||
-        sparkyQuestStage === 'intro-done' ||
-        sparkyQuestStage === 'unit1-done' ||
-        sparkyQuestStage === 'unit2-done' ||
-        sparkyQuestStage === 'unit3-done'
-      );
-      aptExitMarkerRef.current.visible = showAptExit;
-    }
-    if (shopDoorMarkerRef.current) {
-      shopDoorMarkerRef.current.visible = (batteryAvailable && !inShopRoom) || showBatteryPath;
-    }
-  }, [sparkyQuestStage, inWorkshopRoom, inApartmentRoom, inShopRoom, workshopIntroSeen, backpack, money]);
+    syncMarkers();
+  }, [sparkyQuestStage, inApartmentRoom, inWorkshopRoom, inShopRoom, inArenaRoom, workshopIntroSeen, backpack, money]);
 
   useEffect(() => {
     if (!inArenaRoom) {
