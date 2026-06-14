@@ -1672,6 +1672,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
         yawRef.current = Math.atan2(-2.87 - (-5.53), -5.3 - (-9.63));
       }
+      // Re-trigger cutscenes on reload if player was mid-flow (so edits are visible after refresh)
+      if (data.position?.room === 'workshop' && data.cutsceneDone && Array.isArray(data.backpack) && data.backpack.includes('letter') && rafiqWalkPhaseRef.current === 'idle') {
+        workshopIntroSeenRef.current = true;
+        setWorkshopIntroSeen(true);
+        rafiqWalkPhaseRef.current = 'walking';
+        yawRef.current = Math.atan2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
+      } else if (data.position?.room === 'apartment' && !data.cutsceneDone) {
+        aptCutscenePhaseRef.current = 'walk-west';
+        aptCutsceneTimerRef.current = 0;
+        cinemCamActiveRef.current = true;
+        keyStateRef.current.clear();
+      } else if (data.position?.room === 'apartment' && data.cutsceneDone && Array.isArray(data.backpack) && data.backpack.includes('battery') && !batteryInstalledRef.current) {
+        installBatteryPhaseRef.current = 'walk-to-scrap';
+        installBatteryTimerRef.current = 0;
+        cinemCamActiveRef.current = true;
+        keyStateRef.current.clear();
+      }
       profileLoadedRef.current = true;
       const savedName = localStorage.getItem('rb_robot_name');
       if (savedName) { setRobotName(savedName); robotNameRef.current = savedName; }
