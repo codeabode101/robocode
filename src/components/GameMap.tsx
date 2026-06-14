@@ -21,7 +21,7 @@ import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCod
 import type { BuildingFootprint } from '@/components/game/helpers';
 import { buildObstacles } from '@/components/game/city';
 import { unit1Phases, unit2Phases } from '@/components/game/tutorialData';
-import { PARTS_CATALOG, PART_FOR_STAGE, DATA_CUSTOMER_NAMES } from '@/components/game/types';
+import { PARTS_CATALOG, DATA_CUSTOMER_NAMES } from '@/components/game/types';
 import type { ScrapPartId } from '@/components/game/types';
 import { gameStore, useGameStoreKey } from '@/store/useGameState';
 
@@ -159,6 +159,14 @@ const WORKSHOP_INTRO_STEPS = [
   { speaker: 'Rafiq', text: "After correct code, they follow you. Lead them to the register to collect your money." },
 ] as const;
 
+const BATTERY_INSTALL_DLG_STEPS = [
+  { speaker: 'Sparky', text: "Let's get this battery into Scrap!" },
+  { speaker: 'Sparky', text: 'Opening the chest panel...' },
+  { speaker: 'Sparky', text: 'Placing the battery inside...' },
+  { speaker: 'Sparky', text: 'Power flowing! Scrap is charging up!' },
+  { speaker: 'Sparky', text: "Great job! Scrap is yours now — he'll follow you everywhere!" },
+] as const;
+
 type CircleHitbox = {
   shape: 'circle';
   center: { x: number; y: number };
@@ -264,6 +272,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const roomEntryFlashTimeoutRef = useRef<number | null>(null);
   const scrapRobotRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
   const scrapChallengesDoneRef = useRef(0);
+  const scrapFollowerRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
+  const scrapFollowerEnabledRef = useRef(false);
   const miniRobotRefs = useRef<ReturnType<typeof createRobotVisual>[]>([]);
   const sceneBgOverrideRef = useRef<number | null>(null);
 
@@ -285,7 +295,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const shopDoorHitboxRef = useRef<CircleHitbox | null>(null);
   const shopDoorArmedRef = useRef(true);
   const shopRoomGroupRef = useRef<THREE.Group | null>(null);
-  const shopNpcRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
+  const shopNpcRef = useRef<{ root: THREE.Group } | null>(null);
   const transportHitboxRef = useRef<CircleHitbox | null>(null);
   const sparkyPathIndexRef = useRef(0);
   const sparkyWaitTimerRef = useRef(0);
@@ -463,6 +473,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [showBatteryDlg, setShowBatteryDlg] = useState(false);
   const [batteryDlgStep, setBatteryDlgStep] = useState(0);
   const [batteryDlgText, setBatteryDlgText] = useState('');
+  const [showBatteryInstallDlg, setShowBatteryInstallDlg] = useState(false);
+  const [batteryInstallStep, setBatteryInstallStep] = useState(0);
+  const [batteryInstallText, setBatteryInstallText] = useState('');
+  const [scrapVisible, setScrapVisible] = useState(false);
+  const [showScrapToggle, setShowScrapToggle] = useState(false);
   const [showRafiqLetterDlg, setShowRafiqLetterDlg] = useState(false);
   const [rafiqLetterStep, setRafiqLetterStep] = useState(0);
   const [rafiqLetterText, setRafiqLetterText] = useState('');
@@ -803,34 +818,29 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       return 'Go to the Parts Shop near the water fountain.';
     }
     if (sparkyQuestStage === 'intro-done') {
-      const amt = Math.min(gameStore.get('money') ?? 0, 100);
-      if (amt < 100) return `Earn $100 for Sparky's diagnostic prompt ($${amt}/$100 earned)`;
-      return 'Buy a sensor at the Parts Shop ($5).';
-    }
-    if (sparkyQuestStage === 'unit1') return 'Complete Unit 1 with Sparky.';
-    if (sparkyQuestStage === 'unit1-done') {
-      const owned = backpack.includes('sensor');
-      if (owned) return 'Give the sensor to Sparky!';
       const amt = Math.min(gameStore.get('money') ?? 0, 10);
       if (amt < 10) return `Earn $10 at the workshop ($${amt}/$10 earned)`;
-      return 'Buy a sensor at the Parts Shop ($5).';
+      return 'Go to the Parts Shop near the water fountain.';
     }
-    if (sparkyQuestStage === 'unit2') return 'Complete Unit 2 with Sparky.';
-    if (sparkyQuestStage === 'unit2-done') {
-      const owned = backpack.includes('voice');
-      return owned ? 'Give the voice module to Sparky!' : 'Buy the Voice Module at the Parts Shop.';
+    if (sparkyQuestStage === 'unit1') {
+      if (backpack.includes('battery')) return 'Bring the battery to Sparky in the apartment!';
+      const amt = Math.min(gameStore.get('money') ?? 0, 10);
+      if (amt < 10) return `Earn $10 at Rafiq's workshop ($${amt}/$10 earned)`;
+      return 'Buy the Battery Pack at the Parts Shop ($10).';
     }
-    if (sparkyQuestStage === 'unit3') return 'Complete Unit 3 with Sparky.';
-    if (sparkyQuestStage === 'unit3-done') {
-      const owned = backpack.includes('navigation');
-      return owned ? 'Give the navigation chip to Sparky!' : 'Buy the Navigation Chip at the Parts Shop.';
+    if (sparkyQuestStage === 'unit1-done') {
+      if (backpack.includes('battery')) return 'Bring the battery to Sparky in the apartment!';
+      return 'Buy the Battery Pack at the Parts Shop ($10).';
     }
-    if (sparkyQuestStage === 'unit4') return 'Complete Unit 4 with Sparky.';
+    if (sparkyQuestStage === 'unit2' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3' || sparkyQuestStage === 'unit3-done' || sparkyQuestStage === 'unit4') {
+      if (backpack.includes('battery')) return 'Bring the battery to Sparky in the apartment!';
+      return 'Buy the Battery Pack at the Parts Shop ($10).';
+    }
     if (sparkyQuestStage === 'all-done') return 'Scrap is fully repaired!';
     return 'Explore the city!';
   }, [sparkyQuestStage, money, backpack, workshopIntroSeen]);
 
-  const anyDialogActive = showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showBatteryDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showLaptopUI || (workshopIntroSeen === false && inWorkshopRoom);
+  const anyDialogActive = showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showBatteryDlg || showBatteryInstallDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showLaptopUI || (workshopIntroSeen === false && inWorkshopRoom);
 
   // NEW MISSION full-screen modal (only for qualitative changes, never during dialogs)
   useEffect(() => {
@@ -1151,6 +1161,52 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [showBatteryDlg, batteryDlgStep]);
+
+  // Battery install dialog typewriter effect
+  useEffect(() => {
+    if (!showBatteryInstallDlg) return;
+    const step = BATTERY_INSTALL_DLG_STEPS[batteryInstallStep];
+    if (!step) return;
+    setBatteryInstallText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setBatteryInstallText(step.text.slice(0, i));
+      if (i >= step.text.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [batteryInstallStep, showBatteryInstallDlg]);
+
+  // Battery install dialog Enter key handler
+  useEffect(() => {
+    if (!showBatteryInstallDlg) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const nextStep = batteryInstallStep + 1;
+        if (nextStep < BATTERY_INSTALL_DLG_STEPS.length) {
+          setBatteryInstallStep(nextStep);
+        } else {
+          setShowBatteryInstallDlg(false);
+          cinemCamActiveRef.current = false;
+          installBatteryPhaseRef.current = null;
+          batteryInstalledRef.current = true;
+          const bp: ScrapPartId[] = gameStore.get('backpack').filter((id: string) => id !== 'battery');
+          updateBackpack(bp);
+          if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= bp.length || !bp.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
+            setHeldSlotIndex(null);
+            heldSlotIndexRef.current = null;
+          }
+          scrapFollowerEnabledRef.current = true;
+          setScrapVisible(true);
+          setShowScrapToggle(true);
+          if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showBatteryInstallDlg, batteryInstallStep]);
 
   // Sparky dialog typewriter effect
   useEffect(() => {
@@ -2083,13 +2139,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     aptDoorMarker.visible = false;
     apartmentDoorMarkerRef.current = aptDoorMarker;
 
-    // Exclamation mark above the shop door, visible when player needs to buy a part
+    // Exclamation mark above the shop door, visible when player needs to buy a battery
     const shopDoorAnchor = new THREE.Group();
     shopDoorAnchor.position.set(6.0, -10.2, 1.0);
     outdoorGroup.add(shopDoorAnchor);
     const shopDoorMarker = addExclamationMarker(shopDoorAnchor);
-    const shopPartId = PART_FOR_STAGE[sparkyQuestStageRef.current];
-    shopDoorMarker.visible = !!shopPartId && !gameStore.get('backpack').includes(shopPartId);
+    const needsBattery = sparkyQuestStageRef.current !== 'intro' && !gameStore.get('backpack').includes('battery');
+    shopDoorMarker.visible = needsBattery;
     shopDoorMarkerRef.current = shopDoorMarker;
 
     // Transport store at (-18.75, -12) — within left grass block, clears sidewalks
@@ -2273,24 +2329,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Vendor (mechanic) at back center
       {
-        const vg = new THREE.Group();
-        const vsMat = new THREE.MeshToonMaterial({ color: 0xf5d6c6, gradientMap: createGradientTexture(3) });
-        const vcMat = new THREE.MeshToonMaterial({ color: 0x1e293b, gradientMap: createGradientTexture(3) });
-        const vb = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 0.35, 12), vcMat);
-        vb.rotation.x = Math.PI / 2; vb.position.set(0, 0, 0.2); vg.add(vb);
-        const vh = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), vsMat);
-        vh.position.set(0, 0, 0.55); vg.add(vh);
-        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.14, 0.06, 12), createToonMaterial(0xf59e0b));
-        cap.position.set(0, 0, 0.6); vg.add(cap);
-        const capBrim = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.02), createToonMaterial(0xf59e0b));
-        capBrim.position.set(0, 0, 0.63); vg.add(capBrim);
-        for (let s = -1; s <= 1; s += 2) {
-          const a = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.25, 8), vcMat);
-          a.rotation.x = Math.PI / 2; a.rotation.z = s * 0.3;
-          a.position.set(s * 0.2, 0, 0.35); vg.add(a);
-        }
-        vg.position.set(bCx, bCy - bHh + 0.6, 0.24);
-        outdoorGroup.add(vg);
+        const vPerson = buildPlayerVisual(0x1e293b, 'Mechanic');
+        vPerson.root.position.set(bCx, bCy - bHh + 0.6, 0.24);
+        outdoorGroup.add(vPerson.root);
       }
 
       transportHitboxRef.current = { shape: 'circle', center: { x: bCx + bHw + 0.5, y: bCy }, radius: 3.0 };
@@ -2458,17 +2499,44 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Shop obstacle hitboxes
       shopObstaclesRef.current = [
         { shape: 'box', center: { x: 0, y: -1.5 }, halfWidth: 0.8, halfHeight: 0.06 },
+        { shape: 'box', center: { x: 0, y: -1.55 }, halfWidth: 1.0, halfHeight: 0.2 },
         { shape: 'box', center: { x: 2.2, y: 0 }, halfWidth: 0.02, halfHeight: 0.6 },
         { shape: 'box', center: { x: -2.2, y: 0 }, halfWidth: 0.02, halfHeight: 0.6 },
         { shape: 'box', center: { x: -3.65, y: 1.45 }, halfWidth: 0.03, halfHeight: 0.25 },
       ];
 
-      // Shopkeeper robot — same visual but scaled down to fit room
-      const shopNpc = createRobotVisual(new THREE.Color(0x60a5fa), 'Shopkeeper', 'north');
-      shopNpc.root.scale.set(0.45, 0.45, 0.45);
-      shopNpc.root.position.set(0, -sD / 2 + 0.35, 0.28);
-      shopRoomGroup.add(shopNpc.root);
-      shopNpcRef.current = shopNpc;
+      // Shopkeeper person + desk
+      const shopPerson = buildPlayerVisual(0x60a5fa, 'Shopkeeper');
+      shopPerson.root.position.set(0, -sD / 2 + 0.15, 0.02);
+      shopRoomGroup.add(shopPerson.root);
+      shopNpcRef.current = shopPerson;
+
+      // Fancy desk in front of shopkeeper
+      const deskGroup = new THREE.Group();
+      // Desk top
+      const dTop = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.4, 0.08), createToonMaterial(0x5c3d2e));
+      dTop.position.set(0, -sD / 2 + 0.25, 0.2);
+      deskGroup.add(dTop);
+      // Desk front
+      const dFront = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.35, 0.12), createToonMaterial(0x8b6914));
+      dFront.position.set(0, -sD / 2 + 0.25, 0.1);
+      deskGroup.add(dFront);
+      // Gold trim
+      const dTrim = new THREE.Mesh(new THREE.BoxGeometry(2.04, 0.42, 0.04), createToonMaterial(0xfbbf24));
+      dTrim.position.set(0, -sD / 2 + 0.25, 0.24);
+      deskGroup.add(dTrim);
+      // Potted plant on right side of desk
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.06, 6), createToonMaterial(0xc2410c));
+      pot.position.set(0.7, -sD / 2 + 0.25, 0.28);
+      deskGroup.add(pot);
+      const leaves = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), createToonMaterial(0x22c55e));
+      leaves.position.set(0.7, -sD / 2 + 0.25, 0.33);
+      deskGroup.add(leaves);
+      // Glowing crystal on left side of desk
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.04), new THREE.MeshBasicMaterial({ color: 0x818cf8 }));
+      crystal.position.set(-0.7, -sD / 2 + 0.25, 0.28);
+      deskGroup.add(crystal);
+      shopRoomGroup.add(deskGroup);
 
       // Welcome mat at entrance
       const welcomeMat = new THREE.Mesh(
@@ -2667,6 +2735,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (scrapRobot.rightPupil) scrapRobot.rightPupil.material.color.setHex(0x222222);
     if (scrapRobot.antennaTip) scrapRobot.antennaTip.material.color.setHex(0x555555);
     scrapRobotRef.current = scrapRobot;
+
+    // Scrap follower robot (outdoor, follows player after battery install)
+    const scrapFollower = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
+    scrapFollower.root.scale.set(0.65, 0.65, 0.65);
+    scrapFollower.root.position.set(0, -8, 0.24);
+    scrapFollower.nameSprite.visible = true;
+    if (scrapFollower.leftPupil) scrapFollower.leftPupil.material.color.setHex(0x222222);
+    if (scrapFollower.rightPupil) scrapFollower.rightPupil.material.color.setHex(0x222222);
+    if (scrapFollower.antennaTip) scrapFollower.antennaTip.material.color.setHex(0x555555);
+    scrapFollower.root.visible = false;
+    scene.add(scrapFollower.root);
+    scrapFollowerRef.current = scrapFollower;
 
     // Repair kiosk — proper kiosk at Snack Stop spot
     const kiosk = createRepairKiosk();
@@ -3301,19 +3381,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const customerName = pickRandom(availableNames.length > 0 ? availableNames : CUSTOMER_NAMES);
       const request = createCustomerRequest(customerName);
       const colors = [0xfacc15, 0x60a5fa, 0x34d399, 0xf97316, 0xa855f7, 0xec4899];
-      const cg = new THREE.Group();
-      const cm = new THREE.MeshToonMaterial({ color: colors[Math.floor(Math.random() * colors.length)], gradientMap: createGradientTexture(3) });
-      const cb = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.18, 8), cm);
-      cb.rotation.x = Math.PI / 2; cb.position.set(0, 0, 0.1); cg.add(cb);
-      const ch = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), new THREE.MeshToonMaterial({ color: 0xf5d6c6, gradientMap: createGradientTexture(3) }));
-      ch.position.set(0, 0, 0.26); cg.add(ch);
-      const cn = createNameSprite(customerName, new THREE.Color(0x22c55e));
-      cn.visible = false;
-      cg.add(cn);
-      const cmarker = addExclamationMarker(cg);
+      const cPerson = buildPlayerVisual(colors[Math.floor(Math.random() * colors.length)], customerName);
+      cPerson.nameSprite.visible = false;
+      cPerson.root.scale.set(0.9, 0.9, 0.9);
+      const cmarker = addExclamationMarker(cPerson.root);
       cmarker.visible = false;
-      cg.scale.set(1.8, 1.8, 1.8);
-      const visual = { root: cg, nameSprite: cn, marker: cmarker };
+      cmarker.position.set(0, 0, 0.85);
+      const visual = { root: cPerson.root, nameSprite: cPerson.nameSprite, marker: cmarker };
       const start = new THREE.Vector2(-4.8, -4.2 + Math.random() * 1.8);
       visual.root.position.set(start.x, start.y, 0.24);
       customerGroupCurrent.add(visual.root);
@@ -3925,6 +3999,24 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (sparky.root.visible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
         animateSparkyWave(sparky, worldTime);
       }
+      // Scrap follower AI
+      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
+        const playerPos = localPositionRef.current;
+        const scrapPos = new THREE.Vector2(scrapFollowerRef.current.root.position.x, scrapFollowerRef.current.root.position.y);
+        const followDist = scrapPos.distanceTo(playerPos);
+        if (followDist > 1.2) {
+          const target = new THREE.Vector2(playerPos.x, playerPos.y - 0.8);
+          const dir = new THREE.Vector2().copy(target).sub(scrapPos).normalize();
+          const step = Math.min(followDist - 0.8, 3.0 * delta);
+          const cand = new THREE.Vector2(scrapPos.x + dir.x * step, scrapPos.y + dir.y * step);
+          if (!collidesWithAny(cand, obstacleHitboxesRef.current)) {
+            scrapFollowerRef.current.root.position.x = cand.x;
+            scrapFollowerRef.current.root.position.y = cand.y;
+          }
+        }
+        const scrapSpeed = followDist > 1.2 ? 1 : 0;
+        animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPos.x, playerPos.y - scrapPos.y);
+      }
       if (speechBubbleRef.current && sparkyIntroStepRef.current >= 0) {
         const headPos = new THREE.Vector3();
         sparky.antennaTip.getWorldPosition(headPos);
@@ -3956,7 +4048,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
       animateRobotVisual(owner, worldTime * 0.9, 0.12, -0.2, -0.1);
       if (shopNpcRef.current) {
-        shopNpcRef.current.root.position.z = 0.28 + Math.sin(worldTime * 3) * 0.04;
+        shopNpcRef.current.root.position.z = 0.02 + Math.sin(worldTime * 3) * 0.02;
       }
       if (roomOwnerVisualRef.current) {
         animateRobotVisual(roomOwnerVisualRef.current, worldTime * 0.92, 0.14, -0.28, -0.2);
@@ -4850,12 +4942,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               setShowBatteryDlg(false);
             }
           } else if (phase === 'done') {
-            if (cutsceneBoxRef.current) cutsceneBoxRef.current.visible = false;
-            if (computerRef.current) computerRef.current.visible = false;
-            if (wireRef.current) {
-              wireRef.current.visible = false;
-            }
-            if (coilRef.current) coilRef.current.visible = false;
             if (tackFxRef.current) {
               tackFxRef.current.visible = false;
               tackFxRef.current.scale.set(1, 1, 1);
@@ -4865,15 +4951,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               });
             }
             tackFxPhaseRef.current = 0;
-            if (scrapRobotRef.current) {
-              scrapRobotRef.current.root.scale.set(0.65, 0.65, 0.65);
-              scrapRobotRef.current.root.position.set(-2.6, 1.2, 0.24);
-              scrapRobotRef.current.root.rotation.x = Math.PI / 2;
-              scrapRobotRef.current.root.rotation.z = 0.08;
-              scrapRobotRef.current.root.visible = true;
-              const mat = scrapRobotRef.current.antennaTip.material as THREE.MeshToonMaterial | undefined;
-              if (mat) { mat.emissive = new THREE.Color(0x000000); mat.emissiveIntensity = 0; }
-            }
             // Cleanup antenna glow
             if (antennaGlowLightRef.current) {
               sceneRef.current?.remove(antennaGlowLightRef.current);
@@ -4898,7 +4975,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             shopUnlockedRef.current = true;
             setShopUnlocked(true);
             cutsceneDoneRef.current = true;
-            // Force Sparky home — cutscene may finish before he finishes walking
             sparkyHomeArrivedRef.current = true;
             if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
             if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
@@ -4909,11 +4985,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             try { localStorage.setItem('rb_cutscene_done', '1'); } catch {}
             apiSync({ cutsceneDone: true });
-            if (aptSparkyCS) {
-              aptSparkyCS.body.rotation.x = 0;
-              aptSparkyCS.root.position.set(0.2, 2.2, 0.22);
-              if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current);
-            }
           }
         } else if (installBatteryPhaseRef.current && aptSparky) {
           const ibPhase = installBatteryPhaseRef.current;
@@ -4967,8 +5038,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const intensity = 0.3 + Math.sin(installBatteryTimerRef.current * 6) * 0.15;
               (glow.material as THREE.MeshBasicMaterial).opacity = intensity;
             }
-            setSparkyDlgFull('Battery installed! Scrap is powering up...');
-            setShowSparkyDlg(true);
             if (installBatteryTimerRef.current > 2.0) {
               installBatteryPhaseRef.current = 'done';
             }
@@ -4981,15 +5050,45 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               setHeldSlotIndex(null);
               heldSlotIndexRef.current = null;
             }
-            if (sparkyQuestStageRef.current === 'intro') {
-              updateQuestStage('intro-done');
-              setSparkyDlgFull("Power's flowing! Now I need $100 to unlock Scrap's diagnostic prompt. I'll teach you .length() — use it to count characters at the workshop and earn more per job!");
-              setShowSparkyDlg(true);
+          }
+        } else if (installBatteryPhaseRef.current && aptSparky && apartmentSparkyRef.current) {
+          const phase = installBatteryPhaseRef.current;
+          const aptPos = apartmentSparkyRef.current.root.position;
+          if (phase === 'walk-to-scrap') {
+            const target = new THREE.Vector2(-2.6, 1.2);
+            const dist = aptPos.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
+            if (dist > 0.15) {
+              const dir = new THREE.Vector2(target.x - aptPos.x, target.y - aptPos.y).normalize();
+              aptPos.x += dir.x * MOVE_SPEED * 0.7 * delta;
+              aptPos.y += dir.y * MOVE_SPEED * 0.7 * delta;
             } else {
-              setSparkyDlgFull('Think you need a sensor — go buy one at the Parts Shop near the water fountain.');
-              setShowSparkyDlg(true);
+              installBatteryPhaseRef.current = 'open-chest';
+              installBatteryTimerRef.current = 0;
             }
-            setTimeout(() => setShowSparkyDlg(false), 4000);
+          } else if (phase === 'open-chest') {
+            installBatteryTimerRef.current += delta;
+            if (scrapRobotRef.current?.root) {
+              scrapRobotRef.current.root.position.z = 0.24 + Math.sin(installBatteryTimerRef.current * 14) * 0.04;
+            }
+            if (installBatteryTimerRef.current > 1.5) {
+              installBatteryPhaseRef.current = 'place-battery';
+              installBatteryTimerRef.current = 0;
+            }
+          } else if (phase === 'place-battery') {
+            installBatteryTimerRef.current += delta;
+            if (installBatteryTimerRef.current > 1.0) {
+              installBatteryPhaseRef.current = 'chest-glow';
+              installBatteryTimerRef.current = 0;
+            }
+          } else if (phase === 'chest-glow') {
+            installBatteryTimerRef.current += delta;
+            if (scrapRobotRef.current?.root) {
+              const pulse = 0.24 + Math.sin(installBatteryTimerRef.current * 6) * 0.03;
+              scrapRobotRef.current.root.position.z = pulse;
+            }
+            if (installBatteryTimerRef.current > 2.0) {
+              installBatteryPhaseRef.current = 'done';
+            }
           }
         } else if (sparkyInstallPhaseRef.current && aptSparky) {
           const phase = sparkyInstallPhaseRef.current;
@@ -5018,33 +5117,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               sparkyInstallTimerRef.current = 0;
             }
           } else if (phase === 'attach-part') {
-            // Attach part mesh to Scrap's body
-            const scrap = scrapRobotRef.current;
-            if (scrap && scrap.body) {
-              const partId = sparkyInstallPartIdRef.current as ScrapPartId;
-              let partMesh: THREE.Mesh;
-              if (partId === 'sensor') {
-                partMesh = new THREE.Mesh(
-                  new THREE.SphereGeometry(0.045, 10, 10),
-                  new THREE.MeshToonMaterial({ color: 0x3b82f6, emissive: 0x1d4ed8, emissiveIntensity: 0.6 })
-                );
-                partMesh.position.set(0, 0, 0.22);
-              } else if (partId === 'voice') {
-                partMesh = new THREE.Mesh(
-                  new THREE.CylinderGeometry(0.03, 0.055, 0.065, 8),
-                  new THREE.MeshToonMaterial({ color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 0.6 })
-                );
-                partMesh.position.set(0, 0.18, 0.08);
-              } else {
-                partMesh = new THREE.Mesh(
-                  new THREE.BoxGeometry(0.065, 0.025, 0.04),
-                  new THREE.MeshToonMaterial({ color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 0.6 })
-                );
-                partMesh.position.set(0, 0, -0.22);
-              }
-              scrap.body.add(partMesh);
-              scrapPartMeshRef.current = partMesh;
-            }
+            // Attach part mesh to Scrap's body (dead code — sensor/voice/nav removed)
             sparkyInstallTimerRef.current += delta;
             if (sparkyInstallTimerRef.current > 0.6) {
               sparkyInstallPhaseRef.current = 'walk-back';
@@ -5183,13 +5256,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Shop room interaction
       if (inShopRoomRef.current) {
-        const distToShopkeep = localPositionRef.current.distanceTo({ x: 0, y: -1.45 });
+        const distToShopkeep = localPositionRef.current.distanceTo({ x: 0, y: -1.65 });
         if (interactionRequestedRef.current && distToShopkeep < 1.5) {
           interactionRequestedRef.current = false;
           const stage = sparkyQuestStageRef.current;
-          const partId = PART_FOR_STAGE[stage];
-          if (partId && !gameStore.get('backpack').includes(partId)) {
-            setShopkeeperGreeting(`Welcome! What can I get for you today? I've got just the part Scrap needs.`);
+          const bp = gameStore.get('backpack');
+          const needsBattery = !bp.includes('battery');
+          if (needsBattery) {
+            setShopkeeperGreeting(`Welcome! I've got a Battery Pack — exactly what Scrap needs to power up for good.`);
           } else {
             setShopkeeperGreeting(`Welcome back! Take a look around — let me know if anything catches your eye.`);
           }
@@ -5197,9 +5271,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           interactionRequestedRef.current = false;
         }
         if (shopNpcRef.current) {
-          const shopDx = localPositionRef.current.x;
-          const shopDy = localPositionRef.current.y + 1.45;
-          animateRobotVisual(shopNpcRef.current, worldTime, 0.1, shopDx, shopDy);
+          shopNpcRef.current.root.position.z = 0.02 + Math.sin(worldTime * 3) * 0.02;
         }
       }
 
@@ -5601,6 +5673,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       workshopCustomersRef.current = [];
       miniRobotRefs.current.forEach((r) => disposeObject(r.root));
       miniRobotRefs.current = [];
+      if (scrapFollowerRef.current) { disposeObject(scrapFollowerRef.current.root); scrapFollowerRef.current = null; }
       roomCustomerGroupRef.current = null;
       roomOwnerVisualRef.current = null;
       outdoorGroupRef.current = null;
@@ -5636,19 +5709,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   useEffect(() => {
     if (petShopRef.current) petShopRef.current.visible = true;
+    const needsBattery = !backpack.includes('battery');
+    const batteryAvailable = needsBattery && !backpack.includes('letter') && cutsceneDoneRef.current;
     if (workshopDoorMarkerRef.current) {
-      const partId = PART_FOR_STAGE[sparkyQuestStage];
-      const needsPart = !!partId && !backpack.includes(partId);
-      workshopDoorMarkerRef.current.visible = ((sparkyQuestStage === 'intro-done' || sparkyQuestStage === 'unit1-done' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3-done') || (cutsceneDoneRef.current && backpack.includes('letter'))) && !needsPart && !inWorkshopRoom;
+      const needsMoney = needsBattery && (gameStore.get('money') ?? 0) < 10 && cutsceneDoneRef.current;
+      workshopDoorMarkerRef.current.visible = needsMoney && !inWorkshopRoom;
     }
-    const showBatteryPath = sparkyQuestStage === 'intro' && !backpack.includes('letter') && (gameStore.get('money') ?? 0) >= 10 && !backpack.includes('battery');
-    const ownsPartForStage = (stage: string) => {
-      const pid = PART_FOR_STAGE[stage];
-      return !pid || backpack.includes(pid);
-    };
+    const showBatteryPath = !backpack.includes('letter') && (gameStore.get('money') ?? 0) >= 10 && !backpack.includes('battery');
     if (apartmentDoorMarkerRef.current) {
-      const showAptMarker = !inApartmentRoom && sparkyHomeArrivedRef.current && !backpack.includes('letter') && !showBatteryPath && ownsPartForStage(sparkyQuestStage) && (
-        sparkyQuestStage === 'intro' ||
+      const showAptMarker = !inApartmentRoom && sparkyHomeArrivedRef.current && !showBatteryPath && (
+        (sparkyQuestStage === 'intro') ||
         sparkyQuestStage === 'intro-done' ||
         sparkyQuestStage === 'unit1-done' ||
         sparkyQuestStage === 'unit2-done' ||
@@ -5657,8 +5727,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       apartmentDoorMarkerRef.current.visible = showAptMarker;
     }
     if (aptExitMarkerRef.current) {
-      const showAptExit = inApartmentRoom && sparkyHomeArrivedRef.current && !backpack.includes('letter') && !showBatteryPath && ownsPartForStage(sparkyQuestStage) && (
-        sparkyQuestStage === 'intro' ||
+      const showAptExit = inApartmentRoom && sparkyHomeArrivedRef.current && !showBatteryPath && (
+        (sparkyQuestStage === 'intro') ||
         sparkyQuestStage === 'intro-done' ||
         sparkyQuestStage === 'unit1-done' ||
         sparkyQuestStage === 'unit2-done' ||
@@ -5667,8 +5737,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       aptExitMarkerRef.current.visible = showAptExit;
     }
     if (shopDoorMarkerRef.current) {
-      const partId = PART_FOR_STAGE[sparkyQuestStage];
-      shopDoorMarkerRef.current.visible = (!!partId && !backpack.includes(partId) && !inShopRoom) || showBatteryPath;
+      shopDoorMarkerRef.current.visible = (batteryAvailable && !inShopRoom) || showBatteryPath;
     }
   }, [sparkyQuestStage, inWorkshopRoom, inApartmentRoom, inShopRoom, workshopIntroSeen, backpack, money]);
 
@@ -5830,24 +5899,24 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         } else {
           const currentStage = sparkyQuestStageRef.current;
           if (currentStage === 'unit2') {
-            setOutput('✅ String Methods complete! Scrap\'s voice module is working. He needs a new part — buy it and bring it to the apartment.');
+            setOutput('✅ String Methods complete! Scrap\'s voice module is working.');
             setTutorialComplete(true);
             setShopUnlocked(true);
             updateQuestStage('unit2-done');
             if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
             if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
             if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
-            setSparkyDlgFull('Scrap can speak! But his voice module is still glitchy. Earn $10 at the workshop, buy a Voice Module at the Parts Shop, then bring it to Sparky in the apartment.');
+            setSparkyDlgFull('Scrap can speak! Now earn $10 at the workshop and buy a Battery Pack from the Parts Shop near the water fountain.');
             setShowSparkyDlg(true);
           } else {
-            setOutput('✅ Variables & Data Types complete! Scrap\'s motor diagnostics are online. He needs a new sensor part — buy one at the shop and bring it to the apartment.');
+            setOutput('✅ Variables & Data Types complete! Scrap\'s motor diagnostics are online.');
             setTutorialComplete(true);
             setShopUnlocked(true);
             updateQuestStage('unit1-done');
             if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
             if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
             if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
-            setSparkyDlgFull('Scrap\'s motor diagnostics are working! But his sensor is fried. Earn $5 at the workshop, buy a new Sensor at the Parts Shop, then bring it to Sparky in the apartment.');
+            setSparkyDlgFull('Nice work, coder! Now earn $10 at Rafiq\'s workshop, buy a Battery Pack at the Parts Shop, then bring it to Sparky in the apartment.');
             setShowSparkyDlg(true);
           }
           setSparkleBurst(false);
@@ -5927,6 +5996,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const runApartmentSparkyInteraction = useCallback(() => {
     const stage = sparkyQuestStageRef.current;
+    const bp = gameStore.get('backpack');
+    // Battery install takes priority — if player has a battery, trigger install cutscene
+    if (bp.includes('battery') && !batteryInstalledRef.current) {
+      if (installBatteryPhaseRef.current) return;
+      installBatteryPhaseRef.current = 'walk-to-scrap';
+      installBatteryTimerRef.current = 0;
+      cinemCamActiveRef.current = true;
+      setShowBatteryInstallDlg(true);
+      setBatteryInstallStep(0);
+      keyStateRef.current.clear();
+      return;
+    }
     if (stage === 'unit1' || stage === 'unit2') {
       showTutorialRef.current = true;
       setShowTutorial(true);
@@ -5944,45 +6025,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         setSparkyDlgFull(`I need $100 to unlock Scrap's diagnostic prompt. Use .length() at the workshop to earn more per job! ($${cur}/$100)`);
         setShowSparkyDlg(true);
       }
-    } else if (stage === 'intro' && gameStore.get('backpack').includes('battery') && !batteryInstalledRef.current) {
-      if (installBatteryPhaseRef.current) return;
-      installBatteryPhaseRef.current = 'walk-to-scrap';
-      installBatteryTimerRef.current = 0;
-      setSparkyDlgFull('Sparky takes the battery to Scrap...');
+    } else if (stage === 'unit1-done') {
+      setSparkyDlgFull('You have enough money! Go buy a battery at the Parts Shop near the water fountain — it will power up Scrap for good.');
       setShowSparkyDlg(true);
-    } else if (stage === 'unit1-done' || stage === 'unit2-done' || stage === 'unit3-done') {
-      const bp = gameStore.get('backpack');
-      // Check battery first
-      if (stage === 'unit1-done' && bp.includes('battery') && !batteryInstalledRef.current) {
-        if (installBatteryPhaseRef.current) return;
-        installBatteryPhaseRef.current = 'walk-to-scrap';
-        installBatteryTimerRef.current = 0;
-        setSparkyDlgFull('Sparky takes the battery to Scrap...');
-        setShowSparkyDlg(true);
-        return;
-      }
-      const partId = PART_FOR_STAGE[stage];
-      const part = PARTS_CATALOG.find(p => p.id === partId);
-      const owned = bp.includes(partId);
-      if (owned) {
-        if (sparkyInstallPhaseRef.current) return; // already installing
-        const nextUnit: SparkyQuestStage = stage === 'unit1-done' ? 'unit2' : stage === 'unit2-done' ? 'unit3' : 'unit4';
-        sparkyInstallPartIdRef.current = partId;
-        sparkyInstallNextStageRef.current = nextUnit;
-        sparkyInstallPhaseRef.current = 'walk-to-bench';
-        sparkyInstallTimerRef.current = 0;
-        setSparkyDlgFull(`${part!.name} — Sparky walks to the workbench...`);
-        setShowSparkyDlg(true);
-      } else {
-        setSparkyDlgFull(`Sparky needs a ${part!.name} for Scrap. You can buy one at the Parts Shop near the water fountain.`);
-        setShowSparkyDlg(true);
-      }
+    } else if (stage === 'unit2-done' || stage === 'unit3-done') {
+      setSparkyDlgFull('Scrap is getting stronger! But the battery is the key — buy one at the Parts Shop near the water fountain.');
+      setShowSparkyDlg(true);
     } else if (stage === 'unit3' || stage === 'unit4') {
       const unitLabel = stage === 'unit3' ? 'Unit 3 (coming soon)' : 'Unit 4 (coming soon)';
       setSparkyDlgFull(`${unitLabel} isn't built yet! Check back later.`);
       setShowSparkyDlg(true);
     } else if (stage === 'all-done') {
-      setSparkyDlgFull('Scrap is fully repaired! Arena mode is unlocked — go battle your friends!');
+      setSparkyDlgFull('Scrap is all yours now! Take him outside — people need help powering their robots at the repair kiosk.');
       setShowSparkyDlg(true);
     }
   }, []);
@@ -6287,7 +6341,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               <div className="h-full rounded-full bg-amber-400 transition-all duration-300" style={{ width: `${Math.min(100, ((gameStore.get('money') ?? 0) / 100) * 100)}%` }} />
             </div>
           )}
-          {sparkyQuestStage === 'unit1-done' && !backpack.includes('sensor') && (gameStore.get('money') ?? 0) < 10 && (
+          {sparkyQuestStage !== 'intro' && sparkyQuestStage !== 'all-done' && !backpack.includes('battery') && (gameStore.get('money') ?? 0) < 10 && (
             <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-700">
               <div className="h-full rounded-full bg-amber-400 transition-all duration-300" style={{ width: `${Math.min(100, ((gameStore.get('money') ?? 0) / 10) * 100)}%` }} />
             </div>
@@ -6469,11 +6523,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               {PARTS_CATALOG.map((part) => {
                 const stage = sparkyQuestStage;
                 const partStage = part.questStage;
-                const isUnlocked = stage === partStage || (
-                  (partStage === 'unit1-done' && (stage === 'unit1-done' || stage === 'unit2' || stage === 'unit2-done' || stage === 'unit3' || stage === 'unit3-done' || stage === 'unit4' || stage === 'all-done')) ||
-                  (partStage === 'unit2-done' && (stage === 'unit2-done' || stage === 'unit3' || stage === 'unit3-done' || stage === 'unit4' || stage === 'all-done')) ||
-                  (partStage === 'unit3-done' && (stage === 'unit3-done' || stage === 'unit4' || stage === 'all-done'))
-                );
+                const isUnlocked = true;
                 const owned = backpack.includes(part.id);
                 if (!isUnlocked) return null;
                 return (
@@ -6760,6 +6810,64 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
+      {showBatteryInstallDlg && (() => {
+        const cur = BATTERY_INSTALL_DLG_STEPS[batteryInstallStep] ?? BATTERY_INSTALL_DLG_STEPS[0];
+        const isLast = batteryInstallStep >= BATTERY_INSTALL_DLG_STEPS.length - 1;
+        return (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
+          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
+          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
+            style={{ height: '30vh' }}>
+            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
+              <div className="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
+                  <rect x="3" y="11" width="18" height="10" rx="2" />
+                  <circle cx="12" cy="5" r="2" />
+                  <path d="M12 7v4" />
+                  <line x1="8" y1="16" x2="8" y2="16" />
+                  <line x1="16" y1="16" x2="16" y2="16" />
+                </svg>
+                <span className="text-amber-300 font-bold text-xl tracking-wide">{cur.speaker}</span>
+              </div>
+              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
+                {batteryInstallText}<span className="animate-pulse text-amber-400/80">▌</span>
+              </p>
+              {isLast && (
+              <div className="flex justify-end mt-4">
+                <button
+                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
+                  onClick={() => {
+                    setShowBatteryInstallDlg(false);
+                    cinemCamActiveRef.current = false;
+                    installBatteryPhaseRef.current = null;
+                    batteryInstalledRef.current = true;
+                    const bp: ScrapPartId[] = gameStore.get('backpack').filter((id: string) => id !== 'battery');
+                    updateBackpack(bp);
+                    if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= bp.length || !bp.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
+                      setHeldSlotIndex(null);
+                      heldSlotIndexRef.current = null;
+                    }
+                    scrapFollowerEnabledRef.current = true;
+                    setScrapVisible(true);
+                    setShowScrapToggle(true);
+                    if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="14 7 9 12 14 17" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                    <line x1="3" y1="12" x2="5" y2="12" />
+                  </svg>
+                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
+                </button>
+              </div>
+              )}
             </div>
           </div>
         </div>
