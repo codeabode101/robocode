@@ -1620,16 +1620,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             cutsceneDoneRef.current = true;
             if (scrapRobotRef.current) scrapRobotRef.current.root.visible = true;
             // Auto-start tutorial if in intro stage after cutscene
-            if (sparkyQuestStageRef.current === 'intro') {
-              setTimeout(() => {
-                showTutorialRef.current = true;
-                setShowTutorial(true);
-                setTutorialStep(0);
-                setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
-                setOutput('');
-                setSuccess(false);
-              }, 500);
-            }
+            // No auto-start tutorial — battery-only flow
           }
         } else {
           if (localRobotRef.current) {
@@ -3691,13 +3682,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 }
                 yawRef.current = Math.atan2(-2.3, 0.53); // face toward walk direction
                 document.exitPointerLock();
-              } else if (aptStage === 'intro' || aptStage === 'unit1' || aptStage === 'unit2') {
-                showTutorialRef.current = true;
-                setShowTutorial(true);
-                setTutorialStep(0);
-                setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
-                setOutput('');
-                setSuccess(false);
               }
               keyStateRef.current.clear();
               moved = false;
@@ -3859,30 +3843,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               sparkyGoHomeRef.current = true;
             } else if (stage === 'intro' && !sparkyGoHomeRef.current) {
               setSparkyIntroStep(0);
-            } else if (stage === 'unit1' || stage === 'unit2') {
-              showTutorialRef.current = true;
-              setShowTutorial(true);
-              setTutorialStep(0);
-              setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
-              setOutput('');
-              setSuccess(false);
-            } else if (stage === 'intro-done') {
-              const cur = gameStore.get('money') ?? 0;
-              if (cur >= 100) {
-                setSparkyDlgFull('You did it! Now buy a sensor from the Parts Shop near the water fountain ($5).');
-                setShowSparkyDlg(true);
-                updateQuestStage('unit1-done');
-              } else {
-                setSparkyDlgFull(`I need $100 to unlock Scrap's diagnostic prompt. Use .length() at the workshop to earn more per job! ($${cur}/$100)`);
-                setShowSparkyDlg(true);
-              }
-            } else if (stage === 'unit1-done' || stage === 'unit2-done' || stage === 'unit3-done') {
-              setSparkyDlgFull('Sparky is waiting in his apartment. Go upstairs and bring him the part!');
-              setShowSparkyDlg(true);
-            } else if (stage === 'unit3' || stage === 'unit4') {
-              const unitLabel = stage === 'unit3' ? 'Unit 3 (coming soon)' : 'Unit 4 (coming soon)';
-              setSparkyDlgFull(`${unitLabel} isn't built yet! Check back later.`);
-              setShowSparkyDlg(true);
             } else if (stage === 'all-done') {
               setSparkyDlgFull('Scrap is fully repaired! Arena mode is unlocked — go battle your friends!');
               setShowSparkyDlg(true);
@@ -5893,35 +5853,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (done >= 10 && scrap.antennaTip) scrap.antennaTip.material.color.setHex(0x44ff44);
         }
 
-        if (nextPhase && nextPhase.kind === 'challenge') {
-          setOutput(`✅ Nice! ${activePhase.title} complete.`);
-          setSparkleBurst(false);
-        } else {
-          const currentStage = sparkyQuestStageRef.current;
-          if (currentStage === 'unit2') {
-            setOutput('✅ String Methods complete! Scrap\'s voice module is working.');
-            setTutorialComplete(true);
-            setShopUnlocked(true);
-            updateQuestStage('unit2-done');
-            if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
-            if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
-            if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
-            setSparkyDlgFull('Scrap can speak! Now earn $10 at the workshop and buy a Battery Pack from the Parts Shop near the water fountain.');
-            setShowSparkyDlg(true);
-          } else {
-            setOutput('✅ Variables & Data Types complete! Scrap\'s motor diagnostics are online.');
-            setTutorialComplete(true);
-            setShopUnlocked(true);
-            updateQuestStage('unit1-done');
-            if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
-            if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
-            if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
-            setSparkyDlgFull('Nice work, coder! Now earn $10 at Rafiq\'s workshop, buy a Battery Pack at the Parts Shop, then bring it to Sparky in the apartment.');
-            setShowSparkyDlg(true);
-          }
-          setSparkleBurst(false);
-          leaveApartmentRoom();
-        }
+        setOutput(`✅ Nice! ${activePhase.title} complete.`);
+        setSparkleBurst(false);
       } else {
         setOutput(`❌ ${data.error || 'Almost there — try again!'}`);
       }
@@ -6008,24 +5941,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       keyStateRef.current.clear();
       return;
     }
-    if (stage === 'unit1' || stage === 'unit2') {
-      showTutorialRef.current = true;
-      setShowTutorial(true);
-      setTutorialStep(0);
-      setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
-      setOutput('');
-      setSuccess(false);
-    } else if (stage === 'intro-done') {
-      const cur = gameStore.get('money') ?? 0;
-      if (cur >= 100) {
-        setSparkyDlgFull('You did it! Now buy a sensor from the Parts Shop near the water fountain ($5).');
-        setShowSparkyDlg(true);
-        updateQuestStage('unit1-done');
-      } else {
-        setSparkyDlgFull(`I need $100 to unlock Scrap's diagnostic prompt. Use .length() at the workshop to earn more per job! ($${cur}/$100)`);
-        setShowSparkyDlg(true);
-      }
-    } else if (stage === 'unit1-done') {
+    if (stage === 'unit1-done') {
       setSparkyDlgFull('You have enough money! Go buy a battery at the Parts Shop near the water fountain — it will power up Scrap for good.');
       setShowSparkyDlg(true);
     } else if (stage === 'unit2-done' || stage === 'unit3-done') {
