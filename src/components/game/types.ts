@@ -67,7 +67,7 @@ export interface CustomerRequest {
 
 export type SparkyQuestStage = 'intro' | 'intro-done' | 'unit1' | 'unit1-done' | 'unit2' | 'unit2-done' | 'unit3' | 'unit3-done' | 'unit4' | 'all-done';
 
-export type ScrapPartId = 'sensor' | 'voice' | 'navigation' | 'letter' | 'battery';
+export type ScrapPartId = 'letter' | 'battery';
 
 export type ScrapPart = {
   id: ScrapPartId;
@@ -78,17 +78,8 @@ export type ScrapPart = {
 };
 
 export const PARTS_CATALOG: ScrapPart[] = [
-  { id: 'sensor', name: 'Sensor Part', cost: 5, questStage: 'unit1-done', description: 'A basic motion sensor for Scrap.' },
-  { id: 'voice', name: 'Voice Module', cost: 10, questStage: 'unit2-done', description: 'A speech synthesizer module.' },
-  { id: 'navigation', name: 'Navigation Chip', cost: 20, questStage: 'unit3-done', description: 'A GPS navigation chip.' },
-  { id: 'battery', name: 'Battery Pack', cost: 10, questStage: 'intro', description: 'A fresh battery to power Scrap up.' },
+  { id: 'battery', name: 'Battery Pack', cost: 10, questStage: 'unit1', description: 'A fresh battery to power Scrap up.' },
 ];
-
-export const PART_FOR_STAGE: Record<string, ScrapPartId> = {
-  'unit1-done': 'sensor',
-  'unit2-done': 'voice',
-  'unit3-done': 'navigation',
-};
 
 export interface CustomerNpc {
   id: string;

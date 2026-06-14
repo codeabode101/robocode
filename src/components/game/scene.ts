@@ -1285,104 +1285,43 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
 export function createPartModel(partId: string): THREE.Group {
   const g = new THREE.Group();
 
-  if (partId === 'sensor') {
-    // PCB body
-    const pcb = new THREE.Mesh(
-      new THREE.BoxGeometry(0.05, 0.035, 0.015),
-      createToonMaterial(0x2e7d32)
-    );
-    pcb.position.set(0, 0, 0);
-    g.add(pcb);
-    // Red LED
-    const ledBase = new THREE.Mesh(
-      new THREE.SphereGeometry(0.008, 8, 4),
-      new THREE.MeshBasicMaterial({ color: 0xef4444 })
-    );
-    ledBase.position.set(-0.012, 0.02, 0.005);
-    g.add(ledBase);
-    const ledTop = new THREE.Mesh(
-      new THREE.SphereGeometry(0.004, 6, 6),
-      new THREE.MeshBasicMaterial({ color: 0xdc2626 })
-    );
-    ledTop.position.set(-0.012, 0.02, 0.011);
-    g.add(ledTop);
-    // Sensor window
-    const window = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, 0.014, 0.003),
-      createToonMaterial(0x0f172a)
-    );
-    window.position.set(0.016, 0.02, 0.007);
-    g.add(window);
-    // Antenna
-    const antPole = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0015, 0.002, 0.025, 4),
-      createToonMaterial(0x94a3b8)
-    );
-    antPole.rotation.x = Math.PI / 2;
-    antPole.position.set(0.016, -0.014, 0.025);
-    g.add(antPole);
-    const antTip = new THREE.Mesh(
-      new THREE.SphereGeometry(0.003, 6, 6),
-      new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
-    );
-    antTip.position.set(0.016, -0.014, 0.038);
-    g.add(antTip);
-    // Gold pins
-    for (let i = -1; i <= 1; i++) {
-      const pin = new THREE.Mesh(
-        new THREE.BoxGeometry(0.005, 0.003, 0.004),
-        new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
-      );
-      pin.position.set(i * 0.011, 0, -0.009);
-      g.add(pin);
-    }
-  } else if (partId === 'voice') {
-    // Body
+  if (partId === 'battery') {
+    // Battery body
     const body = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.022, 0.024, 0.04, 12),
-      new THREE.MeshToonMaterial({ color: 0x2563eb, gradientMap: createGradientTexture(3) })
+      new THREE.BoxGeometry(0.04, 0.05, 0.018),
+      new THREE.MeshToonMaterial({ color: 0x22c55e, gradientMap: createGradientTexture(3) })
     );
-    body.rotation.x = Math.PI / 2;
     body.position.set(0, 0, 0);
     g.add(body);
-    // Speaker grille rings
-    for (let r = 0; r < 3; r++) {
-      const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(0.015 - r * 0.004, 0.0015, 6, 12),
-        createToonMaterial(0x1e3a5f)
-      );
-      ring.position.set(0, 0.024, 0);
-      g.add(ring);
-    }
-    // Volume dial
-    const dial = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.008, 0.01, 0.006, 8),
-      createToonMaterial(0x94a3b8)
+    // Positive terminal (red, raised)
+    const posTerm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.006, 0.008, 0.012, 8),
+      new THREE.MeshBasicMaterial({ color: 0xef4444 })
     );
-    dial.position.set(0, 0.022, 0.018);
-    g.add(dial);
-    const dialKnob = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.004, 0.004, 0.003, 6),
-      createToonMaterial(0x475569)
+    posTerm.rotation.x = Math.PI / 2;
+    posTerm.position.set(0, 0.031, 0);
+    g.add(posTerm);
+    // Negative terminal (flat)
+    const negTerm = new THREE.Mesh(
+      new THREE.BoxGeometry(0.012, 0.003, 0.012),
+      createToonMaterial(0x64748b)
     );
-    dialKnob.position.set(0, 0.022, 0.024);
-    g.add(dialKnob);
-    // Status LED
+    negTerm.position.set(0, -0.028, 0);
+    g.add(negTerm);
+    // Charge indicator LED
     const led = new THREE.Mesh(
       new THREE.SphereGeometry(0.003, 6, 6),
-      new THREE.MeshBasicMaterial({ color: 0x22c55e })
+      new THREE.MeshBasicMaterial({ color: 0x4ade80 })
     );
-    led.position.set(0.02, 0, 0.005);
+    led.position.set(0.016, 0.01, 0.009);
     g.add(led);
-    // Connector pins on back
-    for (let i = -1; i <= 1; i++) {
-      const pin = new THREE.Mesh(
-        new THREE.BoxGeometry(0.004, 0.003, 0.006),
-        createToonMaterial(0x94a3b8)
-      );
-      pin.position.set(i * 0.01, 0, -0.022);
-      g.add(pin);
-    }
+    // Battery band label
+    const band = new THREE.Mesh(
+      new THREE.BoxGeometry(0.041, 0.008, 0.001),
+      new THREE.MeshToonMaterial({ color: 0x166534 })
+    );
+    band.position.set(0, 0, 0.009);
+    g.add(band);
   } else if (partId === 'letter') {
     const paper = new THREE.Mesh(
       new THREE.BoxGeometry(0.04, 0.03, 0.002),
@@ -1403,59 +1342,6 @@ export function createPartModel(partId: string): THREE.Group {
     );
     seal.position.set(0, 0, 0.002);
     g.add(seal);
-  } else if (partId === 'navigation') {
-    // PCB
-    const pcb = new THREE.Mesh(
-      new THREE.BoxGeometry(0.045, 0.045, 0.004),
-      createTexturedToonMaterial('tile_23.png', 2, 2, 0x1b5e20)
-    );
-    pcb.position.set(0, 0, 0);
-    g.add(pcb);
-    // IC chip
-    const ic = new THREE.Mesh(
-      new THREE.BoxGeometry(0.016, 0.016, 0.003),
-      createToonMaterial(0x0f172a)
-    );
-    ic.position.set(0, 0, 0.003);
-    g.add(ic);
-    const icDot = new THREE.Mesh(
-      new THREE.SphereGeometry(0.002, 6, 6),
-      new THREE.MeshBasicMaterial({ color: 0xfacc15 })
-    );
-    icDot.position.set(-0.005, -0.005, 0.005);
-    g.add(icDot);
-    // Crystal oscillator
-    const crystal = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.003, 0.003, 0.005, 6),
-      createToonMaterial(0x94a3b8)
-    );
-    crystal.position.set(0.015, 0.015, 0.003);
-    g.add(crystal);
-    // Gold edge pins
-    for (let side = -1; side <= 1; side += 2) {
-      for (let i = 0; i < 3; i++) {
-        const pin = new THREE.Mesh(
-          new THREE.BoxGeometry(0.003, 0.003, 0.005),
-          new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
-        );
-        pin.position.set(side * 0.023, (i - 1) * 0.013, -0.003);
-        g.add(pin);
-        const pin2 = new THREE.Mesh(
-          new THREE.BoxGeometry(0.003, 0.003, 0.005),
-          new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
-        );
-        pin2.position.set((i - 1) * 0.013, side * 0.023, -0.003);
-        g.add(pin2);
-      }
-    }
-    // Traces
-    const traceMat = new THREE.MeshBasicMaterial({ color: 0x4ade80 });
-    const t1 = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.001, 0.001), traceMat);
-    t1.position.set(-0.01, -0.01, 0.003);
-    g.add(t1);
-    const t2 = new THREE.Mesh(new THREE.BoxGeometry(0.001, 0.006, 0.001), traceMat);
-    t2.position.set(0.01, 0.01, 0.003);
-    g.add(t2);
   }
 
   return g;

@@ -448,47 +448,30 @@ export function createPartIcon(partId: string): string {
   const ctx = c.getContext('2d')!;
   ctx.clearRect(0, 0, 64, 64);
 
-  if (partId === 'sensor') {
-    ctx.fillStyle = '#2e7d32';
-    ctx.beginPath(); ctx.roundRect(8, 14, 48, 34, 4); ctx.fill();
-    ctx.strokeStyle = '#1b5e20'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = '#ef4444'; ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 6;
-    ctx.beginPath(); ctx.arc(24, 31, 6, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0;
+  if (partId === 'battery') {
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath(); ctx.roundRect(14, 10, 36, 44, 6); ctx.fill();
+    ctx.strokeStyle = '#166534'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath(); ctx.roundRect(24, 3, 16, 8, 3); ctx.fill();
+    ctx.strokeStyle = '#b91c1c'; ctx.lineWidth = 1; ctx.stroke();
     ctx.fillStyle = '#dc2626';
-    ctx.beginPath(); ctx.arc(24, 30, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#1a1a2e';
-    ctx.beginPath(); ctx.roundRect(34, 24, 14, 12, 2); ctx.fill();
-    ctx.strokeStyle = '#0d0d1a'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(40, 14); ctx.lineTo(40, 4); ctx.stroke();
-    ctx.fillStyle = '#fbbf24';
-    ctx.beginPath(); ctx.arc(40, 3, 2.5, 0, Math.PI * 2); ctx.fill();
-    for (let i = 0; i < 4; i++) {
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(14 + i * 9, 47, 5, 4);
-    }
-  } else if (partId === 'voice') {
-    ctx.fillStyle = '#2563eb';
-    ctx.beginPath(); ctx.roundRect(12, 12, 40, 40, 8); ctx.fill();
-    ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.strokeStyle = '#1e3a5f'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(32, 32, 14, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(32, 32, 10, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(32, 32, 6, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#1e3a5f';
-    ctx.beginPath(); ctx.arc(32, 32, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#94a3b8';
-    ctx.beginPath(); ctx.roundRect(26, 5, 12, 8, 3); ctx.fill();
-    ctx.fillStyle = '#475569';
-    ctx.beginPath(); ctx.roundRect(30, 3, 4, 3, 1); ctx.fill();
-    ctx.fillStyle = '#22c55e'; ctx.shadowColor = '#22c55e'; ctx.shadowBlur = 4;
-    ctx.beginPath(); ctx.arc(46, 16, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.roundRect(28, 1, 8, 3, 1); ctx.fill();
+    ctx.fillStyle = '#64748b';
+    ctx.beginPath(); ctx.roundRect(28, 52, 8, 6, 2); ctx.fill();
     for (let i = 0; i < 3; i++) {
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(20 + i * 12, 50, 4, 4);
+      const barY = 22 + i * 10;
+      const brightness = i === 2 ? '#4ade80' : i === 1 ? '#86efac' : '#bbf7d0';
+      ctx.fillStyle = brightness;
+      if (i === 2) { ctx.shadowColor = '#22c55e'; ctx.shadowBlur = 4; }
+      ctx.beginPath(); ctx.roundRect(20, barY, 24, 6, 2); ctx.fill();
+      ctx.shadowBlur = 0;
     }
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('+', 32, 10);
+    ctx.fillText('−', 32, 58);
   } else if (partId === 'letter') {
     ctx.fillStyle = '#f5e6c8';
     ctx.beginPath(); ctx.roundRect(8, 14, 48, 34, 3); ctx.fill();
@@ -499,33 +482,6 @@ export function createPartIcon(partId: string): string {
     ctx.fillStyle = '#b8860b';
     ctx.fillRect(12, 40, 40, 2);
     ctx.fillRect(12, 44, 28, 2);
-  } else if (partId === 'navigation') {
-    ctx.fillStyle = '#1b5e20';
-    ctx.fillRect(6, 8, 52, 48);
-    ctx.strokeStyle = '#0d3b0f'; ctx.lineWidth = 1; ctx.strokeRect(6, 8, 52, 48);
-    ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(10, 32); ctx.lineTo(22, 32); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(42, 32); ctx.lineTo(54, 32); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(32, 12); ctx.lineTo(32, 22); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(32, 42); ctx.lineTo(32, 52); ctx.stroke();
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath(); ctx.roundRect(24, 24, 16, 16, 2); ctx.fill();
-    ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.fillStyle = '#facc15';
-    ctx.beginPath(); ctx.arc(28, 28, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#94a3b8';
-    ctx.beginPath(); ctx.roundRect(42, 12, 8, 6, 2); ctx.fill();
-    ctx.fillStyle = '#cbd5e1';
-    ctx.beginPath(); ctx.arc(46, 15, 2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fbbf24';
-    for (let i = 0; i < 4; i++) {
-      ctx.fillRect(12 + i * 11, 4, 4, 5);
-      ctx.fillRect(12 + i * 11, 55, 4, 5);
-    }
-    for (let i = 0; i < 3; i++) {
-      ctx.fillRect(3, 14 + i * 14, 4, 4);
-      ctx.fillRect(57, 14 + i * 14, 4, 4);
-    }
   }
   return c.toDataURL();
 }
