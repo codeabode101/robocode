@@ -296,6 +296,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const interactionCandidateIdRef = useRef<string | null>(null);
   const workshopIntroSeenRef = useRef(false);
   const rafiqMeetAutoTriggeredRef = useRef(false);
+  const rafiqWalkPhaseRef = useRef<'idle' | 'walking' | 'reached'>('idle');
   const rafiqDlgOpenRef = useRef(false);
   const roomOwnerVisualRef = useRef<RobotVisual | null>(null);
   const roomPetVisualRef = useRef<RobotVisual | null>(null);
@@ -1322,6 +1323,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         } else {
           setShowRafiqLetterDlg(false);
           reopenWorkshopIntro();
+          rafiqWalkPhaseRef.current = 'idle';
           if (roomOwnerVisualRef.current) roomOwnerVisualRef.current.root.rotation.z = 0;
         }
       }
@@ -3443,6 +3445,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       workshopCustomersRef.current.push(npc);
     };
 
+    // Pre-spawn customers so they're already in the workshop when player enters
+    spawnCustomer();
+    spawnCustomer();
+    spawnCustomer();
+
     let lastTime = performance.now();
     const animate = (now: number) => {
       try {
@@ -3479,7 +3486,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       let moved = false;
       let moveDir2 = new THREE.Vector2(0, 0);
-      if (aptCutscenePhaseRef.current !== 'idle' || rafiqDlgOpenRef.current) {
+      if (aptCutscenePhaseRef.current !== 'idle' || rafiqWalkPhaseRef.current !== 'idle' || rafiqDlgOpenRef.current) {
         // Cutscene or Rafiq dialog active — freeze player
         keyStateRef.current.clear();
       } else if (!showTutorialRef.current) {
@@ -3626,10 +3633,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 workshopIntroSeenRef.current = true;
                 setWorkshopIntroSeen(true);
                 rafiqMeetAutoTriggeredRef.current = true;
-                rafiqDlgOpenRef.current = true;
-                setShowRafiqLetterDlg(true);
-                setRafiqLetterStep(0);
-                if (roomOwnerVisualRef.current) roomOwnerVisualRef.current.root.rotation.z = Math.PI;
+                rafiqWalkPhaseRef.current = 'walking';
+                yawRef.current = Math.atan2(ROOM_OWNER_POS.x - ROOM_SPAWN.x, ROOM_OWNER_POS.y - ROOM_SPAWN.y);
               }
               setWorkshopIntroStep(0);
               setRoomEntryFlash(true);
@@ -3738,6 +3743,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               moved = false;
             }
           }
+        }
+        }
+
+      // Rafiq auto-walk: player walks from spawn toward Rafiq
+      if (rafiqWalkPhaseRef.current === 'walking' && inWorkshopRoomRef.current) {
+        const dir = new THREE.Vector2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
+        yawRef.current = Math.atan2(dir.x, dir.y);
+        if (dir.length() > 0.3) {
+          const step = dir.normalize().multiplyScalar(MOVE_SPEED * 0.95 * delta);
+          localPositionRef.current.x += step.x;
+          localPositionRef.current.y += step.y;
+          localRobot.root.position.set(localPositionRef.current.x, localPositionRef.current.y, 0.28);
+          moved = true;
+        } else {
+          rafiqWalkPhaseRef.current = 'reached';
+          rafiqDlgOpenRef.current = true;
+          setShowRafiqLetterDlg(true);
+          setRafiqLetterStep(0);
+          if (roomOwnerVisualRef.current) roomOwnerVisualRef.current.root.rotation.z = Math.PI;
         }
       }
 
@@ -6700,6 +6724,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                     } else {
                       setShowRafiqLetterDlg(false);
                       reopenWorkshopIntro();
+                      rafiqWalkPhaseRef.current = 'idle';
                       if (roomOwnerVisualRef.current) roomOwnerVisualRef.current.root.rotation.z = 0;
                     }
                   }}
