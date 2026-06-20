@@ -212,6 +212,7 @@ type ArenaPlayer = {
 type CustomerNpc = {
   id: string;
   visual: HumanVisual & { marker?: THREE.Sprite; leftLegPivot?: THREE.Group; rightLegPivot?: THREE.Group };
+  cargoRobot: ReturnType<typeof createRobotVisual>;
   position: THREE.Vector2;
   target: THREE.Vector2;
   queueIndex: number;
@@ -392,6 +393,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const roomOwnerVisualRef = useRef<RobotVisual | null>(null);
   const roomPetVisualRef = useRef<RobotVisual | null>(null);
   const roomCustomerGroupRef = useRef<THREE.Group | null>(null);
+  const workshopRegisterDockRef = useRef<THREE.Group | null>(null);
+  const workshopRegisterComputerRef = useRef<THREE.Group | null>(null);
+  const workshopRegisterWireRef = useRef<THREE.Mesh | null>(null);
   const roomEntryFlashTimeoutRef = useRef<number | null>(null);
   const scrapRobotRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
   const scrapChallengesDoneRef = useRef(0);
@@ -762,6 +766,30 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     apiSync({ money: val });
     lastConfirmedMoneyRef.current = val;
   }, [apiSync]);
+
+  const createCustomerCargoRobot = useCallback((customerName: string) => {
+    const robot = createRobotVisual(new THREE.Color(hashColor(`robot-${customerName}`)), '');
+    robot.nameSprite.visible = false;
+    robot.root.scale.set(0.18, 0.18, 0.18);
+    robot.root.rotation.set(Math.PI / 2, 0, 0);
+    return robot;
+  }, []);
+
+  const setCustomerRobotMode = useCallback((npc: CustomerNpc, mode: 'carry' | 'register') => {
+    const robot = npc.cargoRobot.root;
+    if (mode === 'register') {
+      workshopRegisterDockRef.current?.attach(robot);
+      robot.position.set(-0.02, -0.01, 0.31);
+      robot.rotation.set(Math.PI / 2, 0, Math.PI * 0.04);
+      robot.scale.set(0.17, 0.17, 0.17);
+    } else {
+      npc.visual.root.attach(robot);
+      robot.position.set(0.16, 0.02, 0.73);
+      robot.rotation.set(Math.PI / 2, 0, Math.PI * -0.08);
+      robot.scale.set(0.18, 0.18, 0.18);
+    }
+    robot.visible = true;
+  }, []);
 
   const [cutsceneTick, setCutsceneTick] = useState(0);
 
@@ -3218,6 +3246,44 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     workshopRoomGroup.add(customerGroup);
     roomCustomerGroupRef.current = customerGroup;
 
+    const registerDock = new THREE.Group();
+    registerDock.position.set(2.35, 2.24, 0.26);
+    workshopRoomGroup.add(registerDock);
+    workshopRegisterDockRef.current = registerDock;
+
+    const registerBase = new THREE.Mesh(
+      new THREE.BoxGeometry(1.28, 0.56, 0.14),
+      createToonMaterial(0x8b5a2b, 0.62, 0.08)
+    );
+    registerBase.position.set(0, 0, 0.07);
+    registerDock.add(registerBase);
+
+    const registerTop = new THREE.Mesh(
+      new THREE.BoxGeometry(1.36, 0.62, 0.03),
+      createToonMaterial(0xa16207, 0.62, 0.08)
+    );
+    registerTop.position.set(0, 0, 0.15);
+    registerDock.add(registerTop);
+
+    const registerLabel = createLabelSprite('REGISTER', '#0f172a', 'rgba(253,224,71,0.95)', '#f8fafc', 172, 64);
+    registerLabel.scale.set(1.55, 0.58, 1);
+    registerLabel.center.set(0.5, 0);
+    registerLabel.position.set(0, -0.05, 0.54);
+    registerLabel.renderOrder = 36;
+    registerDock.add(registerLabel);
+
+    const registerComputer = createLaptop();
+    registerComputer.scale.set(0.48, 0.48, 0.48);
+    registerComputer.position.set(-0.14, -0.04, 0.18);
+    registerComputer.rotation.z = Math.PI;
+    registerDock.add(registerComputer);
+    workshopRegisterComputerRef.current = registerComputer;
+
+    const registerWire = createWire(1.0);
+    registerWire.visible = false;
+    workshopRoomGroup.add(registerWire);
+    workshopRegisterWireRef.current = registerWire;
+
     {
       const apartmentFloor = new THREE.Mesh(
         new THREE.BoxGeometry(8, 8, 0.24),
@@ -3665,7 +3731,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         };
         tries += 1;
       }
-
       return nextRequest;
     };
 
@@ -3688,6 +3753,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const cPerson = buildPlayerVisual(colors[Math.floor(Math.random() * colors.length)], customerName);
       cPerson.nameSprite.visible = false;
       cPerson.root.scale.set(0.9, 0.9, 0.9);
+      const cargoRobot = createCustomerCargoRobot(customerName);
+      cPerson.root.add(cargoRobot.root);
       const cmarker = addExclamationMarker(cPerson.root);
       cmarker.visible = false;
       cmarker.position.set(0, 0, 0.85);
@@ -3712,9 +3779,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         stage: 'walking-to-queue' as const,
         waypoints: entryWaypoints,
         wpIndex: 0,
+        cargoRobot,
       };
       npc.target.copy(entryWaypoints[0]);
       (npc as any).startedAtMs = performance.now();
+      setCustomerRobotMode(npc, 'carry');
       workshopCustomersRef.current.push(npc);
     };
     spawnCustomerRef.current = spawnCustomer;
@@ -3731,6 +3800,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const cPerson = buildPlayerVisual(prespawnColors[qi], customerName);
       cPerson.nameSprite.visible = false;
       cPerson.root.scale.set(0.9, 0.9, 0.9);
+      const cargoRobot = createCustomerCargoRobot(customerName);
+      cPerson.root.add(cargoRobot.root);
       const cmarker = addExclamationMarker(cPerson.root);
       cmarker.visible = false;
       cmarker.position.set(0, 0, 0.85);
@@ -3747,7 +3818,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         speed: 1.2,
         request,
         stage: 'waiting',
+        cargoRobot,
       };
+      setCustomerRobotMode(npc, 'carry');
       workshopCustomersRef.current.push(npc);
     }
 
@@ -5683,6 +5756,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             closestCandidate.request = nextRequest;
           }
           closestCandidate.stage = 'awaiting-code';
+          setCustomerRobotMode(closestCandidate, 'register');
           currentCustomerIdRef.current = closestCandidate.id;
           bonusTimerRef.current = performance.now();
           setActiveCustomer(nextRequest);
@@ -5813,6 +5887,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
           const noRotationStages = ['waiting', 'awaiting-code'];
           const moving = dist > 0.06 && !noRotationStages.includes(npc.stage);
+          if (npc.stage === 'awaiting-code') {
+            if (npc.cargoRobot.root.parent !== workshopRegisterDockRef.current) {
+              setCustomerRobotMode(npc, 'register');
+            }
+            animateRobotVisual(npc.cargoRobot, worldTime + npc.queueIndex * 0.35, 0.12, 0, 0);
+          } else {
+            if (npc.cargoRobot.root.parent !== npc.visual.root) {
+              setCustomerRobotMode(npc, 'carry');
+            }
+            animateRobotVisual(npc.cargoRobot, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, dx, dy);
+          }
           if (moving) {
             npc.visual.root.rotation.z = -Math.atan2(dx, dy);
           }
@@ -5824,6 +5909,35 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           npc.visual.root.position.set(npc.position.x, npc.position.y, 0.26 + bobZ);
           return true;
         });
+
+        const currentNpc = currentCustomerIdRef.current
+          ? workshopCustomersRef.current.find((npc) => npc.id === currentCustomerIdRef.current) || null
+          : null;
+        const registerWire = workshopRegisterWireRef.current;
+        const registerComputer = workshopRegisterComputerRef.current;
+        if (registerWire && registerComputer && currentNpc && currentNpc.stage === 'awaiting-code') {
+          const wireStart = new THREE.Vector3();
+          const wireEnd = new THREE.Vector3();
+          currentNpc.cargoRobot.root.getWorldPosition(wireStart);
+          registerComputer.getWorldPosition(wireEnd);
+          wireStart.z += 0.02;
+          wireEnd.z += 0.1;
+          const dir = wireEnd.clone().sub(wireStart);
+          const distWire = dir.length();
+          if (distWire > 0.001) {
+            dir.normalize();
+            const mid = wireStart.clone().add(wireEnd).multiplyScalar(0.5);
+            registerWire.visible = true;
+            registerWire.position.copy(mid);
+            registerWire.scale.set(1, distWire, 1);
+            registerWire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+            animateWirePulse(registerWire, worldTime);
+          } else {
+            registerWire.visible = false;
+          }
+        } else if (registerWire) {
+          registerWire.visible = false;
+        }
       }
 
       // Update bonus timer fraction for UI
@@ -6638,6 +6752,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // Set customer to leaving and shift queue
     const leavingIdx = selectedNpc.queueIndex;
+    setCustomerRobotMode(selectedNpc, 'carry');
     selectedNpc.stage = 'leaving';
     const frontY = CUSTOMER_QUEUE_POSITIONS[leavingIdx].y;
     const exitWaypoints = [
