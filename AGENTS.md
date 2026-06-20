@@ -250,11 +250,11 @@ GameMap.tsx controls UI visibility during cinematic cutscenes through a centrali
 | Cutscene | Entry | Exit |
 |----------|-------|------|
 | Intro apartment cutscene (Sparky electrocute) | `startCinematicCutscene()` at ~3789, ~4016 | `endCinematicCutscene()` at ~5401 |
-| Rafiq letter cutscene | `startCinematicCutscene()` at ~3779 | `endCinematicCutscene()` at ~1555, ~7111 |
+| Rafiq letter cutscene | (no `startCinematicCutscene` — camera stays normal; markers hidden via syncMarkers `rafiqWalkPhaseRef !== 'idle'`) |
 | Battery install cutscene | `startCinematicCutscene()` at ~3795, ~4040, ~6463 | `endCinematicCutscene()` at ~5465, ~7128 |
 
 ### Important
-- **Rafiq letter cutscene** (walk to Rafiq + hand letter) now calls `startCinematicCutscene()` at walk start (~3779) and `endCinematicCutscene()` when dialog completes (~1555, ~7111). Game UI is hidden during this cutscene.
+- **Rafiq letter cutscene** (walk to Rafiq + hand letter) does NOT call `startCinematicCutscene()` — camera stays normal. Markers are hidden via `syncMarkers` guard: `rafiqWalkPhaseRef.current !== 'idle'`. Customer NPC `!` markers are guarded separately via the same ref. Game UI remains fully visible.
 - **Rafiq / Sparky dialog-only interactions** never touch `hideGameUiRef`. All UI stays visible.
 - **`syncMarkers()` is called via a `useEffect`** (deps: quest stage, room, backpack, etc.). `startCinematicCutscene()`/`endCinematicCutscene()` increment a `cutsceneTick` state, which is added to the effect's dependency array — so `syncMarkers()` fires automatically when a cutscene starts or ends. **No per-frame work in the animation loop.**
 - **Customer NPC `!` markers** are guarded separately at ~5640 via `rafiqWalkPhaseRef.current === 'idle'` — they never show during any cutscene phase.
