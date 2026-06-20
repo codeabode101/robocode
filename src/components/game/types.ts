@@ -1,6 +1,6 @@
 export const ISLAND_RADIUS = 40;
 export const PLAYER_RADIUS = 0.48;
-export const MOVE_SPEED = 7.4;
+export const MOVE_SPEED = 3.8;
 export const NETWORK_SYNC_MS = 50;
 export const NPC_POSITION = { x: 3.6, y: 1.8 };
 export const ROOM_SPAWN = { x: 0, y: -3.7 };

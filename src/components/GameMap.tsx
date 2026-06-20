@@ -90,7 +90,7 @@ interface GameMapProps {
     { x: -2.87, y: -6.1 }, { x: -2.87, y: -6.9 }, { x: -2.87, y: -6.1 },
   ];
 const PLAYER_RADIUS = 0.48;
-const MOVE_SPEED = 7.4;
+const MOVE_SPEED = 3.8;
 const NETWORK_SYNC_MS = 50;
 const NPC_POSITION = new THREE.Vector2(-2.87, -6.1);
 
@@ -118,27 +118,33 @@ const BATTERY_DLG_STEPS = [
   { speaker: 'Sparky', text: "I've written a letter to Rafiq at the robot shop. Take this to him — he'll sort you out with a job so you can earn enough for a battery." },
   { speaker: 'Sparky', text: "Rafiq's shop is just outside, down the street. Show him my letter and he'll know what to do. Good luck!" },
 ];
+const RAFIQ_GREET_STEPS = [
+  { speaker: 'Rafiq', text: "Wait — who are you?" },
+  { speaker: 'Rafiq', text: "I wasn't expecting anyone today." },
+] as const;
 const RAFIQ_MEET_STEPS = [
-  { speaker: 'Rafiq', text: "Who are you? I don't recall having any appointments today." },
-  { speaker: 'Rafiq', text: "Wait — is that a letter from Sparky? Let me see... 'This is my friend, they need work.' Ah, good old Sparky." },
-  { speaker: 'Rafiq', text: "Well, I could use a hand around the shop. Help customers with robot requests — write some Java code — and I'll pay you. Look around, and talk to me when you're ready for an intro." },
-];
+  { speaker: 'Rafiq', text: "A letter from Sparky?" },
+  { speaker: 'Rafiq', text: "'My friend needs work.' Hah!" },
+  { speaker: 'Rafiq', text: "Good old Sparky. Lucky for me, I need help." },
+  { speaker: 'Rafiq', text: "Customers come for custom robots." },
+  { speaker: 'Rafiq', text: "You write code that matches their request." },
+  { speaker: 'Rafiq', text: "Name. Color. Size. Nail all three." },
+  { speaker: 'Rafiq', text: "Code wins, they leave happy. You get paid." },
+  { speaker: 'Rafiq', text: "Give it a try. I'm here if you're stuck." },
+] as const;
 const PLAYER_EYE_HEIGHT = 1.5;
 const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
 const ARENA_ROOM_SPAWN = new THREE.Vector2(0, 3.7);
 const APARTMENT_SPAWN = new THREE.Vector2(0, -1.5);
 const APARTMENT_EXIT = new THREE.Vector2(-8.5, -5.8);
-const ROOM_OWNER_POS = new THREE.Vector2(2.35, 1.95);
-const ROOM_COUNTER_POS = new THREE.Vector2(2.35, 2.25);
+const ROOM_OWNER_POS = new THREE.Vector2(-2.5, 2.0);
 const CUSTOMER_TALK_DISTANCE = 1.25;
-const REGISTER_ZONE_RADIUS = 2.1;
-const REGISTER_NPC_RADIUS = 1.35;
-const ROOM_CUSTOMER_EXIT_POS = new THREE.Vector2(-5.35, -4.55);
-const ROOM_PET_BROWSE_POINTS = [
-  { stand: new THREE.Vector2(-2.35, 1.2), look: new THREE.Vector2(-1.9, 0.5) },
-  { stand: new THREE.Vector2(-2.9, 3.7), look: new THREE.Vector2(-3.2, 3.25) },
-  { stand: new THREE.Vector2(2.7, -1.75), look: new THREE.Vector2(3.4, -2.4) },
-  { stand: new THREE.Vector2(-1.3, -0.2), look: new THREE.Vector2(-1.9, 0.5) },
+const ROOM_CUSTOMER_EXIT_POS = new THREE.Vector2(0, -5.5);
+const CUSTOMER_QUEUE_POSITIONS = [
+  new THREE.Vector2(2.35, 2.5),
+  new THREE.Vector2(2.35, 1.5),
+  new THREE.Vector2(2.35, 0.5),
+  new THREE.Vector2(2.35, -0.5),
 ];
 
 const SPARKY_INTERACTION_DISTANCE = 1.7;
@@ -154,9 +160,9 @@ const REQUEST_PATTERNS = [
   ['color', 'size'],
 ] as const;
 const WORKSHOP_INTRO_STEPS = [
-  { speaker: 'Rafiq', text: "Welcome! Customers browse robots here. Walk up to one and press Space to start a job." },
-  { speaker: 'Rafiq', text: "Each customer asks for different properties (name, color, size). Write code that matches exactly." },
-  { speaker: 'Rafiq', text: "After correct code, they follow you. Lead them to the register to collect your money." },
+  { speaker: 'Rafiq', text: "Customers line up for robot requests. Walk up to the front and press Space to start." },
+  { speaker: 'Rafiq', text: "Each asks for different properties (name, color, size). Write code that matches exactly." },
+  { speaker: 'Rafiq', text: "Get it right and they leave happy. You get paid instantly." },
 ] as const;
 
 const BATTERY_INSTALL_DLG_STEPS = [
@@ -203,15 +209,15 @@ type ArenaPlayer = {
 
 type CustomerNpc = {
   id: string;
-  visual: HumanVisual & { marker?: THREE.Sprite };
+  visual: HumanVisual & { marker?: THREE.Sprite; leftLegPivot?: THREE.Group; rightLegPivot?: THREE.Group };
   position: THREE.Vector2;
   target: THREE.Vector2;
-  spotIndex: number;
-  browseSpot: THREE.Vector2;
-  petLookTarget: THREE.Vector2;
+  queueIndex: number;
   speed: number;
   request: CustomerRequest;
-  stage: 'walking-to-browse' | 'browsing' | 'awaiting-code' | 'follow-to-counter' | 'leaving';
+  stage: 'walking-to-queue' | 'waiting' | 'awaiting-code' | 'leaving';
+  waypoints?: THREE.Vector2[];
+  wpIndex?: number;
 };
 
 type RoomType = 'outside' | 'workshop' | 'apartment' | 'shop' | 'arena';
@@ -237,12 +243,88 @@ function computeMarkerVisibility(
       )
     ),
     shopDoor: (room === 'outside') && !hasLetter && !hasBattery && !batteryInstalled && money >= 10 && cutsceneDone,
-    apartmentDoor: false,
+    apartmentDoor: room === 'outside' && hasBattery && !batteryInstalled,
     apartmentExit: room === 'apartment' && (!hasBattery || batteryInstalled),
-    workshopExit: room === 'workshop' && !hasLetter && workshopIntroSeen,
+    workshopExit: room === 'workshop' && !hasLetter && workshopIntroSeen && (money >= 10 || hasBattery),
     shopExit: room === 'shop',
     rafiqMarker: room === 'workshop' && (hasLetter || !workshopIntroSeen),
   };
+}
+
+function TFB({ show, step, steps, text, icon, onEnter, ttsOn, ttsCharIdx, onTtsToggle, hideEnter, codeBlocks }: {
+  show: boolean; step: number;
+  steps: readonly { speaker: string; text: string }[] | { speaker: string; text: string }[];
+  text: string; icon: 'robot' | 'person' | 'auto'; onEnter: () => void;
+  ttsOn: boolean; ttsCharIdx: number | null; onTtsToggle: (t: string) => void;
+  hideEnter?: boolean; codeBlocks?: boolean;
+}) {
+  if (!show) return null;
+  const cur = steps[step] ?? steps[0];
+  if (!cur) return null;
+  const svg = () => {
+    if (icon === 'auto') return cur.speaker === 'Sparky' ? 'robot' : 'person';
+    return icon;
+  };
+  const isLast = step >= steps.length - 1;
+  const renderTxt = (t: string) => {
+    if (!codeBlocks) return t;
+    return t.split(/(`[^`]+`)/g).map((seg, i) =>
+      seg.startsWith('`') && seg.endsWith('`')
+        ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
+        : seg
+    );
+  };
+  const body = ttsOn && ttsCharIdx !== null
+    ? (() => {
+        const bounds: Array<{ start: number; end: number }> = [];
+        const re = /\S+/g; let m;
+        while ((m = re.exec(cur.text)) !== null) bounds.push({ start: m.index, end: m.index + m[0].length });
+        const w = bounds.find(b => ttsCharIdx! >= b.start && ttsCharIdx! < b.end);
+        if (!w || w.start > text.length) return renderTxt(text);
+        return <>{renderTxt(text.slice(0, w.start))}<span className="underline decoration-amber-400 decoration-2 underline-offset-4">{renderTxt(text.slice(w.start, Math.min(w.end, text.length)))}</span>{renderTxt(text.slice(Math.min(w.end, text.length)))}</>;
+      })()
+    : renderTxt(text);
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
+      <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
+      <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center" style={{ height: '30vh' }}>
+        <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
+          <div className="flex items-center gap-2 mb-2">
+            {svg() === 'robot' ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
+                <rect x="3" y="11" width="18" height="10" rx="2" /><circle cx="12" cy="5" r="2" /><path d="M12 7v4" /><line x1="8" y1="16" x2="8" y2="16" /><line x1="16" y1="16" x2="16" y2="16" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
+                <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-8 8-8s8 4 8 8" />
+              </svg>
+            )}
+            <span className="text-amber-300 font-bold text-xl tracking-wide">{cur.speaker}</span>
+            <button onClick={() => onTtsToggle(cur.text)} className="ml-auto p-1.5 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ttsOn ? 'Stop' : 'Read aloud'}>
+              {ttsOn ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+              )}
+            </button>
+          </div>
+          <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
+            {body}<span className="animate-pulse text-amber-400/80">▌</span>
+          </p>
+          {(!hideEnter || isLast) && (
+            <div className="flex justify-end mt-4">
+              <button className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none" onClick={onEnter}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="14 7 9 12 14 17" /><line x1="21" y1="12" x2="9" y2="12" /><line x1="3" y1="12" x2="5" y2="12" />
+                </svg>
+                <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: GameMapProps) {
@@ -290,14 +372,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const workshopCustomersRef = useRef<CustomerNpc[]>([]);
   const lastWorkshopRequestSigRef = useRef<string | null>(null);
   const customerSpawnTimerRef = useRef(0);
+  const spawnCustomerRef = useRef<(() => void) | null>(null);
   const currentCustomerIdRef = useRef<string | null>(null);
   const interactionRequestedRef = useRef(false);
   const worldInteractionRequestedRef = useRef(false);
   const interactionCandidateIdRef = useRef<string | null>(null);
   const workshopIntroSeenRef = useRef(false);
   const rafiqMeetAutoTriggeredRef = useRef(false);
-  const rafiqWalkPhaseRef = useRef<'idle' | 'walking' | 'reached'>('idle');
+  const rafiqWalkPhaseRef = useRef<'idle' | 'walking' | 'arriving' | 'greeting' | 'handing-letter' | 'reached'>('idle');
+  const rafiqCutsceneTimerRef = useRef(0);
   const rafiqDlgOpenRef = useRef(false);
+  const rafiqGreetingDlgOpenRef = useRef(false);
+  const rafiqBaseQuatRef = useRef(new THREE.Quaternion());
+  const rafiqTargetFacingRef = useRef(0);
+  const rafiqLetterSpriteRef = useRef<THREE.Group | null>(null);
+  const rafiqRightArmRef = useRef<THREE.Mesh | null>(null);
   const roomOwnerVisualRef = useRef<RobotVisual | null>(null);
   const roomPetVisualRef = useRef<RobotVisual | null>(null);
   const roomCustomerGroupRef = useRef<THREE.Group | null>(null);
@@ -366,6 +455,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const coilRef = useRef<THREE.Object3D | null>(null);
   const tackFxRef = useRef<THREE.Group | null>(null);
   const tackFxPhaseRef = useRef(0);
+  const confettiParticlesRef = useRef<{ mesh: THREE.Mesh; vx: number; vy: number; vz: number; life: number }[]>([]);
   const cinemCamActiveRef = useRef(false);
   const cutsceneDoneRef = useRef(false);
   const sparkyGoHomeRef = useRef(false);
@@ -517,7 +607,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [rafiqLetterStep, setRafiqLetterStep] = useState(0);
   const [rafiqLetterText, setRafiqLetterText] = useState('');
   const [showWhoDlg, setShowWhoDlg] = useState(false);
+  const [whoStep, setWhoStep] = useState(0);
   const [whoText, setWhoText] = useState('');
+  const [rafiqCutsceneActive, setRafiqCutsceneActive] = useState(false);
   const [showSparkyExamples, setShowSparkyExamples] = useState(false);
   const [showElectrocuteDlg, setShowElectrocuteDlg] = useState(false);
   const [electrocuteStep, setElectrocuteStep] = useState(0);
@@ -527,6 +619,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [missionModal, setMissionModal] = useState<{show: boolean; msg: string}>({show: false, msg: ''});
   const prevMissionRef = useRef('');
   const [playerName, setPlayerName] = useState('');
+  const [ttsTick, setTtsTick] = useState(0);
+  const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const ttsCharIndexRef = useRef<number | null>(null);
+  const puterTtsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const puterTtsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+    return () => { (window.speechSynthesis as any).onvoiceschanged = null; };
+  }, []);
   const cutsceneDlgSteps = useMemo(() => [
     { speaker: 'Sparky', text: "I'll get electrocuted if I code Scrap..." },
     { speaker: 'Sparky', text: '...can you code him?' },
@@ -587,7 +690,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [bootDlgText, setBootDlgText] = useState('');
   const [showTransportModal, setShowTransportModal] = useState(false);
   const [transportMessage, setTransportMessage] = useState<string | null>(null);
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showFirstSaleModal, setShowFirstSaleModal] = useState(false);
   const backpack = useGameStoreKey('backpack');
   const [heldSlotIndex, setHeldSlotIndex] = useState<number | null>(null);
   const heldSlotIndexRef = useRef<number | null>(null);
@@ -601,6 +704,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const modalOpenRef = useRef(false);
   modalOpenRef.current = activeModal !== null;
   const modalFrameCountRef = useRef(0);
+  const showControlsModalRef = useRef(false);
+  const pendingRafiqCutsceneRef = useRef(false);
+  const pendingAptCutsceneRef = useRef(false);
+  const pendingBatteryCutsceneRef = useRef(false);
   const [debugMode, setDebugMode] = useState(() => {
     try { return localStorage.getItem('rb_debug') === '1'; } catch { return false; }
   });
@@ -612,7 +719,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const lastPositionSyncRef = useRef(0);
   const [bonusFraction, setBonusFraction] = useState(0);
   const bonusTimerRef = useRef<number | null>(null);
-  const lockedBonusRef = useRef(0);
   const BONUS_DURATION = 45;
   const fpsFrameCountRef = useRef(0);
   const fpsLastTimeRef = useRef(performance.now());
@@ -648,6 +754,86 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     apiSync({ money: val });
     lastConfirmedMoneyRef.current = val;
   }, [apiSync]);
+
+  const speakStep = (text: string) => {
+    if (!text || typeof window === 'undefined' || !window.speechSynthesis) return;
+    if (window.speechSynthesis.getVoices().length === 0) {
+      if (typeof (window as any).puter?.ai?.txt2speech === 'function') { speakWithPuter(text); return; }
+      console.error('No TTS voices and puter.js not available');
+      return;
+    }
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.volume = 1;
+      u.rate = 0.9;
+      u.pitch = 1.0;
+      const wordBounds: Array<{ start: number; end: number }> = [];
+      const re = /\S+/g; let m;
+      while ((m = re.exec(text)) !== null) wordBounds.push({ start: m.index, end: m.index + m[0].length });
+      ttsCharIndexRef.current = wordBounds[0]?.start ?? null;
+      let wi = 0;
+      const wordTimer = setInterval(() => {
+        wi++;
+        if (wi >= wordBounds.length) { clearInterval(wordTimer); stopTts(); return; }
+        ttsCharIndexRef.current = wordBounds[wi].start; setTtsTick(t => t + 1);
+      }, 220);
+      u.onboundary = (e: SpeechSynthesisEvent) => {
+        ttsCharIndexRef.current = e.charIndex;
+        setTtsTick(t => t + 1);
+      };
+      u.onend = () => { clearInterval(wordTimer); ttsUtteranceRef.current = null; ttsCharIndexRef.current = null; setTtsTick(t => t + 1); };
+      u.onerror = (e: any) => { console.error('TTS onerror:', e); clearInterval(wordTimer); ttsUtteranceRef.current = null; ttsCharIndexRef.current = null; setTtsTick(t => t + 1); };
+      ttsUtteranceRef.current = u;
+      setTtsTick(t => t + 1);
+      window.speechSynthesis.cancel();
+      setTimeout(() => { window.speechSynthesis.speak(u); }, 10);
+    } catch (e) {
+      console.error('TTS error:', e);
+      ttsUtteranceRef.current = null;
+      setTtsTick(t => t + 1);
+    }
+  };
+
+  const speakWithPuter = async (text: string) => {
+    try {
+      const audio = await (window as any).puter.ai.txt2speech(text);
+      const wordBounds: Array<{ start: number; end: number }> = [];
+      const re = /\S+/g; let m;
+      while ((m = re.exec(text)) !== null) wordBounds.push({ start: m.index, end: m.index + m[0].length });
+      ttsUtteranceRef.current = {} as any;
+      ttsCharIndexRef.current = wordBounds[0]?.start ?? null;
+      setTtsTick(t => t + 1);
+      let idx = 0;
+      puterTtsTimerRef.current = setInterval(() => {
+        idx++;
+        if (idx >= wordBounds.length) { clearInterval(puterTtsTimerRef.current!); puterTtsTimerRef.current = null; stopTts(); return; }
+        ttsCharIndexRef.current = wordBounds[idx].start; setTtsTick(t => t + 1);
+      }, 220);
+      puterTtsAudioRef.current = audio;
+      audio.play();
+      audio.addEventListener('ended', () => stopTts(), { once: true });
+    } catch (e) {
+      console.error('Puter TTS error:', e);
+      ttsUtteranceRef.current = null;
+      setTtsTick(t => t + 1);
+    }
+  };
+
+  const stopTts = () => {
+    if (puterTtsTimerRef.current) { clearInterval(puterTtsTimerRef.current); puterTtsTimerRef.current = null; }
+    if (puterTtsAudioRef.current) { puterTtsAudioRef.current.pause(); puterTtsAudioRef.current = null; }
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+    }
+    ttsUtteranceRef.current = null;
+    ttsCharIndexRef.current = null;
+  };
+
+  const ttsActive = () => ttsUtteranceRef.current !== null;
+
+  const onTtsToggle = (text: string) => {
+    if (ttsUtteranceRef.current) { stopTts(); } else { speakStep(text); }
+  };
 
   function validateJavaLines(
     code: string,
@@ -1102,8 +1288,36 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   }, [showRafiqLetterDlg]);
 
   useEffect(() => {
+    setRafiqCutsceneActive(rafiqWalkPhaseRef.current !== 'idle');
+  }); // runs after every render
+
+  useEffect(() => {
     inApartmentRoomRef.current = inApartmentRoom;
   }, [inApartmentRoom]);
+
+  useEffect(() => {
+    showControlsModalRef.current = showControlsModal;
+  }, [showControlsModal]);
+
+  // Universal cursor release — exit pointer lock when any clickable modal opens
+  useEffect(() => {
+    if (showControlsModal || showBatteryDlg || showBatteryInstallDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showLaptopUI || showFirstSaleModal || showTransportModal || showShopModal || shopkeeperGreeting !== null) {
+      if (document.pointerLockElement) document.exitPointerLock();
+    }
+  }, [showControlsModal, showBatteryDlg, showBatteryInstallDlg, showRafiqLetterDlg, showWhoDlg, showSparkyDlg, showElectrocuteDlg, showStringDlg, showDateDlg, showVersionDlg, showBootDlg, showLaptopUI, showFirstSaleModal, showTransportModal, showShopModal, shopkeeperGreeting]);
+
+  // Controls modal Enter key handler
+  useEffect(() => {
+    if (!showControlsModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        setShowControlsModal(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showControlsModal]);
 
   const profileLoadedRef = useRef(false);
 
@@ -1322,9 +1536,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setRafiqLetterStep(nextStep);
         } else {
           setShowRafiqLetterDlg(false);
-          reopenWorkshopIntro();
           rafiqWalkPhaseRef.current = 'idle';
-          if (roomOwnerVisualRef.current) roomOwnerVisualRef.current.root.rotation.z = 0;
+          workshopIntroSeenRef.current = true;
+          setWorkshopIntroSeen(true);
+          fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
+          if (roomOwnerVisualRef.current) {
+            roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current);
+            if (roomOwnerVisualRef.current.rightArm) roomOwnerVisualRef.current.rightArm.rotation.z = -0.3;
+          }
         }
       }
     };
@@ -1365,32 +1584,43 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return () => window.removeEventListener('keydown', onKey);
   }, [inWorkshopRoom, workshopIntroSeen, workshopIntroStep]);
 
-  // "Who are you?" dialog typewriter effect
-  const WHO_TEXT = "Who are you? This workshop is for employees only.";
+  // Greeting dialog typewriter effect (multi-step)
   useEffect(() => {
     if (!showWhoDlg) return;
+    const step = RAFIQ_GREET_STEPS[whoStep];
+    if (!step) return;
     setWhoText('');
     let i = 0;
     const interval = setInterval(() => {
       i++;
-      setWhoText(WHO_TEXT.slice(0, i));
-      if (i >= WHO_TEXT.length) clearInterval(interval);
+      setWhoText(step.text.slice(0, i));
+      if (i >= step.text.length) clearInterval(interval);
     }, 35);
     return () => clearInterval(interval);
-  }, [showWhoDlg]);
+  }, [showWhoDlg, whoStep]);
 
-  // "Who are you?" dialog Enter key handler
+  // Greeting dialog Enter key handler
   useEffect(() => {
     if (!showWhoDlg) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        setShowWhoDlg(false);
+        const nextStep = whoStep + 1;
+        if (nextStep < RAFIQ_GREET_STEPS.length) {
+          setWhoStep(nextStep);
+        } else {
+          setShowWhoDlg(false);
+          if (rafiqWalkPhaseRef.current === 'greeting') {
+            rafiqWalkPhaseRef.current = 'handing-letter';
+            rafiqCutsceneTimerRef.current = 0;
+            rafiqGreetingDlgOpenRef.current = false;
+          }
+        }
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [showWhoDlg]);
+  }, [showWhoDlg, whoStep]);
 
   // String tutorial dialog Enter key handler
   useEffect(() => {
@@ -1483,6 +1713,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         e.preventDefault();
         const steps = stringDlgIsHelpRef.current ? versionHelpSteps : versionDlgSteps;
         const nextStep = versionDlgStep + 1;
+        stopTts();
         if (nextStep < steps.length) {
           setVersionDlgStep(nextStep);
         } else {
@@ -1597,6 +1828,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
         if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
       }
+      if (data.batteryInstalled) {
+        batteryInstalledRef.current = true;
+        // Remove battery from backpack if still present (fallback for failed sync)
+        const bp = gameStore.get('backpack') as ScrapPartId[];
+        if (bp.includes('battery' as ScrapPartId)) {
+          const cleaned = bp.filter(id => id !== 'battery');
+          gameStore.set('backpack', cleaned);
+          lastConfirmedBackpackRef.current = cleaned;
+        }
+      }
       if (data.questStage) {
         let mappedStage = String(data.questStage) as SparkyQuestStage;
         if (data.workshopIntroDone) setWorkshopIntroSeen(true);
@@ -1672,22 +1913,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
         yawRef.current = Math.atan2(-2.87 - (-5.53), -5.3 - (-9.63));
       }
-      // Re-trigger cutscenes on reload if player was mid-flow (so edits are visible after refresh)
+      // Queue cutscene re-triggers on reload — waits for controls modal to dismiss
       if (data.position?.room === 'workshop' && data.cutsceneDone && Array.isArray(data.backpack) && data.backpack.includes('letter') && rafiqWalkPhaseRef.current === 'idle') {
         workshopIntroSeenRef.current = true;
         setWorkshopIntroSeen(true);
-        rafiqWalkPhaseRef.current = 'walking';
-        yawRef.current = Math.atan2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
+        pendingRafiqCutsceneRef.current = true;
       } else if (data.position?.room === 'apartment' && !data.cutsceneDone) {
-        aptCutscenePhaseRef.current = 'walk-west';
-        aptCutsceneTimerRef.current = 0;
-        cinemCamActiveRef.current = true;
-        keyStateRef.current.clear();
+        pendingAptCutsceneRef.current = true;
       } else if (data.position?.room === 'apartment' && data.cutsceneDone && Array.isArray(data.backpack) && data.backpack.includes('battery') && !batteryInstalledRef.current) {
-        installBatteryPhaseRef.current = 'walk-to-scrap';
-        installBatteryTimerRef.current = 0;
-        cinemCamActiveRef.current = true;
-        keyStateRef.current.clear();
+        pendingBatteryCutsceneRef.current = true;
       }
       profileLoadedRef.current = true;
       const savedName = localStorage.getItem('rb_robot_name');
@@ -2727,7 +2961,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { shape: 'box', center: { x: -3.2, y: 3.25 }, halfWidth: 0.825, halfHeight: 0.225 },
       { shape: 'box', center: { x: 2.9, y: 3.05 }, halfWidth: 0.75, halfHeight: 0.35 },
       { shape: 'box', center: { x: 3.4, y: -2.4 }, halfWidth: 0.625, halfHeight: 0.41 },
-      { shape: 'box', center: { x: -1.9, y: 0.5 }, halfWidth: 0.35, halfHeight: 0.35 },
     ];
 
     const clouds: THREE.Group[] = [];
@@ -2818,6 +3051,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     workshopFloor.position.set(0, 0, 0.12);
     workshopRoomGroup.add(workshopFloor);
 
+
+
     const workshopWalls = [
       new THREE.Vector3(0, 5.3, 1.2),
       new THREE.Vector3(0, -5.3, 1.2),
@@ -2856,19 +3091,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     workshopExitMarkerRef.current = wsExitMarker;
 
     const shelf = new THREE.Mesh(
-      new THREE.BoxGeometry(1.65, 0.45, 1.45),
+      new THREE.BoxGeometry(1.65, 0.45, 0.08),
       createToonMaterial(0x8b5a2b, 0.7, 0.08)
     );
-    shelf.position.set(-3.2, 3.25, 0.82);
+    shelf.position.set(-3.2, 5.075, 0.82);
     workshopRoomGroup.add(shelf);
 
     // Mini robots on the shelf
     const shelfColors = [0x60a5fa, 0xf97316, 0x34d399];
-    const shelfTopZ = 0.82 + 1.45 / 2;
+    const shelfTopZ = 0.82 + 0.08 / 2;
     for (let i = -1; i <= 1; i++) {
       const mini = createRobotVisual(new THREE.Color(shelfColors[i + 1]), '');
       mini.root.scale.set(0.25, 0.25, 0.25);
-      mini.root.position.set(-3.2 + i * 0.45, 3.25 + i * 0.1, shelfTopZ + 0.02);
+      mini.root.position.set(-3.2 + i * 0.45, 5.075 + i * 0.1, shelfTopZ + 0.02);
       mini.nameSprite.visible = false;
       workshopRoomGroup.add(mini.root);
       miniRobotRefs.current.push(mini);
@@ -2946,17 +3181,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     owner.root.position.set(ROOM_OWNER_POS.x, ROOM_OWNER_POS.y, 0.26);
     owner.nameSprite.visible = false;
     workshopRoomGroup.add(owner.root);
+    rafiqBaseQuatRef.current.copy(owner.root.quaternion);
     roomOwnerVisualRef.current = owner;
     const rafiqMarker = addExclamationMarker(owner.root);
     rafiqMarker.visible = false;
     rafiqMarkerRef.current = rafiqMarker;
-
-    const petDisplay = createRobotVisual(new THREE.Color(0x60a5fa), 'Shop Pet');
-    petDisplay.root.scale.set(0.6, 0.6, 0.6);
-    petDisplay.root.position.set(-1.9, 0.5, 0.26);
-    petDisplay.nameSprite.visible = false;
-    workshopRoomGroup.add(petDisplay.root);
-    roomPetVisualRef.current = petDisplay;
 
     const customerGroup = new THREE.Group();
     workshopRoomGroup.add(customerGroup);
@@ -3416,13 +3645,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const spawnCustomer = () => {
       const customerGroupCurrent = roomCustomerGroupRef.current;
       if (!customerGroupCurrent || workshopCustomersRef.current.length >= 4) return;
-      const occupiedSpots = new Set(
-        workshopCustomersRef.current.filter((npc) => npc.stage !== 'leaving').map((npc) => npc.spotIndex)
+      const occupiedQueues = new Set(
+        workshopCustomersRef.current.filter((npc) => npc.stage !== 'leaving').map((npc) => npc.queueIndex)
       );
-      const availableSpotIndexes = ROOM_PET_BROWSE_POINTS.map((_, index) => index).filter(
-        (index) => !occupiedSpots.has(index)
-      );
-      if (availableSpotIndexes.length === 0) return;
+      const availableQueueIdx = [0, 1, 2, 3].find((i) => !occupiedQueues.has(i));
+      if (availableQueueIdx === undefined) return;
 
       const usedNames = new Set(
         workshopCustomersRef.current.filter((npc) => npc.stage !== 'leaving').map((npc) => npc.request.customerName)
@@ -3437,35 +3664,65 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const cmarker = addExclamationMarker(cPerson.root);
       cmarker.visible = false;
       cmarker.position.set(0, 0, 0.85);
-      const visual = { root: cPerson.root, nameSprite: cPerson.nameSprite, marker: cmarker };
-      const start = new THREE.Vector2(-4.8, -4.2 + Math.random() * 1.8);
+      const visual = { root: cPerson.root, nameSprite: cPerson.nameSprite, marker: cmarker, leftLegPivot: cPerson.leftLegPivot, rightLegPivot: cPerson.rightLegPivot };
+      const start = new THREE.Vector2(0, -5.5);
       visual.root.position.set(start.x, start.y, 0.24);
       customerGroupCurrent.add(visual.root);
-      const spotIndex = pickRandom(availableSpotIndexes);
-      const chosenPoint = ROOM_PET_BROWSE_POINTS[spotIndex];
+      const queuePos = CUSTOMER_QUEUE_POSITIONS[availableQueueIdx];
+      const backY = queuePos.y;
+      const entryWaypoints = [
+        new THREE.Vector2(0, backY),
+        new THREE.Vector2(2.35, backY),
+      ];
       const npc: CustomerNpc = {
         id: `${customerName}-${Math.random().toString(36).slice(2, 8)}`,
         visual,
         position: start,
         target: new THREE.Vector2(0, 0),
-        spotIndex,
-        browseSpot: new THREE.Vector2(0, 0),
-        petLookTarget: new THREE.Vector2(0, 0),
+        queueIndex: availableQueueIdx,
         speed: 1.2 + Math.random() * 0.35,
         request,
-        stage: 'walking-to-browse',
+        stage: 'walking-to-queue' as const,
+        waypoints: entryWaypoints,
+        wpIndex: 0,
       };
-      npc.browseSpot.copy(chosenPoint.stand);
-      npc.petLookTarget.copy(chosenPoint.look);
-      npc.target.copy(npc.browseSpot);
+      npc.target.copy(entryWaypoints[0]);
       (npc as any).startedAtMs = performance.now();
       workshopCustomersRef.current.push(npc);
     };
+    spawnCustomerRef.current = spawnCustomer;
 
-    // Pre-spawn customers so they're already in the workshop when player enters
-    spawnCustomer();
-    spawnCustomer();
-    spawnCustomer();
+    // Pre-spawn customers directly at queue positions (no walking)
+    const prespawnColors = [0xfacc15, 0x60a5fa, 0x34d399];
+    for (let qi = 0; qi < 3; qi++) {
+      const customerGroupCurrent = roomCustomerGroupRef.current;
+      if (!customerGroupCurrent) break;
+      const usedNames = workshopCustomersRef.current.map(n => n.request.customerName);
+      const availableNames = CUSTOMER_NAMES.filter((name: string) => !usedNames.includes(name));
+      const customerName = pickRandom(availableNames.length > 0 ? availableNames : CUSTOMER_NAMES);
+      const request = createCustomerRequest(customerName);
+      const cPerson = buildPlayerVisual(prespawnColors[qi], customerName);
+      cPerson.nameSprite.visible = false;
+      cPerson.root.scale.set(0.9, 0.9, 0.9);
+      const cmarker = addExclamationMarker(cPerson.root);
+      cmarker.visible = false;
+      cmarker.position.set(0, 0, 0.85);
+      const visual = { root: cPerson.root, nameSprite: cPerson.nameSprite, marker: cmarker, leftLegPivot: cPerson.leftLegPivot, rightLegPivot: cPerson.rightLegPivot };
+      const qp = CUSTOMER_QUEUE_POSITIONS[qi];
+      visual.root.position.set(qp.x, qp.y, 0.24);
+      customerGroupCurrent.add(visual.root);
+      const npc: CustomerNpc = {
+        id: `${customerName}-${Math.random().toString(36).slice(2, 8)}`,
+        visual,
+        position: qp.clone(),
+        target: qp.clone(),
+        queueIndex: qi,
+        speed: 1.2,
+        request,
+        stage: 'waiting',
+      };
+      workshopCustomersRef.current.push(npc);
+    }
 
     let lastTime = performance.now();
     const animate = (now: number) => {
@@ -3501,6 +3758,28 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         modalFrameCountRef.current = 0;
       }
 
+      if (profileLoadedRef.current) {
+        if (pendingRafiqCutsceneRef.current && !showControlsModalRef.current) {
+          pendingRafiqCutsceneRef.current = false;
+          rafiqWalkPhaseRef.current = 'walking';
+          rafiqCutsceneTimerRef.current = 0;
+          keyStateRef.current.clear();
+          yawRef.current = Math.atan2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
+        } else if (pendingAptCutsceneRef.current && !showControlsModalRef.current) {
+          pendingAptCutsceneRef.current = false;
+          aptCutscenePhaseRef.current = 'walk-west';
+          aptCutsceneTimerRef.current = 0;
+          cinemCamActiveRef.current = true;
+          keyStateRef.current.clear();
+        } else if (pendingBatteryCutsceneRef.current && !showControlsModalRef.current) {
+          pendingBatteryCutsceneRef.current = false;
+          installBatteryPhaseRef.current = 'walk-to-scrap';
+          installBatteryTimerRef.current = 0;
+          cinemCamActiveRef.current = true;
+          keyStateRef.current.clear();
+        }
+      }
+
       let moved = false;
       let moveDir2 = new THREE.Vector2(0, 0);
       if (aptCutscenePhaseRef.current !== 'idle' || rafiqWalkPhaseRef.current !== 'idle' || rafiqDlgOpenRef.current) {
@@ -3522,11 +3801,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             camCos * forward - camSin * strafe
           );
           const candidate = localPositionRef.current.clone().add(moveDir2.multiplyScalar(MOVE_SPEED * delta));
-          if (inWorkshopRoomRef.current) {
+      if (inWorkshopRoomRef.current && rafiqWalkPhaseRef.current === 'idle' && !rafiqDlgOpenRef.current) {
             candidate.x = Math.max(-4.82, Math.min(4.82, candidate.x));
             candidate.y = Math.max(-5.3, Math.min(4.82, candidate.y));
             // Walk into south exit door → leave workshop
-            if (candidate.y < -5.1) {
+            if (candidate.y < -5.1 && Math.abs(candidate.x) < 0.5) {
               leaveWorkshopRoom();
               moved = false;
             } else {
@@ -3651,7 +3930,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 setWorkshopIntroSeen(true);
                 rafiqMeetAutoTriggeredRef.current = true;
                 rafiqWalkPhaseRef.current = 'walking';
+                rafiqCutsceneTimerRef.current = 0;
+                keyStateRef.current.clear();
                 yawRef.current = Math.atan2(ROOM_OWNER_POS.x - ROOM_SPAWN.x, ROOM_OWNER_POS.y - ROOM_SPAWN.y);
+              } else {
+                yawRef.current = 0;
               }
               setWorkshopIntroStep(0);
               setRoomEntryFlash(true);
@@ -3745,6 +4028,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 }
                 yawRef.current = Math.atan2(-2.3, 0.53); // face toward walk direction
                 document.exitPointerLock();
+              } else if (!batteryInstalledRef.current && (gameStore.get('backpack') as ScrapPartId[]).includes('battery' as ScrapPartId)) {
+                installBatteryPhaseRef.current = 'walk-to-scrap';
+                installBatteryTimerRef.current = 0;
+                cinemCamActiveRef.current = true;
+                keyStateRef.current.clear();
+                document.exitPointerLock();
               }
               keyStateRef.current.clear();
               moved = false;
@@ -3763,22 +4052,111 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
         }
 
-      // Rafiq auto-walk: player walks from spawn toward Rafiq
+      // Rafiq meet cutscene — cinematic walk with timed phases
       if (rafiqWalkPhaseRef.current === 'walking' && inWorkshopRoomRef.current) {
-        const dir = new THREE.Vector2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
+        const approachDir = new THREE.Vector2(ROOM_OWNER_POS.x - ROOM_SPAWN.x, ROOM_OWNER_POS.y - ROOM_SPAWN.y).normalize();
+        const arrivalTarget = new THREE.Vector2(
+          ROOM_OWNER_POS.x - approachDir.x * 0.85,
+          ROOM_OWNER_POS.y - approachDir.y * 0.85
+        );
+        const dir = new THREE.Vector2(arrivalTarget.x - localPositionRef.current.x, arrivalTarget.y - localPositionRef.current.y);
         yawRef.current = Math.atan2(dir.x, dir.y);
-        if (dir.length() > 0.3) {
-          const step = dir.normalize().multiplyScalar(MOVE_SPEED * 0.95 * delta);
+        if (dir.length() > 0.1) {
+          const step = dir.normalize().multiplyScalar(MOVE_SPEED * 0.23 * delta);
           localPositionRef.current.x += step.x;
           localPositionRef.current.y += step.y;
-          localRobot.root.position.set(localPositionRef.current.x, localPositionRef.current.y, 0.28);
+          localRobot.root.position.set(localPositionRef.current.x, localPositionRef.current.y, 0.26);
           moved = true;
         } else {
+          rafiqWalkPhaseRef.current = 'arriving';
+          rafiqCutsceneTimerRef.current = 0;
+          const dx = localPositionRef.current.x - ROOM_OWNER_POS.x;
+          const dy = localPositionRef.current.y - ROOM_OWNER_POS.y;
+          rafiqTargetFacingRef.current = dx === 0 && dy === 0 ? 0 : Math.atan2(dx, -dy);
+        }
+      } else if (rafiqWalkPhaseRef.current === 'arriving') {
+        rafiqCutsceneTimerRef.current += delta;
+        if (roomOwnerVisualRef.current) {
+          const rotProgress = Math.min(1, rafiqCutsceneTimerRef.current / 0.8);
+          const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rafiqTargetFacingRef.current * rotProgress);
+          roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current).premultiply(facingQ);
+        }
+        if (rafiqCutsceneTimerRef.current >= 1.0) {
+          rafiqWalkPhaseRef.current = 'greeting';
+          rafiqGreetingDlgOpenRef.current = true;
+          setWhoStep(0);
+          setShowWhoDlg(true);
+        }
+      } else if (rafiqWalkPhaseRef.current === 'handing-letter') {
+        rafiqCutsceneTimerRef.current += delta;
+        const handDuration = 1.4;
+        const wsg = workshopRoomGroupRef.current;
+        if (!rafiqLetterSpriteRef.current && wsg) {
+          const letter = new THREE.Group();
+          const envBody = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.4, 0.02),
+            createToonMaterial(0xf5e6c8)
+          );
+          letter.add(envBody);
+          const fold = new THREE.Mesh(
+            new THREE.BoxGeometry(0.26, 0.06, 0.03),
+            createToonMaterial(0xe8d5a8)
+          );
+          fold.position.y = 0.15;
+          letter.add(fold);
+          const seal = new THREE.Mesh(
+            new THREE.SphereGeometry(0.035, 8, 8),
+            createToonMaterial(0xdc2626)
+          );
+          seal.position.z = 0.015;
+          letter.add(seal);
+          letter.position.set(
+            (localPositionRef.current.x + ROOM_OWNER_POS.x) / 2,
+            (localPositionRef.current.y + ROOM_OWNER_POS.y) / 2,
+            0.5
+          );
+          rafiqLetterSpriteRef.current = letter;
+          wsg.add(letter);
+        }
+        if (rafiqLetterSpriteRef.current) {
+          const t = Math.min(1, rafiqCutsceneTimerRef.current / handDuration);
+          const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+          const startX = localPositionRef.current.x * 0.65 + ROOM_OWNER_POS.x * 0.35;
+          const startY = localPositionRef.current.y * 0.65 + ROOM_OWNER_POS.y * 0.35;
+          const endX = localPositionRef.current.x * 0.25 + ROOM_OWNER_POS.x * 0.75;
+          const endY = localPositionRef.current.y * 0.25 + ROOM_OWNER_POS.y * 0.75;
+          rafiqLetterSpriteRef.current.position.x = startX + (endX - startX) * ease;
+          rafiqLetterSpriteRef.current.position.y = startY + (endY - startY) * ease;
+          rafiqLetterSpriteRef.current.position.z = 0.5 + Math.sin(ease * Math.PI) * 0.15;
+          rafiqLetterSpriteRef.current.rotation.z = Math.sin(ease * Math.PI) * 0.3;
+          const s = t < 0.08 ? t / 0.08 : t > 0.85 ? (1 - t) / 0.15 : 1;
+          rafiqLetterSpriteRef.current.scale.set(s, s, s);
+        }
+        // Rafiq arm animation: extend (0-0.3s), hold (0.3-1.0s), retract (1.0-1.4s)
+        if (roomOwnerVisualRef.current?.rightArm) {
+          const arm = roomOwnerVisualRef.current.rightArm;
+          if (rafiqCutsceneTimerRef.current < 0.3) {
+            const p = rafiqCutsceneTimerRef.current / 0.3;
+            arm.rotation.z = -0.3 + (0.4 - (-0.3)) * p;
+          } else if (rafiqCutsceneTimerRef.current < 1.0) {
+            arm.rotation.z = 0.4;
+          } else if (rafiqCutsceneTimerRef.current < handDuration) {
+            const p = (rafiqCutsceneTimerRef.current - 1.0) / (handDuration - 1.0);
+            arm.rotation.z = 0.4 + (-0.3 - 0.4) * p;
+          }
+        }
+        if (rafiqCutsceneTimerRef.current >= handDuration) {
+          if (rafiqLetterSpriteRef.current && wsg) {
+            wsg.remove(rafiqLetterSpriteRef.current);
+            disposeObject(rafiqLetterSpriteRef.current);
+            rafiqLetterSpriteRef.current = null;
+          }
           rafiqWalkPhaseRef.current = 'reached';
           rafiqDlgOpenRef.current = true;
           setShowRafiqLetterDlg(true);
           setRafiqLetterStep(0);
-          if (roomOwnerVisualRef.current) roomOwnerVisualRef.current.root.rotation.z = Math.PI;
+          const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rafiqTargetFacingRef.current);
+          if (roomOwnerVisualRef.current) roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current).premultiply(facingQ);
         }
       }
 
@@ -4117,8 +4495,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const dist = aptSparkyCS.root.position.distanceTo(new THREE.Vector3(spTgt.x, spTgt.y, 0.22));
               if (dist > 0.08 && wpIdx < sparkyWps.length) {
                 const dir = new THREE.Vector2(spTgt.x - aptSparkyCS.root.position.x, spTgt.y - aptSparkyCS.root.position.y).normalize();
-                aptSparkyCS.root.position.x += dir.x * MOVE_SPEED * 0.15 * delta;
-                aptSparkyCS.root.position.y += dir.y * MOVE_SPEED * 0.15 * delta;
+                aptSparkyCS.root.position.x += dir.x * MOVE_SPEED * 0.29 * delta;
+                aptSparkyCS.root.position.y += dir.y * MOVE_SPEED * 0.29 * delta;
                 const moveFacing = -Math.atan2(dir.x, dir.y);
                 aptSparkyFacingRef.current = dist < 0.4 ? (moveFacing * (dist / 0.4)) : moveFacing;
                 const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
@@ -4140,8 +4518,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const pDist = localPositionRef.current.distanceTo(playerTarget);
             if (pDist > 0.08) {
               const pDir = new THREE.Vector2(playerTarget.x - localPositionRef.current.x, playerTarget.y - localPositionRef.current.y).normalize();
-              localPositionRef.current.x += pDir.x * MOVE_SPEED * 0.15 * delta;
-              localPositionRef.current.y += pDir.y * MOVE_SPEED * 0.15 * delta;
+              localPositionRef.current.x += pDir.x * MOVE_SPEED * 0.29 * delta;
+              localPositionRef.current.y += pDir.y * MOVE_SPEED * 0.29 * delta;
               yawRef.current = Math.atan2(pDir.x, pDir.y); // face walk direction
               if (localRobotRef.current) {
                 localRobotRef.current.root.position.set(localPositionRef.current.x, localPositionRef.current.y, 0.28);
@@ -4625,7 +5003,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             );
             const wlAbsX = Math.abs(wlDir.x), wlAbsY = Math.abs(wlDir.y);
             if (wlAbsX > 0.08 || wlAbsY > 0.08) {
-              const wlStep = MOVE_SPEED * 0.15 * delta;
+              const wlStep = MOVE_SPEED * 0.29 * delta;
               if (wlAbsY > 0.08) {
                 const sy = Math.sign(wlDir.y);
                 localPositionRef.current.y += sy * Math.min(wlStep, wlAbsY);
@@ -4668,8 +5046,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   slTgt.x - aptSparkyCS.root.position.x,
                   slTgt.y - aptSparkyCS.root.position.y
                 ).normalize();
-                aptSparkyCS.root.position.x += slDir.x * MOVE_SPEED * 0.15 * delta;
-                aptSparkyCS.root.position.y += slDir.y * MOVE_SPEED * 0.15 * delta;
+                aptSparkyCS.root.position.x += slDir.x * MOVE_SPEED * 0.29 * delta;
+                aptSparkyCS.root.position.y += slDir.y * MOVE_SPEED * 0.29 * delta;
                 const slFacing = -Math.atan2(slDir.x, slDir.y);
                 aptSparkyFacingRef.current = slFacing;
                 const slQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), slFacing);
@@ -4818,6 +5196,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (phase === 'version-coding') {
             aptCutsceneTimerRef.current += delta;
             const vcElapsed = aptCutsceneTimerRef.current;
+            if (scrapRobotRef.current && vcElapsed < 0.05) {
+              scrapRobotRef.current.root.position.set(-2.6, 1.2, 0.24);
+              scrapRobotRef.current.root.rotation.x = Math.PI / 2;
+              scrapRobotRef.current.root.rotation.z = 0.08;
+            }
             if (vcElapsed > 0.5 && !versionCodingShownRef.current) {
               versionCodingShownRef.current = true;
               setLaptopMode('version');
@@ -5027,18 +5410,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         } else if (installBatteryPhaseRef.current && aptSparky) {
           const ibPhase = installBatteryPhaseRef.current;
           if (ibPhase === 'walk-to-scrap') {
-            const target = new THREE.Vector2(-2.3, 1.2);
-            const dist = aptSparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
-            if (dist > 0.15) {
-              const dir = new THREE.Vector2(target.x - aptSparky.root.position.x, target.y - aptSparky.root.position.y).normalize();
-              aptSparky.root.position.x += dir.x * MOVE_SPEED * 0.7 * delta;
-              aptSparky.root.position.y += dir.y * MOVE_SPEED * 0.7 * delta;
-              setSparkyDlgFull('Sparky walks to Scrap with the battery...');
-              setShowSparkyDlg(true);
-            } else {
-              installBatteryPhaseRef.current = 'open-chest';
-              installBatteryTimerRef.current = 0;
-            }
+            // Skip walk — Sparky is already positioned near Scrap from the intro cutscene
+            installBatteryPhaseRef.current = 'open-chest';
+            installBatteryTimerRef.current = 0;
           } else if (ibPhase === 'open-chest') {
             installBatteryTimerRef.current += delta;
             if (scrapRobotRef.current) {
@@ -5082,8 +5456,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (ibPhase === 'done') {
             installBatteryPhaseRef.current = null;
             batteryInstalledRef.current = true;
+            cinemCamActiveRef.current = false;
+            setShowSparkyDlg(false);
             const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
             updateBackpack(newBackpack);
+            apiSync({ batteryInstalled: true });
             if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
               setHeldSlotIndex(null);
               heldSlotIndexRef.current = null;
@@ -5097,8 +5474,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const dist = aptPos.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
             if (dist > 0.15) {
               const dir = new THREE.Vector2(target.x - aptPos.x, target.y - aptPos.y).normalize();
-              aptPos.x += dir.x * MOVE_SPEED * 0.7 * delta;
-              aptPos.y += dir.y * MOVE_SPEED * 0.7 * delta;
+              aptPos.x += dir.x * MOVE_SPEED * 1.36 * delta;
+              aptPos.y += dir.y * MOVE_SPEED * 1.36 * delta;
             } else {
               installBatteryPhaseRef.current = 'open-chest';
               installBatteryTimerRef.current = 0;
@@ -5135,8 +5512,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const dist = aptSparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
             if (dist > 0.15) {
               const dir = new THREE.Vector2(target.x - aptSparky.root.position.x, target.y - aptSparky.root.position.y).normalize();
-              aptSparky.root.position.x += dir.x * MOVE_SPEED * 0.7 * delta;
-              aptSparky.root.position.y += dir.y * MOVE_SPEED * 0.7 * delta;
+              aptSparky.root.position.x += dir.x * MOVE_SPEED * 1.36 * delta;
+              aptSparky.root.position.y += dir.y * MOVE_SPEED * 1.36 * delta;
               setSparkyDlgFull(`${PARTS_CATALOG.find(p => p.id === sparkyInstallPartIdRef.current)?.name} — Sparky walks to the workbench...`);
               setShowSparkyDlg(true);
             } else {
@@ -5169,8 +5546,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             aptSparky.root.rotation.z *= 0.9;
             if (dist > 0.15) {
               const dir = new THREE.Vector2(homePos.x - aptSparky.root.position.x, homePos.y - aptSparky.root.position.y).normalize();
-              aptSparky.root.position.x += dir.x * MOVE_SPEED * 0.7 * delta;
-              aptSparky.root.position.y += dir.y * MOVE_SPEED * 0.7 * delta;
+              aptSparky.root.position.x += dir.x * MOVE_SPEED * 1.36 * delta;
+              aptSparky.root.position.y += dir.y * MOVE_SPEED * 1.36 * delta;
             } else {
               sparkyInstallPhaseRef.current = 'done';
             }
@@ -5227,7 +5604,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         let closestCandidate: CustomerNpc | null = null;
         if (!currentCustomerIdRef.current) {
           for (const npc of workshopCustomersRef.current) {
-            if (npc.stage !== 'browsing' && npc.stage !== 'walking-to-browse') continue;
+            if (npc.stage !== 'waiting' || npc.queueIndex !== 0) continue;
             const distance = npc.position.distanceTo(localPositionRef.current);
             if (distance > CUSTOMER_TALK_DISTANCE) continue;
             if (!closestCandidate || distance < closestCandidate.position.distanceTo(localPositionRef.current)) {
@@ -5236,9 +5613,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
         }
 
-        // Show marker on the closest interactable customer (browsing or walking)
+        // Show marker on the front-of-queue customer (persistent when earning money)
         for (const npc of workshopCustomersRef.current) {
-          const shouldShow = npc === closestCandidate;
+          const shouldShow = npc === closestCandidate || (
+            npc.stage === 'waiting' && npc.queueIndex === 0 &&
+            (gameStore.get('money') ?? 0) < 10 &&
+            !(gameStore.get('backpack') as ScrapPartId[]).includes('battery')
+          );
           if (npc.visual.marker && npc.visual.marker.visible !== shouldShow) {
             npc.visual.marker.visible = shouldShow;
           }
@@ -5250,6 +5631,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setInteractionPromptName(closestCandidate ? closestCandidate.request.customerName : null);
         }
 
+        // Rafiq interaction prompt override (takes priority over customer)
+        if (!rafiqDlgOpenRef.current) {
+          const distToRafiq = Math.hypot(localPositionRef.current.x - ROOM_OWNER_POS.x, localPositionRef.current.y - ROOM_OWNER_POS.y);
+          if (distToRafiq < 1.8) {
+            if (interactionPromptName !== 'Rafiq') setInteractionPromptName('Rafiq');
+            interactionCandidateIdRef.current = '__rafiq__';
+          } else if (interactionCandidateIdRef.current === '__rafiq__' && !closestCandidate) {
+            interactionCandidateIdRef.current = null;
+            setInteractionPromptName(null);
+          }
+        }
+
         // Rafiq interaction — "Who are you?", letter reception, or workshop intro
         const distToRafiq = Math.hypot(localPositionRef.current.x - ROOM_OWNER_POS.x, localPositionRef.current.y - ROOM_OWNER_POS.y);
         if (!rafiqDlgOpenRef.current && interactionRequestedRef.current && distToRafiq < 1.8) {
@@ -5257,6 +5650,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const bp = gameStore.get('backpack');
           if (!cutsceneDoneRef.current) {
             // Pre-cutscene: Rafiq doesn't know you
+            setWhoStep(0);
             setShowWhoDlg(true);
           } else if (bp.includes('letter' as ScrapPartId)) {
             // Rafiq meet dialog — "Who are you?" → letter consumption at step 0→1
@@ -5283,7 +5677,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setActiveCustomer(nextRequest);
           lastWorkshopRequestSigRef.current = getWorkshopRequestSignature(nextRequest);
           setWorkshopOutput(
-            `${nextRequest.customerName}: Here is my request. Do the code, then lead me to the register for $2.`
+            `${nextRequest.customerName}: Here is my request.`
           );
           interactionCandidateIdRef.current = null;
           setInteractionPromptName(null);
@@ -5316,28 +5710,55 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (inWorkshopRoomRef.current) {
 
         workshopCustomersRef.current = workshopCustomersRef.current.filter((npc) => {
-          if (npc.stage === 'follow-to-counter') {
-            npc.target.copy(ROOM_COUNTER_POS);
-          } else if (npc.stage === 'walking-to-browse') {
-            npc.target.copy(npc.browseSpot);
-            // Force to browsing if stuck for > 8s (blocked by obstacles/other customers)
-            if ((npc as any).startedAtMs && performance.now() - (npc as any).startedAtMs > 8000) {
-              npc.stage = 'browsing';
-              npc.target.copy(npc.position);
-            }
-          } else if (npc.stage === 'browsing' || npc.stage === 'awaiting-code') {
+          if (npc.stage === 'waiting' || npc.stage === 'awaiting-code') {
             npc.target.copy(npc.position);
           } else if (npc.stage === 'leaving') {
-            npc.target.copy(ROOM_CUSTOMER_EXIT_POS);
+            if (npc.waypoints && npc.wpIndex !== undefined && npc.wpIndex < npc.waypoints.length) {
+              npc.target.copy(npc.waypoints[npc.wpIndex]);
+            } else {
+              npc.target.copy(ROOM_CUSTOMER_EXIT_POS);
+            }
+          } else if (npc.stage === 'walking-to-queue') {
+            if (npc.waypoints && npc.wpIndex !== undefined && npc.wpIndex < npc.waypoints.length) {
+              npc.target.copy(npc.waypoints[npc.wpIndex]);
+            } else {
+              npc.target.copy(CUSTOMER_QUEUE_POSITIONS[npc.queueIndex]);
+            }
           }
-          if (npc.stage !== 'browsing' && npc.stage !== 'awaiting-code' && npc.visual.marker && npc.visual.marker.visible) {
+          if (npc.stage !== 'waiting' && npc.visual.marker && npc.visual.marker.visible) {
             npc.visual.marker.visible = false;
+          }
+
+          if (npc.stage === 'walking-to-queue' && (npc as any).startedAtMs && performance.now() - (npc as any).startedAtMs > 8000) {
+            npc.stage = 'waiting';
           }
 
           const toTarget = npc.target.clone().sub(npc.position);
           const dist = toTarget.length();
           if (dist < 0.12) {
-            if (npc.stage === 'leaving') {
+            if (npc.waypoints && npc.wpIndex !== undefined && npc.wpIndex < npc.waypoints.length) {
+              npc.wpIndex++;
+              if (npc.wpIndex >= npc.waypoints.length) {
+                npc.waypoints = undefined;
+                if (npc.stage === 'leaving') {
+                  if (roomCustomerGroupRef.current) {
+                    roomCustomerGroupRef.current.remove(npc.visual.root);
+                  }
+                  disposeObject(npc.visual.root);
+                  if (currentCustomerIdRef.current === npc.id) {
+                    currentCustomerIdRef.current = null;
+                    setActiveCustomer(null);
+                    bonusTimerRef.current = null;
+                  }
+                  return false;
+                }
+                if (npc.stage === 'walking-to-queue') {
+                  npc.stage = 'waiting';
+                }
+              } else {
+                npc.target.copy(npc.waypoints[npc.wpIndex]);
+              }
+            } else if (npc.stage === 'leaving') {
               if (roomCustomerGroupRef.current) {
                 roomCustomerGroupRef.current.remove(npc.visual.root);
               }
@@ -5345,13 +5766,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (currentCustomerIdRef.current === npc.id) {
                 currentCustomerIdRef.current = null;
                 setActiveCustomer(null);
-                lockedBonusRef.current = 0;
                 bonusTimerRef.current = null;
               }
               return false;
             }
-            if (npc.stage === 'walking-to-browse') {
-              npc.stage = 'browsing';
+            if (npc.stage === 'walking-to-queue') {
+              npc.stage = 'waiting';
             }
           } else {
             const step = Math.min(dist, npc.speed * delta);
@@ -5359,7 +5779,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const candidate = npc.position.clone().add(stepVector);
             const blockCustomer = (p: THREE.Vector2) =>
               workshopCustomersRef.current.some(n => n.id !== npc.id && n.stage !== 'leaving' && (
-                Math.hypot(p.x - n.position.x, p.y - n.position.y) < 0.28
+                Math.hypot(p.x - n.position.x, p.y - n.position.y) < 0.18
               ));
             if (!collidesWithAny(candidate, roomObstacleHitboxesRef.current) && !blockCustomer(candidate)) {
               npc.position.copy(candidate);
@@ -5374,41 +5794,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           }
 
-          if (
-            npc.stage === 'follow-to-counter' &&
-            localPositionRef.current.distanceTo(ROOM_COUNTER_POS) < REGISTER_ZONE_RADIUS &&
-            npc.position.distanceTo(ROOM_COUNTER_POS) < REGISTER_NPC_RADIUS
-          ) {
-            npc.stage = 'leaving';
-            npc.target.copy(ROOM_CUSTOMER_EXIT_POS);
-            const bonus = lockedBonusRef.current;
-            lockedBonusRef.current = 0;
-            bonusTimerRef.current = null;
-            const newMoney = gameStore.get('money') + 2 + bonus;
-            updateMoney(newMoney);
-            playHappyChime();
-            const billCount = Math.min(7, 2 + bonus);
-            setMoneyAnim({active: true, bills: billCount, hits: 0, total: 2 + bonus});
-            const bonusText = bonus > 0 ? ` (+$${bonus} speed bonus!)` : '';
-            setWorkshopOutput(`✅ ${npc.request.customerName}: "Thank you!" You earned $2${bonusText}.`);
-            if (currentCustomerIdRef.current === npc.id) {
-              currentCustomerIdRef.current = null;
-              setActiveCustomer(null);
-            }
+          const noRotationStages = ['waiting', 'awaiting-code'];
+          const moving = dist > 0.06 && !noRotationStages.includes(npc.stage);
+          if (moving) {
+            npc.visual.root.rotation.z = -Math.atan2(toTarget.x, toTarget.y);
           }
-
-          const moving = dist > 0.06 && npc.stage !== 'browsing' && npc.stage !== 'awaiting-code';
-          const sway = moving ? Math.sin(worldTime * 8 + npc.position.x * 0.5) * 0.05 : 0;
-          if (npc.stage === 'browsing' || npc.stage === 'awaiting-code') {
-            const petLook = npc.petLookTarget.clone().sub(npc.position);
-            const angle = Math.atan2(petLook.y, petLook.x) - Math.PI / 2;
-            const clamped = Math.max(-0.6, Math.min(0.6, angle));
-            npc.visual.root.rotation.z += (clamped - npc.visual.root.rotation.z) * 0.25;
-          } else {
-            npc.visual.root.rotation.z += (sway - npc.visual.root.rotation.z) * 0.25;
-          }
+          const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3 * (moving ? 1 : 0);
+          if (npc.visual.leftLegPivot) npc.visual.leftLegPivot.rotation.x = walkSwing;
+          if (npc.visual.rightLegPivot) npc.visual.rightLegPivot.rotation.x = -walkSwing;
+          const bob = moving ? Math.sin(worldTime * WALK_BOB_SPEED) * 0.03 : 0;
           npc.visual.nameSprite.position.y = 1.15 + Math.sin(worldTime * 2 + npc.position.y) * 0.03;
-          npc.visual.root.position.set(npc.position.x, npc.position.y, 0.24);
+          npc.visual.root.position.set(npc.position.x, npc.position.y, 0.26 + bob);
           return true;
         });
       }
@@ -5421,6 +5817,26 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (frac <= 0) bonusTimerRef.current = null;
       } else if (bonusFraction !== 0) {
         setBonusFraction(0);
+      }
+
+      // Animate confetti particles
+      const confettiParticles = confettiParticlesRef.current;
+      for (let i = confettiParticles.length - 1; i >= 0; i--) {
+        const cp = confettiParticles[i];
+        cp.life -= delta * 1.2;
+        cp.mesh.position.x += cp.vx * delta;
+        cp.mesh.position.y += cp.vy * delta;
+        cp.mesh.position.z += cp.vz * delta;
+        cp.vz -= 3.5 * delta;
+        cp.mesh.rotation.z += delta * 8;
+        const mat = cp.mesh.material as THREE.MeshBasicMaterial;
+        mat.opacity = Math.max(0, cp.life);
+        if (cp.life <= 0) {
+          cp.mesh.geometry.dispose();
+          mat.dispose();
+          scene.remove(cp.mesh);
+          confettiParticles.splice(i, 1);
+        }
       }
 
       const currentRoom = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : inShopRoomRef.current ? 'shop' : inApartmentRoomRef.current ? 'apartment' : 'outside';
@@ -5483,7 +5899,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (cinemCamActiveRef.current) {
           const phase = aptCutscenePhaseRef.current;
           const csSparky = apartmentSparkyRef.current;
-          if (csSparky) {
+          if (installBatteryPhaseRef.current) {
+            camera.position.lerp(new THREE.Vector3(-2.7, 0.8, 1.5), 0.06);
+            camera.lookAt(-2.6, 1.2, 0.3);
+          } else if (csSparky) {
             const sp = csSparky.root.position;
             if (phase === 'fetch-laptop') {
               camera.position.set(-3.0, 2.5, 1.5);
@@ -5561,11 +5980,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               camera.lookAt(sp.x, sp.y, 0.3);
             }
           }
-        } else if (rafiqDlgOpenRef.current && inside && room === 'workshop') {
-          // Rafiq meet cutscene — side view showing player walking to Rafiq
-          const rafiqFocus = new THREE.Vector3(4.5, 0, 1.2);
-          camera.position.lerp(rafiqFocus, 0.04);
-          camera.lookAt(1.0, -1.0, 0.3);
+        } else if ((rafiqWalkPhaseRef.current !== 'idle' || rafiqDlgOpenRef.current) && inside && room === 'workshop') {
+          // Rafiq meet cutscene — camera phases
+          if (rafiqWalkPhaseRef.current === 'walking') {
+            // Player walks upward (+Y). Camera behind (lower Y), looks ahead toward Rafiq.
+            const camTarget = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y - 1.5, 1.8);
+            camera.position.lerp(camTarget, 0.04);
+            camera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 0.5, 0.3);
+          } else {
+            // Centered two-shot: characters centered on screen
+            const midX = (localPositionRef.current.x + ROOM_OWNER_POS.x) / 2;
+            const midY = (localPositionRef.current.y + ROOM_OWNER_POS.y) / 2;
+            camera.position.lerp(new THREE.Vector3(midX, midY + 0.8, 1.6), 0.04);
+            camera.lookAt(midX, midY, 0.3);
+          }
         } else {
         const zoom = computeCameraZoom(
           px, py,
@@ -5751,7 +6179,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const syncMarkers = useCallback(() => {
     // Hide all markers during cutscenes/dialogs
-    if (cinemCamActiveRef.current || rafiqDlgOpenRef.current) {
+    if (cinemCamActiveRef.current || rafiqDlgOpenRef.current || rafiqGreetingDlgOpenRef.current || rafiqWalkPhaseRef.current !== 'idle') {
       if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
       if (workshopDoorMarkerRef.current) workshopDoorMarkerRef.current.visible = false;
       if (shopDoorMarkerRef.current) shopDoorMarkerRef.current.visible = false;
@@ -5956,6 +6384,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       disposeObject(npc.visual.root);
     });
     workshopCustomersRef.current = [];
+    // Clean up confetti particles
+    const scene = sceneRef.current;
+    for (const cp of confettiParticlesRef.current) {
+      cp.mesh.geometry.dispose();
+      (cp.mesh.material as THREE.MeshBasicMaterial).dispose();
+      if (scene) scene.remove(cp.mesh);
+    }
+    confettiParticlesRef.current = [];
     currentCustomerIdRef.current = null;
     interactionCandidateIdRef.current = null;
     interactionRequestedRef.current = false;
@@ -5964,7 +6400,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setInteractionPromptName(null);
     setWorkshopCode('');
     setWorkshopOutput('');
-    const outsideDoor = new THREE.Vector2(-7, -6);
+    const outsideDoor = new THREE.Vector2(-6, -10.0);
     localPositionRef.current.copy(outsideDoor);
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.24);
@@ -6110,9 +6546,32 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
   };
 
+  const spawnConfetti = (pos: THREE.Vector2) => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    const colors = [0xfacc15, 0xef4444, 0x3b82f6, 0x22c55e, 0xa855f7, 0xec4899, 0xf97316];
+    const particles = confettiParticlesRef.current;
+    for (let i = 0; i < 50; i++) {
+      const p = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.06, 0.04),
+        new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * colors.length)], transparent: true, opacity: 1, side: THREE.DoubleSide })
+      );
+      p.position.set(pos.x + (Math.random() - 0.5) * 0.5, pos.y + (Math.random() - 0.5) * 0.5, 0.5 + Math.random() * 0.3);
+      p.rotation.z = Math.random() * Math.PI * 2;
+      scene.add(p);
+      particles.push({
+        mesh: p,
+        vx: (Math.random() - 0.5) * 2.5,
+        vy: (Math.random() - 0.5) * 2.5,
+        vz: Math.random() * 2 + 1,
+        life: 1.0,
+      });
+    }
+  };
+
   const runWorkshopCode = () => {
     if (!activeCustomer) {
-      setWorkshopOutput('Get close to a customer and press Space to interact first.');
+      setWorkshopOutput('Get close to the front customer and press Space to interact first.');
       return;
     }
 
@@ -6130,26 +6589,62 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       return;
     }
 
+    const bonusNow = bonusTimerRef.current !== null
+      ? Math.max(0, Math.round(5 * (1 - (performance.now() - bonusTimerRef.current) / 1000 / BONUS_DURATION)))
+      : 0;
+    bonusTimerRef.current = null;
+    const totalEarned = 2 + bonusNow;
+    const newMoney = gameStore.get('money') + totalEarned;
+    gameStore.set('money', newMoney);
+    apiSync({ money: newMoney });
+    lastConfirmedMoneyRef.current = newMoney;
+    playHappyChime();
+    const billCount = Math.min(7, totalEarned);
+    setMoneyAnim({active: true, bills: billCount, hits: 0, total: totalEarned});
+
+    // Spawn confetti at customer position
+    spawnConfetti(selectedNpc.position);
+
     if (!firstTransactionDoneRef.current) {
       firstTransactionDoneRef.current = true;
       setFirstTransactionDone(true);
       try { localStorage.setItem('rb_first_tx_done', '1'); } catch {}
-      setShowRegisterModal(true);
+      setShowFirstSaleModal(true);
     }
-    const bonusNow = bonusTimerRef.current !== null
-      ? Math.max(0, Math.round(5 * (1 - (performance.now() - bonusTimerRef.current) / 1000 / BONUS_DURATION)))
-      : 0;
-    const lengthBonus = sparkyQuestStageRef.current === 'intro-done' && workshopCode.includes('.length') ? 2 : 0;
-    lockedBonusRef.current = bonusNow + lengthBonus;
-    bonusTimerRef.current = null;
-    const lenText = lengthBonus > 0 ? ` +$${lengthBonus} .length() bonus` : '';
-    setWorkshopOutput(`✅ Nice. ${activeCustomer.customerName} is walking to the register now — meet them there for $2${bonusNow > 0 ? ` (+$${bonusNow} speed bonus!)` : ''}${lenText}.`);
+
+    const bonusText = bonusNow > 0 ? ` (+$${bonusNow} speed bonus!)` : '';
+    setWorkshopOutput(`✅ ${activeCustomer.customerName}: "Thank you!" You earned $${totalEarned}${bonusText}.`);
     setWorkshopCode('');
-    setActiveCustomer(null);
     (document.activeElement as HTMLElement)?.blur();
-    workshopCustomersRef.current = workshopCustomersRef.current.map((npc) =>
-      npc.id === selectedId ? { ...npc, stage: 'follow-to-counter' } : npc
-    );
+
+    // Set customer to leaving and shift queue
+    const leavingIdx = selectedNpc.queueIndex;
+    selectedNpc.stage = 'leaving';
+    const frontY = CUSTOMER_QUEUE_POSITIONS[leavingIdx].y;
+    const exitWaypoints = [
+      new THREE.Vector2(0, frontY),
+      new THREE.Vector2(0, -5.5),
+    ];
+    selectedNpc.waypoints = exitWaypoints;
+    selectedNpc.wpIndex = 0;
+    selectedNpc.target.copy(exitWaypoints[0]);
+    currentCustomerIdRef.current = null;
+    setActiveCustomer(null);
+
+    // Shift queue: customers behind move forward along the line
+    for (const npc of workshopCustomersRef.current) {
+      if (npc.stage !== 'leaving' && npc.queueIndex > leavingIdx) {
+        npc.queueIndex--;
+        npc.target.copy(CUSTOMER_QUEUE_POSITIONS[npc.queueIndex]);
+        if (npc.stage === 'waiting') {
+          npc.stage = 'walking-to-queue';
+          (npc as any).startedAtMs = performance.now();
+        }
+      }
+    }
+
+    // Spawn replacement at back
+    spawnCustomerRef.current?.();
   };
 
   const finishWorkshopIntro = () => {
@@ -6246,42 +6741,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      {inWorkshopRoom && !workshopIntroSeen && profileLoadedRef.current && (() => {
-        const cur = WORKSHOP_INTRO_STEPS[workshopIntroStep] ?? WORKSHOP_INTRO_STEPS[0];
-        return (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
-          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
-          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
-            style={{ height: '30vh' }}>
-            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
-              <div className="flex items-center gap-2 mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 20c0-4 3.6-8 8-8s8 4 8 8" />
-                </svg>
-                <span className="text-amber-300 font-bold text-xl tracking-wide">{cur.speaker}</span>
-              </div>
-              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
-                {workshopIntroText}<span className="animate-pulse text-amber-400/80">▌</span>
-              </p>
-              <div className="flex justify-end mt-4">
-                <button
-                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
-                  onClick={nextWorkshopIntroStep}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="14 7 9 12 14 17" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                    <line x1="3" y1="12" x2="5" y2="12" />
-                  </svg>
-                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        );
-      })()}
+      <TFB show={inWorkshopRoom && !workshopIntroSeen && profileLoadedRef.current}
+        step={workshopIntroStep} steps={WORKSHOP_INTRO_STEPS} text={workshopIntroText}
+        icon="person" onEnter={nextWorkshopIntroStep}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
 
       <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} showSparkyExamples={() => setShowSparkyExamples(true)} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />
 
@@ -6371,39 +6835,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      {showSparkyDlg && (() => {
-        return (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
-          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
-          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
-            style={{ height: '30vh' }}>
-            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="w-8 h-8 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 20c0-4 3.6-8 8-8s8 4 8 8" />
-                </svg>
-                <span className="text-amber-300 font-bold text-xl tracking-wide">Sparky</span>
-              </div>
-              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem] whitespace-pre-line">
-                {sparkyDlgText}<span className="animate-pulse text-amber-400/80">▌</span>
-              </p>
-              <div className="flex justify-end mt-4">
-                <button className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 transition-colors active:scale-95"
-                  onClick={() => setShowSparkyDlg(false)}>
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="14 7 9 12 14 17" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                    <line x1="3" y1="12" x2="5" y2="12" />
-                  </svg>
-                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        );
-      })()}
+      <TFB show={showSparkyDlg} step={0} steps={[{ speaker: 'Sparky', text: sparkyDlgFull }]} text={sparkyDlgText}
+        icon="person" onEnter={() => setShowSparkyDlg(false)}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
 
       {/* Speech bubble + choices above Sparky (projected via ref) */}
       <div
@@ -6565,20 +7000,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           </div>
         </div>
       )}
-      {showRegisterModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => setShowRegisterModal(false)}>
+      {showFirstSaleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => setShowFirstSaleModal(false)}>
           <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6 text-center">
-            <div className="text-5xl mb-4">🪙</div>
-            <h2 className="text-2xl font-bold text-amber-300 mb-2">Go to the register to make $2</h2>
-            <p className="text-slate-300 mb-6">Lead the customer to the counter to collect your payment!</p>
-            <button className="rounded-lg bg-amber-500 px-8 py-3 text-lg font-semibold text-slate-900 hover:bg-amber-400" onClick={() => setShowRegisterModal(false)}>Got it!</button>
+            <div className="text-5xl mb-4">🎉</div>
+            <h2 className="text-2xl font-bold text-amber-300 mb-2">First sale!</h2>
+            <p className="text-slate-300 mb-2">You earned money by writing code. Keep going to buy parts for Scrap!</p>
+            <p className="text-amber-400 text-sm mb-6">💡 Bonus for speed — faster code = more $!</p>
+            <button className="rounded-lg bg-amber-500 px-8 py-3 text-lg font-semibold text-slate-900 hover:bg-amber-400" onClick={() => setShowFirstSaleModal(false)}>Awesome!</button>
           </div>
         </div>
       )}
 
       {showControlsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4" onClick={() => setShowControlsModal(false)}>
-          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-cyan-300/50 shadow-2xl p-8 text-slate-100">
+          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-cyan-300/50 shadow-2xl p-8 text-slate-100" onClick={e => e.stopPropagation()}>
             <h2 className="text-xl font-bold text-cyan-300 mb-6 text-center">How to play</h2>
             <div className="flex justify-center gap-8 mb-6">
               <div className="flex flex-col items-center gap-1">
@@ -6612,7 +7048,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               <p className="text-slate-200 text-sm">Move your mouse to look around</p>
             </div>
             <div className="flex justify-center">
-              <button className="rounded-lg bg-cyan-500 px-8 py-3 text-lg font-semibold text-slate-900 hover:bg-cyan-400" onClick={() => {
+              <button autoFocus className="rounded-lg bg-cyan-500 px-8 py-3 text-lg font-semibold text-slate-900 hover:bg-cyan-400" onClick={() => {
                 setShowControlsModal(false);
               }}>Got it!</button>
             </div>
@@ -6620,382 +7056,131 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      {showBatteryDlg && (() => {
-        const cur = BATTERY_DLG_STEPS[batteryDlgStep] ?? BATTERY_DLG_STEPS[0];
-        return (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
-          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
-          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
-            style={{ height: '30vh' }}>
-            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
-              <div className="flex items-center gap-2 mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
-                  <rect x="3" y="11" width="18" height="10" rx="2" />
-                  <circle cx="12" cy="5" r="2" />
-                  <path d="M12 7v4" />
-                  <line x1="8" y1="16" x2="8" y2="16" />
-                  <line x1="16" y1="16" x2="16" y2="16" />
-                </svg>
-                <span className="text-amber-300 font-bold text-xl tracking-wide">{cur.speaker}</span>
-              </div>
-              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
-                {batteryDlgText}<span className="animate-pulse text-amber-400/80">▌</span>
-              </p>
-              <div className="flex justify-end mt-4">
-                <button
-                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
-                  onClick={() => {
-                    const nextStep = batteryDlgStep + 1;
-                    if (nextStep < BATTERY_DLG_STEPS.length) {
-                      setBatteryDlgStep(nextStep);
-                    } else {
-                      const bp = gameStore.get('backpack');
-                      if (!bp.includes('letter' as ScrapPartId)) {
-                        const newBackpack: ScrapPartId[] = [...bp, 'letter'];
-                        gameStore.set('backpack', newBackpack);
-                        apiSync({ backpack: newBackpack });
-                        lastConfirmedBackpackRef.current = newBackpack;
-                      }
-                      setShowBatteryDlg(false);
-                      aptCutscenePhaseRef.current = 'done';
-                      aptCutsceneTimerRef.current = 0;
-                    }
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="14 7 9 12 14 17" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                    <line x1="3" y1="12" x2="5" y2="12" />
-                  </svg>
-                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        );
-      })()}
+      <TFB show={showBatteryDlg} step={batteryDlgStep} steps={BATTERY_DLG_STEPS} text={batteryDlgText}
+        icon="robot" onEnter={() => {
+          stopTts();
+          const next = batteryDlgStep + 1;
+          if (next < BATTERY_DLG_STEPS.length) { setBatteryDlgStep(next); } else {
+            const bp = gameStore.get('backpack');
+            if (!bp.includes('letter' as ScrapPartId)) {
+              const newBackpack: ScrapPartId[] = [...bp, 'letter']; gameStore.set('backpack', newBackpack);
+              apiSync({ backpack: newBackpack }); lastConfirmedBackpackRef.current = newBackpack;
+            }
+            setShowBatteryDlg(false); aptCutscenePhaseRef.current = 'done'; aptCutsceneTimerRef.current = 0;
+          }
+        }}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
 
-      {showWhoDlg && (() => {
-        return (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
-          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
-          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
-            style={{ height: '30vh' }}>
-            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
-              <div className="flex items-center gap-2 mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 20c0-4 3.6-8 8-8s8 4 8 8" />
-                </svg>
-                <span className="text-amber-300 font-bold text-xl tracking-wide">Rafiq</span>
-              </div>
-              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
-                {whoText}<span className="animate-pulse text-amber-400/80">▌</span>
-              </p>
-              <div className="flex justify-end mt-4">
-                <button
-                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
-                  onClick={() => setShowWhoDlg(false)}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="14 7 9 12 14 17" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                    <line x1="3" y1="12" x2="5" y2="12" />
-                  </svg>
-                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        );
-      })()}
+      <TFB show={showWhoDlg} step={whoStep} steps={RAFIQ_GREET_STEPS} text={whoText}
+        icon="person" onEnter={() => {
+          stopTts(); const next = whoStep + 1;
+          if (next < RAFIQ_GREET_STEPS.length) { setWhoStep(next); } else {
+            setShowWhoDlg(false);
+            if (rafiqWalkPhaseRef.current === 'greeting') {
+              rafiqWalkPhaseRef.current = 'handing-letter'; rafiqCutsceneTimerRef.current = 0; rafiqGreetingDlgOpenRef.current = false;
+            }
+          }
+        }}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
 
-      {showRafiqLetterDlg && (() => {
-        const cur = RAFIQ_MEET_STEPS[rafiqLetterStep] ?? RAFIQ_MEET_STEPS[0];
-        return (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
-          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
-          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
-            style={{ height: '30vh' }}>
-            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
-              <div className="flex items-center gap-2 mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 20c0-4 3.6-8 8-8s8 4 8 8" />
-                </svg>
-                <span className="text-amber-300 font-bold text-xl tracking-wide">{cur.speaker}</span>
-              </div>
-              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
-                {rafiqLetterText}<span className="animate-pulse text-amber-400/80">▌</span>
-              </p>
-              <div className="flex justify-end mt-4">
-                <button
-                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
-                  onClick={() => {
-                    const nextStep = rafiqLetterStep + 1;
-                    if (nextStep < RAFIQ_MEET_STEPS.length) {
-                      if (rafiqLetterStep === 0) consumeLetterInDialog();
-                      setRafiqLetterStep(nextStep);
-                    } else {
-                      setShowRafiqLetterDlg(false);
-                      reopenWorkshopIntro();
-                      rafiqWalkPhaseRef.current = 'idle';
-                      if (roomOwnerVisualRef.current) roomOwnerVisualRef.current.root.rotation.z = 0;
-                    }
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="14 7 9 12 14 17" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                    <line x1="3" y1="12" x2="5" y2="12" />
-                  </svg>
-                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        );
-      })()}
+      <TFB show={showRafiqLetterDlg} step={rafiqLetterStep} steps={RAFIQ_MEET_STEPS} text={rafiqLetterText}
+        icon="person" onEnter={() => {
+          stopTts(); const next = rafiqLetterStep + 1;
+          if (next < RAFIQ_MEET_STEPS.length) {
+            if (rafiqLetterStep === 0) consumeLetterInDialog(); setRafiqLetterStep(next);
+          } else {
+            setShowRafiqLetterDlg(false); rafiqWalkPhaseRef.current = 'idle';
+            workshopIntroSeenRef.current = true; setWorkshopIntroSeen(true);
+            fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
+            if (roomOwnerVisualRef.current) {
+              roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current);
+              if (roomOwnerVisualRef.current.rightArm) roomOwnerVisualRef.current.rightArm.rotation.z = -0.3;
+            }
+          }
+        }}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
 
-      {showElectrocuteDlg && (() => {
-        const cur = cutsceneDlgSteps[electrocuteStep] ?? cutsceneDlgSteps[0];
-        return (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
-          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
-          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
-            style={{ height: '30vh' }}>
-            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
-              <div className="flex items-center gap-2 mb-2">
-                {cur.speaker === 'Sparky' ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
-                    <rect x="3" y="11" width="18" height="10" rx="2" />
-                    <circle cx="12" cy="5" r="2" />
-                    <path d="M12 7v4" />
-                    <line x1="8" y1="16" x2="8" y2="16" />
-                    <line x1="16" y1="16" x2="16" y2="16" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
-                    <circle cx="12" cy="8" r="4" />
-                    <path d="M4 20c0-4 3.6-8 8-8s8 4 8 8" />
-                  </svg>
-                )}
-                <span className="text-amber-300 font-bold text-xl tracking-wide">{cur.speaker}</span>
-              </div>
-              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
-                {electrocuteText}<span className="animate-pulse text-amber-400/80">▌</span>
-              </p>
-              <div className="flex justify-end mt-4">
-                <button
-                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
-                  onClick={() => {
-                    const nextStep = electrocuteStep + 1;
-                    if (nextStep < cutsceneDlgSteps.length) {
-                      setElectrocuteStep(nextStep);
-                    } else {
-                      setShowElectrocuteDlg(false);
-                      electrocuteDlgShownRef.current = false;
-                      aptCutscenePhaseRef.current = 'walk-to-laptop';
-                      aptCutsceneTimerRef.current = 0;
-                    }
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="14 7 9 12 14 17" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                    <line x1="3" y1="12" x2="5" y2="12" />
-                  </svg>
-                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        );
-      })()}
+      <TFB show={showElectrocuteDlg} step={electrocuteStep} steps={cutsceneDlgSteps} text={electrocuteText}
+        icon="auto" onEnter={() => {
+          stopTts(); const next = electrocuteStep + 1;
+          if (next < cutsceneDlgSteps.length) { setElectrocuteStep(next); } else {
+            setShowElectrocuteDlg(false); electrocuteDlgShownRef.current = false;
+            aptCutscenePhaseRef.current = 'walk-to-laptop'; aptCutsceneTimerRef.current = 0;
+          }
+        }}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
 
-      {showBatteryInstallDlg && (() => {
-        const cur = BATTERY_INSTALL_DLG_STEPS[batteryInstallStep] ?? BATTERY_INSTALL_DLG_STEPS[0];
-        const isLast = batteryInstallStep >= BATTERY_INSTALL_DLG_STEPS.length - 1;
-        return (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
-          <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
-          <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
-            style={{ height: '30vh' }}>
-            <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
-              <div className="flex items-center gap-2 mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
-                  <rect x="3" y="11" width="18" height="10" rx="2" />
-                  <circle cx="12" cy="5" r="2" />
-                  <path d="M12 7v4" />
-                  <line x1="8" y1="16" x2="8" y2="16" />
-                  <line x1="16" y1="16" x2="16" y2="16" />
-                </svg>
-                <span className="text-amber-300 font-bold text-xl tracking-wide">{cur.speaker}</span>
-              </div>
-              <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
-                {batteryInstallText}<span className="animate-pulse text-amber-400/80">▌</span>
-              </p>
-              {isLast && (
-              <div className="flex justify-end mt-4">
-                <button
-                  className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
-                  onClick={() => {
-                    setShowBatteryInstallDlg(false);
-                    cinemCamActiveRef.current = false;
-                    installBatteryPhaseRef.current = null;
-                    batteryInstalledRef.current = true;
-                    const bp: ScrapPartId[] = gameStore.get('backpack').filter((id: string) => id !== 'battery');
-                    updateBackpack(bp);
-                    if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= bp.length || !bp.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
-                      setHeldSlotIndex(null);
-                      heldSlotIndexRef.current = null;
-                    }
-                    scrapFollowerEnabledRef.current = true;
-                    setScrapVisible(true);
-                    setShowScrapToggle(true);
-                    if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="14 7 9 12 14 17" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                    <line x1="3" y1="12" x2="5" y2="12" />
-                  </svg>
-                  <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
-                </button>
-              </div>
-              )}
-            </div>
-          </div>
-        </div>
-        );
-      })()}
+      <TFB show={showBatteryInstallDlg} step={batteryInstallStep} steps={BATTERY_INSTALL_DLG_STEPS} text={batteryInstallText}
+        icon="robot" hideEnter onEnter={() => {
+          stopTts();
+          const next = batteryInstallStep + 1;
+          if (next < BATTERY_INSTALL_DLG_STEPS.length) { setBatteryInstallStep(next); } else {
+            setShowBatteryInstallDlg(false); cinemCamActiveRef.current = false;
+            installBatteryPhaseRef.current = null; batteryInstalledRef.current = true;
+            const bp: ScrapPartId[] = gameStore.get('backpack').filter((id: string) => id !== 'battery');
+            updateBackpack(bp);
+            if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= bp.length || !bp.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
+              setHeldSlotIndex(null); heldSlotIndexRef.current = null;
+            }
+            scrapFollowerEnabledRef.current = true; setScrapVisible(true); setShowScrapToggle(true);
+            if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
+          }
+        }}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
 
-      {showStringDlg && (() => {
-        const cur = stringDlgSteps[stringDlgStep] ?? stringDlgSteps[0];
-        return (
-          <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
-            <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
-            <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
-              style={{ height: '30vh' }}>
-              <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
-                    <rect x="3" y="11" width="18" height="10" rx="2" />
-                    <circle cx="12" cy="5" r="2" />
-                    <path d="M12 7v4" />
-                    <line x1="8" y1="16" x2="8" y2="16" />
-                    <line x1="16" y1="16" x2="16" y2="16" />
-                  </svg>
-                  <span className="text-amber-300 font-bold text-xl tracking-wide">Sparky</span>
-                </div>
-                <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
-                  {stringDlgText.split(/(`[^`]+`)/).map((seg, i) =>
-                    seg.startsWith('`') && seg.endsWith('`')
-                      ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
-                      : seg
-                  )}<span className="animate-pulse text-amber-400/80">▌</span>
-                </p>
-                <div className="flex justify-end mt-4">
-                  <button
-                    className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
-                    onClick={() => {
-                      const nextStep = stringDlgStep + 1;
-                      if (nextStep < stringDlgSteps.length) {
-                        setStringDlgStep(nextStep);
-                      } else {
-                        setShowStringDlg(false);
-                        if (stringDlgIsHelpRef.current) {
-                          stringDlgIsHelpRef.current = false;
-                          setShowLaptopUI(true);
-                        } else {
-                          aptCutscenePhaseRef.current = 'laptop-ui';
-                          aptCutsceneTimerRef.current = 0;
-                        }
-                      }
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="14 7 9 12 14 17" />
-                      <line x1="21" y1="12" x2="9" y2="12" />
-                      <line x1="3" y1="12" x2="5" y2="12" />
-                    </svg>
-                    <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      <TFB show={showStringDlg} step={stringDlgStep} steps={stringDlgSteps} text={stringDlgText}
+        icon="robot" codeBlocks onEnter={() => {
+          stopTts(); const next = stringDlgStep + 1;
+          if (next < stringDlgSteps.length) { setStringDlgStep(next); } else {
+            setShowStringDlg(false);
+            if (stringDlgIsHelpRef.current) { stringDlgIsHelpRef.current = false; setShowLaptopUI(true); }
+            else { aptCutscenePhaseRef.current = 'laptop-ui'; aptCutsceneTimerRef.current = 0; }
+          }
+        }}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
 
-      {showDateDlg && (() => {
-        const steps = stringDlgIsHelpRef.current ? dateHelpSteps : dateDlgSteps;
-        const cur = steps[dateDlgStep] ?? steps[0];
-        return (
-          <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
-            <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
-            <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
-              style={{ height: '30vh' }}>
-              <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
-                    <rect x="3" y="11" width="18" height="10" rx="2" />
-                    <circle cx="12" cy="5" r="2" />
-                    <path d="M12 7v4" />
-                    <line x1="8" y1="16" x2="8" y2="16" />
-                    <line x1="16" y1="16" x2="16" y2="16" />
-                  </svg>
-                  <span className="text-amber-300 font-bold text-xl tracking-wide">Sparky</span>
-                </div>
-                <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
-                  {dateDlgText.split(/(`[^`]+`)/).map((seg, i) =>
-                    seg.startsWith('`') && seg.endsWith('`')
-                      ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
-                      : seg
-                  )}<span className="animate-pulse text-amber-400/80">▌</span>
-                </p>
-                <div className="flex justify-end mt-4">
-                  <button
-                    className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
-                    onClick={() => {
-                      const nextStep = dateDlgStep + 1;
-                      if (nextStep < steps.length) {
-                        setDateDlgStep(nextStep);
-                      } else {
-                        setShowDateDlg(false);
-                        if (stringDlgIsHelpRef.current) {
-                          stringDlgIsHelpRef.current = false;
-                          setShowLaptopUI(true);
-                        } else {
-                          dateCodingShownRef.current = false;
-                          aptCutscenePhaseRef.current = 'date-coding';
-                          aptCutsceneTimerRef.current = 0;
-                        }
-                      }
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="14 7 9 12 14 17" />
-                      <line x1="21" y1="12" x2="9" y2="12" />
-                      <line x1="3" y1="12" x2="5" y2="12" />
-                    </svg>
-                    <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      <TFB show={showDateDlg} step={dateDlgStep} steps={stringDlgIsHelpRef.current ? dateHelpSteps : dateDlgSteps} text={dateDlgText}
+        icon="robot" codeBlocks onEnter={() => {
+          stopTts(); const next = dateDlgStep + 1;
+          const steps = stringDlgIsHelpRef.current ? dateHelpSteps : dateDlgSteps;
+          if (next < steps.length) { setDateDlgStep(next); } else {
+            setShowDateDlg(false);
+            if (stringDlgIsHelpRef.current) { stringDlgIsHelpRef.current = false; setShowLaptopUI(true); }
+            else { dateCodingShownRef.current = false; aptCutscenePhaseRef.current = 'date-coding'; aptCutsceneTimerRef.current = 0; }
+          }
+        }}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
 
       {showVersionDlg && (() => {
         const steps = stringDlgIsHelpRef.current ? versionHelpSteps : versionDlgSteps;
         const cur = steps[versionDlgStep] ?? steps[0];
+        const ttsOn = ttsUtteranceRef.current !== null;
+        const ttsBody = (() => {
+          if (!ttsOn || ttsCharIndexRef.current === null) return versionDlgText.split(/(`[^`]+`)/g).map((seg, i) =>
+            seg.startsWith('`') && seg.endsWith('`')
+              ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
+              : seg
+          );
+          const bounds: Array<{ start: number; end: number }> = [];
+          const re = /\S+/g; let m;
+          while ((m = re.exec(cur.text)) !== null) bounds.push({ start: m.index, end: m.index + m[0].length });
+          const w = bounds.find(b => ttsCharIndexRef.current! >= b.start && ttsCharIndexRef.current! < b.end);
+          const txt = versionDlgText;
+          const wrap = (s: string, cls?: string) => s.split(/(`[^`]+`)/g).map((seg, i) =>
+            seg.startsWith('`') && seg.endsWith('`')
+              ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
+              : <span key={i} className={cls}>{seg}</span>
+          );
+          if (!w || w.start > txt.length) return wrap(txt);
+          return <>{wrap(txt.slice(0, w.start))}<span className="underline decoration-amber-400 decoration-2 underline-offset-4">{wrap(txt.slice(w.start, Math.min(w.end, txt.length)))}</span>{wrap(txt.slice(Math.min(w.end, txt.length)))}</>;
+        })();
         return (
           <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
             <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
@@ -7011,13 +7196,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                     <line x1="16" y1="16" x2="16" y2="16" />
                   </svg>
                   <span className="text-amber-300 font-bold text-xl tracking-wide">Sparky</span>
+                  <button onClick={() => onTtsToggle(cur.text)} className="ml-auto p-1.5 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ttsOn ? 'Stop' : 'Read aloud'}>
+                    {ttsOn ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                    )}
+                  </button>
                 </div>
                 <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
-                  {versionDlgText.split(/(`[^`]+`)/).map((seg, i) =>
-                    seg.startsWith('`') && seg.endsWith('`')
-                      ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
-                      : seg
-                  )}<span className="animate-pulse text-amber-400/80">▌</span>
+                  {ttsBody}<span className="animate-pulse text-amber-400/80">▌</span>
                 </p>
                 {!stringDlgIsHelpRef.current && versionDlgStep === 1 && (
                   <button
@@ -7031,6 +7219,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   <button
                     className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
                     onClick={() => {
+                      stopTts();
                       const nextStep = versionDlgStep + 1;
                       if (nextStep < steps.length) {
                         setVersionDlgStep(nextStep);
@@ -7061,65 +7250,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         );
       })()}
 
-      {showBootDlg && (() => {
-        const steps = stringDlgIsHelpRef.current ? bootHelpSteps : bootDlgSteps;
-        const cur = steps[bootDlgStep] ?? steps[0];
-        return (
-          <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
-            <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
-            <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
-              style={{ height: '30vh' }}>
-              <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
-                    <rect x="3" y="11" width="18" height="10" rx="2" />
-                    <circle cx="12" cy="5" r="2" />
-                    <path d="M12 7v4" />
-                    <line x1="8" y1="16" x2="8" y2="16" />
-                    <line x1="16" y1="16" x2="16" y2="16" />
-                  </svg>
-                  <span className="text-amber-300 font-bold text-xl tracking-wide">Sparky</span>
-                </div>
-                <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
-                  {bootDlgText.split(/(`[^`]+`)/).map((seg, i) =>
-                    seg.startsWith('`') && seg.endsWith('`')
-                      ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
-                      : seg
-                  )}<span className="animate-pulse text-amber-400/80">▌</span>
-                </p>
-                <div className="flex justify-end mt-4">
-                  <button
-                    className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
-                    onClick={() => {
-                      const nextStep = bootDlgStep + 1;
-                      if (nextStep < steps.length) {
-                        setBootDlgStep(nextStep);
-                      } else {
-                        setShowBootDlg(false);
-                        if (stringDlgIsHelpRef.current) {
-                          stringDlgIsHelpRef.current = false;
-                          setShowLaptopUI(true);
-                        } else {
-                          bootCodingShownRef.current = false;
-                          aptCutscenePhaseRef.current = 'boot-coding';
-                          aptCutsceneTimerRef.current = 0;
-                        }
-                      }
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="14 7 9 12 14 17" />
-                      <line x1="21" y1="12" x2="9" y2="12" />
-                      <line x1="3" y1="12" x2="5" y2="12" />
-                    </svg>
-                    <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      <TFB show={showBootDlg} step={bootDlgStep} steps={stringDlgIsHelpRef.current ? bootHelpSteps : bootDlgSteps} text={bootDlgText}
+        icon="robot" codeBlocks onEnter={() => {
+          stopTts(); const next = bootDlgStep + 1;
+          const steps = stringDlgIsHelpRef.current ? bootHelpSteps : bootDlgSteps;
+          if (next < steps.length) { setBootDlgStep(next); } else {
+            setShowBootDlg(false);
+            if (stringDlgIsHelpRef.current) { stringDlgIsHelpRef.current = false; setShowLaptopUI(true); }
+            else { bootCodingShownRef.current = false; aptCutscenePhaseRef.current = 'boot-coding'; aptCutsceneTimerRef.current = 0; }
+          }
+        }}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
 
       {showLaptopUI && (
         <>
@@ -7230,7 +7372,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </>
       )}
 
-      {backpack.length > 0 && (
+      {!rafiqCutsceneActive && backpack.length > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
           {backpack.slice(0, 9).map((partId, i) => {
             const isHeld = heldSlotIndex === i;

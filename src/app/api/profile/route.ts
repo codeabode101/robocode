@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
       playtime_seconds: users.playtime_seconds,
       backpack_json: users.backpack_json,
       cutscene_done: users.cutscene_done,
+      battery_installed: users.battery_installed,
     }).from(users).where(eq(users.id, userId)).limit(1).then(r => r[0]);
 
     // Auto-create user record if missing (e.g., after migration reset)
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
         VALUES (${userId}, ${email}, ${name}, 'migrated', 0)
         ON CONFLICT (id) DO NOTHING
       `);
-      user = { name, email, currency: 0, playtime_seconds: 0, backpack_json: '[]', cutscene_done: 0 };
+      user = { name, email, currency: 0, playtime_seconds: 0, backpack_json: '[]', cutscene_done: 0, battery_installed: 0 };
     }
 
     const tutorials = await db.select({ concept: tutorialProgress.concept })
@@ -69,10 +70,11 @@ export async function GET(request: NextRequest) {
     try { backpack = JSON.parse(user.backpack_json || '[]'); } catch { backpack = []; }
 
     // Ensure position row exists (eliminates separate /api/join call)
-    const pos = await db.select({ x: playerPositions.x, y: playerPositions.y, rotation: playerPositions.rotation, map: playerPositions.map })
+    let pos = await db.select({ x: playerPositions.x, y: playerPositions.y, rotation: playerPositions.rotation, map: playerPositions.map })
       .from(playerPositions).where(eq(playerPositions.user_id, userId)).limit(1).then(r => r[0]);
     if (!pos) {
       await db.run(sql`INSERT INTO player_positions (user_id, x, y, rotation, map, updated_at) VALUES (${userId}, 0, 0, 0, 'outside', ${new Date().toISOString()})`);
+      pos = { x: 0, y: 0, rotation: 0, map: 'outside' };
     }
 
     // Load XP/level (avoids separate /api/xp fetch from modal/profile page)
@@ -93,6 +95,7 @@ export async function GET(request: NextRequest) {
       backpack,
       position: pos ? { x: pos.x, y: pos.y, room: pos.map, rotation: pos.rotation } : null,
       cutsceneDone: user.cutscene_done === 1,
+      batteryInstalled: (user as any).battery_installed === 1,
       xp: xpData,
     });
   } catch (err) {

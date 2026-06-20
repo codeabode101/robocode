@@ -19,7 +19,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ```
 src/
   components/
-    GameMap.tsx          # Main game component (reduced, ~500 lines)
+    GameMap.tsx          # Main game component (~7400 lines)
     game/
       types.ts           # All shared types, constants, enums
       helpers.ts         # Pure utility functions (materials, sprites, visuals, collision)
@@ -219,6 +219,36 @@ useEffect(() => {
 Separate from `aptCutscenePhaseRef` — uses `installBatteryPhaseRef` with phases:
 `'idle' | 'walk-to-scrap' | 'open-chest' | 'place-battery' | 'chest-glow' | 'done'`
 Triggered in `runApartmentSparkyInteraction()` when battery in backpack, not yet installed.
+
+---
+
+## TTS (Text-to-Speech) System
+
+### Architecture
+- **Native Web Speech API** (`window.speechSynthesis`) is tried first
+- **Puter.js** (`puter.ai.txt2speech()`) is the fallback when `getVoices().length === 0`
+- Puter.js script loaded via `<Script>` in `layout.tsx` from `https://js.puter.com/v2/`
+
+### Flow (`speakStep` in `GameMap.tsx`)
+1. Check `speechSynthesis.getVoices().length === 0` → use puter.js fallback
+2. Otherwise → native `SpeechSynthesisUtterance` with `cancel()` + `setTimeout(speak, 10)`
+
+### Word Underline (cross-browser)
+- Both native and puter.js paths pre-compute word boundaries via `/\S+/g` regex
+- **Timer-based fallback** (220ms interval): advances through `wordBounds[]`, works on Firefox/Linux where `onboundary` never fires
+- `onboundary` handler overwrites timer position on browsers where it fires (more precise)
+- First word highlighted immediately via `ttsCharIndexRef.current = wordBounds[0]?.start ?? null`
+
+### State & Refs (`GameMap.tsx`)
+- `ttsUtteranceRef` — the native `SpeechSynthesisUtterance` (or `{}` sentinel for puter)
+- `ttsCharIndexRef` — current word start index for underline
+- `puterTtsAudioRef` / `puterTtsTimerRef` — puter.js cleanup refs
+- `ttsTick` (useState) — incremented to force re-render on word boundary
+
+### TFB Component (`TypewriterFooter`)
+Module-level React component outside `GameMap` (prevents remounting).
+Props: `show`, `step`, `steps`, `text`, `icon`, `onEnter`, `ttsOn`, `ttsCharIdx`, `onTtsToggle`, `hideEnter`, `codeBlocks`.
+Renders 30vh bottom bar with speaker icon, name, TTS play/stop button, typewriter text with word underline, and Enter button.
 
 ---
 
