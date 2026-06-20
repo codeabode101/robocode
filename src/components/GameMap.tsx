@@ -136,8 +136,10 @@ const PLAYER_EYE_HEIGHT = 1.5;
 const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
 const ARENA_ROOM_SPAWN = new THREE.Vector2(0, 3.7);
 const APARTMENT_SPAWN = new THREE.Vector2(0, -1.5);
-const APARTMENT_EXIT = new THREE.Vector2(-8.5, -5.8);
+const SHOP_SPAWN = new THREE.Vector2(0, 1.2);
 const ROOM_OWNER_POS = new THREE.Vector2(-2.5, 2.0);
+const RAFIQ_APPROACH_DIR = new THREE.Vector2(ROOM_OWNER_POS.x - ROOM_SPAWN.x, ROOM_OWNER_POS.y - ROOM_SPAWN.y).normalize();
+const RAFIQ_ARRIVAL_TARGET = new THREE.Vector2(ROOM_OWNER_POS.x - RAFIQ_APPROACH_DIR.x * 0.85, ROOM_OWNER_POS.y - RAFIQ_APPROACH_DIR.y * 0.85);
 const CUSTOMER_TALK_DISTANCE = 1.25;
 const ROOM_CUSTOMER_EXIT_POS = new THREE.Vector2(0, -5.5);
 const CUSTOMER_QUEUE_POSITIONS = [
@@ -456,6 +458,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const tackFxRef = useRef<THREE.Group | null>(null);
   const tackFxPhaseRef = useRef(0);
   const confettiParticlesRef = useRef<{ mesh: THREE.Mesh; vx: number; vy: number; vz: number; life: number }[]>([]);
+  const sceneBgColorRef = useRef(new THREE.Color());
+  const scratchVec2 = useRef(new THREE.Vector2());
+  const scratchVec3 = useRef(new THREE.Vector3());
+  const scratchQuat = useRef(new THREE.Quaternion());
   const cinemCamActiveRef = useRef(false);
   const hideGameUiRef = useRef(false);
   const cutsceneDoneRef = useRef(false);
@@ -4076,12 +4082,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Rafiq meet cutscene — cinematic walk with timed phases
       if (rafiqWalkPhaseRef.current === 'walking' && inWorkshopRoomRef.current) {
-        const approachDir = new THREE.Vector2(ROOM_OWNER_POS.x - ROOM_SPAWN.x, ROOM_OWNER_POS.y - ROOM_SPAWN.y).normalize();
-        const arrivalTarget = new THREE.Vector2(
-          ROOM_OWNER_POS.x - approachDir.x * 0.85,
-          ROOM_OWNER_POS.y - approachDir.y * 0.85
-        );
-        const dir = new THREE.Vector2(arrivalTarget.x - localPositionRef.current.x, arrivalTarget.y - localPositionRef.current.y);
+        const dir = scratchVec2.current.set(RAFIQ_ARRIVAL_TARGET.x - localPositionRef.current.x, RAFIQ_ARRIVAL_TARGET.y - localPositionRef.current.y);
         yawRef.current = Math.atan2(dir.x, dir.y);
         if (dir.length() > 0.1) {
           const step = dir.normalize().multiplyScalar(MOVE_SPEED * 0.23 * delta);
@@ -4100,7 +4101,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         rafiqCutsceneTimerRef.current += delta;
         if (roomOwnerVisualRef.current) {
           const rotProgress = Math.min(1, rafiqCutsceneTimerRef.current / 0.8);
-          const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rafiqTargetFacingRef.current * rotProgress);
+          const facingQ = scratchQuat.current.setFromAxisAngle(scratchVec3.current.set(0, 0, 1), rafiqTargetFacingRef.current * rotProgress);
           roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current).premultiply(facingQ);
         }
         if (rafiqCutsceneTimerRef.current >= 1.0) {
@@ -4214,24 +4215,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       const playerYaw = yawRef.current;
       localGroup.rotation.z = -playerYaw;
-      if (moved) {
-        const bob = Math.sin(worldTime * 14) * 0.03;
-        localGroup.position.z = (() => {
-          if (inApartmentRoomRef.current) return 0.28;
-          if (inArenaRoomRef.current) return 0.28;
-          if (inWorkshopRoomRef.current) return 0.26;
-          if (inShopRoomRef.current) return 0.08;
-          return 0.24;
-        })() + bob;
-      } else {
-        localGroup.position.z = (() => {
-          if (inApartmentRoomRef.current) return 0.28;
-          if (inArenaRoomRef.current) return 0.28;
-          if (inWorkshopRoomRef.current) return 0.26;
-          if (inShopRoomRef.current) return 0.08;
-          return 0.24;
-        })();
-      }
+      const baseZ = inApartmentRoomRef.current ? 0.28 : inArenaRoomRef.current ? 0.28 : inWorkshopRoomRef.current ? 0.26 : inShopRoomRef.current ? 0.08 : 0.24;
+      localGroup.position.z = baseZ + (moved ? Math.sin(worldTime * 14) * 0.03 : 0);
       // Walk animation for player legs and arms (rotation.x = forward/backward swing)
       const localVis = localRobotRef.current;
       const playerSpeed = moved ? 1 : 0;
@@ -5636,13 +5621,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
 
         // Show marker on the front-of-queue customer (persistent when earning money)
+        const cutsceneIdle = rafiqWalkPhaseRef.current === 'idle';
+        const playerMoney = gameStore.get('money') ?? 0;
+        const hasBattery = (gameStore.get('backpack') as ScrapPartId[]).includes('battery');
         for (const npc of workshopCustomersRef.current) {
           let shouldShow = false;
-          if (rafiqWalkPhaseRef.current === 'idle') {
+          if (cutsceneIdle) {
             shouldShow = npc === closestCandidate || (
               npc.stage === 'waiting' && npc.queueIndex === 0 &&
-              (gameStore.get('money') ?? 0) < 10 &&
-              !(gameStore.get('backpack') as ScrapPartId[]).includes('battery')
+              playerMoney < 10 && !hasBattery
             );
           }
           if (npc.visual.marker && npc.visual.marker.visible !== shouldShow) {
@@ -5657,8 +5644,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
 
         // Rafiq interaction prompt override (takes priority over customer)
+        const distToRafiq = Math.hypot(localPositionRef.current.x - ROOM_OWNER_POS.x, localPositionRef.current.y - ROOM_OWNER_POS.y);
         if (!rafiqDlgOpenRef.current) {
-          const distToRafiq = Math.hypot(localPositionRef.current.x - ROOM_OWNER_POS.x, localPositionRef.current.y - ROOM_OWNER_POS.y);
           if (distToRafiq < 1.8) {
             if (interactionPromptName !== 'Rafiq') setInteractionPromptName('Rafiq');
             interactionCandidateIdRef.current = '__rafiq__';
@@ -5669,7 +5656,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
 
         // Rafiq interaction — "Who are you?", letter reception, or workshop intro
-        const distToRafiq = Math.hypot(localPositionRef.current.x - ROOM_OWNER_POS.x, localPositionRef.current.y - ROOM_OWNER_POS.y);
         if (!rafiqDlgOpenRef.current && interactionRequestedRef.current && distToRafiq < 1.8) {
           interactionRequestedRef.current = false;
           const bp = gameStore.get('backpack');
@@ -5734,6 +5720,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       if (inWorkshopRoomRef.current) {
 
+        const walkSin = Math.sin(worldTime * WALK_BOB_SPEED);
         workshopCustomersRef.current = workshopCustomersRef.current.filter((npc) => {
           if (npc.stage === 'waiting' || npc.stage === 'awaiting-code') {
             npc.target.copy(npc.position);
@@ -5758,8 +5745,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             npc.stage = 'waiting';
           }
 
-          const toTarget = npc.target.clone().sub(npc.position);
-          const dist = toTarget.length();
+          const dx = npc.target.x - npc.position.x;
+          const dy = npc.target.y - npc.position.y;
+          const dist = Math.hypot(dx, dy);
           if (dist < 0.12) {
             if (npc.waypoints && npc.wpIndex !== undefined && npc.wpIndex < npc.waypoints.length) {
               npc.wpIndex++;
@@ -5800,21 +5788,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else {
             const step = Math.min(dist, npc.speed * delta);
-            const stepVector = toTarget.normalize().multiplyScalar(step);
-            const candidate = npc.position.clone().add(stepVector);
-            const blockCustomer = (p: THREE.Vector2) =>
+            const sx = (dx / dist) * step;
+            const sy = (dy / dist) * step;
+            const blockCustomer = (px: number, py: number) =>
               workshopCustomersRef.current.some(n => n.id !== npc.id && n.stage !== 'leaving' && (
-                Math.hypot(p.x - n.position.x, p.y - n.position.y) < 0.18
+                Math.hypot(px - n.position.x, py - n.position.y) < 0.18
               ));
-            if (!collidesWithAny(candidate, roomObstacleHitboxesRef.current) && !blockCustomer(candidate)) {
-              npc.position.copy(candidate);
+            scratchVec2.current.set(npc.position.x + sx, npc.position.y + sy);
+            if (!collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current) && !blockCustomer(scratchVec2.current.x, scratchVec2.current.y)) {
+              npc.position.x += sx;
+              npc.position.y += sy;
             } else {
-              const slideX = npc.position.clone().add(new THREE.Vector2(stepVector.x, 0));
-              const slideY = npc.position.clone().add(new THREE.Vector2(0, stepVector.y));
-              if (!collidesWithAny(slideX, roomObstacleHitboxesRef.current) && !blockCustomer(slideX)) {
-                npc.position.copy(slideX);
-              } else if (!collidesWithAny(slideY, roomObstacleHitboxesRef.current) && !blockCustomer(slideY)) {
-                npc.position.copy(slideY);
+              scratchVec2.current.set(npc.position.x + sx, npc.position.y);
+              if (!collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current) && !blockCustomer(scratchVec2.current.x, scratchVec2.current.y)) {
+                npc.position.x += sx;
+              } else {
+                scratchVec2.current.set(npc.position.x, npc.position.y + sy);
+                if (!collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current) && !blockCustomer(scratchVec2.current.x, scratchVec2.current.y)) {
+                  npc.position.y += sy;
+                }
               }
             }
           }
@@ -5822,14 +5814,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const noRotationStages = ['waiting', 'awaiting-code'];
           const moving = dist > 0.06 && !noRotationStages.includes(npc.stage);
           if (moving) {
-            npc.visual.root.rotation.z = -Math.atan2(toTarget.x, toTarget.y);
+            npc.visual.root.rotation.z = -Math.atan2(dx, dy);
           }
-          const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3 * (moving ? 1 : 0);
-          if (npc.visual.leftLegPivot) npc.visual.leftLegPivot.rotation.x = walkSwing;
-          if (npc.visual.rightLegPivot) npc.visual.rightLegPivot.rotation.x = -walkSwing;
-          const bob = moving ? Math.sin(worldTime * WALK_BOB_SPEED) * 0.03 : 0;
+          const swing = walkSin * 0.3 * (moving ? 1 : 0);
+          if (npc.visual.leftLegPivot) npc.visual.leftLegPivot.rotation.x = swing;
+          if (npc.visual.rightLegPivot) npc.visual.rightLegPivot.rotation.x = -swing;
+          const bobZ = moving ? walkSin * 0.03 : 0;
           npc.visual.nameSprite.position.y = 1.15 + Math.sin(worldTime * 2 + npc.position.y) * 0.03;
-          npc.visual.root.position.set(npc.position.x, npc.position.y, 0.26 + bob);
+          npc.visual.root.position.set(npc.position.x, npc.position.y, 0.26 + bobZ);
           return true;
         });
       }
@@ -5912,7 +5904,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         arenaRoomGroup.visible = inArenaRoomRef.current;
         apartmentRoomGroup.visible = inApartmentRoomRef.current;
         if (shopRoomGroupRef.current) shopRoomGroupRef.current.visible = inShopRoomRef.current;
-        scene.background = new THREE.Color(sceneBgOverrideRef.current ?? roomBg);
+        sceneBgColorRef.current.set(sceneBgOverrideRef.current ?? roomBg);
+        scene.background = sceneBgColorRef.current;
         const camYaw = yawRef.current;
         const camPitch = cameraPitchRef.current;
         const px = localPositionRef.current.x;
@@ -6009,14 +6002,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           // Rafiq meet cutscene — camera phases
           if (rafiqWalkPhaseRef.current === 'walking') {
             // Player walks upward (+Y). Camera behind (lower Y), looks ahead toward Rafiq.
-            const camTarget = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y - 1.5, 1.8);
-            camera.position.lerp(camTarget, 0.04);
+            scratchVec3.current.set(localPositionRef.current.x, localPositionRef.current.y - 1.5, 1.8);
+            camera.position.lerp(scratchVec3.current, 0.04);
             camera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 0.5, 0.3);
           } else {
             // Centered two-shot: characters centered on screen
             const midX = (localPositionRef.current.x + ROOM_OWNER_POS.x) / 2;
             const midY = (localPositionRef.current.y + ROOM_OWNER_POS.y) / 2;
-            camera.position.lerp(new THREE.Vector3(midX, midY + 0.8, 1.6), 0.04);
+            scratchVec3.current.set(midX, midY + 0.8, 1.6);
+            camera.position.lerp(scratchVec3.current, 0.04);
             camera.lookAt(midX, midY, 0.3);
           }
         } else {
