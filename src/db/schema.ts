@@ -9,6 +9,7 @@ export const users = sqliteTable('users', {
   backpack_json: text('backpack_json').notNull().default('[]'),
   playtime_seconds: integer('playtime_seconds').notNull().default(0),
   cutscene_done: integer('cutscene_done').notNull().default(0),
+  battery_installed: integer('battery_installed').notNull().default(0),
   created_at: text('created_at').notNull().default("datetime('now')"),
 });
 
