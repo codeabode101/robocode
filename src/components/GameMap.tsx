@@ -143,10 +143,10 @@ const RAFIQ_ARRIVAL_TARGET = new THREE.Vector2(ROOM_OWNER_POS.x - RAFIQ_APPROACH
 const CUSTOMER_TALK_DISTANCE = 1.25;
 const ROOM_CUSTOMER_EXIT_POS = new THREE.Vector2(0, -5.5);
 const CUSTOMER_QUEUE_POSITIONS = [
-  new THREE.Vector2(2.35, 2.5),
-  new THREE.Vector2(2.35, 1.5),
-  new THREE.Vector2(2.35, 0.5),
-  new THREE.Vector2(2.35, -0.5),
+  new THREE.Vector2(2.35, 1.95),
+  new THREE.Vector2(2.35, 0.95),
+  new THREE.Vector2(2.35, -0.05),
+  new THREE.Vector2(2.35, -1.05),
 ];
 
 const SPARKY_INTERACTION_DISTANCE = 1.7;
@@ -3224,13 +3224,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     petBed.position.set(3.4, -2.4, 0.21);
     workshopRoomGroup.add(petBed);
 
-    const desk = new THREE.Mesh(
-      new THREE.BoxGeometry(1.5, 0.7, 0.75),
-      createToonMaterial(0x7c3aed, 0.62, 0.08)
-    );
-    desk.position.set(2.9, 3.05, 0.48);
-    workshopRoomGroup.add(desk);
-
     const owner = createRobotVisual(new THREE.Color(0x14b8a6), 'Rafiq');
     owner.root.scale.set(0.7, 0.7, 0.7);
     owner.root.position.set(ROOM_OWNER_POS.x, ROOM_OWNER_POS.y, 0.26);
@@ -3247,34 +3240,34 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     roomCustomerGroupRef.current = customerGroup;
 
     const registerDock = new THREE.Group();
-    registerDock.position.set(2.35, 2.24, 0.26);
+    registerDock.position.set(2.9, 3.05, 0.48);
     workshopRoomGroup.add(registerDock);
     workshopRegisterDockRef.current = registerDock;
 
     const registerBase = new THREE.Mesh(
-      new THREE.BoxGeometry(1.28, 0.56, 0.14),
+      new THREE.BoxGeometry(1.52, 0.72, 0.18),
       createToonMaterial(0x8b5a2b, 0.62, 0.08)
     );
     registerBase.position.set(0, 0, 0.07);
     registerDock.add(registerBase);
 
     const registerTop = new THREE.Mesh(
-      new THREE.BoxGeometry(1.36, 0.62, 0.03),
-      createToonMaterial(0xa16207, 0.62, 0.08)
+      new THREE.BoxGeometry(1.62, 0.82, 0.03),
+      createToonMaterial(0x92400e, 0.62, 0.08)
     );
-    registerTop.position.set(0, 0, 0.15);
+    registerTop.position.set(0, 0, 0.19);
     registerDock.add(registerTop);
 
     const registerLabel = createLabelSprite('REGISTER', '#0f172a', 'rgba(253,224,71,0.95)', '#f8fafc', 172, 64);
     registerLabel.scale.set(1.55, 0.58, 1);
     registerLabel.center.set(0.5, 0);
-    registerLabel.position.set(0, -0.05, 0.54);
+    registerLabel.position.set(0, -0.08, 0.61);
     registerLabel.renderOrder = 36;
     registerDock.add(registerLabel);
 
     const registerComputer = createLaptop();
-    registerComputer.scale.set(0.48, 0.48, 0.48);
-    registerComputer.position.set(-0.14, -0.04, 0.18);
+    registerComputer.scale.set(0.52, 0.52, 0.52);
+    registerComputer.position.set(-0.2, -0.03, 0.22);
     registerComputer.rotation.z = Math.PI;
     registerDock.add(registerComputer);
     workshopRegisterComputerRef.current = registerComputer;
