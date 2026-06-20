@@ -1558,7 +1558,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         } else {
           setShowRafiqLetterDlg(false);
           rafiqWalkPhaseRef.current = 'idle';
-          endCinematicCutscene();
           workshopIntroSeenRef.current = true;
           setWorkshopIntroSeen(true);
           fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
@@ -3786,7 +3785,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           rafiqWalkPhaseRef.current = 'walking';
           rafiqCutsceneTimerRef.current = 0;
           keyStateRef.current.clear();
-          startCinematicCutscene();
           yawRef.current = Math.atan2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
         } else if (pendingAptCutsceneRef.current && !showControlsModalRef.current) {
           pendingAptCutsceneRef.current = false;
@@ -7119,7 +7117,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (next < RAFIQ_MEET_STEPS.length) {
             if (rafiqLetterStep === 0) consumeLetterInDialog(); setRafiqLetterStep(next);
           } else {
-            setShowRafiqLetterDlg(false); rafiqWalkPhaseRef.current = 'idle'; endCinematicCutscene();
+            setShowRafiqLetterDlg(false); rafiqWalkPhaseRef.current = 'idle';
             workshopIntroSeenRef.current = true; setWorkshopIntroSeen(true);
             fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
             if (roomOwnerVisualRef.current) {
