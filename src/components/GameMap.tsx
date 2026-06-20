@@ -3785,6 +3785,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           rafiqWalkPhaseRef.current = 'walking';
           rafiqCutsceneTimerRef.current = 0;
           keyStateRef.current.clear();
+          setCutsceneTick(t => t + 1);
           yawRef.current = Math.atan2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
         } else if (pendingAptCutsceneRef.current && !showControlsModalRef.current) {
           pendingAptCutsceneRef.current = false;
