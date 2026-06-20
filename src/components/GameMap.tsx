@@ -3258,13 +3258,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     registerTop.position.set(0, 0, 0.19);
     registerDock.add(registerTop);
 
-    const registerLabel = createLabelSprite('REGISTER', '#0f172a', 'rgba(253,224,71,0.95)', '#f8fafc', 172, 64);
-    registerLabel.scale.set(1.55, 0.58, 1);
-    registerLabel.center.set(0.5, 0);
-    registerLabel.position.set(0, -0.08, 0.61);
-    registerLabel.renderOrder = 36;
-    registerDock.add(registerLabel);
-
     const registerComputer = createLaptop();
     registerComputer.scale.set(0.52, 0.52, 0.52);
     registerComputer.position.set(-0.2, -0.03, 0.22);
