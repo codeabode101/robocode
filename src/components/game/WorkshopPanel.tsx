@@ -92,12 +92,6 @@ export default function WorkshopPanel({
       {workshopOutput && (
         <div className="absolute left-4 bottom-20 z-40 w-[min(90vw,24rem)] rounded-xl border border-emerald-300/40 bg-emerald-950/70 px-4 py-3 text-base text-emerald-100 shadow-xl">{workshopOutput}</div>
       )}
-
-      {inWorkshopRoom && (
-        <div className="absolute right-4 top-20 z-40 flex gap-3">
-          <button type="button" className="rounded bg-slate-700 px-4 py-2.5 text-base font-semibold text-white hover:bg-slate-600" onClick={reopenWorkshopIntro}>Workshop guide</button>
-        </div>
-      )}
     </>
   );
 }

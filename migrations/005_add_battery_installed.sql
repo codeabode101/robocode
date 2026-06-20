@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN battery_installed INTEGER NOT NULL DEFAULT 0;

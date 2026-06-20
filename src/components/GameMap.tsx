@@ -457,6 +457,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const tackFxPhaseRef = useRef(0);
   const confettiParticlesRef = useRef<{ mesh: THREE.Mesh; vx: number; vy: number; vz: number; life: number }[]>([]);
   const cinemCamActiveRef = useRef(false);
+  const hideGameUiRef = useRef(false);
   const cutsceneDoneRef = useRef(false);
   const sparkyGoHomeRef = useRef(false);
   const sparkyHomeArrivedRef = useRef(false);
@@ -624,6 +625,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const ttsCharIndexRef = useRef<number | null>(null);
   const puterTtsAudioRef = useRef<HTMLAudioElement | null>(null);
   const puterTtsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const nativeRafRef = useRef<number | null>(null);
   useEffect(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
     window.speechSynthesis.getVoices();
@@ -755,6 +757,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     lastConfirmedMoneyRef.current = val;
   }, [apiSync]);
 
+  const [cutsceneTick, setCutsceneTick] = useState(0);
+
+  const startCinematicCutscene = useCallback(() => {
+    cinemCamActiveRef.current = true;
+    hideGameUiRef.current = true;
+    setCutsceneTick(t => t + 1);
+  }, []);
+
+  const endCinematicCutscene = useCallback(() => {
+    cinemCamActiveRef.current = false;
+    hideGameUiRef.current = false;
+    setCutsceneTick(t => t + 1);
+  }, []);
+
   const speakStep = (text: string) => {
     if (!text || typeof window === 'undefined' || !window.speechSynthesis) return;
     if (window.speechSynthesis.getVoices().length === 0) {
@@ -771,18 +787,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const re = /\S+/g; let m;
       while ((m = re.exec(text)) !== null) wordBounds.push({ start: m.index, end: m.index + m[0].length });
       ttsCharIndexRef.current = wordBounds[0]?.start ?? null;
-      let wi = 0;
-      const wordTimer = setInterval(() => {
-        wi++;
-        if (wi >= wordBounds.length) { clearInterval(wordTimer); stopTts(); return; }
-        ttsCharIndexRef.current = wordBounds[wi].start; setTtsTick(t => t + 1);
-      }, 220);
+      const CHAR_MS = 65;
+      const wordTimes = wordBounds.map(w => w.start * CHAR_MS);
+      let wIdx = 0;
+      const startTime = performance.now();
+      const rafTick = () => {
+        const elapsed = performance.now() - startTime;
+        while (wIdx + 1 < wordBounds.length && elapsed >= wordTimes[wIdx + 1]) { wIdx++; ttsCharIndexRef.current = wordBounds[wIdx].start; setTtsTick(t => t + 1); }
+        if (wIdx < wordBounds.length - 1) nativeRafRef.current = requestAnimationFrame(rafTick);
+      };
+      nativeRafRef.current = requestAnimationFrame(rafTick);
       u.onboundary = (e: SpeechSynthesisEvent) => {
         ttsCharIndexRef.current = e.charIndex;
         setTtsTick(t => t + 1);
       };
-      u.onend = () => { clearInterval(wordTimer); ttsUtteranceRef.current = null; ttsCharIndexRef.current = null; setTtsTick(t => t + 1); };
-      u.onerror = (e: any) => { console.error('TTS onerror:', e); clearInterval(wordTimer); ttsUtteranceRef.current = null; ttsCharIndexRef.current = null; setTtsTick(t => t + 1); };
+      u.onend = () => { if (nativeRafRef.current !== null) { cancelAnimationFrame(nativeRafRef.current); nativeRafRef.current = null; } ttsUtteranceRef.current = null; ttsCharIndexRef.current = null; setTtsTick(t => t + 1); };
+      u.onerror = (e: any) => { console.error('TTS onerror:', e); if (nativeRafRef.current !== null) { cancelAnimationFrame(nativeRafRef.current); nativeRafRef.current = null; } ttsUtteranceRef.current = null; ttsCharIndexRef.current = null; setTtsTick(t => t + 1); };
       ttsUtteranceRef.current = u;
       setTtsTick(t => t + 1);
       window.speechSynthesis.cancel();
@@ -820,6 +840,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   };
 
   const stopTts = () => {
+    if (nativeRafRef.current !== null) { cancelAnimationFrame(nativeRafRef.current); nativeRafRef.current = null; }
     if (puterTtsTimerRef.current) { clearInterval(puterTtsTimerRef.current); puterTtsTimerRef.current = null; }
     if (puterTtsAudioRef.current) { puterTtsAudioRef.current.pause(); puterTtsAudioRef.current = null; }
     if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -1069,7 +1090,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (!prevMissionRef.current) { prevMissionRef.current = key; return; }
     if (key !== prevMissionRef.current) {
       prevMissionRef.current = key;
-      if (!anyDialogActive) {
+      if (!anyDialogActive && !hideGameUiRef.current) {
         setMissionModal({show: true, msg: missionText});
         const t = setTimeout(() => setMissionModal({show: false, msg: ''}), 2500);
         return () => clearTimeout(t);
@@ -1437,7 +1458,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setBatteryInstallStep(nextStep);
         } else {
           setShowBatteryInstallDlg(false);
-          cinemCamActiveRef.current = false;
+          endCinematicCutscene();
           installBatteryPhaseRef.current = null;
           batteryInstalledRef.current = true;
           const bp: ScrapPartId[] = gameStore.get('backpack').filter((id: string) => id !== 'battery');
@@ -1537,6 +1558,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         } else {
           setShowRafiqLetterDlg(false);
           rafiqWalkPhaseRef.current = 'idle';
+          endCinematicCutscene();
           workshopIntroSeenRef.current = true;
           setWorkshopIntroSeen(true);
           fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
@@ -3764,18 +3786,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           rafiqWalkPhaseRef.current = 'walking';
           rafiqCutsceneTimerRef.current = 0;
           keyStateRef.current.clear();
+          startCinematicCutscene();
           yawRef.current = Math.atan2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
         } else if (pendingAptCutsceneRef.current && !showControlsModalRef.current) {
           pendingAptCutsceneRef.current = false;
           aptCutscenePhaseRef.current = 'walk-west';
           aptCutsceneTimerRef.current = 0;
-          cinemCamActiveRef.current = true;
+          startCinematicCutscene();
           keyStateRef.current.clear();
         } else if (pendingBatteryCutsceneRef.current && !showControlsModalRef.current) {
           pendingBatteryCutsceneRef.current = false;
           installBatteryPhaseRef.current = 'walk-to-scrap';
           installBatteryTimerRef.current = 0;
-          cinemCamActiveRef.current = true;
+          startCinematicCutscene();
           keyStateRef.current.clear();
         }
       }
@@ -4007,7 +4030,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               ];
               if (aptStage === 'intro' && !cutsceneDoneRef.current) {
                 // Start cutscene — only the box is visible
-                cinemCamActiveRef.current = true;
+                startCinematicCutscene();
                 aptCutscenePhaseRef.current = 'walk-west';
                 aptCutsceneTimerRef.current = 0;
                 if (cutsceneBoxRef.current) cutsceneBoxRef.current.visible = true;
@@ -4031,7 +4054,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               } else if (!batteryInstalledRef.current && (gameStore.get('backpack') as ScrapPartId[]).includes('battery' as ScrapPartId)) {
                 installBatteryPhaseRef.current = 'walk-to-scrap';
                 installBatteryTimerRef.current = 0;
-                cinemCamActiveRef.current = true;
+                startCinematicCutscene();
                 keyStateRef.current.clear();
                 document.exitPointerLock();
               }
@@ -5392,8 +5415,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               antennaGlowSpriteRef.current = null;
             }
             sceneBgOverrideRef.current = null;
-            cinemCamActiveRef.current = false;
-            aptCutscenePhaseRef.current = 'idle';
+          endCinematicCutscene();
+          aptCutscenePhaseRef.current = 'idle';
             shopUnlockedRef.current = true;
             setShopUnlocked(true);
             cutsceneDoneRef.current = true;
@@ -5456,7 +5479,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (ibPhase === 'done') {
             installBatteryPhaseRef.current = null;
             batteryInstalledRef.current = true;
-            cinemCamActiveRef.current = false;
+            endCinematicCutscene();
             setShowSparkyDlg(false);
             const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
             updateBackpack(newBackpack);
@@ -5615,11 +5638,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
         // Show marker on the front-of-queue customer (persistent when earning money)
         for (const npc of workshopCustomersRef.current) {
-          const shouldShow = npc === closestCandidate || (
-            npc.stage === 'waiting' && npc.queueIndex === 0 &&
-            (gameStore.get('money') ?? 0) < 10 &&
-            !(gameStore.get('backpack') as ScrapPartId[]).includes('battery')
-          );
+          let shouldShow = false;
+          if (rafiqWalkPhaseRef.current === 'idle') {
+            shouldShow = npc === closestCandidate || (
+              npc.stage === 'waiting' && npc.queueIndex === 0 &&
+              (gameStore.get('money') ?? 0) < 10 &&
+              !(gameStore.get('backpack') as ScrapPartId[]).includes('battery')
+            );
+          }
           if (npc.visual.marker && npc.visual.marker.visible !== shouldShow) {
             npc.visual.marker.visible = shouldShow;
           }
@@ -6210,7 +6236,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   useEffect(() => {
     syncMarkers();
-  }, [sparkyQuestStage, inApartmentRoom, inWorkshopRoom, inShopRoom, inArenaRoom, workshopIntroSeen, backpack, money]);
+  }, [sparkyQuestStage, inApartmentRoom, inWorkshopRoom, inShopRoom, inArenaRoom, workshopIntroSeen, backpack, money, cutsceneTick]);
 
   useEffect(() => {
     if (!inArenaRoom) {
@@ -6454,7 +6480,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (installBatteryPhaseRef.current) return;
       installBatteryPhaseRef.current = 'walk-to-scrap';
       installBatteryTimerRef.current = 0;
-      cinemCamActiveRef.current = true;
+      startCinematicCutscene();
       setShowBatteryInstallDlg(true);
       setBatteryInstallStep(0);
       keyStateRef.current.clear();
@@ -6768,9 +6794,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
+      {!hideGameUiRef.current && (
       <div className="fixed bottom-6 right-6 z-40 rounded-xl border border-emerald-300/50 bg-emerald-500/20 px-6 py-3 text-3xl font-black text-emerald-300 shadow-xl md:text-4xl">
         ${money}
       </div>
+      )}
 
       <div className="absolute top-4 left-4 bg-black/45 text-white text-base md:text-lg px-4 py-2 rounded-full">
         {connected ? `🟢 Live island • ${Object.keys(players).length + 1} player${Object.keys(players).length + 1 !== 1 ? 's' : ''}` : '🟡 Connecting to island...'}
@@ -6790,7 +6818,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      {missionText && !anyDialogActive && (
+      {missionText && !anyDialogActive && !hideGameUiRef.current && (
         <div className="absolute bottom-4 left-4 max-w-[min(90vw,32rem)] rounded-lg border border-amber-300/40 bg-slate-950/80 px-5 py-4 text-base md:text-lg text-amber-100 shadow-lg">
           <div className="font-semibold text-amber-300">Mission</div>
           <div className="mt-1">{missionText}</div>
@@ -6812,7 +6840,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      {moneyAnim.active && (
+      {!hideGameUiRef.current && moneyAnim.active && (
         <div className="fixed inset-0 z-[80] pointer-events-none select-none overflow-hidden">
           {Array.from({length: moneyAnim.bills}).map((_, i) => (
             <div
@@ -7091,7 +7119,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (next < RAFIQ_MEET_STEPS.length) {
             if (rafiqLetterStep === 0) consumeLetterInDialog(); setRafiqLetterStep(next);
           } else {
-            setShowRafiqLetterDlg(false); rafiqWalkPhaseRef.current = 'idle';
+            setShowRafiqLetterDlg(false); rafiqWalkPhaseRef.current = 'idle'; endCinematicCutscene();
             workshopIntroSeenRef.current = true; setWorkshopIntroSeen(true);
             fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
             if (roomOwnerVisualRef.current) {
@@ -7119,7 +7147,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           stopTts();
           const next = batteryInstallStep + 1;
           if (next < BATTERY_INSTALL_DLG_STEPS.length) { setBatteryInstallStep(next); } else {
-            setShowBatteryInstallDlg(false); cinemCamActiveRef.current = false;
+            setShowBatteryInstallDlg(false); endCinematicCutscene();
             installBatteryPhaseRef.current = null; batteryInstalledRef.current = true;
             const bp: ScrapPartId[] = gameStore.get('backpack').filter((id: string) => id !== 'battery');
             updateBackpack(bp);
@@ -7372,7 +7400,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </>
       )}
 
-      {!rafiqCutsceneActive && backpack.length > 0 && (
+      {!rafiqCutsceneActive && !hideGameUiRef.current && backpack.length > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
           {backpack.slice(0, 9).map((partId, i) => {
             const isHeld = heldSlotIndex === i;

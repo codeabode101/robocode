@@ -222,6 +222,47 @@ Triggered in `runApartmentSparkyInteraction()` when battery in backpack, not yet
 
 ---
 
+## Cutscene UI System
+
+### Architecture
+GameMap.tsx controls UI visibility during cinematic cutscenes through a centralized ref + function system.
+
+### Key Primitives (`GameMap.tsx`)
+- **`hideGameUiRef`** (`useRef(false)`) — single source of truth for whether mission text, money animation, backpack, and mission modal should be hidden. Only `true` during **cinematic** cutscenes (intro, battery install). Never set during dialog-only interactions (Rafiq workshop conversation, Sparky outdoor dialog).
+- **`startCinematicCutscene()`** — sets `cinemCamActiveRef.current = true` AND `hideGameUiRef.current = true`
+- **`endCinematicCutscene()`** — sets both to `false`
+
+### What gets hidden when `hideGameUiRef.current === true`
+| UI Element | Line | Guard |
+|------------|------|-------|
+| Mission modal (NEW MISSION popup) | ~1088 | `!hideGameUiRef.current` added to trigger condition |
+| Persistent mission box (bottom-left) | ~6810 | `!hideGameUiRef.current` added |
+| Money bill animation (flying coins) | ~6832 | `!hideGameUiRef.current` added |
+| Backpack (bottom-center) | ~7392 | `!hideGameUiRef.current` added |
+
+### What does NOT get hidden
+- **Money wallet** (bottom-right `$` display at ~6788) — intentional, always visible
+- **Exclamation markers** (3D scene markers) — hidden via `syncMarkers` using `cinemCamActiveRef.current` directly (line ~6199)
+- **Typewriter dialogs** (TFB component) — always shown, they ARE the cutscene
+- **Workshop panel / shop UI** — room-specific, managed separately
+
+### When `hideGameUiRef` is set
+| Cutscene | Entry | Exit |
+|----------|-------|------|
+| Intro apartment cutscene (Sparky electrocute) | `startCinematicCutscene()` at ~3789, ~4016 | `endCinematicCutscene()` at ~5401 |
+| Rafiq letter cutscene | `startCinematicCutscene()` at ~3779 | `endCinematicCutscene()` at ~1555, ~7111 |
+| Battery install cutscene | `startCinematicCutscene()` at ~3795, ~4040, ~6463 | `endCinematicCutscene()` at ~5465, ~7128 |
+
+### Important
+- **Rafiq letter cutscene** (walk to Rafiq + hand letter) now calls `startCinematicCutscene()` at walk start (~3779) and `endCinematicCutscene()` when dialog completes (~1555, ~7111). Game UI is hidden during this cutscene.
+- **Rafiq / Sparky dialog-only interactions** never touch `hideGameUiRef`. All UI stays visible.
+- **`syncMarkers()` is called via a `useEffect`** (deps: quest stage, room, backpack, etc.). `startCinematicCutscene()`/`endCinematicCutscene()` increment a `cutsceneTick` state, which is added to the effect's dependency array — so `syncMarkers()` fires automatically when a cutscene starts or ends. **No per-frame work in the animation loop.**
+- **Customer NPC `!` markers** are guarded separately at ~5640 via `rafiqWalkPhaseRef.current === 'idle'` — they never show during any cutscene phase.
+- To add a new cinematic cutscene: call `startCinematicCutscene()` at entry and `endCinematicCutscene()` at completion. Do NOT set `cinemCamActiveRef.current` directly.
+
+### WorkshopPanel
+The "Workshop guide" button was deleted (line ~98). Rafiq is the workshop guide — talk to him for guidance.
+
 ## TTS (Text-to-Speech) System
 
 ### Architecture
