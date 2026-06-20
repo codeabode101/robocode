@@ -313,3 +313,26 @@ After battery install cutscene → Scrap follower → free roam. No tutorial, no
 - `git checkout main` — return to known-good state
 - `git branch -D <broken-branch>` — delete the bad branch
 - `git checkout -b <new-feature>` — start fresh from main
+
+## Deployment
+
+### Manual deploy (Cloudflare Workers):
+```bash
+git add -A && git commit -m "<message>"
+git push -u origin <branch>
+./scripts/deploy.sh
+```
+This builds with `opennextjs-cloudflare` and deploys to `https://robocode.rahejaom.workers.dev`.
+
+### Automatic deployment:
+The deploy script reads `NEXT_PUBLIC_APINATOR_APP_KEY` from `.dev.vars` automatically. After first deploy, set secrets with:
+```bash
+npx wrangler secret put WORKOS_API_KEY
+npx wrangler secret put NEXT_PUBLIC_APINATOR_APP_KEY
+```
+(Values from `.dev.vars` — these are NOT auto-deployed with the worker.)
+
+### Vercel deployment (alternative):
+```bash
+vercel
+```
