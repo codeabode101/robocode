@@ -794,7 +794,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       robot.scale.set(0.17, 0.17, 0.17);
     } else {
       npc.visual.root.attach(robot);
-      robot.position.set(0, 0.25, 0.38);
+      robot.position.set(0, 0.17, 0.28);
       robot.rotation.set(Math.PI / 2, 0, Math.PI / 2);
       robot.scale.set(0.18, 0.18, 0.18);
     }
