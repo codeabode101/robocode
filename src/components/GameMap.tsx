@@ -149,6 +149,9 @@ const CUSTOMER_QUEUE_POSITIONS = [
   new THREE.Vector2(2.35, -1.05),
 ];
 
+const REPAIR_DLG_STEPS = [
+  { speaker: 'Customer', text: 'You fixed my robot! Thank you so much!' },
+] as const;
 const SPARKY_INTERACTION_DISTANCE = 1.7;
 const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
 const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
@@ -462,6 +465,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const tackFxRef = useRef<THREE.Group | null>(null);
   const tackFxPhaseRef = useRef(0);
   const confettiParticlesRef = useRef<{ mesh: THREE.Mesh; vx: number; vy: number; vz: number; life: number }[]>([]);
+  const repairCutscenePhaseRef = useRef<'idle' | 'glow' | 'dialog' | 'place-robot' | 'done'>('idle');
+  const repairCutsceneTimerRef = useRef(0);
+  const repairCustomerRef = useRef<CustomerNpc | null>(null);
+  const repairOutputRef = useRef('');
   const sceneBgColorRef = useRef(new THREE.Color());
   const scratchVec2 = useRef(new THREE.Vector2());
   const scratchVec3 = useRef(new THREE.Vector3());
@@ -625,6 +632,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [showElectrocuteDlg, setShowElectrocuteDlg] = useState(false);
   const [electrocuteStep, setElectrocuteStep] = useState(0);
   const [electrocuteText, setElectrocuteText] = useState('');
+  const [showRepairDlg, setShowRepairDlg] = useState(false);
+  const [repairStep, setRepairStep] = useState(0);
+  const [repairText, setRepairText] = useState('');
   const [workshopIntroText, setWorkshopIntroText] = useState('');
   const [moneyAnim, setMoneyAnim] = useState<{active: boolean; bills: number; hits: number; total: number}>({active: false, bills: 0, hits: 0, total: 0});
   const [missionModal, setMissionModal] = useState<{show: boolean; msg: string}>({show: false, msg: ''});
@@ -784,8 +794,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       robot.scale.set(0.17, 0.17, 0.17);
     } else {
       npc.visual.root.attach(robot);
-      robot.position.set(0, -0.35, 0.25);
-      robot.rotation.set(Math.PI / 2, 0, 0);
+      robot.position.set(0, -0.25, 0.30);
+      robot.rotation.set(Math.PI / 2, 0, Math.PI / 2);
       robot.scale.set(0.18, 0.18, 0.18);
     }
     robot.visible = true;
@@ -1116,7 +1126,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return 'Explore the city!';
   }, [sparkyQuestStage, money, backpack, workshopIntroSeen]);
 
-  const anyDialogActive = showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showBatteryDlg || showBatteryInstallDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showLaptopUI || (workshopIntroSeen === false && inWorkshopRoom);
+  const anyDialogActive = showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showBatteryDlg || showBatteryInstallDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showLaptopUI || showRepairDlg || (workshopIntroSeen === false && inWorkshopRoom);
 
   // NEW MISSION full-screen modal (only for qualitative changes, never during dialogs)
   useEffect(() => {
@@ -5656,6 +5666,84 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       }
 
+      // Repair cutscene handler
+      if (repairCutscenePhaseRef.current !== 'idle') {
+        const rp = repairCutscenePhaseRef.current;
+        repairCutsceneTimerRef.current += delta;
+        const cr = repairCustomerRef.current?.cargoRobot;
+        const robotRoot = cr?.root;
+
+        if (rp === 'glow') {
+          // Emissive pulse on dock robot (green glow)
+          if (robotRoot) {
+            const intensity = 0.5 + Math.sin(repairCutsceneTimerRef.current * 8) * 0.5;
+            robotRoot.traverse((node) => {
+              const m = node as THREE.Mesh;
+              if (m.material) {
+                const mat = m.material as THREE.MeshToonMaterial;
+                if (mat.emissive) { mat.emissive.setHex(0x22c55e); mat.emissiveIntensity = intensity; }
+              }
+            });
+          }
+          // Sparkle particles on first frame
+          if (repairCutsceneTimerRef.current < 0.1) spawnConfetti(new THREE.Vector2(2.9, 3.05));
+          if (repairCutsceneTimerRef.current > 2.0) {
+            repairCutscenePhaseRef.current = 'dialog';
+            setShowRepairDlg(true);
+            setRepairStep(0);
+          }
+        } else if (rp === 'dialog') {
+          // TFB handles input via the onEnter callback
+        } else if (rp === 'place-robot') {
+          // Move robot from dock to ground near dock
+          if (robotRoot && robotRoot.parent === workshopRegisterDockRef.current) {
+            workshopRoomGroupRef.current?.attach(robotRoot);
+            robotRoot.position.set(2.9, 2.6, 0.24);
+            robotRoot.rotation.set(Math.PI / 2, 0, 0);
+            robotRoot.scale.set(0.18, 0.18, 0.18);
+          }
+          // Reset emissive
+          if (robotRoot) {
+            robotRoot.traverse((node) => {
+              const m = node as THREE.Mesh;
+              if (m.material) {
+                const mat = m.material as THREE.MeshToonMaterial;
+                if (mat.emissive) mat.emissiveIntensity = 0;
+              }
+            });
+          }
+          // Cleanup sparkle particles
+          for (const cp of confettiParticlesRef.current) {
+            sceneRef.current?.remove(cp.mesh);
+            cp.mesh.geometry.dispose();
+            (cp.mesh.material as THREE.Material).dispose();
+          }
+          confettiParticlesRef.current = [];
+          endCinematicCutscene();
+          setShowRepairDlg(false);
+          setWorkshopOutput(repairOutputRef.current);
+          // Trigger customer leaving
+          const sn = repairCustomerRef.current;
+          if (sn) {
+            sn.stage = 'leaving';
+            const leavingIdx = sn.queueIndex;
+            const frontY = CUSTOMER_QUEUE_POSITIONS[leavingIdx].y;
+            sn.waypoints = [new THREE.Vector2(0, frontY), new THREE.Vector2(0, -5.5)];
+            sn.wpIndex = 0; sn.target.copy(sn.waypoints[0]);
+            currentCustomerIdRef.current = null;
+            for (const npc of workshopCustomersRef.current) {
+              if (npc.stage !== 'leaving' && npc.queueIndex > leavingIdx) {
+                npc.queueIndex--; npc.target.copy(CUSTOMER_QUEUE_POSITIONS[npc.queueIndex]);
+                if (npc.stage === 'waiting') { npc.stage = 'walking-to-queue'; (npc as any).startedAtMs = performance.now(); }
+              }
+            }
+            spawnCustomerRef.current?.();
+          }
+          repairCutscenePhaseRef.current = 'idle';
+          repairCustomerRef.current = null;
+        }
+      }
+
       if (inWorkshopRoomRef.current) {
         customerSpawnTimerRef.current += delta;
         if (
@@ -5817,11 +5905,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   if (roomCustomerGroupRef.current) {
                     roomCustomerGroupRef.current.remove(npc.visual.root);
                   }
-                  if (roomCustomerGroupRef.current && npc.cargoRobot.root.parent === roomCustomerGroupRef.current) {
-                    roomCustomerGroupRef.current.remove(npc.cargoRobot.root);
-                  }
                   disposeObject(npc.visual.root);
-                  disposeObject(npc.cargoRobot.root);
                   if (currentCustomerIdRef.current === npc.id) {
                     currentCustomerIdRef.current = null;
                     setActiveCustomer(null);
@@ -5839,11 +5923,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (roomCustomerGroupRef.current) {
                 roomCustomerGroupRef.current.remove(npc.visual.root);
               }
-              if (roomCustomerGroupRef.current && npc.cargoRobot.root.parent === roomCustomerGroupRef.current) {
-                roomCustomerGroupRef.current.remove(npc.cargoRobot.root);
-              }
               disposeObject(npc.visual.root);
-              disposeObject(npc.cargoRobot.root);
               if (currentCustomerIdRef.current === npc.id) {
                 currentCustomerIdRef.current = null;
                 setActiveCustomer(null);
@@ -5887,24 +5967,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             animateRobotVisual(npc.cargoRobot, worldTime + npc.queueIndex * 0.35, 0.12, 0, 0);
           } else if (npc.stage === 'leaving') {
-            const cr = npc.cargoRobot.root;
-            if (cr.parent !== roomCustomerGroupRef.current) {
-              roomCustomerGroupRef.current?.attach(cr);
-              cr.position.set(npc.position.x, npc.position.y - 0.4, 0.26);
-              cr.rotation.set(Math.PI / 2, 0, 0);
-              cr.scale.set(0.18, 0.18, 0.18);
-            }
-            const fdx = npc.position.x - cr.position.x;
-            const fdy = (npc.position.y - 0.5) - cr.position.y;
-            const fDist = Math.hypot(fdx, fdy);
-            if (fDist > 0.15) {
-              const fStep = Math.min(fDist, 2.8 * delta);
-              cr.position.x += (fdx / fDist) * fStep;
-              cr.position.y += (fdy / fDist) * fStep;
-            }
-            const robotMoving = fDist > 0.3;
-            cr.position.z = 0.26 + (robotMoving ? walkSin * 0.03 : 0);
-            animateRobotVisual(npc.cargoRobot, worldTime + npc.queueIndex * 0.35, robotMoving ? 0.55 : 0.16, fdx, fdy);
+            // Robot stays where it is (register dock or ground), skip animation
           } else {
             if (npc.cargoRobot.root.parent !== npc.visual.root) {
               setCustomerRobotMode(npc, 'carry');
@@ -6044,7 +6107,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (cinemCamActiveRef.current) {
           const phase = aptCutscenePhaseRef.current;
           const csSparky = apartmentSparkyRef.current;
-          if (installBatteryPhaseRef.current) {
+          if (repairCutscenePhaseRef.current !== 'idle') {
+            camera.position.lerp(new THREE.Vector3(2.9, 2.2, 1.0), 0.06);
+            camera.lookAt(2.9, 3.05, 0.3);
+          } else if (installBatteryPhaseRef.current) {
             camera.position.lerp(new THREE.Vector3(-2.7, 0.8, 1.5), 0.06);
             camera.lookAt(-2.6, 1.2, 0.3);
           } else if (csSparky) {
@@ -6759,50 +6825,24 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
 
     const bonusText = bonusNow > 0 ? ` (+$${bonusNow} speed bonus!)` : '';
-    setWorkshopOutput(`✅ ${activeCustomer.customerName}: "Thank you!" You earned $${totalEarned}${bonusText}.`);
+    repairOutputRef.current = `✅ ${activeCustomer.customerName}: "Thank you!" You earned $${totalEarned}${bonusText}.`;
     setWorkshopCode('');
     (document.activeElement as HTMLElement)?.blur();
 
-    // Set customer to leaving and shift queue
-    const leavingIdx = selectedNpc.queueIndex;
-    // Detach robot from customer, parent to scene group for follower AI
-    const customerGroup = roomCustomerGroupRef.current;
-    if (customerGroup) {
-      customerGroup.attach(selectedNpc.cargoRobot.root);
-      selectedNpc.cargoRobot.root.position.set(selectedNpc.position.x, selectedNpc.position.y - 0.4, 0.26);
-      selectedNpc.cargoRobot.root.rotation.set(Math.PI / 2, 0, 0);
-      selectedNpc.cargoRobot.root.scale.set(0.18, 0.18, 0.18);
-    }
-    selectedNpc.stage = 'leaving';
-    const frontY = CUSTOMER_QUEUE_POSITIONS[leavingIdx].y;
-    const exitWaypoints = [
-      new THREE.Vector2(0, frontY),
-      new THREE.Vector2(0, -5.5),
-    ];
-    selectedNpc.waypoints = exitWaypoints;
-    selectedNpc.wpIndex = 0;
-    selectedNpc.target.copy(exitWaypoints[0]);
-    currentCustomerIdRef.current = null;
+    // Close modal, save output for after cutscene
+    setWorkshopCode('');
     setActiveCustomer(null);
+    (document.activeElement as HTMLElement)?.blur();
     const reLockEl = rendererRef.current?.domElement;
     if (reLockEl && document.pointerLockElement !== reLockEl) {
       try { reLockEl.requestPointerLock(); } catch {}
     }
 
-    // Shift queue: customers behind move forward along the line
-    for (const npc of workshopCustomersRef.current) {
-      if (npc.stage !== 'leaving' && npc.queueIndex > leavingIdx) {
-        npc.queueIndex--;
-        npc.target.copy(CUSTOMER_QUEUE_POSITIONS[npc.queueIndex]);
-        if (npc.stage === 'waiting') {
-          npc.stage = 'walking-to-queue';
-          (npc as any).startedAtMs = performance.now();
-        }
-      }
-    }
-
-    // Spawn replacement at back
-    spawnCustomerRef.current?.();
+    // Start repair cutscene — customer leaving deferred to cutscene 'done' phase
+    repairCustomerRef.current = selectedNpc;
+    repairCutscenePhaseRef.current = 'glow';
+    repairCutsceneTimerRef.current = 0;
+    startCinematicCutscene();
   };
 
   const finishWorkshopIntro = () => {
@@ -7419,6 +7459,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (stringDlgIsHelpRef.current) { stringDlgIsHelpRef.current = false; setShowLaptopUI(true); }
             else { bootCodingShownRef.current = false; aptCutscenePhaseRef.current = 'boot-coding'; aptCutsceneTimerRef.current = 0; }
           }
+        }}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
+
+      <TFB show={showRepairDlg} step={repairStep} steps={REPAIR_DLG_STEPS} text={repairText}
+        icon="person" onEnter={() => {
+          stopTts();
+          if (repairStep < REPAIR_DLG_STEPS.length - 1) setRepairStep(s => s + 1);
+          else repairCutscenePhaseRef.current = 'place-robot';
         }}
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
         onTtsToggle={onTtsToggle} />
