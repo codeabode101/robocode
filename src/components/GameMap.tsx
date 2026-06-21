@@ -3044,7 +3044,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
 
     workshopObstaclesRef.current = [
-      { shape: 'box', center: { x: -3.2, y: 3.25 }, halfWidth: 0.825, halfHeight: 0.225 },
       { shape: 'box', center: { x: 2.9, y: 3.05 }, halfWidth: 0.75, halfHeight: 0.35 },
       { shape: 'box', center: { x: 3.4, y: -2.4 }, halfWidth: 0.625, halfHeight: 0.41 },
     ];
@@ -5756,7 +5755,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             currentCustomerIdRef.current = null;
             for (const npc of workshopCustomersRef.current) {
               if (npc.stage !== 'leaving' && npc.queueIndex > leavingIdx) {
-                npc.queueIndex--; npc.target.copy(CUSTOMER_QUEUE_POSITIONS[npc.queueIndex]);
+                npc.queueIndex--; npc.waypoints = undefined; npc.target.copy(CUSTOMER_QUEUE_POSITIONS[npc.queueIndex]);
                 if (npc.stage === 'waiting') { npc.stage = 'walking-to-queue'; (npc as any).startedAtMs = performance.now(); }
               }
             }
