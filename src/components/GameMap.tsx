@@ -5973,6 +5973,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               npc.position.x += sx;
               npc.position.y += sy;
             } else {
+              const blockedByObstacle = collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current);
+              const blockedByCustomer = !(npc.stage === 'leaving') && blockCustomer(scratchVec2.current.x, scratchVec2.current.y);
+              if (blockedByObstacle || blockedByCustomer) {
+                console.log('BO', npc.queueIndex, npc.position.x.toFixed(3), npc.position.y.toFixed(3), 'target', npc.target.x.toFixed(3), npc.target.y.toFixed(3), 'obs', blockedByObstacle, 'cust', blockedByCustomer);
+              }
               scratchVec2.current.set(npc.position.x + sx, npc.position.y);
               if (!collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current) && (npc.stage === 'leaving' || !blockCustomer(scratchVec2.current.x, scratchVec2.current.y))) {
                 npc.position.x += sx;
