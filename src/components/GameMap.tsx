@@ -5715,14 +5715,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             repairCutscenePhaseRef.current = 'place-robot';
           }
         } else if (rp === 'place-robot') {
-          // Move robot from dock to ground near dock
+          // Move robot from dock to ground behind customer
           if (robotRoot && robotRoot.parent === workshopRegisterDockRef.current) {
             const sn2 = repairCustomerRef.current;
-            if (sn2) sn2.visual.root.attach(robotRoot);
+            if (sn2) workshopRoomGroupRef.current?.attach(robotRoot);
             else workshopRoomGroupRef.current?.attach(robotRoot);
-            robotRoot.position.set(0.105, 0.22, 0.11);
-            robotRoot.rotation.set(0, 0, Math.PI / 2);
-            robotRoot.scale.set(0.35, 0.35, 0.35);
+            const behindX = sn2 ? sn2.position.x : 0;
+            const behindY = sn2 ? sn2.position.y - 0.5 : -5.5;
+            robotRoot.position.set(behindX, behindY, 0.24);
+            robotRoot.rotation.set(Math.PI / 2, 0, 0);
+            robotRoot.scale.set(0.18, 0.18, 0.18);
           }
           // Reset emissive
           if (robotRoot) {
@@ -5927,6 +5929,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                     roomCustomerGroupRef.current.remove(npc.visual.root);
                   }
                   disposeObject(npc.visual.root);
+                  if (npc.cargoRobot.root.parent) npc.cargoRobot.root.parent.remove(npc.cargoRobot.root);
+                  disposeObject(npc.cargoRobot.root);
                   if (currentCustomerIdRef.current === npc.id) {
                     currentCustomerIdRef.current = null;
                     setActiveCustomer(null);
@@ -5945,6 +5949,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 roomCustomerGroupRef.current.remove(npc.visual.root);
               }
               disposeObject(npc.visual.root);
+              if (npc.cargoRobot.root.parent) npc.cargoRobot.root.parent.remove(npc.cargoRobot.root);
+              disposeObject(npc.cargoRobot.root);
               if (currentCustomerIdRef.current === npc.id) {
                 currentCustomerIdRef.current = null;
                 setActiveCustomer(null);
@@ -5964,16 +5970,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 Math.hypot(px - n.position.x, py - n.position.y) < 0.18
               ));
             scratchVec2.current.set(npc.position.x + sx, npc.position.y + sy);
-            if (!collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current) && !blockCustomer(scratchVec2.current.x, scratchVec2.current.y)) {
+            if (!collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current) && (npc.stage === 'leaving' || !blockCustomer(scratchVec2.current.x, scratchVec2.current.y))) {
               npc.position.x += sx;
               npc.position.y += sy;
             } else {
               scratchVec2.current.set(npc.position.x + sx, npc.position.y);
-              if (!collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current) && !blockCustomer(scratchVec2.current.x, scratchVec2.current.y)) {
+              if (!collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current) && (npc.stage === 'leaving' || !blockCustomer(scratchVec2.current.x, scratchVec2.current.y))) {
                 npc.position.x += sx;
               } else {
                 scratchVec2.current.set(npc.position.x, npc.position.y + sy);
-                if (!collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current) && !blockCustomer(scratchVec2.current.x, scratchVec2.current.y)) {
+                if (!collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current) && (npc.stage === 'leaving' || !blockCustomer(scratchVec2.current.x, scratchVec2.current.y))) {
                   npc.position.y += sy;
                 }
               }
@@ -5988,7 +5994,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             animateRobotVisual(npc.cargoRobot, worldTime + npc.queueIndex * 0.35, 0.12, 0, 0);
           } else if (npc.stage === 'leaving') {
-            // Robot stays where it is (register dock or ground), skip animation
+            // Robot follows behind customer on the ground
+            const cr = npc.cargoRobot;
+            if (cr.root.parent !== workshopRoomGroupRef.current) {
+              workshopRoomGroupRef.current?.attach(cr.root);
+              cr.root.position.set(npc.position.x, npc.position.y - 0.5, 0.24);
+              cr.root.rotation.set(Math.PI / 2, 0, 0);
+              cr.root.scale.set(0.18, 0.18, 0.18);
+            }
+            const behindX = npc.position.x;
+            const behindY = npc.position.y - 0.5;
+            cr.root.position.x += (behindX - cr.root.position.x) * 0.08;
+            cr.root.position.y += (behindY - cr.root.position.y) * 0.08;
+            cr.root.rotation.z = npc.visual.root.rotation.z;
+            animateRobotVisual(cr, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, 0, -1);
           } else {
             if (npc.cargoRobot.root.parent !== npc.visual.root) {
               setCustomerRobotMode(npc, 'carry');
