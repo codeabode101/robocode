@@ -794,11 +794,32 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       robot.scale.set(0.17, 0.17, 0.17);
     } else {
       npc.visual.root.attach(robot);
-      robot.position.set(0, 0.35, 0.22);
+      robot.position.set(0, 0.35, 0.27);
       robot.rotation.set(Math.PI / 2, 0, 0);
       robot.scale.set(0.18, 0.18, 0.18);
     }
     robot.visible = true;
+  }, []);
+
+  // If broken=true: save original color and set materials to grey.
+  // If broken=false: restore original color (robot becomes alive).
+  const setRobotBroken = useCallback((robotRoot: THREE.Object3D, broken: boolean) => {
+    robotRoot.traverse((node) => {
+      const m = node as THREE.Mesh;
+      if (!m.isMesh) return;
+      const mats = Array.isArray(m.material) ? m.material : [m.material];
+      for (const mat of mats) {
+        if (!(mat instanceof THREE.MeshToonMaterial)) continue;
+        if (broken) {
+          if (mat.userData.originalColor === undefined)
+            mat.userData.originalColor = mat.color.getHex();
+          mat.color.setHex(0x6b7280);
+        } else {
+          const orig = mat.userData.originalColor;
+          if (orig !== undefined) mat.color.setHex(orig);
+        }
+      }
+    });
   }, []);
 
   const [cutsceneTick, setCutsceneTick] = useState(0);
@@ -3751,6 +3772,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       cPerson.root.scale.set(0.9, 0.9, 0.9);
       const cargoRobot = createCustomerCargoRobot(customerName);
       cPerson.root.add(cargoRobot.root);
+      if (request.required.includes('color')) setRobotBroken(cargoRobot.root, true);
       const cmarker = addExclamationMarker(cPerson.root);
       cmarker.visible = false;
       cmarker.position.set(0, 0, 0.85);
@@ -3798,6 +3820,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       cPerson.root.scale.set(0.9, 0.9, 0.9);
       const cargoRobot = createCustomerCargoRobot(customerName);
       cPerson.root.add(cargoRobot.root);
+      if (request.required.includes('color')) setRobotBroken(cargoRobot.root, true);
       const cmarker = addExclamationMarker(cPerson.root);
       cmarker.visible = false;
       cmarker.position.set(0, 0, 0.85);
@@ -5674,8 +5697,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const robotRoot = cr?.root;
 
         if (rp === 'glow') {
-          // Emissive pulse on dock robot (green glow)
+          // Emissive pulse on dock robot (green glow) — also restore color (robot becomes alive)
           if (robotRoot) {
+            setRobotBroken(robotRoot, false);
             const intensity = 0.5 + Math.sin(repairCutsceneTimerRef.current * 8) * 0.5;
             robotRoot.traverse((node) => {
               const m = node as THREE.Mesh;
@@ -5700,7 +5724,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const sn2 = repairCustomerRef.current;
             if (sn2) sn2.visual.root.attach(robotRoot);
             else workshopRoomGroupRef.current?.attach(robotRoot);
-            robotRoot.position.set(0, 0.35, 0.22);
+            robotRoot.position.set(0, 0.35, 0.27);
             robotRoot.rotation.set(Math.PI / 2, 0, 0);
             robotRoot.scale.set(0.18, 0.18, 0.18);
           }
