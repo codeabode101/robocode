@@ -794,8 +794,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       robot.scale.set(0.17, 0.17, 0.17);
     } else {
       npc.visual.root.attach(robot);
-      robot.position.set(0, 0.17, 0.28);
-      robot.rotation.set(Math.PI / 2, 0, Math.PI / 2);
+      robot.position.set(0, 0.35, 0.22);
+      robot.rotation.set(Math.PI / 2, 0, 0);
       robot.scale.set(0.18, 0.18, 0.18);
     }
     robot.visible = true;
@@ -5697,8 +5697,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         } else if (rp === 'place-robot') {
           // Move robot from dock to ground near dock
           if (robotRoot && robotRoot.parent === workshopRegisterDockRef.current) {
-            workshopRoomGroupRef.current?.attach(robotRoot);
-            robotRoot.position.set(2.9, 2.6, 0.24);
+            const sn2 = repairCustomerRef.current;
+            if (sn2) sn2.visual.root.attach(robotRoot);
+            else workshopRoomGroupRef.current?.attach(robotRoot);
+            robotRoot.position.set(0, 0.35, 0.22);
             robotRoot.rotation.set(Math.PI / 2, 0, 0);
             robotRoot.scale.set(0.18, 0.18, 0.18);
           }
