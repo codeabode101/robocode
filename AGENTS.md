@@ -369,4 +369,28 @@ With rotation `(0,0,PI/2)` and position `(0.105,0.22,0.11)`, scale `0.35`:
 - Inward arm pivots (now `-0.1`/`0.1`) bring hands 12mm closer to center → better front-cradle grip
 
 ### Branch
-Current branch: `battery-only-flow` (same as before). No new branch created — these are follow-up fixes to existing repair cutscene code already on this branch.
+Current branch: `customer-queue-system`. No new branch created — fixes applied directly.
+
+---
+
+## Session History (Jun 21 2026) — Part 2
+
+### Goal
+Fix three bugs in workshop repair flow: empty customer typewriter dialog, robot color not matching `petColor`, and green emissive glow overriding robot color.
+
+### Changes Made
+
+1. **Removed customer typewriter dialog from repair cutscene**:
+   - Deleted `REPAIR_DLG_STEPS`, `showRepairDlg`, `repairStep`, `repairText` state
+   - Glow phase now transitions directly to `'place-robot'` (skips `'dialog'` phase)
+   - Removed `<TFB>` JSX block for repair dialog
+   - Customer no longer says anything — cutscene is glow → place-robot → done
+
+2. **Robot 3D color now matches `petColor`** (`createCustomerCargoRobot` at line 780):
+   - Added `PET_COLOR_HEX` map: `{ red: 0xef4444, blue: 0x3b82f6, ... }`
+   - Changed from `hashColor(\`robot-${customerName}\`)` to `PET_COLOR_HEX[petColor]`
+   - Both spawn sites pass `request.petColor` as the second argument
+
+3. **White glow instead of green** (`GameMap.tsx ~5708`):
+   - Changed `mat.emissive.setHex(0x22c55e)` → `mat.emissive.setHex(0xffffff)`
+   - Reduced intensity multiplier: `intensity` → `intensity * 0.6`
