@@ -337,6 +337,14 @@ npx wrangler secret put NEXT_PUBLIC_APINATOR_APP_KEY
 vercel
 ```
 
+### Auto-deploy workflow:
+After completing ANY changes to `GameMap.tsx` or other game code:
+1. `git add -A && git commit -m "<description of changes>"`
+2. `git push -u origin <branch>`
+3. `./scripts/deploy.sh`
+This ensures the branch is always deployed and testable on `https://robocode.rahejaom.workers.dev`.
+Do NOT merge to `main` before the user confirms the branch works in production.
+
 ---
 
 ## Session History (Jun 21 2026)
