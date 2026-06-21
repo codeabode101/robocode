@@ -32,6 +32,8 @@ export default function WorkshopPanel({
   useEffect(() => {
     if (!activeCustomer) return;
     const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === '1') { e.preventDefault(); runRef.current(); return; }
+      if (e.ctrlKey && e.key === '2') { e.preventDefault(); showRef.current(); return; }
       const t = e.target as HTMLElement;
       if (t?.tagName === 'TEXTAREA' || t?.tagName === 'INPUT' || t?.isContentEditable) return;
       if (e.key === '1') { e.preventDefault(); runRef.current(); }
@@ -102,11 +104,11 @@ export default function WorkshopPanel({
           </div>
           <div className="mt-4 flex gap-3">
             <button type="button" className="flex items-center gap-2 rounded bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400" onClick={runWorkshopCode}>
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black/20 text-xs font-bold text-white shrink-0">1</span>
+              <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-white shrink-0 px-2 py-0.5">Ctrl+1</span>
               Submit Java Code
             </button>
             <button type="button" className="flex items-center gap-2 rounded bg-amber-600 px-4 py-2.5 text-base font-semibold text-white hover:bg-amber-500" onClick={showSparkyExamples}>
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black/20 text-xs font-bold text-white shrink-0">2</span>
+              <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-white shrink-0 px-2 py-0.5">Ctrl+2</span>
               Need help?
             </button>
           </div>
