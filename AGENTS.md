@@ -336,3 +336,37 @@ npx wrangler secret put NEXT_PUBLIC_APINATOR_APP_KEY
 ```bash
 vercel
 ```
+
+---
+
+## Session History (Jun 21 2026)
+
+### Goal
+Fix robot orientation in repair cutscene — robot was rotated wrong in the customer's arms.
+
+### Changes Made
+
+1. **Robot carry rotation fix** (`setCustomerRobotMode`, `'carry'`):
+   - Rotation: `(0, 0, PI/2)` — 90° in XY plane so face normal stays +Z (upward), head on left, feet on right, thin profile from front
+   - Position: `(0.105, 0.22, 0.11)` — X-offset centers body, Y-forward clears torso by ~0.6mm (negligible overlap), Z at hand level for support
+   - Scale: `0.35` (unchanged)
+
+2. **Robot place-robot phase fix** (repair cutscene completion):
+   - Same transform applied: position `(0.105, 0.22, 0.11)`, rotation `(0, 0, PI/2)`, scale `0.35`
+
+3. **Arm cradling pivot direction fix** (`GameMap.tsx ~6014-6015`):
+   - Left arm `rotation.y`: `0.1` → `-0.1` (INWARD instead of outward — moves hand toward center)
+   - Right arm `rotation.y`: `-0.1` → `0.1` (INWARD instead of outward — moves hand toward center)
+   - Fix applies to all customers in `waiting` stage (cradling pose)
+
+### Spatial Analysis (robot in customer's arms)
+With rotation `(0,0,PI/2)` and position `(0.105,0.22,0.11)`, scale `0.35`:
+- Face normal → +Z (upwards) ✓
+- Body back at Y=0.116 is 0.6mm inside torso Y-edge 0.122 (negligible overlap, resolves with physics margin)
+- Body front at Y=0.280, torso front at ~0.122 → robot extends forward of torso (visible, natural)
+- Body bottom Z=0.206 within hand sphere (0.176-0.230) → hands support from below ✓
+- Hand front-surface Y=0.104 < body back Y=0.116 → hands cup from behind ✓
+- Inward arm pivots (now `-0.1`/`0.1`) bring hands 12mm closer to center → better front-cradle grip
+
+### Branch
+Current branch: `battery-only-flow` (same as before). No new branch created — these are follow-up fixes to existing repair cutscene code already on this branch.

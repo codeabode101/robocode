@@ -794,8 +794,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       robot.scale.set(0.17, 0.17, 0.17);
     } else {
       npc.visual.root.attach(robot);
-      robot.position.set(0, 0.05, 0.11);
-      robot.rotation.set(0, 0, 0);
+      robot.position.set(0.105, 0.22, 0.11);
+      robot.rotation.set(0, 0, Math.PI / 2);
       robot.scale.set(0.35, 0.35, 0.35);
     }
     robot.visible = true;
@@ -5724,8 +5724,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const sn2 = repairCustomerRef.current;
             if (sn2) sn2.visual.root.attach(robotRoot);
             else workshopRoomGroupRef.current?.attach(robotRoot);
-            robotRoot.position.set(0, 0.05, 0.11);
-            robotRoot.rotation.set(0, 0, 0);
+            robotRoot.position.set(0.105, 0.22, 0.11);
+            robotRoot.rotation.set(0, 0, Math.PI / 2);
             robotRoot.scale.set(0.35, 0.35, 0.35);
           }
           // Reset emissive
@@ -6011,8 +6011,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (npc.stage === 'waiting') {
               npc.visual.leftArm.rotation.x = -Math.PI / 4;
               npc.visual.rightArm!.rotation.x = -Math.PI / 4;
-              npc.visual.leftArmPivot!.rotation.y = 0.1;
-              npc.visual.rightArmPivot!.rotation.y = -0.1;
+              npc.visual.leftArmPivot!.rotation.y = -0.1;
+              npc.visual.rightArmPivot!.rotation.y = 0.1;
             } else {
               npc.visual.leftArm.rotation.x = -Math.PI / 2 + customerArmSwing;
               npc.visual.rightArm!.rotation.x = -Math.PI / 2 - customerArmSwing;
