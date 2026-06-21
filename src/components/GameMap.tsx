@@ -794,9 +794,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       robot.scale.set(0.17, 0.17, 0.17);
     } else {
       npc.visual.root.attach(robot);
-      robot.position.set(0, 0.35, 0.27);
+      robot.position.set(0, 0.45, 0.16);
       robot.rotation.set(Math.PI / 2, 0, 0);
-      robot.scale.set(0.18, 0.18, 0.18);
+      robot.scale.set(0.35, 0.35, 0.35);
     }
     robot.visible = true;
   }, []);
@@ -5724,9 +5724,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const sn2 = repairCustomerRef.current;
             if (sn2) sn2.visual.root.attach(robotRoot);
             else workshopRoomGroupRef.current?.attach(robotRoot);
-            robotRoot.position.set(0, 0.35, 0.27);
+            robotRoot.position.set(0, 0.45, 0.16);
             robotRoot.rotation.set(Math.PI / 2, 0, 0);
-            robotRoot.scale.set(0.18, 0.18, 0.18);
+            robotRoot.scale.set(0.35, 0.35, 0.35);
           }
           // Reset emissive
           if (robotRoot) {
