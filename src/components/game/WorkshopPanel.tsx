@@ -1,6 +1,6 @@
 'use client';
-import { useEffect } from 'react';
 import type { CustomerRequest } from './types';
+import CodeInput from './CodeInput';
 
 interface Props {
   activeCustomer: CustomerRequest | null;
@@ -23,10 +23,6 @@ export default function WorkshopPanel({
 }: Props) {
   const bonusAmount = Math.round(5 * bonusFraction);
   const isDataProcessing = activeCustomer?.requestType === 'data-processing';
-
-  useEffect(() => {
-    if (document.pointerLockElement) document.exitPointerLock();
-  }, []);
 
   return (
     <>
@@ -85,7 +81,7 @@ export default function WorkshopPanel({
 
           <div className="mt-3 rounded-xl border border-slate-700 bg-slate-950 overflow-hidden">
             <div className="px-4 py-2 text-base text-slate-200 border-b border-slate-800">Java Workshop Editor</div>
-            <textarea value={workshopCode} onChange={(e) => setWorkshopCode(e.target.value)} spellCheck={false} wrap="off" className="h-28 w-full resize-none overflow-auto whitespace-pre bg-transparent p-4 font-mono text-base leading-7 text-slate-100 [font-variant-ligatures:none]" />
+            <CodeInput value={workshopCode} onChange={setWorkshopCode} autoFocus minHeight="7rem" textareaClassName="p-4 text-base leading-7 text-slate-100" />
           </div>
           <div className="mt-4 flex gap-3">
             <button type="button" className="rounded bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400" onClick={runWorkshopCode}>Submit Java Code</button>
