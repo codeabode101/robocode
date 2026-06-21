@@ -1,5 +1,5 @@
 'use client';
-
+import { useEffect } from 'react';
 import type { CustomerRequest } from './types';
 
 interface Props {
@@ -24,10 +24,15 @@ export default function WorkshopPanel({
   const bonusAmount = Math.round(5 * bonusFraction);
   const isDataProcessing = activeCustomer?.requestType === 'data-processing';
 
+  useEffect(() => {
+    if (document.pointerLockElement) document.exitPointerLock();
+  }, []);
+
   return (
     <>
       {inWorkshopRoom && activeCustomer && (
-        <div className="absolute left-4 top-20 z-40 w-[min(90vw,24rem)] rounded-2xl border border-cyan-200/50 bg-slate-900/94 px-5 py-4 text-base text-slate-100 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="relative w-[min(90vw,30rem)] max-h-[90vh] overflow-y-auto rounded-2xl border border-cyan-200/50 bg-slate-900/94 px-5 py-4 text-base text-slate-100 shadow-2xl">
           <div className="text-sky-300 text-lg font-semibold">{activeCustomer.customerName}'s Request</div>
 
           {isDataProcessing && activeCustomer.dataSteps ? (
@@ -85,6 +90,7 @@ export default function WorkshopPanel({
           <div className="mt-4 flex gap-3">
             <button type="button" className="rounded bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400" onClick={runWorkshopCode}>Submit Java Code</button>
             <button type="button" className="rounded bg-amber-600 px-4 py-2.5 text-base font-semibold text-white hover:bg-amber-500" onClick={showSparkyExamples}>Need help?</button>
+          </div>
           </div>
         </div>
       )}

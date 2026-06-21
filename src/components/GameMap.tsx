@@ -784,8 +784,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       robot.scale.set(0.17, 0.17, 0.17);
     } else {
       npc.visual.root.attach(robot);
-      robot.position.set(0.16, 0.02, 0.73);
-      robot.rotation.set(Math.PI / 2, 0, Math.PI * -0.08);
+      robot.position.set(0, -0.35, 0.25);
+      robot.rotation.set(Math.PI / 2, 0, 0);
       robot.scale.set(0.18, 0.18, 0.18);
     }
     robot.visible = true;
@@ -5817,7 +5817,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   if (roomCustomerGroupRef.current) {
                     roomCustomerGroupRef.current.remove(npc.visual.root);
                   }
+                  if (roomCustomerGroupRef.current && npc.cargoRobot.root.parent === roomCustomerGroupRef.current) {
+                    roomCustomerGroupRef.current.remove(npc.cargoRobot.root);
+                  }
                   disposeObject(npc.visual.root);
+                  disposeObject(npc.cargoRobot.root);
                   if (currentCustomerIdRef.current === npc.id) {
                     currentCustomerIdRef.current = null;
                     setActiveCustomer(null);
@@ -5835,7 +5839,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (roomCustomerGroupRef.current) {
                 roomCustomerGroupRef.current.remove(npc.visual.root);
               }
+              if (roomCustomerGroupRef.current && npc.cargoRobot.root.parent === roomCustomerGroupRef.current) {
+                roomCustomerGroupRef.current.remove(npc.cargoRobot.root);
+              }
               disposeObject(npc.visual.root);
+              disposeObject(npc.cargoRobot.root);
               if (currentCustomerIdRef.current === npc.id) {
                 currentCustomerIdRef.current = null;
                 setActiveCustomer(null);
@@ -5878,6 +5886,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               setCustomerRobotMode(npc, 'register');
             }
             animateRobotVisual(npc.cargoRobot, worldTime + npc.queueIndex * 0.35, 0.12, 0, 0);
+          } else if (npc.stage === 'leaving') {
+            const cr = npc.cargoRobot.root;
+            if (cr.parent !== roomCustomerGroupRef.current) {
+              roomCustomerGroupRef.current?.attach(cr);
+              cr.position.set(npc.position.x, npc.position.y - 0.4, 0.26);
+              cr.rotation.set(Math.PI / 2, 0, 0);
+              cr.scale.set(0.18, 0.18, 0.18);
+            }
+            const fdx = npc.position.x - cr.position.x;
+            const fdy = (npc.position.y - 0.5) - cr.position.y;
+            const fDist = Math.hypot(fdx, fdy);
+            if (fDist > 0.15) {
+              const fStep = Math.min(fDist, 2.8 * delta);
+              cr.position.x += (fdx / fDist) * fStep;
+              cr.position.y += (fdy / fDist) * fStep;
+            }
+            const robotMoving = fDist > 0.3;
+            cr.position.z = 0.26 + (robotMoving ? walkSin * 0.03 : 0);
+            animateRobotVisual(npc.cargoRobot, worldTime + npc.queueIndex * 0.35, robotMoving ? 0.55 : 0.16, fdx, fdy);
           } else {
             if (npc.cargoRobot.root.parent !== npc.visual.root) {
               setCustomerRobotMode(npc, 'carry');
@@ -6738,7 +6765,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // Set customer to leaving and shift queue
     const leavingIdx = selectedNpc.queueIndex;
-    setCustomerRobotMode(selectedNpc, 'carry');
+    // Detach robot from customer, parent to scene group for follower AI
+    const customerGroup = roomCustomerGroupRef.current;
+    if (customerGroup) {
+      customerGroup.attach(selectedNpc.cargoRobot.root);
+      selectedNpc.cargoRobot.root.position.set(selectedNpc.position.x, selectedNpc.position.y - 0.4, 0.26);
+      selectedNpc.cargoRobot.root.rotation.set(Math.PI / 2, 0, 0);
+      selectedNpc.cargoRobot.root.scale.set(0.18, 0.18, 0.18);
+    }
     selectedNpc.stage = 'leaving';
     const frontY = CUSTOMER_QUEUE_POSITIONS[leavingIdx].y;
     const exitWaypoints = [
@@ -6750,6 +6784,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     selectedNpc.target.copy(exitWaypoints[0]);
     currentCustomerIdRef.current = null;
     setActiveCustomer(null);
+    const reLockEl = rendererRef.current?.domElement;
+    if (reLockEl && document.pointerLockElement !== reLockEl) {
+      try { reLockEl.requestPointerLock(); } catch {}
+    }
 
     // Shift queue: customers behind move forward along the line
     for (const npc of workshopCustomersRef.current) {
