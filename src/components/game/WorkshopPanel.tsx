@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useRef } from 'react';
 import type { CustomerRequest } from './types';
 import CodeInput from './CodeInput';
 
@@ -23,6 +24,22 @@ export default function WorkshopPanel({
 }: Props) {
   const bonusAmount = Math.round(5 * bonusFraction);
   const isDataProcessing = activeCustomer?.requestType === 'data-processing';
+  const runRef = useRef(runWorkshopCode);
+  const showRef = useRef(showSparkyExamples);
+  runRef.current = runWorkshopCode;
+  showRef.current = showSparkyExamples;
+
+  useEffect(() => {
+    if (!activeCustomer) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (t?.tagName === 'TEXTAREA' || t?.tagName === 'INPUT' || t?.isContentEditable) return;
+      if (e.key === '1') { e.preventDefault(); runRef.current(); }
+      if (e.key === '2') { e.preventDefault(); showRef.current(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [activeCustomer]);
 
   return (
     <>
@@ -84,8 +101,14 @@ export default function WorkshopPanel({
             <CodeInput value={workshopCode} onChange={setWorkshopCode} autoFocus minHeight="7rem" textareaClassName="p-4 text-base leading-7 text-slate-100" />
           </div>
           <div className="mt-4 flex gap-3">
-            <button type="button" className="rounded bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400" onClick={runWorkshopCode}>Submit Java Code</button>
-            <button type="button" className="rounded bg-amber-600 px-4 py-2.5 text-base font-semibold text-white hover:bg-amber-500" onClick={showSparkyExamples}>Need help?</button>
+            <button type="button" className="flex items-center gap-2 rounded bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400" onClick={runWorkshopCode}>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black/20 text-xs font-bold text-white shrink-0">1</span>
+              Submit Java Code
+            </button>
+            <button type="button" className="flex items-center gap-2 rounded bg-amber-600 px-4 py-2.5 text-base font-semibold text-white hover:bg-amber-500" onClick={showSparkyExamples}>
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black/20 text-xs font-bold text-white shrink-0">2</span>
+              Need help?
+            </button>
           </div>
           </div>
         </div>
