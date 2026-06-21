@@ -9,6 +9,7 @@ import TutorialOverlay from '@/components/game/TutorialOverlay';
 import ArenaOverlay from '@/components/game/ArenaOverlay';
 import ModalShell from './ModalShell';
 import WorkshopPanel from '@/components/game/WorkshopPanel';
+import CodeInput from '@/components/game/CodeInput';
 import type { RobotVisual, HumanVisual } from '@/components/game/scene';
 import {
   createLabelSprite, createNameSprite, createGradientTexture, getTileTexture,
@@ -7518,12 +7519,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               {laptopMode === 'boot' && (
                 <p className="text-slate-300 text-sm mb-2">Declare a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">boolean</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">ready</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">true</code>.</p>
               )}
-              <textarea
-                className="w-full bg-slate-950 text-amber-300 font-mono text-sm p-3 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-500/60 resize-none"
-                rows={laptopMode === 'date' ? 4 : laptopMode === 'version' ? 4 : laptopMode === 'boot' ? 2 : 3}
+              <CodeInput
                 value={laptopCode}
-                onChange={(e) => { setLaptopCode(e.target.value); setLaptopOutput(''); setLaptopSuccess(false); setShowSemicolonArrow(false); }}
+                onChange={(v) => { setLaptopCode(v); setLaptopOutput(''); setLaptopSuccess(false); setShowSemicolonArrow(false); }}
                 autoFocus
+                textareaClassName="bg-slate-950 text-amber-300 text-sm p-3 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-500/60"
+                minHeight={laptopMode === 'date' ? '7rem' : laptopMode === 'version' ? '7rem' : laptopMode === 'boot' ? '3.5rem' : '5.25rem'}
               />
               {showSemicolonArrow && (
                 <div className="flex justify-center mt-2">
