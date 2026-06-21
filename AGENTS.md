@@ -402,3 +402,36 @@ Fix three bugs in workshop repair flow: empty customer typewriter dialog, robot 
 3. **White glow instead of green** (`GameMap.tsx ~5708`):
    - Changed `mat.emissive.setHex(0x22c55e)` → `mat.emissive.setHex(0xffffff)`
    - Reduced intensity multiplier: `intensity` → `intensity * 0.6`
+
+---
+
+## Session History (Jun 21 2026) — Part 3
+
+### Goal
+Change robot from customer's arms to ground follower during workshop leaving phase.
+
+### Changes Made
+
+1. **Skip `blockCustomer` for leaving NPCs** (`GameMap.tsx` ~5973/5978/5982):
+   - Added `npc.stage === 'leaving' ||` bypass to all three movement checks
+   - Leaving customers can walk through northbound shifting customers freely
+   - Other customers still can't walk through the leaving NPC (excluded from their blockCustomer check)
+
+2. **Robot placed on ground in place-robot phase** (`GameMap.tsx` ~5717-5728):
+   - Changed from `sn2.visual.root.attach(robotRoot)` → `workshopRoomGroupRef.current?.attach(robotRoot)`
+   - Position: behind customer `(sn2.position.x, sn2.position.y - 0.5, 0.24)`
+   - Rotation: `(PI/2, 0, 0)` (standing upright, same as register dock)
+   - Scale: `0.18` (ground scale, same as register dock)
+
+3. **Robot follower animation in leaving stage** (`GameMap.tsx` ~5996-6010):
+   - First frame: detach from customer → attach to room group, init position
+   - Each frame: lerp position toward point 0.5 units behind customer (`lerp factor 0.08`)
+   - `rotation.z` matched to customer's facing direction
+   - `animateRobotVisual` called with walk speed when moving
+
+4. **Cargo robot disposal on exit** (`GameMap.tsx` ~5932-5933, 5952-5953):
+   - Detach from parent + `disposeObject(npc.cargoRobot.root)` in both exit paths
+   - Prevents ghost robot being left in the room
+
+### Branch
+`customer-queue-system` (committed + pushed + deployed)

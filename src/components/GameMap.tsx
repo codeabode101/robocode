@@ -144,10 +144,10 @@ const RAFIQ_ARRIVAL_TARGET = new THREE.Vector2(ROOM_OWNER_POS.x - RAFIQ_APPROACH
 const CUSTOMER_TALK_DISTANCE = 1.25;
 const ROOM_CUSTOMER_EXIT_POS = new THREE.Vector2(0, -5.5);
 const CUSTOMER_QUEUE_POSITIONS = [
-  new THREE.Vector2(2.35, 1.95),
-  new THREE.Vector2(2.35, 0.95),
-  new THREE.Vector2(2.35, -0.05),
-  new THREE.Vector2(2.35, -1.05),
+  new THREE.Vector2(2.0, 1.80),
+  new THREE.Vector2(2.0, 0.95),
+  new THREE.Vector2(2.0, 0.10),
+  new THREE.Vector2(2.0, -0.75),
 ];
 
 const SPARKY_INTERACTION_DISTANCE = 1.7;
@@ -3784,7 +3784,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const backY = queuePos.y;
       const entryWaypoints = [
         new THREE.Vector2(0, backY),
-        new THREE.Vector2(2.35, backY),
+        new THREE.Vector2(queuePos.x, backY),
       ];
       const npc: CustomerNpc = {
         id: `${customerName}-${Math.random().toString(36).slice(2, 8)}`,
