@@ -214,7 +214,7 @@ type ArenaPlayer = {
 
 type CustomerNpc = {
   id: string;
-  visual: HumanVisual & { marker?: THREE.Sprite; leftLegPivot?: THREE.Group; rightLegPivot?: THREE.Group };
+  visual: HumanVisual & { marker?: THREE.Sprite; leftLegPivot?: THREE.Group; rightLegPivot?: THREE.Group; leftArm?: THREE.Mesh; rightArm?: THREE.Mesh; leftArmPivot?: THREE.Group; rightArmPivot?: THREE.Group };
   cargoRobot: ReturnType<typeof createRobotVisual>;
   position: THREE.Vector2;
   target: THREE.Vector2;
@@ -794,7 +794,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       robot.scale.set(0.17, 0.17, 0.17);
     } else {
       npc.visual.root.attach(robot);
-      robot.position.set(0, -0.25, 0.30);
+      robot.position.set(0, 0.25, 0.38);
       robot.rotation.set(Math.PI / 2, 0, Math.PI / 2);
       robot.scale.set(0.18, 0.18, 0.18);
     }
@@ -3754,7 +3754,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const cmarker = addExclamationMarker(cPerson.root);
       cmarker.visible = false;
       cmarker.position.set(0, 0, 0.85);
-      const visual = { root: cPerson.root, nameSprite: cPerson.nameSprite, marker: cmarker, leftLegPivot: cPerson.leftLegPivot, rightLegPivot: cPerson.rightLegPivot };
+      const visual = { root: cPerson.root, nameSprite: cPerson.nameSprite, marker: cmarker, leftLegPivot: cPerson.leftLegPivot, rightLegPivot: cPerson.rightLegPivot, leftArm: cPerson.leftArm, rightArm: cPerson.rightArm, leftArmPivot: cPerson.leftArmPivot, rightArmPivot: cPerson.rightArmPivot };
       const start = new THREE.Vector2(0, -5.5);
       visual.root.position.set(start.x, start.y, 0.24);
       customerGroupCurrent.add(visual.root);
@@ -3801,7 +3801,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const cmarker = addExclamationMarker(cPerson.root);
       cmarker.visible = false;
       cmarker.position.set(0, 0, 0.85);
-      const visual = { root: cPerson.root, nameSprite: cPerson.nameSprite, marker: cmarker, leftLegPivot: cPerson.leftLegPivot, rightLegPivot: cPerson.rightLegPivot };
+      const visual = { root: cPerson.root, nameSprite: cPerson.nameSprite, marker: cmarker, leftLegPivot: cPerson.leftLegPivot, rightLegPivot: cPerson.rightLegPivot, leftArm: cPerson.leftArm, rightArm: cPerson.rightArm, leftArmPivot: cPerson.leftArmPivot, rightArmPivot: cPerson.rightArmPivot };
       const qp = CUSTOMER_QUEUE_POSITIONS[qi];
       visual.root.position.set(qp.x, qp.y, 0.24);
       customerGroupCurrent.add(visual.root);
@@ -5980,6 +5980,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const swing = walkSin * 0.3 * (moving ? 1 : 0);
           if (npc.visual.leftLegPivot) npc.visual.leftLegPivot.rotation.x = swing;
           if (npc.visual.rightLegPivot) npc.visual.rightLegPivot.rotation.x = -swing;
+          const customerArmSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2 * (moving ? 1 : 0);
+          if (npc.visual.leftArm) {
+            if (npc.stage === 'waiting') {
+              npc.visual.leftArm.rotation.x = -Math.PI / 4;
+              npc.visual.rightArm!.rotation.x = -Math.PI / 4;
+              npc.visual.leftArmPivot!.rotation.y = 0.1;
+              npc.visual.rightArmPivot!.rotation.y = -0.1;
+            } else {
+              npc.visual.leftArm.rotation.x = -Math.PI / 2 + customerArmSwing;
+              npc.visual.rightArm!.rotation.x = -Math.PI / 2 - customerArmSwing;
+              npc.visual.leftArmPivot!.rotation.y = 0.42;
+              npc.visual.rightArmPivot!.rotation.y = -0.42;
+            }
+          }
           const bobZ = moving ? walkSin * 0.03 : 0;
           npc.visual.nameSprite.position.y = 1.15 + Math.sin(worldTime * 2 + npc.position.y) * 0.03;
           npc.visual.root.position.set(npc.position.x, npc.position.y, 0.26 + bobZ);
