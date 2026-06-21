@@ -149,10 +149,11 @@ const CUSTOMER_QUEUE_POSITIONS = [
   new THREE.Vector2(2.35, -1.05),
 ];
 
-const REPAIR_DLG_STEPS = [
-  { speaker: 'Customer', text: 'You fixed my robot! Thank you so much!' },
-] as const;
 const SPARKY_INTERACTION_DISTANCE = 1.7;
+const PET_COLOR_HEX: Record<string, number> = {
+  red: 0xef4444, blue: 0x3b82f6, green: 0x22c55e, gold: 0xeab308,
+  teal: 0x14b8a6, violet: 0x8b5cf6, orange: 0xf97316, silver: 0x9ca3af,
+};
 const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
 const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
 const PET_COLORS = ['red', 'blue', 'green', 'gold', 'teal', 'violet', 'orange', 'silver'];
@@ -632,9 +633,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [showElectrocuteDlg, setShowElectrocuteDlg] = useState(false);
   const [electrocuteStep, setElectrocuteStep] = useState(0);
   const [electrocuteText, setElectrocuteText] = useState('');
-  const [showRepairDlg, setShowRepairDlg] = useState(false);
-  const [repairStep, setRepairStep] = useState(0);
-  const [repairText, setRepairText] = useState('');
   const [workshopIntroText, setWorkshopIntroText] = useState('');
   const [moneyAnim, setMoneyAnim] = useState<{active: boolean; bills: number; hits: number; total: number}>({active: false, bills: 0, hits: 0, total: 0});
   const [missionModal, setMissionModal] = useState<{show: boolean; msg: string}>({show: false, msg: ''});
@@ -777,8 +775,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     lastConfirmedMoneyRef.current = val;
   }, [apiSync]);
 
-  const createCustomerCargoRobot = useCallback((customerName: string) => {
-    const robot = createRobotVisual(new THREE.Color(hashColor(`robot-${customerName}`)), '');
+  const createCustomerCargoRobot = useCallback((customerName: string, petColor: string) => {
+    const colorHex = PET_COLOR_HEX[petColor] ?? 0x8b5cf6;
+    const robot = createRobotVisual(new THREE.Color(colorHex), '');
     robot.nameSprite.visible = false;
     robot.root.scale.set(0.18, 0.18, 0.18);
     robot.root.rotation.set(Math.PI / 2, 0, 0);
@@ -1147,7 +1146,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return 'Explore the city!';
   }, [sparkyQuestStage, money, backpack, workshopIntroSeen]);
 
-  const anyDialogActive = showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showBatteryDlg || showBatteryInstallDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showLaptopUI || showRepairDlg || (workshopIntroSeen === false && inWorkshopRoom);
+  const anyDialogActive = showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showBatteryDlg || showBatteryInstallDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showLaptopUI || (workshopIntroSeen === false && inWorkshopRoom);
 
   // NEW MISSION full-screen modal (only for qualitative changes, never during dialogs)
   useEffect(() => {
@@ -3770,7 +3769,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const cPerson = buildPlayerVisual(colors[Math.floor(Math.random() * colors.length)], customerName);
       cPerson.nameSprite.visible = false;
       cPerson.root.scale.set(0.9, 0.9, 0.9);
-      const cargoRobot = createCustomerCargoRobot(customerName);
+      const cargoRobot = createCustomerCargoRobot(customerName, request.petColor);
       cPerson.root.add(cargoRobot.root);
       if (request.required.includes('color')) setRobotBroken(cargoRobot.root, true);
       const cmarker = addExclamationMarker(cPerson.root);
@@ -3818,7 +3817,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const cPerson = buildPlayerVisual(prespawnColors[qi], customerName);
       cPerson.nameSprite.visible = false;
       cPerson.root.scale.set(0.9, 0.9, 0.9);
-      const cargoRobot = createCustomerCargoRobot(customerName);
+      const cargoRobot = createCustomerCargoRobot(customerName, request.petColor);
       cPerson.root.add(cargoRobot.root);
       if (request.required.includes('color')) setRobotBroken(cargoRobot.root, true);
       const cmarker = addExclamationMarker(cPerson.root);
@@ -5705,19 +5704,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const m = node as THREE.Mesh;
               if (m.material) {
                 const mat = m.material as THREE.MeshToonMaterial;
-                if (mat.emissive) { mat.emissive.setHex(0x22c55e); mat.emissiveIntensity = intensity; }
+                if (mat.emissive) { mat.emissive.setHex(0xffffff); mat.emissiveIntensity = intensity * 0.6; }
               }
             });
           }
           // Sparkle particles on first frame
           if (repairCutsceneTimerRef.current < 0.1) spawnConfetti(new THREE.Vector2(2.9, 3.05));
           if (repairCutsceneTimerRef.current > 2.0) {
-            repairCutscenePhaseRef.current = 'dialog';
-            setShowRepairDlg(true);
-            setRepairStep(0);
+            repairCutscenePhaseRef.current = 'place-robot';
           }
-        } else if (rp === 'dialog') {
-          // TFB handles input via the onEnter callback
         } else if (rp === 'place-robot') {
           // Move robot from dock to ground near dock
           if (robotRoot && robotRoot.parent === workshopRegisterDockRef.current) {
@@ -5746,7 +5741,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
           confettiParticlesRef.current = [];
           endCinematicCutscene();
-          setShowRepairDlg(false);
           setWorkshopOutput(repairOutputRef.current);
           // Trigger customer leaving
           const sn = repairCustomerRef.current;
@@ -7499,15 +7493,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (stringDlgIsHelpRef.current) { stringDlgIsHelpRef.current = false; setShowLaptopUI(true); }
             else { bootCodingShownRef.current = false; aptCutscenePhaseRef.current = 'boot-coding'; aptCutsceneTimerRef.current = 0; }
           }
-        }}
-        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
-        onTtsToggle={onTtsToggle} />
-
-      <TFB show={showRepairDlg} step={repairStep} steps={REPAIR_DLG_STEPS} text={repairText}
-        icon="person" onEnter={() => {
-          stopTts();
-          if (repairStep < REPAIR_DLG_STEPS.length - 1) setRepairStep(s => s + 1);
-          else repairCutscenePhaseRef.current = 'place-robot';
         }}
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
         onTtsToggle={onTtsToggle} />
