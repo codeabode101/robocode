@@ -3855,13 +3855,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       sessionPlaytimeRef.current += delta;
       const worldTime = now / 1000;
 
-      if (now - (window as any).__custDebugTs > 2000 || !(window as any).__custDebugTs) {
-        (window as any).__custDebugTs = now;
-        if (inWorkshopRoomRef.current) {
-          console.log('CUST', workshopCustomersRef.current.map(n => `${n.queueIndex}:(${n.position.x.toFixed(2)},${n.position.y.toFixed(2)})→(${n.target.x.toFixed(2)},${n.target.y.toFixed(2)}) ${n.stage}${(n as any).startedAtMs ? ' t+' + ((performance.now() - (n as any).startedAtMs) / 1000).toFixed(1) + 's' : ''}`).join(' | '));
-        }
-      }
-
       animFrameCounterRef.current += 1;
       lastAnimFrameRef.current = performance.now();
       fpsFrameCountRef.current += 1;
@@ -5918,7 +5911,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
 
           if (npc.stage === 'walking-to-queue' && (npc as any).startedAtMs && performance.now() - (npc as any).startedAtMs > 8000) {
-            console.log('TIMEOUT', npc.queueIndex, npc.position.x.toFixed(3), npc.position.y.toFixed(3), 'target', npc.target.x.toFixed(3), npc.target.y.toFixed(3));
             npc.stage = 'waiting';
           }
 
@@ -5931,7 +5923,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (npc.wpIndex >= npc.waypoints.length) {
                 npc.waypoints = undefined;
                 if (npc.stage === 'leaving') {
-                  console.log('LEAVE_EXIT', npc.queueIndex, npc.id);
                   if (roomCustomerGroupRef.current) {
                     roomCustomerGroupRef.current.remove(npc.visual.root);
                   }
@@ -5952,7 +5943,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 npc.target.copy(npc.waypoints[npc.wpIndex]);
               }
             } else if (npc.stage === 'leaving') {
-              console.log('LEAVE_EXIT_nw', npc.queueIndex, npc.id);
               if (roomCustomerGroupRef.current) {
                 roomCustomerGroupRef.current.remove(npc.visual.root);
               }
@@ -5966,7 +5956,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
               return false;
             }
-            if (npc.stage === 'walking-to-queue') {
+            if (npc.stage === 'walking-to-queue' && !(npc.waypoints && npc.wpIndex !== undefined && npc.wpIndex < npc.waypoints.length)) {
               npc.stage = 'waiting';
             }
           } else {
@@ -5982,11 +5972,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               npc.position.x += sx;
               npc.position.y += sy;
             } else {
-              if (npc.stage === 'walking-to-queue') {
-                const blockedByObstacle = collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current);
-                const blockedByCustomer = blockCustomer(scratchVec2.current.x, scratchVec2.current.y);
-                console.log('BO', npc.queueIndex, npc.position.x.toFixed(3), npc.position.y.toFixed(3), '→', (npc.position.x + sx).toFixed(3), (npc.position.y + sy).toFixed(3), 'obs', blockedByObstacle, 'cust', blockedByCustomer, 'stage', npc.stage);
-              }
               scratchVec2.current.set(npc.position.x + sx, npc.position.y);
               if (!collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current) && (npc.stage === 'leaving' || !blockCustomer(scratchVec2.current.x, scratchVec2.current.y))) {
                 npc.position.x += sx;
