@@ -5893,6 +5893,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         workshopCustomersRef.current = workshopCustomersRef.current.filter((npc) => {
           if (npc.stage === 'waiting' || npc.stage === 'awaiting-code') {
             npc.target.copy(npc.position);
+            npc.visual.root.rotation.z = 0;
           } else if (npc.stage === 'leaving') {
             if (npc.waypoints && npc.wpIndex !== undefined && npc.wpIndex < npc.waypoints.length) {
               npc.target.copy(npc.waypoints[npc.wpIndex]);
@@ -6967,7 +6968,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       `}</style>
       {showSparkyExamples && inWorkshopRoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => setShowSparkyExamples(false)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 px-4" onClick={() => setShowSparkyExamples(false)}>
           <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6 text-slate-100" onClick={(e) => e.stopPropagation()}>
             <div className="text-2xl font-bold text-amber-300 mb-4">Sparky's Code Examples</div>
             <div className="space-y-4 text-lg">
