@@ -5984,7 +5984,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             } else {
               if (npc.stage === 'walking-to-queue') {
                 const blockedByObstacle = collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current);
-                const blockedByCustomer = !(npc.stage === 'leaving') && blockCustomer(scratchVec2.current.x, scratchVec2.current.y);
+                const blockedByCustomer = blockCustomer(scratchVec2.current.x, scratchVec2.current.y);
                 console.log('BO', npc.queueIndex, npc.position.x.toFixed(3), npc.position.y.toFixed(3), '→', (npc.position.x + sx).toFixed(3), (npc.position.y + sy).toFixed(3), 'obs', blockedByObstacle, 'cust', blockedByCustomer, 'stage', npc.stage);
               }
               scratchVec2.current.set(npc.position.x + sx, npc.position.y);
