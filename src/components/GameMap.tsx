@@ -471,6 +471,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const repairCutsceneTimerRef = useRef(0);
   const repairCustomerRef = useRef<CustomerNpc | null>(null);
   const repairOutputRef = useRef('');
+  const registerCutscenePhaseRef = useRef<'idle' | 'connect-wire' | 'done'>('idle');
+  const registerCutsceneTimerRef = useRef(0);
+  const registerCutsceneCustomerRef = useRef<CustomerNpc | null>(null);
   const sceneBgColorRef = useRef(new THREE.Color());
   const scratchVec2 = useRef(new THREE.Vector2());
   const scratchVec3 = useRef(new THREE.Vector3());
@@ -557,6 +560,35 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         osc.start(ctx.currentTime + i * 0.2);
         osc.stop(ctx.currentTime + i * 0.2 + 0.15);
       });
+    } catch {}
+  };
+
+  const playConnectSound = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5);
+      osc.frequency.setValueAtTime(600, ctx.currentTime + 0.7);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.15, ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.3);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+      osc.connect(g).connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 1.0);
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1200, ctx.currentTime + 0.6);
+      osc2.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.9);
+      const g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0, ctx.currentTime + 0.6);
+      g2.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.65);
+      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+      osc2.connect(g2).connect(ctx.destination);
+      osc2.start(ctx.currentTime + 0.6);
+      osc2.stop(ctx.currentTime + 1.0);
     } catch {}
   };
 
@@ -3269,7 +3301,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     roomCustomerGroupRef.current = customerGroup;
 
     const registerDock = new THREE.Group();
-    registerDock.position.set(2.9, 3.05, 0.48);
+    registerDock.position.set(2.9, 3.05, 0.26);
     workshopRoomGroup.add(registerDock);
     workshopRegisterDockRef.current = registerDock;
 
@@ -3289,7 +3321,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const registerComputer = createLaptop();
     registerComputer.scale.set(0.52, 0.52, 0.52);
-    registerComputer.position.set(-0.2, -0.03, 0.22);
+    registerComputer.position.set(-0.2, -0.30, 0.22);
     registerComputer.rotation.z = Math.PI;
     registerDock.add(registerComputer);
     workshopRegisterComputerRef.current = registerComputer;
@@ -5765,6 +5797,47 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       }
 
+      // Register cutscene handler (wire connection)
+      if (registerCutscenePhaseRef.current !== 'idle') {
+        registerCutsceneTimerRef.current += delta;
+        const crn = registerCutsceneCustomerRef.current;
+        if (registerCutscenePhaseRef.current === 'connect-wire') {
+          const t = Math.min(registerCutsceneTimerRef.current / 1.5, 1);
+          const wire = workshopRegisterWireRef.current;
+          if (wire && crn) {
+            const wireStart = new THREE.Vector3();
+            const wireEnd = new THREE.Vector3();
+            crn.cargoRobot.root.getWorldPosition(wireStart);
+            const comp = workshopRegisterComputerRef.current;
+            if (comp) comp.getWorldPosition(wireEnd);
+            wireStart.z += 0.02;
+            wireEnd.z += 0.1;
+            const dir = wireEnd.clone().sub(wireStart);
+            const distWire = dir.length();
+            if (distWire > 0.001) {
+              dir.normalize();
+              const mid = wireStart.clone().add(wireEnd).multiplyScalar(0.5);
+              wire.visible = true;
+              wire.position.copy(mid);
+              wire.scale.set(1, distWire * t, 1);
+              wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+            }
+          }
+          if (registerCutsceneTimerRef.current > 1.5) {
+            registerCutscenePhaseRef.current = 'done';
+          }
+        } else if (registerCutscenePhaseRef.current === 'done') {
+          if (crn) {
+            crn.stage = 'awaiting-code';
+            setActiveCustomer(crn.request);
+            setWorkshopOutput(`${crn.request.customerName}: Here is my request.`);
+          }
+          endCinematicCutscene();
+          registerCutscenePhaseRef.current = 'idle';
+          registerCutsceneCustomerRef.current = null;
+        }
+      }
+
       if (inWorkshopRoomRef.current) {
         customerSpawnTimerRef.current += delta;
         if (
@@ -5850,15 +5923,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             nextRequest = createCustomerRequest(closestCandidate.request.customerName);
             closestCandidate.request = nextRequest;
           }
-          closestCandidate.stage = 'awaiting-code';
           setCustomerRobotMode(closestCandidate, 'register');
           currentCustomerIdRef.current = closestCandidate.id;
           bonusTimerRef.current = performance.now();
-          setActiveCustomer(nextRequest);
+          registerCutsceneCustomerRef.current = closestCandidate;
+          registerCutscenePhaseRef.current = 'connect-wire';
+          registerCutsceneTimerRef.current = 0;
+          workshopRegisterWireRef.current!.visible = true;
           lastWorkshopRequestSigRef.current = getWorkshopRequestSignature(nextRequest);
-          setWorkshopOutput(
-            `${nextRequest.customerName}: Here is my request.`
-          );
+          startCinematicCutscene();
+          playConnectSound();
           interactionCandidateIdRef.current = null;
           setInteractionPromptName(null);
         } else if (interactionRequestedRef.current) {
@@ -6044,7 +6118,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           : null;
         const registerWire = workshopRegisterWireRef.current;
         const registerComputer = workshopRegisterComputerRef.current;
-        if (registerWire && registerComputer && currentNpc && currentNpc.stage === 'awaiting-code') {
+        if (registerWire && registerComputer && currentNpc && (currentNpc.stage === 'awaiting-code' || registerCutscenePhaseRef.current !== 'idle')) {
           const wireStart = new THREE.Vector3();
           const wireEnd = new THREE.Vector3();
           currentNpc.cargoRobot.root.getWorldPosition(wireStart);
@@ -6161,6 +6235,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const phase = aptCutscenePhaseRef.current;
           const csSparky = apartmentSparkyRef.current;
           if (repairCutscenePhaseRef.current !== 'idle') {
+            camera.position.lerp(new THREE.Vector3(2.9, 2.2, 1.0), 0.06);
+            camera.lookAt(2.9, 3.05, 0.3);
+          } else if (registerCutscenePhaseRef.current !== 'idle') {
             camera.position.lerp(new THREE.Vector3(2.9, 2.2, 1.0), 0.06);
             camera.lookAt(2.9, 3.05, 0.3);
           } else if (installBatteryPhaseRef.current) {
