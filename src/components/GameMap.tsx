@@ -5819,43 +5819,40 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const crn = registerCutsceneCustomerRef.current;
         if (registerCutscenePhaseRef.current === 'place-robot') {
           const t = Math.min(registerCutsceneTimerRef.current / 1.5, 1);
-          const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
           const robot = crn?.cargoRobot.root ?? null;
-          if (robot) {
-            const dock = workshopRegisterDockRef.current;
-            if (dock) {
-              if (registerCutsceneTimerRef.current - delta < 0.01) {
-                // First frame: compute world start (robot current) and world end (dock + offset)
-                const ws = new THREE.Vector3();
-                robot.getWorldPosition(ws);
-                robot.userData.worldStart = ws;
-                const dw = new THREE.Vector3();
-                dock.getWorldPosition(dw);
-                robot.userData.worldEnd = dw.add(new THREE.Vector3(-0.02, -0.01, 0.215));
-              }
-              const ws = robot.userData.worldStart as THREE.Vector3;
-              const we = robot.userData.worldEnd as THREE.Vector3;
-              if (ws && we) {
-                const forwardT = 1 - Math.pow(1 - t, 1.8);
-                const zHeight = Math.sin(t * Math.PI) * 0.35;
-                const worldPos = new THREE.Vector3(
-                  ws.x + (we.x - ws.x) * t,
-                  ws.y + (we.y - ws.y) * forwardT,
-                  ws.z + (we.z - ws.z) * t + zHeight
-                );
-                const wobble = Math.sin(registerCutsceneTimerRef.current * 12) * 0.006 * (1 - t + 0.1);
-                worldPos.z += wobble;
-                robot.position.copy(crn!.visual.root.worldToLocal(worldPos));
+          if (crn && robot) {
+            if (registerCutsceneTimerRef.current - delta < 0.01) {
+              // First frame: save original queue position
+              robot.userData.backPos = new THREE.Vector2(crn.position.x, crn.position.y);
+            }
+            const backPos = robot.userData.backPos as THREE.Vector2;
+            if (backPos) {
+              const forwardY = 3.0;
+              const origY = backPos.y;
+              if (t < 0.4) {
+                // Walk forward toward desk
+                const pt = t / 0.4;
+                const easePt = pt < 0.5 ? 2 * pt * pt : 1 - (-2 * pt + 2) ** 2 / 2;
+                crn.position.y = origY + (forwardY - origY) * easePt;
+              } else if (t < 0.5) {
+                // At desk — place robot
+                crn.position.y = forwardY;
+                if (!robot.userData.placed) {
+                  robot.userData.placed = true;
+                  const endDock = workshopRegisterDockRef.current;
+                  if (endDock) endDock.attach(robot);
+                  robot.position.set(-0.02, -0.01, 0.215);
+                  playThumpSound();
+                }
+              } else {
+                // Walk back to queue
+                const pt = (t - 0.5) / 0.5;
+                const easePt = pt < 0.5 ? 2 * pt * pt : 1 - (-2 * pt + 2) ** 2 / 2;
+                crn.position.y = forwardY + (origY - forwardY) * easePt;
               }
             }
           }
           if (registerCutsceneTimerRef.current > 1.5) {
-            if (crn && robot) {
-              const endDock = workshopRegisterDockRef.current;
-              if (endDock) endDock.attach(robot);
-              robot.position.set(-0.02, -0.01, 0.215);
-              playThumpSound();
-            }
             registerCutscenePhaseRef.current = 'connect-wire';
             registerCutsceneTimerRef.current = 0;
           }
