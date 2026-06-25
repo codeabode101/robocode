@@ -6137,8 +6137,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             cr.root.rotation.z = npc.visual.root.rotation.z;
             animateRobotVisual(cr, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, 0, -1);
           } else {
-            if (npc.cargoRobot.root.parent !== npc.visual.root) {
-              setCustomerRobotMode(npc, 'carry');
+            const isRegisterCutscene = registerCutscenePhaseRef.current !== 'idle' && registerCutsceneCustomerRef.current?.id === npc.id;
+            if (!isRegisterCutscene) {
+              if (npc.cargoRobot.root.parent !== npc.visual.root) {
+                setCustomerRobotMode(npc, 'carry');
+              }
             }
             animateRobotVisual(npc.cargoRobot, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, dx, dy);
           }
