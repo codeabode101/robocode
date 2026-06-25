@@ -5822,27 +5822,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
           if (crn?.cargoRobot.root) {
             const robot = crn.cargoRobot.root;
-            if (registerCutsceneTimerRef.current - delta < 0.01) {
-              // First frame: detach from customer, attach to room group for world-space lerp
-              workshopRoomGroupRef.current!.attach(robot);
-              const dock = workshopRegisterDockRef.current;
-              if (dock) {
-                const endPos = new THREE.Vector3(-0.02, -0.01, 0.215);
-                dock.localToWorld(endPos);
-                robot.userData.lerpStart = robot.position.clone();
-                robot.userData.lerpEnd = endPos;
-                robot.userData.lerpStartRotX = robot.rotation.x;
-                robot.userData.lerpStartRotY = robot.rotation.y;
-                robot.userData.lerpStartRotZ = robot.rotation.z;
+            const dock = workshopRegisterDockRef.current;
+            if (dock) {
+              if (registerCutsceneTimerRef.current - delta < 0.01) {
+                // First frame: compute world start (robot current) and world end (dock + offset)
+                const ws = new THREE.Vector3();
+                robot.getWorldPosition(ws);
+                robot.userData.worldStart = ws;
+                const dw = new THREE.Vector3();
+                dock.getWorldPosition(dw);
+                robot.userData.worldEnd = dw.add(new THREE.Vector3(-0.02, -0.01, 0.215));
               }
-            }
-            const startPos = robot.userData.lerpStart as THREE.Vector3;
-            const endPos = robot.userData.lerpEnd as THREE.Vector3;
-            if (startPos && endPos) {
-              robot.position.lerpVectors(startPos, endPos, eased);
-              robot.rotation.x = robot.userData.lerpStartRotX + (Math.PI / 2 - robot.userData.lerpStartRotX) * eased;
-              robot.rotation.y = robot.userData.lerpStartRotY + (0 - robot.userData.lerpStartRotY) * eased;
-              robot.rotation.z = (robot.userData.lerpStartRotZ as number) + (Math.PI * 0.04 - (robot.userData.lerpStartRotZ as number)) * eased;
+              const ws = robot.userData.worldStart as THREE.Vector3;
+              const we = robot.userData.worldEnd as THREE.Vector3;
+              if (ws && we) {
+                const worldPos = new THREE.Vector3().lerpVectors(ws, we, eased);
+                robot.position.copy(crn.visual.root.worldToLocal(worldPos));
+              }
             }
           }
           if (registerCutsceneTimerRef.current > 1.5) {
