@@ -471,7 +471,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const repairCutsceneTimerRef = useRef(0);
   const repairCustomerRef = useRef<CustomerNpc | null>(null);
   const repairOutputRef = useRef('');
-  const registerCutscenePhaseRef = useRef<'idle' | 'place-robot' | 'connect-wire' | 'done'>('idle');
+  const registerCutscenePhaseRef = useRef<'idle' | 'place-robot' | 'player-walk' | 'connect-wire' | 'done'>('idle');
   const registerCutsceneTimerRef = useRef(0);
   const registerCutsceneCustomerRef = useRef<CustomerNpc | null>(null);
   const sceneBgColorRef = useRef(new THREE.Color());
@@ -3945,7 +3945,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       let moved = false;
       let moveDir2 = new THREE.Vector2(0, 0);
-      if (aptCutscenePhaseRef.current !== 'idle' || rafiqWalkPhaseRef.current !== 'idle' || rafiqDlgOpenRef.current) {
+      if (aptCutscenePhaseRef.current !== 'idle' || registerCutscenePhaseRef.current !== 'idle' || rafiqWalkPhaseRef.current !== 'idle' || rafiqDlgOpenRef.current) {
         // Cutscene or Rafiq dialog active — freeze player
         keyStateRef.current.clear();
       } else if (!showTutorialRef.current) {
@@ -5819,8 +5819,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const robot = crn?.cargoRobot.root ?? null;
           if (crn && robot) {
             if (registerCutsceneTimerRef.current - delta < 0.01) {
-              // First frame: save original queue position
+              // First frame: save original queue position + player position
               robot.userData.backPos = new THREE.Vector2(crn.position.x, crn.position.y);
+              robot.userData.playerWalkOrigin = new THREE.Vector2(localPositionRef.current.x, localPositionRef.current.y);
             }
             const backPos = robot.userData.backPos as THREE.Vector2;
             if (backPos) {
@@ -5849,11 +5850,37 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           }
           if (registerCutsceneTimerRef.current > 1.5) {
+            registerCutscenePhaseRef.current = 'player-walk';
+            registerCutsceneTimerRef.current = 0;
+          }
+        } else if (registerCutscenePhaseRef.current === 'player-walk') {
+          const t = Math.min(registerCutsceneTimerRef.current / 0.7, 1);
+          const walkTarget = new THREE.Vector2(2.0, 2.55);
+          const pwRobot = crn?.cargoRobot.root ?? null;
+          const walkOrigin = pwRobot?.userData.playerWalkOrigin as THREE.Vector2 | undefined;
+          if (pwRobot && walkOrigin) {
+            const easeT = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+            const cx = walkOrigin.x + (walkTarget.x - walkOrigin.x) * easeT;
+            const cy = walkOrigin.y + (walkTarget.y - walkOrigin.y) * easeT;
+            localPositionRef.current.set(cx, cy);
+            localGroup.position.set(cx, cy, 0.26);
+            yawRef.current = Math.atan2(walkTarget.x - cx, walkTarget.y - cy);
+            localGroup.position.z = 0.26 + Math.sin(worldTime * 14) * 0.03;
+            const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
+            if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = walkSwing;
+            if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -walkSwing;
+            const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
+            if (localRobotRef.current) {
+              localRobotRef.current.leftArm.rotation.x = -Math.PI / 2 + armSwing;
+              localRobotRef.current.rightArm.rotation.x = -Math.PI / 2 - armSwing;
+            }
+          }
+          if (registerCutsceneTimerRef.current > 0.7) {
             registerCutscenePhaseRef.current = 'connect-wire';
             registerCutsceneTimerRef.current = 0;
           }
         } else if (registerCutscenePhaseRef.current === 'connect-wire') {
-          const t = Math.min(registerCutsceneTimerRef.current / 0.5, 1);
+          const t = Math.min(registerCutsceneTimerRef.current / 0.3, 1);
           const wire = workshopRegisterWireRef.current;
           if (wire && crn) {
             if (registerCutsceneTimerRef.current - delta < 0.01) {
@@ -5877,7 +5904,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
             }
           }
-          if (registerCutsceneTimerRef.current > 0.5) {
+          if (registerCutsceneTimerRef.current > 0.3) {
             registerCutscenePhaseRef.current = 'done';
           }
         } else if (registerCutscenePhaseRef.current === 'done') {
@@ -6295,6 +6322,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (registerCutscenePhaseRef.current === 'place-robot') {
               camera.position.lerp(new THREE.Vector3(2.0, 0.8, 1.5), 0.06);
               camera.lookAt(2.0, 3.0, 0.3);
+            } else if (registerCutscenePhaseRef.current === 'player-walk') {
+              camera.position.lerp(new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y + 1.5, 1.5), 0.06);
+              camera.lookAt(2.0, 2.7, 0.3);
             } else {
               camera.position.lerp(new THREE.Vector3(1.5, 2.5, 1.2), 0.06);
               camera.lookAt(1.8, 3.0, 0.4);
