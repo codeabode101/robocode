@@ -837,7 +837,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const robot = npc.cargoRobot.root;
     if (mode === 'register') {
       workshopRegisterDockRef.current?.attach(robot);
-      robot.position.set(-0.02, -0.01, 0.31);
+      robot.position.set(-0.02, -0.01, 0.215);
       robot.rotation.set(Math.PI / 2, 0, Math.PI * 0.04);
       robot.scale.set(0.17, 0.17, 0.17);
     } else {
@@ -5827,7 +5827,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               workshopRoomGroupRef.current!.attach(robot);
               const dock = workshopRegisterDockRef.current;
               if (dock) {
-                const endPos = new THREE.Vector3(-0.02, -0.01, 0.31).applyMatrix4(dock.matrixWorld);
+                const endPos = new THREE.Vector3(-0.02, -0.01, 0.215).applyMatrix4(dock.matrixWorld);
                 robot.userData.lerpStart = robot.position.clone();
                 robot.userData.lerpEnd = endPos;
                 robot.userData.lerpStartScale = robot.scale.x;
