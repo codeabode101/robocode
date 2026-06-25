@@ -5820,8 +5820,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (registerCutscenePhaseRef.current === 'place-robot') {
           const t = Math.min(registerCutsceneTimerRef.current / 1.5, 1);
           const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
-          if (crn?.cargoRobot.root) {
-            const robot = crn.cargoRobot.root;
+          const robot = crn?.cargoRobot.root ?? null;
+          if (robot) {
             const dock = workshopRegisterDockRef.current;
             if (dock) {
               if (registerCutsceneTimerRef.current - delta < 0.01) {
@@ -5837,13 +5837,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const we = robot.userData.worldEnd as THREE.Vector3;
               if (ws && we) {
                 const worldPos = new THREE.Vector3().lerpVectors(ws, we, eased);
-                robot.position.copy(crn.visual.root.worldToLocal(worldPos));
+                const arcHeight = Math.sin(t * Math.PI) * 0.1;
+                const wobble = Math.sin(registerCutsceneTimerRef.current * 12) * 0.006 * (1 - t + 0.1);
+                worldPos.z += arcHeight + wobble;
+                robot.position.copy(crn!.visual.root.worldToLocal(worldPos));
               }
             }
           }
           if (registerCutsceneTimerRef.current > 1.5) {
-            if (crn) {
-              setCustomerRobotMode(crn, 'register');
+            if (crn && robot) {
+              const endDock = workshopRegisterDockRef.current;
+              if (endDock) endDock.attach(robot);
+              robot.position.set(-0.02, -0.01, 0.215);
               playThumpSound();
             }
             registerCutscenePhaseRef.current = 'connect-wire';
