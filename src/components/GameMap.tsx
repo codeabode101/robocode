@@ -471,7 +471,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const repairCutsceneTimerRef = useRef(0);
   const repairCustomerRef = useRef<CustomerNpc | null>(null);
   const repairOutputRef = useRef('');
-  const registerCutscenePhaseRef = useRef<'idle' | 'place-robot' | 'player-walk' | 'connect-wire' | 'done'>('idle');
+  const registerCutscenePhaseRef = useRef<'idle' | 'place-robot' | 'player-to-robot' | 'player-to-laptop' | 'connect-wire' | 'done'>('idle');
   const registerCutsceneTimerRef = useRef(0);
   const registerCutsceneCustomerRef = useRef<CustomerNpc | null>(null);
   const sceneBgColorRef = useRef(new THREE.Color());
@@ -5888,15 +5888,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           }
           if (registerCutsceneTimerRef.current > 1.5) {
-            registerCutscenePhaseRef.current = 'player-walk';
+            registerCutscenePhaseRef.current = 'player-to-robot';
             registerCutsceneTimerRef.current = 0;
           }
-        } else if (registerCutscenePhaseRef.current === 'player-walk') {
-          const t = Math.min(registerCutsceneTimerRef.current / 0.7, 1);
-          const walkTarget = new THREE.Vector2(2.0, 2.55);
-          const pwRobot = crn?.cargoRobot.root ?? null;
-          const walkOrigin = pwRobot?.userData.playerWalkOrigin as THREE.Vector2 | undefined;
-          if (pwRobot && walkOrigin) {
+        } else if (registerCutscenePhaseRef.current === 'player-to-robot') {
+          const t = Math.min(registerCutsceneTimerRef.current / 0.5, 1);
+          const walkTarget = new THREE.Vector2(2.3, 2.65);
+          const p2rRobot = crn?.cargoRobot.root ?? null;
+          const walkOrigin = p2rRobot?.userData.playerWalkOrigin as THREE.Vector2 | undefined;
+          if (p2rRobot && walkOrigin) {
             const easeT = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
             const cx = walkOrigin.x + (walkTarget.x - walkOrigin.x) * easeT;
             const cy = walkOrigin.y + (walkTarget.y - walkOrigin.y) * easeT;
@@ -5913,7 +5913,56 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               localRobotRef.current.rightArm.rotation.x = -Math.PI / 2 - armSwing;
             }
           }
-          if (registerCutsceneTimerRef.current > 0.7) {
+          if (registerCutsceneTimerRef.current > 0.5) {
+            registerCutscenePhaseRef.current = 'player-to-laptop';
+            registerCutsceneTimerRef.current = 0;
+          }
+        } else if (registerCutscenePhaseRef.current === 'player-to-laptop') {
+          const t = Math.min(registerCutsceneTimerRef.current / 0.8, 1);
+          const laptopTarget = new THREE.Vector2(1.5, 2.65);
+          const p2lRobot = crn?.cargoRobot.root ?? null;
+          const lOrigin = p2lRobot?.userData.playerWalkOrigin as THREE.Vector2 | undefined;
+          const lOrigin2 = new THREE.Vector2(2.3, 2.65);
+          const useOrigin = lOrigin ? lOrigin : lOrigin2;
+          if (p2lRobot) {
+            const easeT = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+            const cx = useOrigin.x + (laptopTarget.x - useOrigin.x) * easeT;
+            const cy = useOrigin.y + (laptopTarget.y - useOrigin.y) * easeT;
+            localPositionRef.current.set(cx, cy);
+            localGroup.position.set(cx, cy, 0.26);
+            yawRef.current = Math.atan2(laptopTarget.x - cx, laptopTarget.y - cy);
+            localGroup.position.z = 0.26 + Math.sin(worldTime * 14) * 0.03;
+            const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
+            if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = walkSwing;
+            if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -walkSwing;
+            const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
+            if (localRobotRef.current) {
+              localRobotRef.current.leftArm.rotation.x = -Math.PI / 2 + armSwing;
+              localRobotRef.current.rightArm.rotation.x = -Math.PI / 2 - armSwing;
+            }
+          }
+          // Wire stretches from robot to player's hand as player walks
+          const wire = workshopRegisterWireRef.current;
+          if (wire && crn && p2lRobot) {
+            if (registerCutsceneTimerRef.current - delta < 0.01) {
+              wire.visible = true;
+            }
+            const wireStart = new THREE.Vector3();
+            crn.cargoRobot.root.getWorldPosition(wireStart);
+            const handPos = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y, 0.56);
+            wireStart.z += 0.02;
+            const dir = handPos.clone().sub(wireStart);
+            const distWire = dir.length();
+            if (distWire > 0.001) {
+              dir.normalize();
+              const mid = wireStart.clone().add(handPos).multiplyScalar(0.5);
+              wire.position.copy(mid);
+              wire.scale.set(1, distWire, 1);
+              wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+              animateWirePulse(wire, worldTime);
+            }
+          }
+          if (registerCutsceneTimerRef.current > 0.8) {
             registerCutscenePhaseRef.current = 'connect-wire';
             registerCutsceneTimerRef.current = 0;
           }
@@ -5922,14 +5971,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const wire = workshopRegisterWireRef.current;
           if (wire && crn) {
             if (registerCutsceneTimerRef.current - delta < 0.01) {
-              wire.visible = true;
               playUsbConnectSound();
             }
             const wireStart = new THREE.Vector3();
-            const wireEnd = new THREE.Vector3();
             crn.cargoRobot.root.getWorldPosition(wireStart);
             const comp = workshopRegisterComputerRef.current;
-            if (comp) comp.getWorldPosition(wireEnd);
+            const laptopPos = new THREE.Vector3();
+            if (comp) comp.getWorldPosition(laptopPos);
+            const handPos = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y, 0.56);
+            const wireEnd = handPos.clone().lerp(laptopPos, t);
             wireStart.z += 0.02;
             wireEnd.z += 0.1;
             const dir = wireEnd.clone().sub(wireStart);
@@ -5938,7 +5988,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               dir.normalize();
               const mid = wireStart.clone().add(wireEnd).multiplyScalar(0.5);
               wire.position.copy(mid);
-              wire.scale.set(1, distWire * t, 1);
+              wire.scale.set(1, distWire, 1);
               wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
             }
           }
@@ -6360,12 +6410,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (registerCutscenePhaseRef.current === 'place-robot') {
               camera.position.lerp(new THREE.Vector3(2.0, 0.8, 1.5), 0.06);
               camera.lookAt(2.0, 3.0, 0.3);
-            } else if (registerCutscenePhaseRef.current === 'player-walk') {
+            } else if (registerCutscenePhaseRef.current === 'player-to-robot') {
               camera.position.lerp(new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y - 1.5, 1.5), 0.06);
               camera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 0.8, 0.3);
-            } else if (registerCutscenePhaseRef.current === 'connect-wire') {
-              camera.position.lerp(new THREE.Vector3(2.0, 3.6, 1.6), 0.06);
-              camera.lookAt(2.0, 2.8, 0.3);
+            } else if (registerCutscenePhaseRef.current === 'player-to-laptop') {
+              camera.position.lerp(new THREE.Vector3(0.5, 2.2, 2.0), 0.06);
+              camera.lookAt(2.0, 2.7, 0.3);
+            } else if (registerCutscenePhaseRef.current === 'connect-wire' || registerCutscenePhaseRef.current === 'done') {
+              camera.position.lerp(new THREE.Vector3(0.5, 2.2, 2.0), 0.06);
+              camera.lookAt(2.0, 2.7, 0.3);
             } else {
               camera.position.lerp(new THREE.Vector3(1.5, 2.5, 1.2), 0.06);
               camera.lookAt(1.8, 3.0, 0.4);
