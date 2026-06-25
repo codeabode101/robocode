@@ -592,6 +592,44 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     } catch {}
   };
 
+  const playUsbConnectSound = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const click = ctx.createOscillator();
+      click.type = 'square';
+      click.frequency.setValueAtTime(120, ctx.currentTime);
+      click.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.04);
+      const cg = ctx.createGain();
+      cg.gain.setValueAtTime(0.25, ctx.currentTime);
+      cg.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+      click.connect(cg).connect(ctx.destination);
+      click.start(ctx.currentTime);
+      click.stop(ctx.currentTime + 0.04);
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(500, ctx.currentTime + 0.05);
+      osc1.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.15);
+      const g1 = ctx.createGain();
+      g1.gain.setValueAtTime(0, ctx.currentTime + 0.05);
+      g1.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.07);
+      g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+      osc1.connect(g1).connect(ctx.destination);
+      osc1.start(ctx.currentTime + 0.05);
+      osc1.stop(ctx.currentTime + 0.22);
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1000, ctx.currentTime + 0.2);
+      osc2.frequency.exponentialRampToValueAtTime(1800, ctx.currentTime + 0.28);
+      const g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0, ctx.currentTime + 0.2);
+      g2.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.22);
+      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc2.connect(g2).connect(ctx.destination);
+      osc2.start(ctx.currentTime + 0.2);
+      osc2.stop(ctx.currentTime + 0.35);
+    } catch {}
+  };
+
   const playBootBeep = () => {
     try {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -5885,7 +5923,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (wire && crn) {
             if (registerCutsceneTimerRef.current - delta < 0.01) {
               wire.visible = true;
-              playConnectSound();
+              playUsbConnectSound();
             }
             const wireStart = new THREE.Vector3();
             const wireEnd = new THREE.Vector3();
@@ -6323,8 +6361,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               camera.position.lerp(new THREE.Vector3(2.0, 0.8, 1.5), 0.06);
               camera.lookAt(2.0, 3.0, 0.3);
             } else if (registerCutscenePhaseRef.current === 'player-walk') {
-              camera.position.lerp(new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y + 1.5, 1.5), 0.06);
-              camera.lookAt(2.0, 2.7, 0.3);
+              camera.position.lerp(new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y - 1.5, 1.5), 0.06);
+              camera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 0.8, 0.3);
+            } else if (registerCutscenePhaseRef.current === 'connect-wire') {
+              camera.position.lerp(new THREE.Vector3(2.0, 3.6, 1.6), 0.06);
+              camera.lookAt(2.0, 2.8, 0.3);
             } else {
               camera.position.lerp(new THREE.Vector3(1.5, 2.5, 1.2), 0.06);
               camera.lookAt(1.8, 3.0, 0.4);
