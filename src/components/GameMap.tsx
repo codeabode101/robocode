@@ -3075,7 +3075,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
 
     workshopObstaclesRef.current = [
-      { shape: 'box', center: { x: 2.9, y: 3.05 }, halfWidth: 0.75, halfHeight: 0.35 },
+      { shape: 'box', center: { x: 2.0, y: 3.05 }, halfWidth: 0.81, halfHeight: 0.41 },
       { shape: 'box', center: { x: 3.4, y: -2.4 }, halfWidth: 0.625, halfHeight: 0.41 },
     ];
 
@@ -3301,7 +3301,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     roomCustomerGroupRef.current = customerGroup;
 
     const registerDock = new THREE.Group();
-    registerDock.position.set(2.9, 3.05, 0.26);
+    registerDock.position.set(2.0, 3.05, 0.26);
     workshopRoomGroup.add(registerDock);
     workshopRegisterDockRef.current = registerDock;
 
@@ -3321,7 +3321,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const registerComputer = createLaptop();
     registerComputer.scale.set(0.52, 0.52, 0.52);
-    registerComputer.position.set(-0.2, -0.30, 0.22);
+    registerComputer.position.set(-0.45, -0.30, 0.22);
     registerComputer.rotation.z = Math.PI;
     registerDock.add(registerComputer);
     workshopRegisterComputerRef.current = registerComputer;
