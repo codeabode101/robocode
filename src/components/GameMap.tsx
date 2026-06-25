@@ -837,9 +837,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const robot = npc.cargoRobot.root;
     if (mode === 'register') {
       workshopRegisterDockRef.current?.attach(robot);
-      robot.position.set(0.45, -0.30, 0.215);
-      robot.rotation.set(Math.PI / 2, 0, Math.PI * 0.04);
-      robot.scale.set(0.17, 0.17, 0.17);
     } else {
       npc.visual.root.attach(robot);
       robot.position.set(0.105, 0.22, 0.11);
@@ -5841,7 +5838,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   robot.userData.placed = true;
                   const endDock = workshopRegisterDockRef.current;
                   if (endDock)                   endDock.attach(robot);
-                  robot.position.set(0.45, -0.30, 0.215);
                   playThumpSound();
                 }
               } else {
