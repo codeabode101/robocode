@@ -5853,7 +5853,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             registerCutsceneTimerRef.current = 0;
           }
         } else if (registerCutscenePhaseRef.current === 'connect-wire') {
-          const t = Math.min(registerCutsceneTimerRef.current / 1.5, 1);
+          const t = Math.min(registerCutsceneTimerRef.current / 0.5, 1);
           const wire = workshopRegisterWireRef.current;
           if (wire && crn) {
             if (registerCutsceneTimerRef.current - delta < 0.01) {
@@ -5877,7 +5877,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
             }
           }
-          if (registerCutsceneTimerRef.current > 1.5) {
+          if (registerCutsceneTimerRef.current > 0.5) {
             registerCutscenePhaseRef.current = 'done';
           }
         } else if (registerCutscenePhaseRef.current === 'done') {
