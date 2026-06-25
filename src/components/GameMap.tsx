@@ -5836,10 +5836,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const ws = robot.userData.worldStart as THREE.Vector3;
               const we = robot.userData.worldEnd as THREE.Vector3;
               if (ws && we) {
-                const worldPos = new THREE.Vector3().lerpVectors(ws, we, eased);
-                const arcHeight = Math.sin(t * Math.PI) * 0.1;
+                const forwardT = 1 - Math.pow(1 - t, 1.8);
+                const zHeight = Math.sin(t * Math.PI) * 0.35;
+                const worldPos = new THREE.Vector3(
+                  ws.x + (we.x - ws.x) * t,
+                  ws.y + (we.y - ws.y) * forwardT,
+                  ws.z + (we.z - ws.z) * t + zHeight
+                );
                 const wobble = Math.sin(registerCutsceneTimerRef.current * 12) * 0.006 * (1 - t + 0.1);
-                worldPos.z += arcHeight + wobble;
+                worldPos.z += wobble;
                 robot.position.copy(crn!.visual.root.worldToLocal(worldPos));
               }
             }
