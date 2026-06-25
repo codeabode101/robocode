@@ -90,6 +90,9 @@ Procedural city generation:
 - For a BoxGeometry sign on a building facade: use `MeshBasicMaterial({ map: st })` with `st.flipY = false`. If the text reads backwards, the mesh is on the wrong side of the face or the face normal points inward.
 Orthographic camera (top-down, z-up), viewHeight=26 units, ACESFilmic tone mapping, PCFSoft shadows, Fog at 38-58 units for depth. No post-processing (EffectComposer) — would need to import from `three/examples/jsm/postprocessing/`.
 
+## ⚠️ Hitbox Rule — Every visible object MUST have a hitbox
+Every visible 3D object in a room (furniture, counter, machine) must have a corresponding collision hitbox in that room's obstacle array (`workshopObstaclesRef.current`, `shopObstaclesRef.current`, etc.). The hitbox should match the object's actual dimensions. Hitboxes are defined as `{ shape: 'box', center: { x, y }, halfWidth, halfHeight }` or `{ shape: 'circle', center: { x, y }, radius }`.
+
 ## Deployment
 - **Cloudflare Workers** (NOT Pages): `./scripts/deploy.sh` (reads `NEXT_PUBLIC_APINATOR_APP_KEY` from `.dev.vars` automatically)
 - **Config**: `wrangler.jsonc` MUST exist — it's the Worker entry point. Do NOT delete it.
