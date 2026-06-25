@@ -5768,7 +5768,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             else workshopRoomGroupRef.current?.attach(robotRoot);
             const behindX = sn2 ? sn2.position.x : 0;
             const behindY = sn2 ? sn2.position.y - 0.5 : -5.5;
-            robotRoot.position.set(behindX, behindY, 0.24);
+            robotRoot.position.set(behindX, behindY, 0.251);
             robotRoot.rotation.set(Math.PI / 2, 0, 0);
             robotRoot.scale.set(0.18, 0.18, 0.18);
           }
@@ -5827,11 +5827,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               workshopRoomGroupRef.current!.attach(robot);
               const dock = workshopRegisterDockRef.current;
               if (dock) {
-                const endPos = new THREE.Vector3(-0.02, -0.01, 0.215).applyMatrix4(dock.matrixWorld);
+                const endPos = new THREE.Vector3(-0.02, -0.01, 0.215);
+                dock.localToWorld(endPos);
                 robot.userData.lerpStart = robot.position.clone();
                 robot.userData.lerpEnd = endPos;
-                robot.userData.lerpStartScale = robot.scale.x;
-                robot.userData.lerpEndScale = 0.17;
                 robot.userData.lerpStartRotX = robot.rotation.x;
                 robot.userData.lerpStartRotY = robot.rotation.y;
                 robot.userData.lerpStartRotZ = robot.rotation.z;
@@ -5841,10 +5840,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const endPos = robot.userData.lerpEnd as THREE.Vector3;
             if (startPos && endPos) {
               robot.position.lerpVectors(startPos, endPos, eased);
-              const sx = robot.userData.lerpStartScale as number;
-              const ex = robot.userData.lerpEndScale as number;
-              const s = sx + (ex - sx) * eased;
-              robot.scale.set(s, s, s);
               robot.rotation.x = robot.userData.lerpStartRotX + (Math.PI / 2 - robot.userData.lerpStartRotX) * eased;
               robot.rotation.y = robot.userData.lerpStartRotY + (0 - robot.userData.lerpStartRotY) * eased;
               robot.rotation.z = (robot.userData.lerpStartRotZ as number) + (Math.PI * 0.04 - (robot.userData.lerpStartRotZ as number)) * eased;
@@ -6128,7 +6123,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const cr = npc.cargoRobot;
             if (cr.root.parent !== workshopRoomGroupRef.current) {
               workshopRoomGroupRef.current?.attach(cr.root);
-              cr.root.position.set(npc.position.x, npc.position.y - 0.5, 0.24);
+              cr.root.position.set(npc.position.x, npc.position.y - 0.5, 0.251);
               cr.root.rotation.set(Math.PI / 2, 0, 0);
               cr.root.scale.set(0.18, 0.18, 0.18);
             }
