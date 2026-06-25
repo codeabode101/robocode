@@ -5827,7 +5827,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             const backPos = robot.userData.backPos as THREE.Vector2;
             if (backPos) {
-              const forwardY = 3.0;
+              const forwardY = 2.5;
               const origY = backPos.y;
               if (t < 0.4) {
                 // Walk forward toward desk
