@@ -843,7 +843,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   }, [debugMode]);
 
   const apiSync = useCallback((data: Record<string, unknown>) => {
-    fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+    fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), keepalive: true })
       .catch(() => {});
   }, []);
 
@@ -4134,6 +4134,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ position: { x: ROOM_SPAWN.x, y: ROOM_SPAWN.y, room: 'workshop', rotation: yawRef.current } }),
+                keepalive: true,
               }).catch(() => {});
             } else if (atArenaDoor) {
               arenaDoorArmedRef.current = false;
@@ -4153,6 +4154,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ position: { x: ARENA_ROOM_SPAWN.x, y: ARENA_ROOM_SPAWN.y, room: 'arena', rotation: yawRef.current } }),
+                keepalive: true,
               }).catch(() => {});
             } else if (atShopDoor) {
               shopDoorArmedRef.current = false;
@@ -4222,6 +4224,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ position: { x: APARTMENT_SPAWN.x, y: APARTMENT_SPAWN.y, room: 'apartment', rotation: yawRef.current } }),
+                keepalive: true,
               }).catch(() => {});
             } else if (!hitsObstacle) {
               localPositionRef.current.copy(candidate);
@@ -4357,6 +4360,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             money: gameStore.get('money'),
             playtime: Math.floor(sessionPlaytimeRef.current),
           }),
+          keepalive: true,
         }).catch(() => {});
       }
       if (moved && now - lastStepAtRef.current > 190) {
