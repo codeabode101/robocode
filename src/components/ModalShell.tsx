@@ -1,19 +1,52 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import type { SparkyQuestStage } from '@/components/game/types';
+import type { SparkyQuestStage, GameGoal } from '@/components/game/types';
 
-const STAGE_TELEPORT: Record<SparkyQuestStage, { x: number; y: number; room: string; cutsceneDone: boolean; batteryInstalled: boolean }> = {
-  'intro':          { x: 0, y: -1.5, room: 'apartment', cutsceneDone: false, batteryInstalled: false },
-  'intro-done':     { x: 0, y: -7, room: 'outside', cutsceneDone: true, batteryInstalled: false },
-  'unit1':          { x: 0, y: -3.7, room: 'workshop', cutsceneDone: true, batteryInstalled: false },
-  'unit1-done':     { x: 0, y: -7, room: 'outside', cutsceneDone: true, batteryInstalled: false },
-  'unit2':          { x: 0, y: -3.7, room: 'workshop', cutsceneDone: true, batteryInstalled: true },
-  'unit2-done':     { x: 0, y: -7, room: 'outside', cutsceneDone: true, batteryInstalled: true },
-  'unit3':          { x: 0, y: -3.7, room: 'workshop', cutsceneDone: true, batteryInstalled: true },
-  'unit3-done':     { x: 0, y: -7, room: 'outside', cutsceneDone: true, batteryInstalled: true },
-  'unit4':          { x: 0, y: -3.7, room: 'workshop', cutsceneDone: true, batteryInstalled: true },
-  'all-done':       { x: 0, y: -7, room: 'outside', cutsceneDone: true, batteryInstalled: true },
+const GOAL_TELEPORT: Record<GameGoal, {
+  questStage: SparkyQuestStage;
+  money: number;
+  backpack: string[];
+  workshopIntroSeen: boolean;
+  cutsceneDone: boolean;
+  batteryInstalled: boolean;
+  position: { x: number; y: number; room: string };
+}> = {
+  'watch-cutscene': {
+    questStage: 'intro', money: 0, backpack: [],
+    workshopIntroSeen: false, cutsceneDone: false, batteryInstalled: false,
+    position: { x: 0, y: -1.5, room: 'apartment' },
+  },
+  'talk-to-sparky': {
+    questStage: 'intro', money: 0, backpack: [],
+    workshopIntroSeen: false, cutsceneDone: true, batteryInstalled: false,
+    position: { x: 0, y: -7, room: 'outside' },
+  },
+  'show-letter-to-rafiq': {
+    questStage: 'intro', money: 0, backpack: ['letter'],
+    workshopIntroSeen: true, cutsceneDone: true, batteryInstalled: false,
+    position: { x: -6, y: -10, room: 'outside' },
+  },
+  'earn-money': {
+    questStage: 'unit1-done', money: 0, backpack: [],
+    workshopIntroSeen: true, cutsceneDone: true, batteryInstalled: false,
+    position: { x: 0, y: -3.7, room: 'workshop' },
+  },
+  'buy-battery': {
+    questStage: 'unit1-done', money: 10, backpack: [],
+    workshopIntroSeen: true, cutsceneDone: true, batteryInstalled: false,
+    position: { x: 0, y: -7, room: 'outside' },
+  },
+  'install-battery': {
+    questStage: 'unit1-done', money: 10, backpack: ['battery'],
+    workshopIntroSeen: true, cutsceneDone: true, batteryInstalled: false,
+    position: { x: 0, y: -1.5, room: 'apartment' },
+  },
+  'free-roam': {
+    questStage: 'all-done', money: 10, backpack: [],
+    workshopIntroSeen: true, cutsceneDone: true, batteryInstalled: true,
+    position: { x: 0, y: -7, room: 'outside' },
+  },
 };
 
 type Guild = { id: string; name: string; owner_id: string; description: string | null; min_level: number; member_count: number; created_at: string };
@@ -80,7 +113,7 @@ function ProfileModal() {
 }
 
 function SettingsModal({ userId, debugMode, setDebugMode }: { userId: string; debugMode: boolean; setDebugMode: (v: boolean) => void }) {
-  const [questStage, setQuestStage] = useState<SparkyQuestStage | ''>('');
+  const [selectedGoal, setSelectedGoal] = useState<GameGoal | ''>('');
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout');
@@ -96,19 +129,22 @@ function SettingsModal({ userId, debugMode, setDebugMode }: { userId: string; de
     }
     else { const d = await r.json(); alert(d.error || 'Failed to reset progress.'); }
   };
-  const handleQuestChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const stage = e.target.value as SparkyQuestStage;
-    setQuestStage(stage);
-    const tp = STAGE_TELEPORT[stage];
+  const handleGoalChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const goal = e.target.value as GameGoal;
+    setSelectedGoal(goal);
+    const tp = GOAL_TELEPORT[goal];
     try {
       await fetch('/api/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          questStage: stage,
+          questStage: tp.questStage,
           cutsceneDone: tp.cutsceneDone,
           batteryInstalled: tp.batteryInstalled,
-          position: { x: tp.x, y: tp.y, room: tp.room },
+          workshopIntroSeen: tp.workshopIntroSeen,
+          money: tp.money,
+          backpack: tp.backpack,
+          position: tp.position,
         }),
       });
     } catch {}
@@ -124,21 +160,18 @@ function SettingsModal({ userId, debugMode, setDebugMode }: { userId: string; de
         <div className="border-t border-slate-700 pt-4 space-y-3">
           <p className="text-amber-400 text-sm font-semibold">Debug Tools</p>
           <div>
-            <label className="text-slate-400 text-xs block mb-1.5">Quest Stage</label>
-            <select value={questStage} onChange={handleQuestChange} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white text-sm">
-              <option value="" disabled>Select stage...</option>
-              <option value="intro">intro (cutscene)</option>
-              <option value="intro-done">intro-done</option>
-              <option value="unit1">unit1 (workshop)</option>
-              <option value="unit1-done">unit1-done (buy battery)</option>
-              <option value="unit2">unit2</option>
-              <option value="unit2-done">unit2-done</option>
-              <option value="unit3">unit3</option>
-              <option value="unit3-done">unit3-done</option>
-              <option value="unit4">unit4</option>
-              <option value="all-done">all-done</option>
+            <label className="text-slate-400 text-xs block mb-1.5">Teleport to mission</label>
+            <select value={selectedGoal} onChange={handleGoalChange} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white text-sm">
+              <option value="" disabled>Select mission...</option>
+              <option value="watch-cutscene">Watch intro cutscene</option>
+              <option value="talk-to-sparky">Talk to Sparky</option>
+              <option value="show-letter-to-rafiq">Show letter to Rafiq</option>
+              <option value="earn-money">Earn $10 at workshop</option>
+              <option value="buy-battery">Buy battery at Parts Shop</option>
+              <option value="install-battery">Install battery in apartment</option>
+              <option value="free-roam">Free roam (all done)</option>
             </select>
-            <p className="text-slate-500 text-xs mt-1.5">Teleports you to the right location and reloads.</p>
+            <p className="text-slate-500 text-xs mt-1.5">Resets all relevant state and teleports you.</p>
           </div>
         </div>
       )}

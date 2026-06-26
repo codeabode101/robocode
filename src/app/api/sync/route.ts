@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   }
 
-  const { questStage, backpack, money, position, playtime, cutsceneDone, batteryInstalled } = body;
+  const { questStage, backpack, money, position, playtime, cutsceneDone, batteryInstalled, workshopIntroSeen } = body;
 
   try {
     const email = (payload.email as string) || `${userId}@sync`;
@@ -64,6 +64,21 @@ export async function POST(request: NextRequest) {
       await db.run(sql`
         UPDATE users SET battery_installed = ${batteryInstalled ? 1 : 0} WHERE id = ${userId}
       `);
+    }
+
+    if (typeof workshopIntroSeen === 'boolean') {
+      if (workshopIntroSeen) {
+        await db.run(sql`
+          INSERT INTO tutorial_progress (user_id, concept, completed, completed_at)
+          VALUES (${userId}, '_workshop_intro', 1, ${new Date().toISOString()})
+          ON CONFLICT (user_id, concept) DO NOTHING
+        `);
+      } else {
+        await db.run(sql`
+          DELETE FROM tutorial_progress
+          WHERE user_id = ${userId} AND concept = '_workshop_intro'
+        `);
+      }
     }
 
     if (questStage && typeof questStage === 'string') {
