@@ -5979,7 +5979,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             crn.cargoRobot.root.getWorldPosition(wireStart);
             const comp = workshopRegisterComputerRef.current;
             const laptopPos = new THREE.Vector3();
-            if (comp) comp.getWorldPosition(laptopPos);
+            if (comp) {
+              const port = comp.getObjectByName('usb-port');
+              if (port) port.getWorldPosition(laptopPos);
+              else comp.getWorldPosition(laptopPos);
+            }
             const handPos = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y + 0.25, 0.5);
             const wireEnd = handPos.clone().lerp(laptopPos, t);
             wireStart.z += 0.02;
@@ -6304,7 +6308,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const wireStart = new THREE.Vector3();
           const wireEnd = new THREE.Vector3();
           currentNpc.cargoRobot.root.getWorldPosition(wireStart);
-          registerComputer.getWorldPosition(wireEnd);
+          const port = registerComputer.getObjectByName('usb-port');
+          if (port) port.getWorldPosition(wireEnd);
+          else registerComputer.getWorldPosition(wireEnd);
           wireStart.z += 0.02;
           wireEnd.z += 0.1;
           const dir = wireEnd.clone().sub(wireStart);
@@ -7334,7 +7340,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       {!showRegLaptopUI && <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} showSparkyExamples={() => setShowSparkyExamples(true)} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />}
 
       {showRegLaptopUI && activeCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
           <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden w-[min(90vw,36rem)] max-h-[90vh]">
             <div className="flex items-center gap-2 bg-slate-800 px-4 py-3 border-b border-slate-700">
               <div className="flex gap-1.5">
