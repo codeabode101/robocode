@@ -1,6 +1,6 @@
 import { test, chromium } from '@playwright/test';
 
-test('perf with react render tracking', async () => {
+test('capture slow logic frames', async () => {
   const browser = await chromium.launch({ headless: true, args: ['--disable-gpu', '--use-gl=angle'] });
   const page = await browser.newPage();
 
@@ -12,24 +12,20 @@ test('perf with react render tracking', async () => {
 
   await page.goto('https://robocode.rahejaom.workers.dev/game', { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForSelector('canvas', { timeout: 20000 });
-  await page.waitForTimeout(2000);
-
-  // Enable perf overlay (F3)
   await page.keyboard.press('F3');
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(1000);
 
-  // Poll every 2 seconds
-  for (let i = 0; i < 15; i++) {
-    await page.waitForTimeout(2000);
-    const report = await page.evaluate(() => {
-      const s = (window as any).__perfStats;
-      return s ? {
-        ...s.report(),
-        overlayText: document.getElementById('perf-overlay')?.textContent,
-      } : null;
-    });
-    if (report) {
-      console.log(`t=${(i+1)*2}s: fps=${report.fps} avgL=${report.avgLogic}ms avgR=${report.avgRender}ms maxL=${report.maxLogic}ms maxR=${report.maxRender}ms draws=${report.drawCalls} tris=${report.triangles} renders=${report.reactRenders}`);
+  // Monitor every 3 seconds
+  for (let i = 0; i < 10; i++) {
+    await page.waitForTimeout(3000);
+    const r = await page.evaluate(() => (window as any).__perfStats?.report());
+    if (r) {
+      console.log(`t=${(i+1)*3}s: frames=${r.frames} maxL=${r.maxLogic}ms slowL=${r.slowLogic} slowR=${r.slowRender}`);
+      if (r.lastSlowLogic && r.lastSlowLogic.length > 0) {
+        for (const d of r.lastSlowLogic) {
+          console.log(`  SLOW LOGIC: frame=${d.frame} logic=${d.logicMs}ms render=${d.renderMs}ms room=${d.room} moving=${d.moving}`);
+        }
+      }
     }
   }
 
@@ -37,15 +33,34 @@ test('perf with react render tracking', async () => {
   console.log('\n=== WALKING ===');
   await page.keyboard.down('KeyW');
   for (let i = 0; i < 5; i++) {
-    await page.waitForTimeout(2000);
-    const report = await page.evaluate(() => (window as any).__perfStats?.report());
-    if (report) console.log(`walk ${i+1}: fps=${report.fps} maxL=${report.maxLogic} maxR=${report.maxRender} renders=${report.reactRenders}`);
+    await page.waitForTimeout(3000);
+    const r = await page.evaluate(() => (window as any).__perfStats?.report());
+    if (r) {
+      console.log(`walk ${i+1}: frames=${r.frames} maxL=${r.maxLogic}ms slowL=${r.slowLogic}`);
+      if (r.lastSlowLogic && r.lastSlowLogic.length > 0) {
+        for (const d of r.lastSlowLogic) {
+          console.log(`  SLOW LOGIC: frame=${d.frame} logic=${d.logicMs}ms render=${d.renderMs}ms room=${d.room} moving=${d.moving}`);
+        }
+      }
+    }
   }
   await page.keyboard.up('KeyW');
-  await page.waitForTimeout(2000);
 
+  // Final report
   const final = await page.evaluate(() => (window as any).__perfStats?.report());
-  console.log(`\nFINAL: ${JSON.stringify(final, null, 2)}`);
+  console.log(`\nFINAL:`);
+  console.log(`  frames=${final.frames} fps=${final.fps}`);
+  console.log(`  avgLogic=${final.avgLogic}ms maxLogic=${final.maxLogic}ms`);
+  console.log(`  avgRender=${final.avgRender}ms maxRender=${final.maxRender}ms`);
+  console.log(`  draws=${final.drawCalls} tris=${final.triangles}`);
+  console.log(`  reactRenders=${final.reactRenders}`);
+  console.log(`  slowLogic=${final.slowLogic} slowRender=${final.slowRender}`);
+  if (final.lastSlowLogic && final.lastSlowLogic.length > 0) {
+    console.log(`  Slow logic details:`);
+    for (const d of final.lastSlowLogic) {
+      console.log(`    frame=${d.frame} logic=${d.logicMs}ms render=${d.renderMs}ms room=${d.room} moving=${d.moving}`);
+    }
+  }
 
   await browser.close();
 });
