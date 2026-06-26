@@ -720,11 +720,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [showElectrocuteDlg, setShowElectrocuteDlg] = useState(false);
   const [electrocuteStep, setElectrocuteStep] = useState(0);
   const [electrocuteText, setElectrocuteText] = useState('');
-  const [showRegDlg, setShowRegDlg] = useState(false);
-  const [regDlgStep, setRegDlgStep] = useState(0);
-  const [regDlgText, setRegDlgText] = useState('');
-  const regDlgShownRef = useRef(false);
   const regPanelShownRef = useRef(false);
+  const [showRegLaptopUI, setShowRegLaptopUI] = useState(false);
+  const [regLaptopOutput, setRegLaptopOutput] = useState('');
+  const [regLaptopCode, setRegLaptopCode] = useState('');
   const [workshopIntroText, setWorkshopIntroText] = useState('');
   const [moneyAnim, setMoneyAnim] = useState<{active: boolean; bills: number; hits: number; total: number}>({active: false, bills: 0, hits: 0, total: 0});
   const [missionModal, setMissionModal] = useState<{show: boolean; msg: string}>({show: false, msg: ''});
@@ -742,11 +741,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
     return () => { (window.speechSynthesis as any).onvoiceschanged = null; };
   }, []);
-  const regDlgSteps = useMemo(() => [
-    { speaker: 'Customer', text: 'Thanks! The wire is connected.' },
-    { speaker: 'Customer', text: 'Here is the code I need — take a look.' },
-    { speaker: playerName || 'You', text: 'Let me see the request.' },
-  ], [playerName]);
   const cutsceneDlgSteps = useMemo(() => [
     { speaker: 'Sparky', text: "I'll get electrocuted if I code Scrap..." },
     { speaker: 'Sparky', text: '...can you code him?' },
@@ -1546,42 +1540,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }, 35);
     return () => clearInterval(interval);
   }, [electrocuteStep, showElectrocuteDlg, cutsceneDlgSteps]);
-
-  // Register dialog Enter key handler
-  useEffect(() => {
-    if (!showRegDlg) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const nextStep = regDlgStep + 1;
-        if (nextStep < regDlgSteps.length) {
-          setRegDlgStep(nextStep);
-        } else {
-          setShowRegDlg(false);
-          regDlgShownRef.current = false;
-          registerCutscenePhaseRef.current = 'laptop-ui';
-          registerCutsceneTimerRef.current = 0;
-        }
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showRegDlg, regDlgStep, regDlgSteps.length]);
-
-  // Register dialog typewriter effect
-  useEffect(() => {
-    if (!showRegDlg) return;
-    const step = regDlgSteps[regDlgStep];
-    if (!step) return;
-    setRegDlgText('');
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setRegDlgText(step.text.slice(0, i));
-      if (i >= step.text.length) clearInterval(interval);
-    }, 35);
-    return () => clearInterval(interval);
-  }, [regDlgStep, showRegDlg, regDlgSteps]);
 
   // Battery dialog typewriter effect
   useEffect(() => {
@@ -6038,32 +5996,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           }
           if (registerCutsceneTimerRef.current > 0.3) {
-            registerCutscenePhaseRef.current = 'register-dlg';
+            registerCutscenePhaseRef.current = 'laptop-ui';
             registerCutsceneTimerRef.current = 0;
-          }
-        } else if (registerCutscenePhaseRef.current === 'register-dlg') {
-          if (!regDlgShownRef.current) {
-            regDlgShownRef.current = true;
-            document.exitPointerLock();
-            setShowRegDlg(true);
-            setRegDlgStep(0);
           }
         } else if (registerCutscenePhaseRef.current === 'laptop-ui') {
           registerCutsceneTimerRef.current += delta;
           if (registerCutsceneTimerRef.current > 0.5 && !regPanelShownRef.current) {
             regPanelShownRef.current = true;
+            document.exitPointerLock();
             if (crn) {
               setActiveCustomer(crn.request);
               setWorkshopOutput(`${crn.request.customerName}: Here is my request.`);
             }
-            registerCutscenePhaseRef.current = 'done';
-            registerCutsceneTimerRef.current = 0;
+            setShowRegLaptopUI(true);
           }
         } else if (registerCutscenePhaseRef.current === 'done') {
           if (crn) {
             crn.stage = 'awaiting-code';
-            setActiveCustomer(crn.request);
-            setWorkshopOutput(`${crn.request.customerName}: Here is my request.`);
           }
           endCinematicCutscene();
           registerCutscenePhaseRef.current = 'idle';
@@ -7232,6 +7181,56 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     startCinematicCutscene();
   };
 
+  const handleRegLaptopSubmit = () => {
+    if (!activeCustomer) return;
+    const selectedId = currentCustomerIdRef.current;
+    const selectedNpc = selectedId === null ? undefined : workshopCustomersRef.current.find((npc) => npc.id === selectedId);
+    if (!selectedNpc) return;
+    const result = validateWorkshopCode(regLaptopCode, activeCustomer);
+    if (!result.valid) {
+      setRegLaptopOutput(`❌ ${result.error}`);
+      return;
+    }
+    const totalEarned = 2;
+    const newMoney = gameStore.get('money') + totalEarned;
+    gameStore.set('money', newMoney);
+    apiSync({ money: newMoney });
+    lastConfirmedMoneyRef.current = newMoney;
+    playHappyChime();
+    spawnConfetti(selectedNpc.position);
+    if (!firstTransactionDoneRef.current) {
+      firstTransactionDoneRef.current = true;
+      setFirstTransactionDone(true);
+      try { localStorage.setItem('rb_first_tx_done', '1'); } catch {}
+    }
+    regPanelShownRef.current = false;
+    setShowRegLaptopUI(false);
+    setRegLaptopCode('');
+    setRegLaptopOutput('');
+    setActiveCustomer(null);
+    selectedNpc.stage = 'leaving';
+    registerCutscenePhaseRef.current = 'done';
+    endCinematicCutscene();
+    const reLockEl = rendererRef.current?.domElement;
+    if (reLockEl && document.pointerLockElement !== reLockEl) {
+      try { reLockEl.requestPointerLock(); } catch {}
+    }
+  };
+
+  // Register laptop Enter key handler
+  const handleRegLaptopSubmitRef = useRef(handleRegLaptopSubmit);
+  handleRegLaptopSubmitRef.current = handleRegLaptopSubmit;
+  useEffect(() => {
+    if (!showRegLaptopUI) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === '1') { e.preventDefault(); handleRegLaptopSubmitRef.current(); return; }
+      const t = e.target as HTMLElement;
+      if (t?.tagName === 'TEXTAREA' || t?.tagName === 'INPUT' || t?.isContentEditable) return;
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showRegLaptopUI]);
+
   const finishWorkshopIntro = () => {
     interactionRequestedRef.current = false;
     workshopIntroSeenRef.current = true;
@@ -7332,7 +7331,51 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
         onTtsToggle={onTtsToggle} />
 
-      <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} showSparkyExamples={() => setShowSparkyExamples(true)} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />
+      {!showRegLaptopUI && <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} showSparkyExamples={() => setShowSparkyExamples(true)} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />}
+
+      {showRegLaptopUI && activeCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden w-[min(90vw,36rem)] max-h-[90vh]">
+            <div className="flex items-center gap-2 bg-slate-800 px-4 py-3 border-b border-slate-700">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                <div className="w-3 h-3 rounded-full bg-green-500" />
+              </div>
+              <span className="text-slate-400 text-sm font-medium ml-2">{activeCustomer.customerName}'s Request</span>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[calc(90vh-52px)]">
+              {activeCustomer.required.includes('name') && <div className="text-slate-100 mb-1">Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span></div>}
+              {activeCustomer.required.includes('color') && <div className="text-slate-100 mb-1">Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span></div>}
+              {activeCustomer.required.includes('size') && <div className="text-slate-100 mb-1">Size (int): <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span></div>}
+              <div className="text-sky-100 mb-3">"I want my robot to have these settings!"</div>
+              <CodeInput
+                value={regLaptopCode}
+                onChange={(v) => { setRegLaptopCode(v); setRegLaptopOutput(''); }}
+                autoFocus
+                textareaClassName="bg-slate-950 text-amber-300 text-sm p-3 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-500/60"
+                minHeight="7rem"
+              />
+              {regLaptopOutput && (
+                <div className="mt-3 p-3 rounded-lg text-base font-medium bg-red-900/40 text-red-300 border border-red-700/50">
+                  {regLaptopOutput}
+                </div>
+              )}
+              <div className="flex justify-end mt-4">
+                <button
+                  className="flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2 text-sm font-bold text-slate-900 hover:bg-amber-400 transition-colors"
+                  onClick={handleRegLaptopSubmit}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                  Submit Java Code
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ArenaOverlay inArenaRoom={inArenaRoom} arenaPlayers={arenaPlayers} arenaChallenge={arenaChallenge} arenaCode={arenaCode} setArenaCode={setArenaCode} arenaOutput={arenaOutput} arenaBattleActive={arenaBattleActive} challengePlayer={challengePlayer} acceptChallenge={acceptChallenge} declineChallenge={declineChallenge} submitArenaCode={submitArenaCode} leaveArenaRoom={leaveArenaRoom} currentUserId={userId} />
 
@@ -7696,17 +7739,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (next < cutsceneDlgSteps.length) { setElectrocuteStep(next); } else {
             setShowElectrocuteDlg(false); electrocuteDlgShownRef.current = false;
             aptCutscenePhaseRef.current = 'walk-to-laptop'; aptCutsceneTimerRef.current = 0;
-          }
-        }}
-        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
-        onTtsToggle={onTtsToggle} />
-
-      <TFB show={showRegDlg} step={regDlgStep} steps={regDlgSteps} text={regDlgText}
-        icon="auto" onEnter={() => {
-          stopTts(); const next = regDlgStep + 1;
-          if (next < regDlgSteps.length) { setRegDlgStep(next); } else {
-            setShowRegDlg(false); regDlgShownRef.current = false;
-            registerCutscenePhaseRef.current = 'laptop-ui'; registerCutsceneTimerRef.current = 0;
           }
         }}
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
