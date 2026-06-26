@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useMultiplayer } from '@/hooks/useMultiplayer';
-import type { SparkyQuestStage, CustomerRequest, TutorialPhase } from '@/components/game/types';
+import type { SparkyQuestStage, CustomerRequest, TutorialPhase, RoomType, GameGoal, ScrapPartId } from '@/components/game/types';
 import Editor from '@/components/game/Editor';
 import TutorialOverlay from '@/components/game/TutorialOverlay';
 import ArenaOverlay from '@/components/game/ArenaOverlay';
@@ -18,12 +18,11 @@ import {
   createRobotVisual, buildPlayerVisual, createHumanVisual, createPartsShop, createPartModel, createApartmentBuilding, animateRobotVisual, LABEL_BUILD_TAG, WALK_BOB_SPEED,
   addExclamationMarker, createRepairKiosk, animateRepairKiosk, animateRepairSparky, animateSparkyWave,
 } from '@/components/game/scene';
-import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest, computeCameraZoom, createCardboardBox, createLaptop, createWire, createWireCoil, animateWirePulse, openBoxLid, isInsideHitbox, collidesWithAny, escapeHtml, highlightJava } from '@/components/game/helpers';
+import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest, computeCameraZoom, createCardboardBox, createLaptop, createWire, createWireCoil, animateWirePulse, openBoxLid, isInsideHitbox, collidesWithAny, escapeHtml, highlightJava, computeGoal, getMissionText } from '@/components/game/helpers';
 import type { BuildingFootprint } from '@/components/game/helpers';
 import { buildObstacles } from '@/components/game/city';
 import { unit1Phases, unit2Phases } from '@/components/game/tutorialData';
 import { PARTS_CATALOG, DATA_CUSTOMER_NAMES } from '@/components/game/types';
-import type { ScrapPartId } from '@/components/game/types';
 import { gameStore, useGameStoreKey } from '@/store/useGameState';
 
 // If URL contains ?nocache=1 and no cache-bust, unregister service workers and reload
@@ -220,8 +219,6 @@ type CustomerNpc = {
   wpIndex?: number;
 };
 
-type RoomType = 'outside' | 'workshop' | 'apartment' | 'shop' | 'arena';
-
 function computeMarkerVisibility(
   room: RoomType,
   stage: SparkyQuestStage,
@@ -232,22 +229,17 @@ function computeMarkerVisibility(
   workshopIntroSeen: boolean,
   batteryInstalled: boolean,
 ) {
-  const hasLetter = backpack.includes('letter');
+  const goal = computeGoal(stage, backpack, money, cutsceneDone, workshopIntroSeen, batteryInstalled);
   const hasBattery = backpack.includes('battery');
   return {
-    sparkyOutdoor: !cutsceneDone && room === 'outside',
-    workshopDoor: (
-      (room === 'outside') && (
-        hasLetter ||
-        (!hasBattery && !batteryInstalled && money < 10 && cutsceneDone)
-      )
-    ),
-    shopDoor: !hasLetter && !hasBattery && !batteryInstalled && money >= 10 && cutsceneDone,
-    apartmentDoor: room === 'outside' && hasBattery && !batteryInstalled,
-    apartmentExit: room === 'apartment' && (!hasBattery || batteryInstalled),
-    workshopExit: room === 'workshop' && !hasLetter && workshopIntroSeen && (money >= 10 || hasBattery),
+    sparkyOutdoor: goal === 'watch-cutscene' && room === 'outside',
+    workshopDoor: (goal === 'show-letter-to-rafiq' || goal === 'earn-money') && room === 'outside',
+    shopDoor: goal === 'buy-battery',
+    apartmentDoor: goal === 'install-battery' && room === 'outside',
+    apartmentExit: room === 'apartment' && goal !== 'install-battery',
+    workshopExit: room === 'workshop' && goal !== 'earn-money' && goal !== 'show-letter-to-rafiq',
     shopExit: room === 'shop',
-    rafiqMarker: room === 'workshop' && (hasLetter || !workshopIntroSeen),
+    rafiqMarker: room === 'workshop' && goal === 'show-letter-to-rafiq',
   };
 }
 
@@ -675,6 +667,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [interactionPromptName, setInteractionPromptName] = useState<string | null>(null);
   const [workshopIntroSeen, setWorkshopIntroSeen] = useState(false);
   const [workshopIntroStep, setWorkshopIntroStep] = useState(0);
+  const [cutsceneDone, setCutsceneDone] = useState(false);
+  const [batteryInstalled, setBatteryInstalled] = useState(false);
   const [inArenaRoom, setInArenaRoom] = useState(false);
   const [inApartmentRoom, setInApartmentRoom] = useState(false);
   const [arenaPlayers, setArenaPlayers] = useState<ArenaPlayer[]>([]);
@@ -1190,41 +1184,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   }, [laptopCode, laptopMode, apiSync]);
 
   const highlightedCode = useMemo(() => highlightJava(code), [code]);
-  const missionText = useMemo(() => {
-    if (sparkyQuestStage === 'intro') {
-      if (backpack.includes('letter')) return 'Show Sparky\'s letter to Rafiq at his workshop.';
-      if (backpack.includes('battery')) return 'Talk to Sparky.';
-      const amt = Math.min(gameStore.get('money') ?? 0, 10);
-      if (amt < 10) {
-        if (workshopIntroSeen) return `Earn $10 at the workshop ($${amt}/$10 earned)`;
-        return 'Talk to Sparky.';
-      }
-      return 'Buy the Battery Pack at the Parts Shop ($10).';
-    }
-    if (sparkyQuestStage === 'intro-done') {
-      const amt = Math.min(gameStore.get('money') ?? 0, 10);
-      if (amt < 10) return `Earn $10 at the workshop ($${amt}/$10 earned)`;
-      return 'Buy the Battery Pack at the Parts Shop ($10).';
-    }
-    if (sparkyQuestStage === 'unit1') {
-      if (backpack.includes('battery')) return 'Bring the battery to Sparky in the apartment!';
-      const amt = Math.min(gameStore.get('money') ?? 0, 10);
-      if (amt < 10) return `Earn $10 at Rafiq's workshop ($${amt}/$10 earned)`;
-      return 'Buy the Battery Pack at the Parts Shop ($10).';
-    }
-    if (sparkyQuestStage === 'unit1-done') {
-      if (backpack.includes('battery')) return 'Bring the battery to Sparky in the apartment!';
-      const amt = Math.min(gameStore.get('money') ?? 0, 10);
-      if (amt < 10) return `Earn $10 at Rafiq's workshop ($${amt}/$10 earned)`;
-      return 'Buy the Battery Pack at the Parts Shop ($10).';
-    }
-    if (sparkyQuestStage === 'unit2' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3' || sparkyQuestStage === 'unit3-done' || sparkyQuestStage === 'unit4') {
-      if (backpack.includes('battery')) return 'Bring the battery to Sparky in the apartment!';
-      return 'Buy the Battery Pack at the Parts Shop ($10).';
-    }
-    if (sparkyQuestStage === 'all-done') return 'Scrap is fully repaired!';
-    return 'Explore the city!';
-  }, [sparkyQuestStage, money, backpack, workshopIntroSeen]);
+  const goal = useMemo(() => computeGoal(
+    sparkyQuestStage, backpack, money,
+    cutsceneDone, workshopIntroSeen, batteryInstalled,
+  ), [sparkyQuestStage, backpack, money, cutsceneDone, workshopIntroSeen, batteryInstalled]);
+
+  const missionText = useMemo(() => getMissionText(goal, money, sparkyQuestStage), [goal, money, sparkyQuestStage]);
 
   const anyDialogActive = showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showBatteryDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showLaptopUI || (workshopIntroSeen === false && inWorkshopRoom);
 
@@ -1943,12 +1908,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
       if (data.cutsceneDone) {
         cutsceneDoneRef.current = true;
+        setCutsceneDone(true);
         sparkyHomeArrivedRef.current = true;
         if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
         if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
       }
       if (data.batteryInstalled) {
         batteryInstalledRef.current = true;
+        setBatteryInstalled(true);
         // Remove battery from backpack if still present (fallback for failed sync)
         const bp = gameStore.get('backpack') as ScrapPartId[];
         if (bp.includes('battery' as ScrapPartId)) {
@@ -2013,6 +1980,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
           if (data.cutsceneDone || cutsceneDoneRef.current) {
             cutsceneDoneRef.current = true;
+            setCutsceneDone(true);
             if (scrapRobotRef.current) scrapRobotRef.current.root.visible = true;
             // Auto-start tutorial if in intro stage after cutscene
             // No auto-start tutorial — battery-only flow
@@ -5527,6 +5495,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             shopUnlockedRef.current = true;
             setShopUnlocked(true);
             cutsceneDoneRef.current = true;
+            setCutsceneDone(true);
             sparkyHomeArrivedRef.current = true;
             if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
             // Reset Scrap's eye pupils (set cyan during boot phase fade-out)
@@ -5620,6 +5589,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (installBatteryTimerRef.current > 2.5) {
               installBatteryPhaseRef.current = null;
               batteryInstalledRef.current = true;
+              setBatteryInstalled(true);
               if (scrapRobotRef.current) {
                 if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
                 if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);

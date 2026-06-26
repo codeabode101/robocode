@@ -1,4 +1,4 @@
-import type { Hitbox, CustomerRequest, Vec2, DataProcessingStep } from './types';
+import type { Hitbox, CustomerRequest, Vec2, DataProcessingStep, SparkyQuestStage, ScrapPartId, GameGoal, RoomType } from './types';
 import * as THREE from 'three';
 
 export function isInsideHitbox(point: Vec2, hitbox: Hitbox) {
@@ -546,4 +546,42 @@ export function computeCameraZoom(
     lookDist: BASE.lookDist + (ZOOMED.lookDist - BASE.lookDist) * t,
     height: BASE.height + (ZOOMED.height - BASE.height) * t,
   };
+}
+
+export function computeGoal(
+  stage: SparkyQuestStage,
+  backpack: ScrapPartId[],
+  money: number,
+  cutsceneDone: boolean,
+  workshopIntroSeen: boolean,
+  batteryInstalled: boolean,
+): GameGoal {
+  if (!cutsceneDone) return 'watch-cutscene';
+  if (backpack.includes('letter')) return 'show-letter-to-rafiq';
+  if (backpack.includes('battery') && !batteryInstalled) return 'install-battery';
+  if (money < 10) {
+    if (stage === 'intro' && !workshopIntroSeen) return 'talk-to-sparky';
+    return 'earn-money';
+  }
+  if (!batteryInstalled) return 'buy-battery';
+  if (stage === 'all-done') return 'free-roam';
+  return 'explore';
+}
+
+export function getMissionText(goal: GameGoal, money: number, stage: SparkyQuestStage): string {
+  switch (goal) {
+    case 'watch-cutscene': return '';
+    case 'talk-to-sparky': return 'Talk to Sparky.';
+    case 'show-letter-to-rafiq': return 'Show Sparky\'s letter to Rafiq at his workshop.';
+    case 'earn-money': {
+      if (stage === 'intro' || stage === 'intro-done') {
+        return `Earn $10 at the workshop ($${Math.min(money, 10)}/$10 earned)`;
+      }
+      return `Earn $10 at Rafiq's workshop ($${Math.min(money, 10)}/$10 earned)`;
+    }
+    case 'buy-battery': return 'Buy the Battery Pack at the Parts Shop ($10).';
+    case 'install-battery': return stage === 'intro' ? 'Talk to Sparky.' : 'Bring the battery to Sparky in the apartment!';
+    case 'free-roam': return 'Scrap is fully repaired!';
+    case 'explore': return 'Explore the city!';
+  }
 }

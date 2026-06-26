@@ -69,6 +69,18 @@ export type SparkyQuestStage = 'intro' | 'intro-done' | 'unit1' | 'unit1-done' |
 
 export type ScrapPartId = 'letter' | 'battery';
 
+export type RoomType = 'outside' | 'workshop' | 'apartment' | 'shop' | 'arena';
+
+export type GameGoal =
+  | 'watch-cutscene'
+  | 'talk-to-sparky'
+  | 'show-letter-to-rafiq'
+  | 'earn-money'
+  | 'buy-battery'
+  | 'install-battery'
+  | 'free-roam'
+  | 'explore';
+
 export type ScrapPart = {
   id: ScrapPartId;
   name: string;
