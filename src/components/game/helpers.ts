@@ -556,16 +556,15 @@ export function computeGoal(
   workshopIntroSeen: boolean,
   batteryInstalled: boolean,
 ): GameGoal {
+  if (batteryInstalled) return 'free-roam';
   if (!cutsceneDone) return 'watch-cutscene';
   if (backpack.includes('letter')) return 'show-letter-to-rafiq';
-  if (backpack.includes('battery') && !batteryInstalled) return 'install-battery';
+  if (backpack.includes('battery')) return 'install-battery';
   if (money < 10) {
     if (stage === 'intro' && !workshopIntroSeen) return 'talk-to-sparky';
     return 'earn-money';
   }
-  if (!batteryInstalled) return 'buy-battery';
-  if (stage === 'all-done') return 'free-roam';
-  return 'explore';
+  return 'buy-battery';
 }
 
 export function getMissionText(goal: GameGoal, money: number, stage: SparkyQuestStage): string {
@@ -582,6 +581,5 @@ export function getMissionText(goal: GameGoal, money: number, stage: SparkyQuest
     case 'buy-battery': return 'Buy the Battery Pack at the Parts Shop ($10).';
     case 'install-battery': return stage === 'intro' ? 'Talk to Sparky.' : 'Bring the battery to Sparky in the apartment!';
     case 'free-roam': return 'Scrap is fully repaired!';
-    case 'explore': return 'Explore the city!';
   }
 }

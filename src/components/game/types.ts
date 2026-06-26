@@ -78,8 +78,7 @@ export type GameGoal =
   | 'earn-money'
   | 'buy-battery'
   | 'install-battery'
-  | 'free-roam'
-  | 'explore';
+  | 'free-roam';
 
 export type ScrapPart = {
   id: ScrapPartId;
