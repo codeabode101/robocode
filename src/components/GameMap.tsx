@@ -242,7 +242,7 @@ function computeMarkerVisibility(
         (!hasBattery && !batteryInstalled && money < 10 && cutsceneDone)
       )
     ),
-    shopDoor: (room === 'outside') && !hasLetter && !hasBattery && !batteryInstalled && money >= 10 && cutsceneDone,
+    shopDoor: !hasLetter && !hasBattery && !batteryInstalled && money >= 10 && cutsceneDone,
     apartmentDoor: room === 'outside' && hasBattery && !batteryInstalled,
     apartmentExit: room === 'apartment' && (!hasBattery || batteryInstalled),
     workshopExit: room === 'workshop' && !hasLetter && workshopIntroSeen && (money >= 10 || hasBattery),
