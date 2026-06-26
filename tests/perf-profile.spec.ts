@@ -1,16 +1,11 @@
 import { test, chromium } from '@playwright/test';
 
-test('profile game frame timing', async () => {
+test('count frames and capture perf data', async () => {
   const browser = await chromium.launch({ headless: true, args: ['--disable-gpu', '--use-gl=angle'] });
   const page = await browser.newPage();
 
-  const perfLogs: string[] = [];
-  const spikeLogs: string[] = [];
-  page.on('console', msg => {
-    const t = msg.text();
-    if (t.startsWith('[PERF]')) perfLogs.push(t);
-    if (t.startsWith('[PERF_SPIKE]')) spikeLogs.push(t);
-  });
+  const consoleLogs: string[] = [];
+  page.on('console', msg => consoleLogs.push(msg.text()));
 
   const email = `perftest_${Date.now()}@test.com`;
   const res = await page.request.post('https://robocode.rahejaom.workers.dev/api/auth/signup', {
@@ -20,91 +15,45 @@ test('profile game frame timing', async () => {
 
   await page.goto('https://robocode.rahejaom.workers.dev/game', { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForSelector('canvas', { timeout: 20000 });
-  await page.waitForTimeout(3000);
-
-  // Walk around to simulate gameplay
-  await page.keyboard.down('KeyW');
-  await page.waitForTimeout(3000);
-  await page.keyboard.up('KeyW');
-  await page.keyboard.down('KeyD');
-  await page.waitForTimeout(2000);
-  await page.keyboard.up('KeyD');
-  await page.keyboard.down('KeyS');
-  await page.waitForTimeout(2000);
-  await page.keyboard.up('KeyS');
-  await page.waitForTimeout(5000);
-
-  console.log(`\n=== PERF REPORTS: ${perfLogs.length} ===`);
-  for (const log of perfLogs) {
-    console.log(log);
-  }
-
-  console.log(`\n=== RENDER SPIKES (>50ms): ${spikeLogs.length} ===`);
-  for (const log of spikeLogs.slice(0, 50)) {
-    console.log(log);
-  }
-  if (spikeLogs.length > 50) {
-    console.log(`... and ${spikeLogs.length - 50} more`);
-  }
-
-  // Aggregate histograms
-  const histograms: { rDist: Record<string, number>, lDist: Record<string, number> }[] = [];
-  const renderRanges = ['0-8', '8-16', '16-33', '33-50', '50-100', '>100'];
-  const logicRanges = ['0-1', '1-5', '>5'];
   
-  for (const log of perfLogs) {
-    const rMatch = log.match(/rDist:\[([^\]]+)\]/);
-    const lMatch = log.match(/lDist:\[([^\]]+)\]/);
-    if (rMatch && lMatch) {
-      const rParts = rMatch[1].split('|');
-      const lParts = lMatch[1].split('|');
-      const rDist: Record<string, number> = {};
-      const lDist: Record<string, number> = {};
-      let totalR = 0;
-      let totalL = 0;
-      for (const p of rParts) {
-        const [k, v] = p.split('=');
-        rDist[k] = parseInt(v);
-        totalR += parseInt(v);
-      }
-      for (const p of lParts) {
-        const [k, v] = p.split('=');
-        lDist[k] = parseInt(v);
-        totalL += parseInt(v);
-      }
-      histograms.push({ rDist, lDist });
-    }
+  // Now poll for frames
+  for (let i = 0; i < 12; i++) {
+    await page.waitForTimeout(1000);
+    
+    // Count how many [PERF] logs we have so far
+    const perfCount = consoleLogs.filter(l => l.startsWith('[PERF]')).length;
+    const slowCount = consoleLogs.filter(l => l.includes('[PERF_SLOW]')).length;
+    const errorCount = consoleLogs.filter(l => l.includes('error') || l.includes('Error')).length;
+    
+    console.log(`t=${i+1}s: PERF=${perfCount} SLOW=${slowCount} ERRORS=${errorCount}`);
   }
 
-  if (histograms.length > 0) {
-    const summedRD: Record<string, number> = {};
-    const summedLD: Record<string, number> = {};
-    let totalFrames = 0;
-    
-    for (const h of histograms) {
-      for (const [k, v] of Object.entries(h.rDist)) {
-        summedRD[k] = (summedRD[k] || 0) + v;
-      }
-      for (const [k, v] of Object.entries(h.lDist)) {
-        summedLD[k] = (summedLD[k] || 0) + v;
-      }
-      totalFrames += 60;
-    }
+  // Walk
+  await page.keyboard.down('KeyW');
+  for (let i = 0; i < 5; i++) {
+    await page.waitForTimeout(1000);
+    const perfCount = consoleLogs.filter(l => l.startsWith('[PERF]')).length;
+    const slowCount = consoleLogs.filter(l => l.includes('[PERF_SLOW]')).length;
+    console.log(`walk t=${i+1}s: PERF=${perfCount} SLOW=${slowCount}`);
+  }
+  await page.keyboard.up('KeyW');
 
-    console.log(`\n=== AGGREGATED (${totalFrames} frames) ===`);
-    console.log('Render time distribution:');
-    for (const r of renderRanges) {
-      const val = summedRD[r] || 0;
-      const pct = (val / totalFrames * 100).toFixed(1);
-      const bar = '█'.repeat(Math.round(val / totalFrames * 100 / 2));
-      console.log(`  ${r}ms: ${val} (${pct}%) ${bar}`);
-    }
-    console.log('Logic time distribution:');
-    for (const r of logicRanges) {
-      const val = summedLD[r] || 0;
-      const pct = (val / totalFrames * 100).toFixed(1);
-      console.log(`  ${r}ms: ${val} (${pct}%)`);
-    }
+  // Print all perf logs
+  const perfLogs = consoleLogs.filter(l => l.startsWith('[PERF]'));
+  const slowLogs = consoleLogs.filter(l => l.includes('[PERF_SLOW]'));
+  
+  console.log(`\n=== ALL PERF LOGS (${perfLogs.length}) ===`);
+  for (const l of perfLogs) console.log(l);
+  
+  console.log(`\n=== ALL SLOW FRAMES (${slowLogs.length}) ===`);
+  for (const l of slowLogs) console.log(l);
+  
+  console.log(`\n=== TOTAL CONSOLE LOGS: ${consoleLogs.length} ===`);
+  // Check for error logs
+  const errors = consoleLogs.filter(l => l.toLowerCase().includes('error'));
+  if (errors.length > 0) {
+    console.log(`\n=== ERRORS ===`);
+    for (const e of errors.slice(0, 10)) console.log(e.substring(0, 300));
   }
 
   await browser.close();
