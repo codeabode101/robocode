@@ -3944,7 +3944,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           rafiqWalkPhaseRef.current = 'walking';
           rafiqCutsceneTimerRef.current = 0;
           keyStateRef.current.clear();
-          setCutsceneTick(t => t + 1);
+          setTimeout(() => setCutsceneTick(t => t + 1), 0);
           yawRef.current = Math.atan2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
         } else if (pendingAptCutsceneRef.current && !showControlsModalRef.current) {
           pendingAptCutsceneRef.current = false;
@@ -6659,7 +6659,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (logicMs > 50) {
           s.slowLogicFrames = (s.slowLogicFrames || 0) + 1;
           s.slowLogicDetails = s.slowLogicDetails || [];
-          if (s.slowLogicDetails.length < 20) s.slowLogicDetails.push({ frame: s.frameCount, logicMs: logicMs.toFixed(1), renderMs: renderMs.toFixed(1), room: inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apt' : inShopRoomRef.current ? 'shop' : 'outdoor', moving: moved });
+          const sectionId = (window as any).__animSectionIdx || -1;
+          if (s.slowLogicDetails.length < 20) s.slowLogicDetails.push({ frame: s.frameCount, logicMs: logicMs.toFixed(1), renderMs: renderMs.toFixed(1), room: inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apt' : inShopRoomRef.current ? 'shop' : 'outdoor', moving: moved, section: sectionId });
         }
         if (renderMs > 50) {
           s.slowRenderFrames = (s.slowRenderFrames || 0) + 1;
@@ -6690,6 +6691,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     animateFnRef.current = animate;
     // Pre-compile all shaders before starting animation loop
     renderer.compileAsync(scene, camera).then(() => {
+      // Pre-warm shadow pass programs with one render before animation loop
+      renderer.render(scene, camera);
       rafRef.current = window.requestAnimationFrame(animate);
     });
 
