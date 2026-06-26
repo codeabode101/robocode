@@ -5893,7 +5893,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
         } else if (registerCutscenePhaseRef.current === 'player-to-robot') {
           const t = Math.min(registerCutsceneTimerRef.current / 0.5, 1);
-          const walkTarget = new THREE.Vector2(2.3, 2.65);
+          const walkTarget = new THREE.Vector2(2.3, 2.2);
           const p2rRobot = crn?.cargoRobot.root ?? null;
           const walkOrigin = p2rRobot?.userData.playerWalkOrigin as THREE.Vector2 | undefined;
           if (p2rRobot && walkOrigin) {
@@ -5919,9 +5919,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
         } else if (registerCutscenePhaseRef.current === 'player-to-laptop') {
           const t = Math.min(registerCutsceneTimerRef.current / 0.8, 1);
-          const laptopTarget = new THREE.Vector2(1.5, 2.65);
+          const laptopTarget = new THREE.Vector2(1.5, 2.2);
           const p2lRobot = crn?.cargoRobot.root ?? null;
-          const robotPos = new THREE.Vector2(2.3, 2.65);
+          const robotPos = new THREE.Vector2(2.3, 2.2);
           if (p2lRobot) {
             const easeT = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
             const cx = robotPos.x + (laptopTarget.x - robotPos.x) * easeT;
@@ -5947,7 +5947,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             const wireStart = new THREE.Vector3();
             crn.cargoRobot.root.getWorldPosition(wireStart);
-            const handPos = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y, 0.56);
+            const handPos = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y + 0.25, 0.5);
             wireStart.z += 0.02;
             const dir = handPos.clone().sub(wireStart);
             const distWire = dir.length();
@@ -5976,7 +5976,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const comp = workshopRegisterComputerRef.current;
             const laptopPos = new THREE.Vector3();
             if (comp) comp.getWorldPosition(laptopPos);
-            const handPos = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y, 0.56);
+            const handPos = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y + 0.25, 0.5);
             const wireEnd = handPos.clone().lerp(laptopPos, t);
             wireStart.z += 0.02;
             wireEnd.z += 0.1;
