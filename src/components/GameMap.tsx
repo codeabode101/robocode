@@ -428,6 +428,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const installBatteryTimerRef = useRef(0);
   const batteryInstalledRef = useRef(false);
   const batteryGlowRef = useRef<THREE.Mesh | null>(null);
+  const chestPanelRef = useRef<THREE.Mesh | null>(null);
+  const installBatteryPropRef = useRef<THREE.Group | null>(null);
+  const batteryLerpStartPosRef = useRef(new THREE.Vector3());
+  const batteryLerpEndPosRef = useRef(new THREE.Vector3());
   const sparkyEventTriggeredRef = useRef(false);
   const sparkyAcknowledgedRef = useRef(false);
   const repairTimerRef = useRef(0);
@@ -1561,6 +1565,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
+        if (hideGameUiRef.current) return;
         setShowSparkyDlg(false);
       }
     };
@@ -3094,6 +3099,29 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (scrapRobot.rightPupil) scrapRobot.rightPupil.material.color.setHex(0x222222);
     if (scrapRobot.antennaTip) scrapRobot.antennaTip.material.color.setHex(0x555555);
     scrapRobotRef.current = scrapRobot;
+
+    // Replace Scrap's body with a torus (donut) for battery install cutscene
+    {
+      const bodyMat = (scrapRobot.body.material as THREE.Material).clone();
+      const torusBody = new THREE.Mesh(
+        new THREE.TorusGeometry(0.17, 0.08, 16, 24),
+        bodyMat
+      );
+      torusBody.position.copy(scrapRobot.body.position);
+      scrapRobot.root.remove(scrapRobot.body);
+      scrapRobot.body.geometry.dispose();
+      (scrapRobot.body.material as THREE.Material).dispose();
+      scrapRobot.body = torusBody as unknown as typeof scrapRobot.body;
+      scrapRobot.root.add(torusBody);
+
+      const chestPanel = new THREE.Mesh(
+        new THREE.CircleGeometry(0.09, 16),
+        createToonMaterial(0x2a1a0a)
+      );
+      chestPanel.position.set(0, 0, 0.08);
+      torusBody.add(chestPanel);
+      chestPanelRef.current = chestPanel;
+    }
 
     // Scrap follower robot (outdoor, follows player after battery install)
     const scrapFollower = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
@@ -5534,21 +5562,41 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (ibPhase === 'open-chest') {
             installBatteryTimerRef.current += delta;
             if (installBatteryTimerRef.current < delta) playToolClank();
-            if (scrapRobotRef.current) {
-              scrapRobotRef.current.root.rotation.z = 0.08 + Math.sin(installBatteryTimerRef.current * 20) * 0.02;
+            if (chestPanelRef.current) {
+              const openZ = 0.08 + Math.min(installBatteryTimerRef.current / 1.0, 1) * 0.15;
+              chestPanelRef.current.position.z = openZ;
             }
             setSparkyDlgFull("Opening Scrap's chest panel...");
             setShowSparkyDlg(true);
-            if (installBatteryTimerRef.current > 1.5) {
+            if (installBatteryTimerRef.current > 1.0) {
               installBatteryPhaseRef.current = 'place-battery';
               installBatteryTimerRef.current = 0;
+              const batteryGroup = createPartModel('battery');
+              batteryGroup.scale.set(0.5, 0.5, 0.5);
+              batteryGroup.position.set(-2.6, 1.2, 0.35);
+              apartmentRoomGroupRef.current?.add(batteryGroup);
+              installBatteryPropRef.current = batteryGroup;
+              batteryLerpStartPosRef.current.set(-2.6, 1.2, 0.35);
+              if (chestPanelRef.current) {
+                const endPos = new THREE.Vector3();
+                chestPanelRef.current.getWorldPosition(endPos);
+                apartmentRoomGroupRef.current?.worldToLocal(endPos);
+                batteryLerpEndPosRef.current.copy(endPos);
+              }
             }
           } else if (ibPhase === 'place-battery') {
             installBatteryTimerRef.current += delta;
             if (installBatteryTimerRef.current < delta) playSparkBurst();
+            const prop = installBatteryPropRef.current;
+            if (prop) {
+              const progress = Math.min(installBatteryTimerRef.current / 1.2, 1);
+              prop.position.lerpVectors(batteryLerpStartPosRef.current, batteryLerpEndPosRef.current, progress);
+              prop.rotation.z = progress * Math.PI * 2;
+              prop.scale.setScalar(0.5 + progress * 0.2);
+            }
             setSparkyDlgFull('Placing the battery...');
             setShowSparkyDlg(true);
-            if (installBatteryTimerRef.current > 0.8) {
+            if (installBatteryTimerRef.current > 1.2) {
               const scrap = scrapRobotRef.current;
               if (scrap && scrap.body && !batteryGlowRef.current) {
                 const glow = new THREE.Mesh(
@@ -5559,6 +5607,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 scrap.body.add(glow);
                 batteryGlowRef.current = glow;
               }
+              // Hide battery model after placement
+              if (installBatteryPropRef.current) installBatteryPropRef.current.visible = false;
               installBatteryPhaseRef.current = 'chest-glow';
               installBatteryTimerRef.current = 0;
             }
@@ -5575,6 +5625,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const glow = batteryGlowRef.current;
               const intensity = 0.3 + Math.sin(installBatteryTimerRef.current * 6) * 0.15;
               (glow.material as THREE.MeshBasicMaterial).opacity = intensity;
+            }
+            if (chestPanelRef.current) {
+              const closeProgress = Math.min(installBatteryTimerRef.current / 1.0, 1);
+              const closedZ = 0.23 - closeProgress * 0.15;
+              chestPanelRef.current.position.z = closedZ;
             }
             setSparkyDlgFull('Power flowing! Scrap is charging up!');
             setShowSparkyDlg(true);
@@ -5593,6 +5648,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (scrapRobotRef.current) {
                 if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
                 if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
+              }
+              // Cleanup battery prop
+              if (installBatteryPropRef.current) {
+                installBatteryPropRef.current.parent?.remove(installBatteryPropRef.current);
+                disposeObject(installBatteryPropRef.current);
+                installBatteryPropRef.current = null;
               }
               endCinematicCutscene();
               setShowSparkyDlg(false);
@@ -7439,7 +7500,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       <TFB show={showSparkyDlg} step={0} steps={[{ speaker: 'Sparky', text: sparkyDlgFull }]} text={sparkyDlgText}
         icon="person" onEnter={() => setShowSparkyDlg(false)}
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
-        onTtsToggle={onTtsToggle} />
+        onTtsToggle={onTtsToggle} hideEnter={hideGameUiRef.current} />
 
       {/* Speech bubble + choices above Sparky (projected via ref) */}
       <div
