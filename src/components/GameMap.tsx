@@ -5921,13 +5921,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const t = Math.min(registerCutsceneTimerRef.current / 0.8, 1);
           const laptopTarget = new THREE.Vector2(1.5, 2.65);
           const p2lRobot = crn?.cargoRobot.root ?? null;
-          const lOrigin = p2lRobot?.userData.playerWalkOrigin as THREE.Vector2 | undefined;
-          const lOrigin2 = new THREE.Vector2(2.3, 2.65);
-          const useOrigin = lOrigin ? lOrigin : lOrigin2;
+          const robotPos = new THREE.Vector2(2.3, 2.65);
           if (p2lRobot) {
             const easeT = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
-            const cx = useOrigin.x + (laptopTarget.x - useOrigin.x) * easeT;
-            const cy = useOrigin.y + (laptopTarget.y - useOrigin.y) * easeT;
+            const cx = robotPos.x + (laptopTarget.x - robotPos.x) * easeT;
+            const cy = robotPos.y + (laptopTarget.y - robotPos.y) * easeT;
             localPositionRef.current.set(cx, cy);
             localGroup.position.set(cx, cy, 0.26);
             yawRef.current = Math.atan2(laptopTarget.x - cx, laptopTarget.y - cy);
@@ -5990,6 +5988,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               wire.position.copy(mid);
               wire.scale.set(1, distWire, 1);
               wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+              animateWirePulse(wire, worldTime);
             }
           }
           if (registerCutsceneTimerRef.current > 0.3) {
@@ -6307,7 +6306,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else {
             registerWire.visible = false;
           }
-        } else if (registerWire) {
+        } else if (registerWire && registerCutscenePhaseRef.current === 'idle') {
           registerWire.visible = false;
         }
       }
