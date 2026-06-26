@@ -3900,7 +3900,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         frameCount: 0, totalLogicMs: 0, totalRenderMs: 0, maxLogic: 0, maxRender: 0, minLogic: 1000, minRender: 1000, reactRenders: 0,
         get avgLogic() { return this.frameCount ? (this.totalLogicMs / this.frameCount).toFixed(2) : 'N/A'; },
         get avgRender() { return this.frameCount ? (this.totalRenderMs / this.frameCount).toFixed(2) : 'N/A'; },
-        report() { const rr = typeof window !== 'undefined' ? (window as any).__reactRenders || 0 : 0; return { frames: this.frameCount, fps: this.fps, avgLogic: this.avgLogic, avgRender: this.avgRender, maxLogic: this.maxLogic.toFixed(2), maxRender: this.maxRender.toFixed(2), drawCalls: this.drawCalls, triangles: this.triangles, reactRenders: rr }; },
+        report() { const rr = typeof window !== 'undefined' ? (window as any).__reactRenders || 0 : 0; return { frames: this.frameCount, fps: this.fps, avgLogic: this.avgLogic, avgRender: this.avgRender, maxLogic: this.maxLogic.toFixed(2), maxRender: this.maxRender.toFixed(2), drawCalls: this.drawCalls, triangles: this.triangles, reactRenders: rr, slowLogic: this.slowLogicFrames || 0, slowRender: this.slowRenderFrames || 0, lastSlowLogic: this.slowLogicDetails || [] }; },
         reset() { this.frameCount = 0; this.totalLogicMs = 0; this.totalRenderMs = 0; this.maxLogic = 0; this.maxRender = 0; this.minLogic = 1000; this.minRender = 1000; this.reactRenders = 0; if (typeof window !== 'undefined') (window as any).__reactRenders = 0; },
       };
     }
@@ -6655,6 +6655,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         s.drawCalls = renderer.info.render.calls;
         s.triangles = renderer.info.render.triangles;
         s.fps = fpsRef.current;
+        // Log frames where logic or render takes >50ms
+        if (logicMs > 50) {
+          s.slowLogicFrames = (s.slowLogicFrames || 0) + 1;
+          s.slowLogicDetails = s.slowLogicDetails || [];
+          if (s.slowLogicDetails.length < 20) s.slowLogicDetails.push({ frame: s.frameCount, logicMs: logicMs.toFixed(1), renderMs: renderMs.toFixed(1), room: inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apt' : inShopRoomRef.current ? 'shop' : 'outdoor', moving: moved });
+        }
+        if (renderMs > 50) {
+          s.slowRenderFrames = (s.slowRenderFrames || 0) + 1;
+        }
       }
       // Update on-screen perf overlay every ~500ms
       const poEl = perfOverlayRef.current;
