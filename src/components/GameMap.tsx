@@ -3880,7 +3880,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
 
     let lastTime = performance.now();
+    let __pfx_frameCount = 0;
+    let __pfx_renderTotal = 0;
+    let __pfx_logicTotal = 0;
+    let __pfx_maxRender = 0;
+    let __pfx_maxLogic = 0;
+    let __pfx_totalTotal = 0;
+    let __pfx_minRender = 1000;
+    let __pfx_minLogic = 1000;
+    let __pfx_gcDetect = 0;
+    let __pfx_prevNow = 0;
     const animate = (now: number) => {
+      const __pfx_frameStart = performance.now();
+      const __pfx_gap = now - __pfx_prevNow;
+      if (__pfx_gap > 33) __pfx_gcDetect++;
+      const __pfx_logicStart = performance.now();
       try {
       if (tabHiddenRef.current || tabHiddenAtRef.current > lastTime) {
         lastTime = now;
@@ -6611,8 +6625,40 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       }
 
+      const __pfx_beforeRender = performance.now();
       renderer.render(scene, camera);
+      const __pfx_afterRender = performance.now();
       rafRef.current = window.requestAnimationFrame(animate);
+      // Per-frame timing collection
+      __pfx_frameCount++;
+      const logicMs = __pfx_beforeRender - __pfx_logicStart;
+      const renderMs = __pfx_afterRender - __pfx_beforeRender;
+      const totalMs = __pfx_afterRender - __pfx_frameStart;
+      __pfx_logicTotal += logicMs;
+      __pfx_renderTotal += renderMs;
+      __pfx_totalTotal += totalMs;
+      if (renderMs > __pfx_maxRender) __pfx_maxRender = renderMs;
+      if (logicMs > __pfx_maxLogic) __pfx_maxLogic = logicMs;
+      if (renderMs < __pfx_minRender) __pfx_minRender = renderMs;
+      if (logicMs < __pfx_minLogic) __pfx_minLogic = logicMs;
+      if (__pfx_frameCount >= 60) {
+        console.log(
+          `[PERF] 60 frames | avg=${(__pfx_totalTotal / 60).toFixed(1)}ms (${(60000 / __pfx_totalTotal).toFixed(0)}fps) ` +
+          `logic avg=${(__pfx_logicTotal / 60).toFixed(2)}ms [${__pfx_minLogic.toFixed(2)}-${__pfx_maxLogic.toFixed(2)}] ` +
+          `render avg=${(__pfx_renderTotal / 60).toFixed(2)}ms [${__pfx_minRender.toFixed(2)}-${__pfx_maxRender.toFixed(2)}] ` +
+          `gap>33ms=${__pfx_gcDetect}`
+        );
+        __pfx_frameCount = 0;
+        __pfx_logicTotal = 0;
+        __pfx_renderTotal = 0;
+        __pfx_totalTotal = 0;
+        __pfx_maxRender = 0;
+        __pfx_maxLogic = 0;
+        __pfx_minRender = 1000;
+        __pfx_minLogic = 1000;
+        __pfx_gcDetect = 0;
+      }
+      __pfx_prevNow = now;
     } catch (e) {
       console.error('❌ Animation loop error:', e);
       console.log('DEBUG animate state:', {
