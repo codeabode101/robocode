@@ -7003,19 +7003,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setInWorkshopRoom(false);
     workshopDoorArmedRef.current = false;
     roomObstacleHitboxesRef.current = [];
-    workshopCustomersRef.current.forEach((npc) => {
-      if (roomCustomerGroupRef.current) roomCustomerGroupRef.current.remove(npc.visual.root);
-      disposeObject(npc.visual.root);
-    });
-    workshopCustomersRef.current = [];
-    // Clean up confetti particles
+    // Pool customers instead of destroying — group visibility toggle handles hide/show
+    // Clean up confetti particles only (they're scene-level, not group-level)
     const scene = sceneRef.current;
-    for (const cp of confettiParticlesRef.current) {
-      cp.mesh.geometry.dispose();
-      (cp.mesh.material as THREE.MeshBasicMaterial).dispose();
-      if (scene) scene.remove(cp.mesh);
+    if (confettiParticlesRef.current.length > 0) {
+      for (const cp of confettiParticlesRef.current) {
+        cp.mesh.geometry.dispose();
+        (cp.mesh.material as THREE.MeshBasicMaterial).dispose();
+        if (scene) scene.remove(cp.mesh);
+      }
+      confettiParticlesRef.current = [];
     }
-    confettiParticlesRef.current = [];
     currentCustomerIdRef.current = null;
     interactionCandidateIdRef.current = null;
     interactionRequestedRef.current = false;
