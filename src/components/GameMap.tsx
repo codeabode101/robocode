@@ -1199,12 +1199,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (workshopIntroSeen) return `Earn $10 at the workshop ($${amt}/$10 earned)`;
         return 'Talk to Sparky.';
       }
-      return 'Go to the Parts Shop near the water fountain.';
+      return 'Buy the Battery Pack at the Parts Shop ($10).';
     }
     if (sparkyQuestStage === 'intro-done') {
       const amt = Math.min(gameStore.get('money') ?? 0, 10);
       if (amt < 10) return `Earn $10 at the workshop ($${amt}/$10 earned)`;
-      return 'Go to the Parts Shop near the water fountain.';
+      return 'Buy the Battery Pack at the Parts Shop ($10).';
     }
     if (sparkyQuestStage === 'unit1') {
       if (backpack.includes('battery')) return 'Bring the battery to Sparky in the apartment!';
