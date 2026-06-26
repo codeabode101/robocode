@@ -6644,7 +6644,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (renderMs < __pfx_minRender) __pfx_minRender = renderMs;
       if (logicMs < __pfx_minLogic) __pfx_minLogic = logicMs;
       // histogram buckets
-      if (renderMs > 50) console.log(`[PERF_SPIKE] render=${renderMs.toFixed(2)}ms logic=${logicMs.toFixed(2)}ms`);
+      if (renderMs > 16) {
+        const nObjs = scene.children.length;
+        const playerRoom = inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apt' : inShopRoomRef.current ? 'shop' : 'outdoor';
+        const isMoving = moved;
+        let nLights = 0; for (let __pi = 0; __pi < scene.children.length; __pi++) { if ((scene.children[__pi] as any).isLight) nLights++; }
+        console.log(`[PERF_SLOW] fr=${__pfx_frameCount} render=${renderMs.toFixed(2)}ms logic=${logicMs.toFixed(2)}ms objs=${nObjs} room=${playerRoom} moving=${isMoving} lights=${nLights}`);
+      }
       if (renderMs > 100) __pfx_r100p++;
       else if (renderMs > 50) __pfx_r50_100++;
       else if (renderMs > 33) __pfx_r33_50++;
