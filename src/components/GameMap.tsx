@@ -5964,9 +5964,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             setShowRegLaptopUI(true);
           }
         } else if (registerCutscenePhaseRef.current === 'done') {
-          if (crn) {
-            crn.stage = 'awaiting-code';
-          }
           endCinematicCutscene();
           registerCutscenePhaseRef.current = 'idle';
           registerCutsceneCustomerRef.current = null;
@@ -7156,6 +7153,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       setFirstTransactionDone(true);
       try { localStorage.setItem('rb_first_tx_done', '1'); } catch {}
     }
+    setRobotBroken(selectedNpc.cargoRobot.root, false);
     regPanelShownRef.current = false;
     setShowRegLaptopUI(false);
     setRegLaptopCode('');
