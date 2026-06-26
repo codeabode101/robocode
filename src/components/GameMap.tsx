@@ -6445,7 +6445,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const display = lid.children[1] as THREE.Mesh;
                 const dp = new THREE.Vector3();
                 display.getWorldPosition(dp);
-                camera.position.set(dp.x, dp.y - 0.14, dp.z);
+                camera.position.set(dp.x, dp.y - 0.12, dp.z);
                 camera.lookAt(dp);
               }
             } else {
@@ -7356,6 +7356,28 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               {activeCustomer.required.includes('color') && <div className="text-slate-100 mb-1">Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span></div>}
               {activeCustomer.required.includes('size') && <div className="text-slate-100 mb-1">Size (int): <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span></div>}
               <div className="text-sky-100 mb-3">"I want my robot to have these settings!"</div>
+              {bonusFraction > 0 && (
+                <div className="mb-3">
+                  <div className="flex items-center justify-between text-xs text-slate-300 mb-1">
+                    <span>Speed bonus: ${Math.round(5 * bonusFraction)}</span>
+                    <span>{Math.ceil(bonusFraction * BONUS_DURATION)}s left</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-200"
+                      style={{
+                        width: `${bonusFraction * 100}%`,
+                        background: bonusFraction > 0.5
+                          ? 'linear-gradient(90deg, #22c55e, #eab308)'
+                          : 'linear-gradient(90deg, #eab308, #ef4444)',
+                      }}
+                    />
+                  </div>
+                  {!firstTransactionDone && (
+                    <div className="mt-1 text-xs text-amber-400 animate-pulse">↑ If you do it fast, you get a bonus!</div>
+                  )}
+                </div>
+              )}
               <CodeInput
                 value={regLaptopCode}
                 onChange={(v) => { setRegLaptopCode(v); setRegLaptopOutput(''); }}
