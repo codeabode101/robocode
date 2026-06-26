@@ -7341,7 +7341,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       {showRegLaptopUI && activeCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden w-[min(90vw,36rem)] max-h-[90vh]">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden w-[min(90vw,36rem)] max-h-[90vh] pointer-events-auto">
             <div className="flex items-center gap-2 bg-slate-800 px-4 py-3 border-b border-slate-700">
               <div className="flex gap-1.5">
                 <div className="w-3 h-3 rounded-full bg-red-500" />

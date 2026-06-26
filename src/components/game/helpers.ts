@@ -372,7 +372,7 @@ export function createLaptop(): THREE.Group {
   const group = new THREE.Group();
   const baseMat = new THREE.MeshToonMaterial({ color: 0x334155 });
   const lidMat = new THREE.MeshToonMaterial({ color: 0x1e293b });
-  const screenMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.8 });
+  const screenMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.8, depthWrite: false });
   const darkMat = new THREE.MeshToonMaterial({ color: 0x0f172a });
 
   const baseW = 0.6, baseD = 0.35, baseH = 0.025, lidH = baseD;
@@ -387,7 +387,7 @@ export function createLaptop(): THREE.Group {
 
   const usbPort = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.028, 0.008), darkMat);
   usbPort.name = 'usb-port';
-  usbPort.position.set(baseW / 2, -baseD / 2 + 0.02, baseH / 2);
+  usbPort.position.set(-baseW / 2, -baseD / 2 + 0.02, baseH / 2);
   group.add(usbPort);
 
   const screenGroup = new THREE.Group();
@@ -396,11 +396,13 @@ export function createLaptop(): THREE.Group {
 
   const lid = new THREE.Mesh(new THREE.BoxGeometry(baseW, lidH, 0.02), lidMat);
   lid.position.set(0, lidH / 2, 0);
+  lid.renderOrder = 0;
   screenGroup.add(lid);
 
   const display = new THREE.Mesh(new THREE.BoxGeometry(baseW - 0.04, lidH - 0.04, 0.006), screenMat);
   display.name = 'laptop-display';
   display.position.set(0, lidH / 2, -0.013);
+  display.renderOrder = 1;
   screenGroup.add(display);
 
   group.add(screenGroup);
