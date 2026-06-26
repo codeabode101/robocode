@@ -1,6 +1,6 @@
 import { test, chromium } from '@playwright/test';
 
-test('check draw calls and renderer info', async () => {
+test('perf with react render tracking', async () => {
   const browser = await chromium.launch({ headless: true, args: ['--disable-gpu', '--use-gl=angle'] });
   const page = await browser.newPage();
 
@@ -12,45 +12,40 @@ test('check draw calls and renderer info', async () => {
 
   await page.goto('https://robocode.rahejaom.workers.dev/game', { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForSelector('canvas', { timeout: 20000 });
-  await page.waitForTimeout(5000);
+  await page.waitForTimeout(2000);
 
-  // Try to get Three.js renderer info
-  const info = await page.evaluate(() => {
-    // @ts-ignore
-    const renderer = window.__renderer || (document.querySelector('canvas')?.__threeRenderer);
-    // Try finding THREE renderer info from WebGL context
-    const canvas = document.querySelector('canvas');
-    if (!canvas) return null;
-    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
-    if (!gl) return { noWebGL: true };
-    
-    return {
-      webglVersion: canvas.getContext('webgl2') ? 'webgl2' : 'webgl',
-      vendor: gl.getParameter(gl.VENDOR),
-      renderer: gl.getParameter(gl.RENDERER),
-      maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE),
-      maxDrawBuffers: gl.getParameter(gl.MAX_DRAW_BUFFERS),
-      shaderTypes: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
-    };
-  });
+  // Enable perf overlay (F3)
+  await page.keyboard.press('F3');
+  await page.waitForTimeout(500);
 
-  console.log('WebGL Info:', JSON.stringify(info, null, 2));
+  // Poll every 2 seconds
+  for (let i = 0; i < 15; i++) {
+    await page.waitForTimeout(2000);
+    const report = await page.evaluate(() => {
+      const s = (window as any).__perfStats;
+      return s ? {
+        ...s.report(),
+        overlayText: document.getElementById('perf-overlay')?.textContent,
+      } : null;
+    });
+    if (report) {
+      console.log(`t=${(i+1)*2}s: fps=${report.fps} avgL=${report.avgLogic}ms avgR=${report.avgRender}ms maxL=${report.maxLogic}ms maxR=${report.maxRender}ms draws=${report.drawCalls} tris=${report.triangles} renders=${report.reactRenders}`);
+    }
+  }
 
-  // Try reading Three.js renderer info from the DOM
-  const rendererInfo = await page.evaluate(() => {
-    // Check for THREE.js info elements
-    const infoEl = document.getElementById('info') || document.querySelector('.info');
-    if (infoEl) return infoEl.textContent;
-    return null;
-  });
-  console.log('Renderer info element:', rendererInfo);
+  // Walk around
+  console.log('\n=== WALKING ===');
+  await page.keyboard.down('KeyW');
+  for (let i = 0; i < 5; i++) {
+    await page.waitForTimeout(2000);
+    const report = await page.evaluate(() => (window as any).__perfStats?.report());
+    if (report) console.log(`walk ${i+1}: fps=${report.fps} maxL=${report.maxLogic} maxR=${report.maxRender} renders=${report.reactRenders}`);
+  }
+  await page.keyboard.up('KeyW');
+  await page.waitForTimeout(2000);
 
-  // Check total texture count on canvas
-  const textureInfo = await page.evaluate(() => {
-    // List all images that might be textures
-    return document.querySelectorAll('img').length;
-  });
-  console.log(`Images in page: ${textureInfo}`);
+  const final = await page.evaluate(() => (window as any).__perfStats?.report());
+  console.log(`\nFINAL: ${JSON.stringify(final, null, 2)}`);
 
   await browser.close();
 });

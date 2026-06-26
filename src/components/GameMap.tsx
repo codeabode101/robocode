@@ -3897,11 +3897,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     let lastTime = performance.now();
     if (typeof window !== 'undefined') {
       (window as any).__perfStats = (window as any).__perfStats || {
-        frameCount: 0, totalLogicMs: 0, totalRenderMs: 0, maxLogic: 0, maxRender: 0, minLogic: 1000, minRender: 1000,
+        frameCount: 0, totalLogicMs: 0, totalRenderMs: 0, maxLogic: 0, maxRender: 0, minLogic: 1000, minRender: 1000, reactRenders: 0,
         get avgLogic() { return this.frameCount ? (this.totalLogicMs / this.frameCount).toFixed(2) : 'N/A'; },
         get avgRender() { return this.frameCount ? (this.totalRenderMs / this.frameCount).toFixed(2) : 'N/A'; },
-        report() { return { frames: this.frameCount, fps: this.fps, avgLogic: this.avgLogic, avgRender: this.avgRender, maxLogic: this.maxLogic.toFixed(2), maxRender: this.maxRender.toFixed(2), drawCalls: this.drawCalls, triangles: this.triangles }; },
-        reset() { this.frameCount = 0; this.totalLogicMs = 0; this.totalRenderMs = 0; this.maxLogic = 0; this.maxRender = 0; this.minLogic = 1000; this.minRender = 1000; },
+        report() { const rr = typeof window !== 'undefined' ? (window as any).__reactRenders || 0 : 0; return { frames: this.frameCount, fps: this.fps, avgLogic: this.avgLogic, avgRender: this.avgRender, maxLogic: this.maxLogic.toFixed(2), maxRender: this.maxRender.toFixed(2), drawCalls: this.drawCalls, triangles: this.triangles, reactRenders: rr }; },
+        reset() { this.frameCount = 0; this.totalLogicMs = 0; this.totalRenderMs = 0; this.maxLogic = 0; this.maxRender = 0; this.minLogic = 1000; this.minRender = 1000; this.reactRenders = 0; if (typeof window !== 'undefined') (window as any).__reactRenders = 0; },
       };
     }
     const animate = (now: number) => {
@@ -6660,7 +6660,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const poEl = perfOverlayRef.current;
       if (poEl && (window as any).__perfStats && (perfOverlayUpdateRef.current % 30 === 0)) {
         const s = (window as any).__perfStats;
-        poEl.textContent = `${s.fps || 0}fps | L:${s.avgLogic}ms R:${s.avgRender}ms | draws=${s.drawCalls || 0} tris=${s.triangles || 0} | maxR=${s.maxRender.toFixed(1)}ms`;
+        const rr = typeof window !== 'undefined' ? ((window as any).__reactRenders || 0) : 0;
+        poEl.textContent = `${s.fps || 0}fps | L:${s.avgLogic}ms R:${s.avgRender}ms | draws=${s.drawCalls || 0} tris=${s.triangles || 0} | maxR=${s.maxRender.toFixed(1)}ms | renders=${rr}`;
       }
       perfOverlayUpdateRef.current++;
     } catch (e) {
@@ -7353,6 +7354,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return () => window.removeEventListener('resize', updateWidth);
   }, [showLaptopUI]);
 
+  // Track React re-renders
+  if (typeof window !== 'undefined') {
+    (window as any).__reactRenders = ((window as any).__reactRenders || 0) + 1;
+  }
   return (
     <div className="relative" suppressHydrationWarning>
       <style>{`
