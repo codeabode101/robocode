@@ -13,7 +13,10 @@ export function isInsideHitbox(point: Vec2, hitbox: Hitbox) {
 }
 
 export function collidesWithAny(point: Vec2, hitboxes: Hitbox[]) {
-  return hitboxes.some(h => isInsideHitbox(point, h));
+  for (let i = 0; i < hitboxes.length; i++) {
+    if (isInsideHitbox(point, hitboxes[i])) return true;
+  }
+  return false;
 }
 
 export function escapeHtml(input: string) {
