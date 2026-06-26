@@ -6445,7 +6445,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const display = lid.children[1] as THREE.Mesh;
                 const dp = new THREE.Vector3();
                 display.getWorldPosition(dp);
-                camera.position.set(dp.x, dp.y - 0.12, dp.z);
+                camera.position.set(dp.x, dp.y - 0.18, dp.z);
                 camera.lookAt(dp);
               }
             } else {
