@@ -2106,11 +2106,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
     sunLight.position.set(-10, -8, 20);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(1024, 1024);
+    sunLight.shadow.mapSize.set(512, 512);
     sunLight.shadow.camera.left = -18;
     sunLight.shadow.camera.right = 18;
     sunLight.shadow.camera.top = 18;
     sunLight.shadow.camera.bottom = -18;
+    sunLight.shadow.bias = -0.001;
     sunLight.shadow.camera.near = 1;
     sunLight.shadow.camera.far = 45;
     scene.add(sunLight);
@@ -2266,7 +2267,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       rock.position.set(rx, ry, 0.18);
       rock.scale.set(sx, sy, sz);
       rock.rotation.z = Math.random() * Math.PI * 2;
-      rock.castShadow = true;
       rock.receiveShadow = true;
       outdoorGroup.add(rock);
     });
@@ -2293,7 +2293,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     canPositions.forEach(([canX, canY]) => {
       const can = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.25, 10), canMat);
       can.position.set(canX, canY, 0.12);
-      can.castShadow = true;
+
       outdoorGroup.add(can);
     });
 
