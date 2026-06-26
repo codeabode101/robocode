@@ -807,6 +807,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [showWasmHint, setShowWasmHint] = useState(true);
   const [shopkeeperGreeting, setShopkeeperGreeting] = useState<string | null>(null);
   const [showControlsModal, setShowControlsModal] = useState(false);
+  const [showPerfOverlay, setShowPerfOverlay] = useState(false);
   const [showSemicolonArrow, setShowSemicolonArrow] = useState(false);
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const modalOpenRef = useRef(false);
@@ -831,6 +832,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const fpsFrameCountRef = useRef(0);
   const fpsLastTimeRef = useRef(performance.now());
   const [debugDisplay, setDebugDisplay] = useState({ fps: '0', x: '0.00', y: '0.00' });
+  const perfOverlayRef = useRef<HTMLDivElement>(null);
+  const perfOverlayUpdateRef = useRef(0);
   useEffect(() => {
     if (!debugMode) return;
     const id = setInterval(() => {
@@ -3710,6 +3713,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     mountElement.addEventListener('mousedown', handleFocusClick);
+    const perfKeyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'F3') {
+        setShowPerfOverlay(v => {
+          const next = !v;
+          if (!next && perfOverlayRef.current) perfOverlayRef.current.textContent = '';
+          return next;
+        });
+        const s = (window as any).__perfStats;
+        if (s) console.log('[PERF]', JSON.stringify(s.report()));
+      }
+    };
+    window.addEventListener('keydown', perfKeyHandler);
 
     const rendererEl = renderer.domElement;
 
@@ -3880,7 +3895,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
 
     let lastTime = performance.now();
+    if (typeof window !== 'undefined') {
+      (window as any).__perfStats = (window as any).__perfStats || {
+        frameCount: 0, totalLogicMs: 0, totalRenderMs: 0, maxLogic: 0, maxRender: 0, minLogic: 1000, minRender: 1000,
+        get avgLogic() { return this.frameCount ? (this.totalLogicMs / this.frameCount).toFixed(2) : 'N/A'; },
+        get avgRender() { return this.frameCount ? (this.totalRenderMs / this.frameCount).toFixed(2) : 'N/A'; },
+        report() { return { frames: this.frameCount, fps: this.fps, avgLogic: this.avgLogic, avgRender: this.avgRender, maxLogic: this.maxLogic.toFixed(2), maxRender: this.maxRender.toFixed(2), drawCalls: this.drawCalls, triangles: this.triangles }; },
+        reset() { this.frameCount = 0; this.totalLogicMs = 0; this.totalRenderMs = 0; this.maxLogic = 0; this.maxRender = 0; this.minLogic = 1000; this.minRender = 1000; },
+      };
+    }
     const animate = (now: number) => {
+      const logicStart = performance.now();
       try {
       if (tabHiddenRef.current || tabHiddenAtRef.current > lastTime) {
         lastTime = now;
@@ -6611,8 +6636,33 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       }
 
+      const beforeRender = performance.now();
       renderer.render(scene, camera);
+      const afterRender = performance.now();
       rafRef.current = window.requestAnimationFrame(animate);
+      // Per-frame stats for in-browser perf analysis via window.__perfStats
+      if ((window as any).__perfStats) {
+        const logicMs = beforeRender - logicStart;
+        const renderMs = afterRender - beforeRender;
+        const s = (window as any).__perfStats;
+        s.frameCount++;
+        s.totalLogicMs += logicMs;
+        s.totalRenderMs += renderMs;
+        if (logicMs > s.maxLogic) s.maxLogic = logicMs;
+        if (renderMs > s.maxRender) s.maxRender = renderMs;
+        if (logicMs < s.minLogic) s.minLogic = logicMs;
+        if (renderMs < s.minRender) s.minRender = renderMs;
+        s.drawCalls = renderer.info.render.calls;
+        s.triangles = renderer.info.render.triangles;
+        s.fps = fpsRef.current;
+      }
+      // Update on-screen perf overlay every ~500ms
+      const poEl = perfOverlayRef.current;
+      if (poEl && (window as any).__perfStats && (perfOverlayUpdateRef.current % 30 === 0)) {
+        const s = (window as any).__perfStats;
+        poEl.textContent = `${s.fps || 0}fps | L:${s.avgLogic}ms R:${s.avgRender}ms | draws=${s.drawCalls || 0} tris=${s.triangles || 0} | maxR=${s.maxRender.toFixed(1)}ms`;
+      }
+      perfOverlayUpdateRef.current++;
     } catch (e) {
       console.error('❌ Animation loop error:', e);
       console.log('DEBUG animate state:', {
@@ -7465,6 +7515,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       <div className="absolute top-4 left-4 bg-black/45 text-white text-base md:text-lg px-4 py-2 rounded-full">
         {connected ? `🟢 Live island • ${Object.keys(players).length + 1} player${Object.keys(players).length + 1 !== 1 ? 's' : ''}` : '🟡 Connecting to island...'}
       </div>
+      {showPerfOverlay && (
+        <div ref={perfOverlayRef} id="perf-overlay" className="absolute top-16 left-4 z-50 rounded-lg bg-black/70 px-3 py-2 text-xs font-mono text-cyan-300 space-y-0.5 min-w-[300px]">
+          0fps | L:0ms R:0ms | draws=0 tris=0 | maxR=0ms
+        </div>
+      )}
 
       {debugMode && (
         <div className="absolute top-20 left-4 z-50 rounded-lg bg-black/60 px-3 py-2 text-xs font-mono text-emerald-300 space-y-0.5">
