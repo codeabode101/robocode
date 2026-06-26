@@ -432,6 +432,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const installBatteryPropRef = useRef<THREE.Group | null>(null);
   const batteryLerpStartPosRef = useRef(new THREE.Vector3());
   const batteryLerpEndPosRef = useRef(new THREE.Vector3());
+  const lastSparkyDlgTextRef = useRef('');
+  const lastShowSparkyDlgRef = useRef(false);
   const sparkyEventTriggeredRef = useRef(false);
   const sparkyAcknowledgedRef = useRef(false);
   const repairTimerRef = useRef(0);
@@ -464,8 +466,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const registerCutsceneCustomerRef = useRef<CustomerNpc | null>(null);
   const sceneBgColorRef = useRef(new THREE.Color());
   const scratchVec2 = useRef(new THREE.Vector2());
+  const scratchVec2b = useRef(new THREE.Vector2());
   const scratchVec3 = useRef(new THREE.Vector3());
+  const scratchVec3b = useRef(new THREE.Vector3());
+  const scratchVec3c = useRef(new THREE.Vector3());
+  const scratchVec3Up = useRef(new THREE.Vector3(0, 0, 1));
+  const scratchVec3UpY = useRef(new THREE.Vector3(0, 1, 0));
   const scratchQuat = useRef(new THREE.Quaternion());
+  const scratchQuatB = useRef(new THREE.Quaternion());
   const cinemCamActiveRef = useRef(false);
   const hideGameUiRef = useRef(false);
   const cutsceneDoneRef = useRef(false);
@@ -3928,7 +3936,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
 
       let moved = false;
-      let moveDir2 = new THREE.Vector2(0, 0);
+      const moveDir2 = scratchVec2.current.set(0, 0);
       if (aptCutscenePhaseRef.current !== 'idle' || registerCutscenePhaseRef.current !== 'idle' || rafiqWalkPhaseRef.current !== 'idle' || rafiqDlgOpenRef.current) {
         // Cutscene or Rafiq dialog active — freeze player
         keyStateRef.current.clear();
@@ -3947,7 +3955,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             camSin * forward + camCos * strafe,
             camCos * forward - camSin * strafe
           );
-          const candidate = localPositionRef.current.clone().add(moveDir2.multiplyScalar(MOVE_SPEED * delta));
+          const candidate = scratchVec2b.current.copy(localPositionRef.current).add(moveDir2.multiplyScalar(MOVE_SPEED * delta));
       if (inWorkshopRoomRef.current && rafiqWalkPhaseRef.current === 'idle' && !rafiqDlgOpenRef.current) {
             candidate.x = Math.max(-4.82, Math.min(4.82, candidate.x));
             candidate.y = Math.max(-5.3, Math.min(4.82, candidate.y));
@@ -4453,13 +4461,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const idx = sparkyHomeWaypointIdxRef.current;
         if (waypoints.length > 0 && idx < waypoints.length) {
           const target = waypoints[idx];
-          const dist = sparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
+          const dist = sparky.root.position.distanceTo(scratchVec3.current.set(target.x, target.y, 0.14));
           if (dist < 0.15) {
             sparkyHomeWaypointIdxRef.current++;
           } else {
-            const dir = new THREE.Vector2(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
+            const dir = scratchVec2.current.set(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
             const step = 1.8 * delta;
-            const candidate = new THREE.Vector2(
+            const candidate = scratchVec2b.current.set(
               sparky.root.position.x + dir.x * step,
               sparky.root.position.y + dir.y * step
             );
@@ -4497,14 +4505,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           sparkyWaitTimerRef.current += delta;
           if (sparkyWaitTimerRef.current > 1.5 && !showTutorialRef.current) {
             const target = SPARKY_PATH[sparkyPathIndexRef.current];
-            const dist = sparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
+            const dist = sparky.root.position.distanceTo(scratchVec3.current.set(target.x, target.y, 0.14));
             if (dist < 0.15) {
               sparkyPathIndexRef.current = (sparkyPathIndexRef.current + 1) % SPARKY_PATH.length;
               sparkyWaitTimerRef.current = 0;
             } else {
-              const dir = new THREE.Vector2(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
+              const dir = scratchVec2.current.set(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
               const step = 1.8 * delta;
-              const candidate = new THREE.Vector2(
+              const candidate = scratchVec2b.current.set(
                 sparky.root.position.x + dir.x * step,
                 sparky.root.position.y + dir.y * step
               );
@@ -4533,7 +4541,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const wrappedDiff = Math.atan2(Math.sin(diff), Math.cos(diff));
         sparkyFacingRef.current += wrappedDiff * 0.04;
         if (Math.abs(sparkyFacingRef.current) > 0.001) {
-          const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), sparkyFacingRef.current);
+          const facingQ = scratchQuat.current.setFromAxisAngle(scratchVec3Up.current, sparkyFacingRef.current);
           sparky.root.quaternion.copy(baseQuat).premultiply(facingQ);
         } else {
           sparkyFacingRef.current = 0;
@@ -4546,13 +4554,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Scrap follower AI
       if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
         const playerPos = localPositionRef.current;
-        const scrapPos = new THREE.Vector2(scrapFollowerRef.current.root.position.x, scrapFollowerRef.current.root.position.y);
+        const scrapPosX = scrapFollowerRef.current.root.position.x;
+        const scrapPosY = scrapFollowerRef.current.root.position.y;
+        const scrapPos = scratchVec2.current.set(scrapPosX, scrapPosY);
         const followDist = scrapPos.distanceTo(playerPos);
         if (followDist > 1.2) {
-          const target = new THREE.Vector2(playerPos.x, playerPos.y - 0.8);
-          const dir = new THREE.Vector2().copy(target).sub(scrapPos).normalize();
+          const target = scratchVec2b.current.set(playerPos.x, playerPos.y - 0.8);
+          const dir = scratchVec2.current.copy(target).sub(scrapPos).normalize();
           const step = Math.min(followDist - 0.8, 3.0 * delta);
-          const cand = new THREE.Vector2(scrapPos.x + dir.x * step, scrapPos.y + dir.y * step);
+          const cand = scratchVec2.current.set(scrapPosX + dir.x * step, scrapPosY + dir.y * step);
           if (!collidesWithAny(cand, obstacleHitboxesRef.current)) {
             scrapFollowerRef.current.root.position.x = cand.x;
             scrapFollowerRef.current.root.position.y = cand.y;
@@ -5931,18 +5941,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (registerCutsceneTimerRef.current - delta < 0.01) {
               wire.visible = true;
             }
-            const wireStart = new THREE.Vector3();
+            const wireStart = scratchVec3.current;
             crn.cargoRobot.root.getWorldPosition(wireStart);
-            const handPos = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y + 0.25, 0.5);
+            const handPos = scratchVec3b.current.set(localPositionRef.current.x, localPositionRef.current.y + 0.25, 0.5);
             wireStart.z += 0.02;
-            const dir = handPos.clone().sub(wireStart);
+            const dir = scratchVec3c.current.copy(handPos).sub(wireStart);
             const distWire = dir.length();
             if (distWire > 0.001) {
               dir.normalize();
-              const mid = wireStart.clone().add(handPos).multiplyScalar(0.5);
+              const mid = scratchVec3.current.copy(wireStart).add(handPos).multiplyScalar(0.5);
               wire.position.copy(mid);
               wire.scale.set(1, distWire, 1);
-              wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+              wire.quaternion.setFromUnitVectors(scratchVec3UpY.current, dir);
               animateWirePulse(wire, worldTime);
             }
           }
@@ -5957,27 +5967,27 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (registerCutsceneTimerRef.current - delta < 0.01) {
               playUsbConnectSound();
             }
-            const wireStart = new THREE.Vector3();
+            const wireStart = scratchVec3.current;
             crn.cargoRobot.root.getWorldPosition(wireStart);
             const comp = workshopRegisterComputerRef.current;
-            const laptopPos = new THREE.Vector3();
+            const laptopPos = scratchVec3b.current;
             if (comp) {
               const port = comp.getObjectByName('usb-port');
               if (port) port.getWorldPosition(laptopPos);
               else comp.getWorldPosition(laptopPos);
             }
-            const handPos = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y + 0.25, 0.5);
-            const wireEnd = handPos.clone().lerp(laptopPos, t);
+            const handPos = scratchVec3c.current.set(localPositionRef.current.x, localPositionRef.current.y + 0.25, 0.5);
+            const wireEnd = scratchVec3b.current.lerp(laptopPos, t);
             wireStart.z += 0.02;
             wireEnd.z += 0.1;
-            const dir = wireEnd.clone().sub(wireStart);
+            const dir = scratchVec3c.current.copy(wireEnd).sub(wireStart);
             const distWire = dir.length();
             if (distWire > 0.001) {
               dir.normalize();
-              const mid = wireStart.clone().add(wireEnd).multiplyScalar(0.5);
+              const mid = scratchVec3.current.copy(wireStart).add(wireEnd).multiplyScalar(0.5);
               wire.position.copy(mid);
               wire.scale.set(1, distWire, 1);
-              wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+              wire.quaternion.setFromUnitVectors(scratchVec3UpY.current, dir);
               animateWirePulse(wire, worldTime);
             }
           }
@@ -6284,23 +6294,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const registerWire = workshopRegisterWireRef.current;
         const registerComputer = workshopRegisterComputerRef.current;
         if (registerWire && registerComputer && currentNpc && currentNpc.stage === 'awaiting-code') {
-          const wireStart = new THREE.Vector3();
-          const wireEnd = new THREE.Vector3();
+          const wireStart = scratchVec3.current;
+          const wireEnd = scratchVec3b.current;
           currentNpc.cargoRobot.root.getWorldPosition(wireStart);
           const port = registerComputer.getObjectByName('usb-port');
           if (port) port.getWorldPosition(wireEnd);
           else registerComputer.getWorldPosition(wireEnd);
           wireStart.z += 0.02;
           wireEnd.z += 0.1;
-          const dir = wireEnd.clone().sub(wireStart);
+          const dir = scratchVec3c.current.copy(wireEnd).sub(wireStart);
           const distWire = dir.length();
           if (distWire > 0.001) {
             dir.normalize();
-            const mid = wireStart.clone().add(wireEnd).multiplyScalar(0.5);
+            const mid = scratchVec3.current.copy(wireStart).add(wireEnd).multiplyScalar(0.5);
             registerWire.visible = true;
             registerWire.position.copy(mid);
             registerWire.scale.set(1, distWire, 1);
-            registerWire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+            registerWire.quaternion.setFromUnitVectors(scratchVec3UpY.current, dir);
             animateWirePulse(registerWire, worldTime);
           } else {
             registerWire.visible = false;
@@ -6314,7 +6324,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (bonusTimerRef.current !== null) {
         const elapsed = (performance.now() - bonusTimerRef.current) / 1000;
         const frac = Math.max(0, 1 - elapsed / BONUS_DURATION);
-        setBonusFraction(frac);
+        if (Math.abs(frac - bonusFraction) > 0.01) setBonusFraction(frac);
         if (frac <= 0) bonusTimerRef.current = null;
       } else if (bonusFraction !== 0) {
         setBonusFraction(0);
@@ -6402,37 +6412,43 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const phase = aptCutscenePhaseRef.current;
           const csSparky = apartmentSparkyRef.current;
           if (repairCutscenePhaseRef.current !== 'idle') {
-            camera.position.lerp(new THREE.Vector3(2.9, 2.2, 1.0), 0.06);
+            scratchVec3.current.set(2.9, 2.2, 1.0);
+            camera.position.lerp(scratchVec3.current, 0.06);
             camera.lookAt(2.9, 3.05, 0.3);
           } else if (registerCutscenePhaseRef.current !== 'idle') {
             if (registerCutscenePhaseRef.current === 'place-robot') {
-              camera.position.lerp(new THREE.Vector3(2.0, 0.8, 1.5), 0.06);
+              scratchVec3.current.set(2.0, 0.8, 1.5);
+              camera.position.lerp(scratchVec3.current, 0.06);
               camera.lookAt(2.0, 3.0, 0.3);
             } else if (registerCutscenePhaseRef.current === 'player-to-robot') {
-              camera.position.lerp(new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y - 1.5, 1.5), 0.06);
+              scratchVec3.current.set(localPositionRef.current.x, localPositionRef.current.y - 1.5, 1.5);
+              camera.position.lerp(scratchVec3.current, 0.06);
               camera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 0.8, 0.3);
             } else if (registerCutscenePhaseRef.current === 'player-to-laptop') {
-              camera.position.lerp(new THREE.Vector3(0.5, 2.2, 2.0), 0.06);
+              scratchVec3.current.set(0.5, 2.2, 2.0);
+              camera.position.lerp(scratchVec3.current, 0.06);
               camera.lookAt(2.0, 2.7, 0.3);
             } else if (registerCutscenePhaseRef.current === 'connect-wire' || registerCutscenePhaseRef.current === 'register-dlg') {
-              camera.position.lerp(new THREE.Vector3(0.5, 2.2, 2.0), 0.06);
+              scratchVec3.current.set(0.5, 2.2, 2.0);
+              camera.position.lerp(scratchVec3.current, 0.06);
               camera.lookAt(2.0, 2.7, 0.3);
             } else if (registerCutscenePhaseRef.current === 'laptop-ui' || registerCutscenePhaseRef.current === 'done') {
               const regComp = workshopRegisterComputerRef.current;
               if (regComp) {
                 const lid = regComp.children[2] as THREE.Group;
                 const display = lid.children[1] as THREE.Mesh;
-                const dp = new THREE.Vector3();
-                display.getWorldPosition(dp);
-                camera.position.set(dp.x, dp.y - 0.18, dp.z);
-                camera.lookAt(dp);
+                display.getWorldPosition(scratchVec3.current);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y - 0.18, scratchVec3.current.z);
+                camera.lookAt(scratchVec3.current);
               }
             } else {
-              camera.position.lerp(new THREE.Vector3(1.5, 2.5, 1.2), 0.06);
+              scratchVec3.current.set(1.5, 2.5, 1.2);
+              camera.position.lerp(scratchVec3.current, 0.06);
               camera.lookAt(1.8, 3.0, 0.4);
             }
           } else if (installBatteryPhaseRef.current) {
-            camera.position.lerp(new THREE.Vector3(-2.7, 0.8, 1.5), 0.06);
+            scratchVec3.current.set(-2.7, 0.8, 1.5);
+            camera.position.lerp(scratchVec3.current, 0.06);
             camera.lookAt(-2.6, 1.2, 0.3);
           } else if (csSparky) {
             const sp = csSparky.root.position;
@@ -6440,75 +6456,75 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               camera.position.set(-3.0, 2.5, 1.5);
               camera.lookAt(-3.0, 1.15, 0.3);
             } else if (phase === 'link-computer' || phase === 'electrocute') {
-              const camTarget = new THREE.Vector3(-3.0, 2.5, 1.5);
-              camera.position.lerp(camTarget, 0.04);
+              scratchVec3.current.set(-3.0, 2.5, 1.5);
+              camera.position.lerp(scratchVec3.current, 0.04);
               camera.lookAt(-3.0, 1.15, 0.3);
             } else if (phase === 'walk-to-laptop') {
-              const camTarget = new THREE.Vector3(localPositionRef.current.x, localPositionRef.current.y + 1.3, 2.0);
-              camera.position.lerp(camTarget, 0.04);
+              scratchVec3.current.set(localPositionRef.current.x, localPositionRef.current.y + 1.3, 2.0);
+              camera.position.lerp(scratchVec3.current, 0.04);
               camera.lookAt(localPositionRef.current.x, localPositionRef.current.y - 0.8, 0.3);
             } else if (phase === 'string-tutorial') {
-              const camTarget = new THREE.Vector3(-3.4, 1.6, 1.8);
-              camera.position.lerp(camTarget, 0.04);
+              scratchVec3.current.set(-3.4, 1.6, 1.8);
+              camera.position.lerp(scratchVec3.current, 0.04);
               camera.lookAt(-3.4, 0.5, 0.3);
             } else if (phase === 'laptop-ui') {
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
-                const dp = new THREE.Vector3();
-                display.getWorldPosition(dp);
-                camera.position.set(dp.x, dp.y - 0.35, dp.z);
-                camera.lookAt(dp);
+                display.getWorldPosition(scratchVec3.current);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y - 0.35, scratchVec3.current.z);
+                camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'antenna-glow') {
               const t = aptCutsceneTimerRef.current;
               if (t < 2.0) {
-                camera.position.lerp(new THREE.Vector3(-3.0, 0.8, 1.5), 0.06);
+                scratchVec3.current.set(-3.0, 0.8, 1.5);
+                camera.position.lerp(scratchVec3.current, 0.06);
                 camera.lookAt(-2.6, 1.2, 0.34);
               } else {
                 if (computerRef.current) {
                   const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
-                  const dp = new THREE.Vector3();
-                  display.getWorldPosition(dp);
-                  camera.position.lerp(new THREE.Vector3(dp.x, dp.y - 0.35, dp.z), 0.04);
-                  camera.lookAt(dp);
+                  display.getWorldPosition(scratchVec3.current);
+                  scratchVec3b.current.set(scratchVec3.current.x, scratchVec3.current.y - 0.35, scratchVec3.current.z);
+                  camera.position.lerp(scratchVec3b.current, 0.04);
+                  camera.lookAt(scratchVec3.current);
                 }
               }
             } else if (phase === 'date-coding') {
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
-                const dp = new THREE.Vector3();
-                display.getWorldPosition(dp);
-                camera.position.set(dp.x, dp.y - 0.35, dp.z);
-                camera.lookAt(dp);
+                display.getWorldPosition(scratchVec3.current);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y - 0.35, scratchVec3.current.z);
+                camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'reboot') {
-              camera.position.lerp(new THREE.Vector3(-3.0, 0.8, 1.5), 0.06);
+              scratchVec3.current.set(-3.0, 0.8, 1.5);
+              camera.position.lerp(scratchVec3.current, 0.06);
               camera.lookAt(-2.6, 1.2, 0.34);
             } else if (phase === 'version-coding') {
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
-                const dp = new THREE.Vector3();
-                display.getWorldPosition(dp);
-                camera.position.set(dp.x, dp.y - 0.35, dp.z);
-                camera.lookAt(dp);
+                display.getWorldPosition(scratchVec3.current);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y - 0.35, scratchVec3.current.z);
+                camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'pre-boot') {
-              camera.position.lerp(new THREE.Vector3(-3.0, 0.8, 1.5), 0.06);
+              scratchVec3.current.set(-3.0, 0.8, 1.5);
+              camera.position.lerp(scratchVec3.current, 0.06);
               camera.lookAt(-2.6, 1.2, 0.34);
             } else if (phase === 'boot-coding') {
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
-                const dp = new THREE.Vector3();
-                display.getWorldPosition(dp);
-                camera.position.set(dp.x, dp.y - 0.35, dp.z);
-                camera.lookAt(dp);
+                display.getWorldPosition(scratchVec3.current);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y - 0.35, scratchVec3.current.z);
+                camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'boot') {
-              camera.position.lerp(new THREE.Vector3(-3.0, 0.8, 1.5), 0.06);
+              scratchVec3.current.set(-3.0, 0.8, 1.5);
+              camera.position.lerp(scratchVec3.current, 0.06);
               camera.lookAt(-2.6, 1.2, 0.34);
             } else {
-              const camTarget = new THREE.Vector3(-2.7, 3.0, 2.2);
-              camera.position.lerp(camTarget, 0.04);
+              scratchVec3.current.set(-2.7, 3.0, 2.2);
+              camera.position.lerp(scratchVec3.current, 0.04);
               camera.lookAt(sp.x, sp.y, 0.3);
             }
           }
