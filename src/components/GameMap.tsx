@@ -3890,6 +3890,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     let __pfx_minLogic = 1000;
     let __pfx_gcDetect = 0;
     let __pfx_prevNow = 0;
+    let __pfx_r0_8 = 0, __pfx_r8_16 = 0, __pfx_r16_33 = 0, __pfx_r33_50 = 0, __pfx_r50_100 = 0, __pfx_r100p = 0;
+    let __pfx_l0_1 = 0, __pfx_l1_5 = 0, __pfx_l5p = 0;
     const animate = (now: number) => {
       const __pfx_frameStart = performance.now();
       const __pfx_gap = now - __pfx_prevNow;
@@ -6641,12 +6643,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (logicMs > __pfx_maxLogic) __pfx_maxLogic = logicMs;
       if (renderMs < __pfx_minRender) __pfx_minRender = renderMs;
       if (logicMs < __pfx_minLogic) __pfx_minLogic = logicMs;
+      // histogram buckets
+      if (renderMs > 50) console.log(`[PERF_SPIKE] render=${renderMs.toFixed(2)}ms logic=${logicMs.toFixed(2)}ms`);
+      if (renderMs > 100) __pfx_r100p++;
+      else if (renderMs > 50) __pfx_r50_100++;
+      else if (renderMs > 33) __pfx_r33_50++;
+      else if (renderMs > 16) __pfx_r16_33++;
+      else if (renderMs > 8) __pfx_r8_16++;
+      else __pfx_r0_8++;
+      if (logicMs > 5) __pfx_l5p++;
+      else if (logicMs > 1) __pfx_l1_5++;
+      else __pfx_l0_1++;
       if (__pfx_frameCount >= 60) {
         console.log(
-          `[PERF] 60 frames | avg=${(__pfx_totalTotal / 60).toFixed(1)}ms (${(60000 / __pfx_totalTotal).toFixed(0)}fps) ` +
-          `logic avg=${(__pfx_logicTotal / 60).toFixed(2)}ms [${__pfx_minLogic.toFixed(2)}-${__pfx_maxLogic.toFixed(2)}] ` +
-          `render avg=${(__pfx_renderTotal / 60).toFixed(2)}ms [${__pfx_minRender.toFixed(2)}-${__pfx_maxRender.toFixed(2)}] ` +
-          `gap>33ms=${__pfx_gcDetect}`
+          `[PERF] 60f | avg=${(__pfx_totalTotal / 60).toFixed(1)}ms (${(60000 / __pfx_totalTotal).toFixed(0)}fps) ` +
+          `L:avg=${(__pfx_logicTotal / 60).toFixed(2)} [${__pfx_minLogic.toFixed(2)}-${__pfx_maxLogic.toFixed(2)}] ` +
+          `R:avg=${(__pfx_renderTotal / 60).toFixed(2)} [${__pfx_minRender.toFixed(2)}-${__pfx_maxRender.toFixed(2)}] ` +
+          `gap33=${__pfx_gcDetect} ` +
+          `rDist:[0-8=${__pfx_r0_8}|8-16=${__pfx_r8_16}|16-33=${__pfx_r16_33}|33-50=${__pfx_r33_50}|50-100=${__pfx_r50_100}|>100=${__pfx_r100p}] ` +
+          `lDist:[0-1=${__pfx_l0_1}|1-5=${__pfx_l1_5}|>5=${__pfx_l5p}]`
         );
         __pfx_frameCount = 0;
         __pfx_logicTotal = 0;
@@ -6657,6 +6672,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         __pfx_minRender = 1000;
         __pfx_minLogic = 1000;
         __pfx_gcDetect = 0;
+        __pfx_r0_8 = 0; __pfx_r8_16 = 0; __pfx_r16_33 = 0; __pfx_r33_50 = 0; __pfx_r50_100 = 0; __pfx_r100p = 0;
+        __pfx_l0_1 = 0; __pfx_l1_5 = 0; __pfx_l5p = 0;
       }
       __pfx_prevNow = now;
     } catch (e) {
@@ -6674,7 +6691,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
 
     animateFnRef.current = animate;
-    rafRef.current = window.requestAnimationFrame(animate);
+    // Pre-compile all shaders before starting animation loop
+    renderer.compileAsync(scene, camera).then(() => {
+      rafRef.current = window.requestAnimationFrame(animate);
+    });
 
     const onVisibilityChange = () => {
       if (document.hidden) {
