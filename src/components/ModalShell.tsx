@@ -1,6 +1,20 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import type { SparkyQuestStage } from '@/components/game/types';
+
+const STAGE_TELEPORT: Record<SparkyQuestStage, { x: number; y: number; room: string; cutsceneDone: boolean; batteryInstalled: boolean }> = {
+  'intro':          { x: 0, y: -1.5, room: 'apartment', cutsceneDone: false, batteryInstalled: false },
+  'intro-done':     { x: 0, y: -7, room: 'outside', cutsceneDone: true, batteryInstalled: false },
+  'unit1':          { x: 0, y: -3.7, room: 'workshop', cutsceneDone: true, batteryInstalled: false },
+  'unit1-done':     { x: 0, y: -7, room: 'outside', cutsceneDone: true, batteryInstalled: false },
+  'unit2':          { x: 0, y: -3.7, room: 'workshop', cutsceneDone: true, batteryInstalled: true },
+  'unit2-done':     { x: 0, y: -7, room: 'outside', cutsceneDone: true, batteryInstalled: true },
+  'unit3':          { x: 0, y: -3.7, room: 'workshop', cutsceneDone: true, batteryInstalled: true },
+  'unit3-done':     { x: 0, y: -7, room: 'outside', cutsceneDone: true, batteryInstalled: true },
+  'unit4':          { x: 0, y: -3.7, room: 'workshop', cutsceneDone: true, batteryInstalled: true },
+  'all-done':       { x: 0, y: -7, room: 'outside', cutsceneDone: true, batteryInstalled: true },
+};
 
 type Guild = { id: string; name: string; owner_id: string; description: string | null; min_level: number; member_count: number; created_at: string };
 type RequestItem = { senderId?: string; receiverId?: string; status: string; name: string | null };
@@ -66,6 +80,8 @@ function ProfileModal() {
 }
 
 function SettingsModal({ userId, debugMode, setDebugMode }: { userId: string; debugMode: boolean; setDebugMode: (v: boolean) => void }) {
+  const [questStage, setQuestStage] = useState<SparkyQuestStage | ''>('');
+
   const handleLogout = async () => {
     await fetch('/api/auth/logout');
     window.location.href = '/login';
@@ -80,12 +96,52 @@ function SettingsModal({ userId, debugMode, setDebugMode }: { userId: string; de
     }
     else { const d = await r.json(); alert(d.error || 'Failed to reset progress.'); }
   };
+  const handleQuestChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const stage = e.target.value as SparkyQuestStage;
+    setQuestStage(stage);
+    const tp = STAGE_TELEPORT[stage];
+    try {
+      await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questStage: stage,
+          cutsceneDone: tp.cutsceneDone,
+          batteryInstalled: tp.batteryInstalled,
+          position: { x: tp.x, y: tp.y, room: tp.room },
+        }),
+      });
+    } catch {}
+    window.location.reload();
+  };
   return (
     <div className="space-y-4">
       <label className="flex items-center gap-3 cursor-pointer">
         <input type="checkbox" checked={debugMode} onChange={(e) => setDebugMode(e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500" />
         <span className="text-slate-200">Debug Mode (coords &amp; FPS)</span>
       </label>
+      {debugMode && (
+        <div className="border-t border-slate-700 pt-4 space-y-3">
+          <p className="text-amber-400 text-sm font-semibold">Debug Tools</p>
+          <div>
+            <label className="text-slate-400 text-xs block mb-1.5">Quest Stage</label>
+            <select value={questStage} onChange={handleQuestChange} className="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-white text-sm">
+              <option value="" disabled>Select stage...</option>
+              <option value="intro">intro (cutscene)</option>
+              <option value="intro-done">intro-done</option>
+              <option value="unit1">unit1 (workshop)</option>
+              <option value="unit1-done">unit1-done (buy battery)</option>
+              <option value="unit2">unit2</option>
+              <option value="unit2-done">unit2-done</option>
+              <option value="unit3">unit3</option>
+              <option value="unit3-done">unit3-done</option>
+              <option value="unit4">unit4</option>
+              <option value="all-done">all-done</option>
+            </select>
+            <p className="text-slate-500 text-xs mt-1.5">Teleports you to the right location and reloads.</p>
+          </div>
+        </div>
+      )}
       <div className="border-t border-slate-700 pt-4">
         <p className="text-slate-400 text-sm mb-2">Account</p>
         <button onClick={handleLogout} className="w-full px-4 py-3 bg-red-600 hover:bg-red-500 rounded-lg text-left font-semibold text-white">Log Out</button>

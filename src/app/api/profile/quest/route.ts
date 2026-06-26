@@ -22,6 +22,10 @@ export async function POST(request: NextRequest) {
       ON CONFLICT (id) DO NOTHING
     `);
     await db.run(sql`
+      DELETE FROM tutorial_progress
+      WHERE user_id = ${userId} AND concept LIKE '_quest_%'
+    `);
+    await db.run(sql`
       INSERT INTO tutorial_progress (user_id, concept, completed, completed_at)
       VALUES (${userId}, ${'_quest_' + stage}, 1, ${new Date().toISOString()})
       ON CONFLICT (user_id, concept) DO UPDATE SET completed_at = ${new Date().toISOString()}
