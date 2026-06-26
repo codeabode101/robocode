@@ -385,11 +385,6 @@ export function createLaptop(): THREE.Group {
   kb.position.set(0, -0.03, baseH + 0.002);
   group.add(kb);
 
-  const usbPort = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.028, 0.008), darkMat);
-  usbPort.name = 'usb-port';
-  usbPort.position.set(-baseW / 2, -baseD / 2 + 0.02, baseH / 2);
-  group.add(usbPort);
-
   const screenGroup = new THREE.Group();
   screenGroup.position.set(0, -baseD / 2, baseH);
   screenGroup.rotation.x = Math.PI / 2;
@@ -406,6 +401,11 @@ export function createLaptop(): THREE.Group {
   screenGroup.add(display);
 
   group.add(screenGroup);
+
+  const usbPort = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.028, 0.008), darkMat);
+  usbPort.name = 'usb-port';
+  usbPort.position.set(-baseW / 2, -baseD / 2 + 0.02, baseH / 2);
+  group.add(usbPort);
   return group;
 }
 
