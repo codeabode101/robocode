@@ -7141,7 +7141,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       setRegLaptopOutput(`❌ ${result.error}`);
       return;
     }
-    const totalEarned = 2;
+    const bonusNow = bonusTimerRef.current !== null
+      ? Math.max(0, Math.round(5 * (1 - (performance.now() - bonusTimerRef.current) / 1000 / BONUS_DURATION)))
+      : 0;
+    bonusTimerRef.current = null;
+    const totalEarned = 2 + bonusNow;
     const newMoney = gameStore.get('money') + totalEarned;
     gameStore.set('money', newMoney);
     apiSync({ money: newMoney });
@@ -7159,6 +7163,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setRegLaptopCode('');
     setRegLaptopOutput('');
     setActiveCustomer(null);
+    currentCustomerIdRef.current = null;
+    const leavingIdx = selectedNpc.queueIndex;
+    const frontY = CUSTOMER_QUEUE_POSITIONS[leavingIdx].y;
+    selectedNpc.waypoints = [new THREE.Vector2(0, frontY), new THREE.Vector2(0, -5.5)];
+    selectedNpc.wpIndex = 0;
+    selectedNpc.target.copy(selectedNpc.waypoints[0]);
+    for (const npc of workshopCustomersRef.current) {
+      if (npc.stage !== 'leaving' && npc.queueIndex > leavingIdx) {
+        npc.queueIndex--;
+        npc.waypoints = undefined;
+        npc.target.copy(CUSTOMER_QUEUE_POSITIONS[npc.queueIndex]);
+        (npc as any).startedAtMs = performance.now();
+        if (npc.stage === 'waiting') { npc.stage = 'walking-to-queue'; }
+      }
+    }
+    spawnCustomerRef.current?.();
     selectedNpc.stage = 'leaving';
     registerCutscenePhaseRef.current = 'done';
     endCinematicCutscene();
