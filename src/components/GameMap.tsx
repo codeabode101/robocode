@@ -6445,7 +6445,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const display = lid.children[1] as THREE.Mesh;
                 const dp = new THREE.Vector3();
                 display.getWorldPosition(dp);
-                camera.position.set(dp.x, dp.y - 0.35, dp.z);
+                camera.position.set(dp.x, dp.y - 0.14, dp.z);
                 camera.lookAt(dp);
               }
             } else {
@@ -7230,6 +7230,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (!showRegLaptopUI) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === '1') { e.preventDefault(); handleRegLaptopSubmitRef.current(); return; }
+      if (e.ctrlKey && e.key === '2') { e.preventDefault(); setShowSparkyExamples(true); return; }
       const t = e.target as HTMLElement;
       if (t?.tagName === 'TEXTAREA' || t?.tagName === 'INPUT' || t?.isContentEditable) return;
     };
@@ -7367,15 +7368,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   {regLaptopOutput}
                 </div>
               )}
-              <div className="flex justify-end mt-4">
+              <div className="mt-4 flex gap-3">
                 <button
                   className="flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2 text-sm font-bold text-slate-900 hover:bg-amber-400 transition-colors"
                   onClick={handleRegLaptopSubmit}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
+                  <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-black/40 shrink-0 px-2 py-0.5">Ctrl+1</span>
                   Submit Java Code
+                </button>
+                <button
+                  className="flex items-center gap-2 rounded-lg bg-amber-600 px-5 py-2 text-sm font-bold text-white hover:bg-amber-500 transition-colors"
+                  onClick={() => setShowSparkyExamples(true)}
+                >
+                  <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-white shrink-0 px-2 py-0.5">Ctrl+2</span>
+                  Need help?
                 </button>
               </div>
             </div>
