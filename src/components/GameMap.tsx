@@ -242,7 +242,7 @@ function computeMarkerVisibility(
         (!hasBattery && !batteryInstalled && money < 10 && cutsceneDone)
       )
     ),
-    shopDoor: (room === 'outside') && !hasLetter && !hasBattery && !batteryInstalled && cutsceneDone,
+    shopDoor: (room === 'outside') && !hasLetter && !hasBattery && !batteryInstalled && money >= 10 && cutsceneDone,
     apartmentDoor: room === 'outside' && hasBattery && !batteryInstalled,
     apartmentExit: room === 'apartment' && (!hasBattery || batteryInstalled),
     workshopExit: room === 'workshop' && !hasLetter && workshopIntroSeen && (money >= 10 || hasBattery),
@@ -1214,6 +1214,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
     if (sparkyQuestStage === 'unit1-done') {
       if (backpack.includes('battery')) return 'Bring the battery to Sparky in the apartment!';
+      const amt = Math.min(gameStore.get('money') ?? 0, 10);
+      if (amt < 10) return `Earn $10 at Rafiq's workshop ($${amt}/$10 earned)`;
       return 'Buy the Battery Pack at the Parts Shop ($10).';
     }
     if (sparkyQuestStage === 'unit2' || sparkyQuestStage === 'unit2-done' || sparkyQuestStage === 'unit3' || sparkyQuestStage === 'unit3-done' || sparkyQuestStage === 'unit4') {
