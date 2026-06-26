@@ -1,11 +1,12 @@
 import { test, chromium } from '@playwright/test';
 
-test('count frames and capture perf data', async () => {
+test('diagnose animation loop stoppage', async () => {
   const browser = await chromium.launch({ headless: true, args: ['--disable-gpu', '--use-gl=angle'] });
-  const page = await browser.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
-  const consoleLogs: string[] = [];
-  page.on('console', msg => consoleLogs.push(msg.text()));
+  const allLogs: string[] = [];
+  page.on('console', msg => allLogs.push(`${msg.type()}: ${msg.text().substring(0, 300)}`));
 
   const email = `perftest_${Date.now()}@test.com`;
   const res = await page.request.post('https://robocode.rahejaom.workers.dev/api/auth/signup', {
@@ -13,48 +14,28 @@ test('count frames and capture perf data', async () => {
   });
   console.log(`Signup: ${res.status()}`);
 
+  // Set interval to check document.hidden every 500ms
   await page.goto('https://robocode.rahejaom.workers.dev/game', { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForSelector('canvas', { timeout: 20000 });
-  
-  // Now poll for frames
-  for (let i = 0; i < 12; i++) {
+
+  // Check initial hidden state
+  let hidden = await page.evaluate(() => document.hidden);
+  console.log(`Initial document.hidden: ${hidden}`);
+
+  // Monitor hidden over time and check for visibility change listener
+  for (let i = 0; i < 25; i++) {
+    const state = await page.evaluate(() => ({
+      hidden: document.hidden,
+      frameCount2: (window as any).__pfx_frameCount2 || 0,
+      batch: (window as any).__pfx_batches || 0,
+      lastFrameTime: (window as any).__pfx_lastFrameTime || 0,
+    }));
+    console.log(`t=${i+1}s: hidden=${state.hidden} frameCount2=${state.frameCount2} batches=${state.batch}`);
     await page.waitForTimeout(1000);
-    
-    // Count how many [PERF] logs we have so far
-    const perfCount = consoleLogs.filter(l => l.startsWith('[PERF]')).length;
-    const slowCount = consoleLogs.filter(l => l.includes('[PERF_SLOW]')).length;
-    const errorCount = consoleLogs.filter(l => l.includes('error') || l.includes('Error')).length;
-    
-    console.log(`t=${i+1}s: PERF=${perfCount} SLOW=${slowCount} ERRORS=${errorCount}`);
   }
 
-  // Walk
-  await page.keyboard.down('KeyW');
-  for (let i = 0; i < 5; i++) {
-    await page.waitForTimeout(1000);
-    const perfCount = consoleLogs.filter(l => l.startsWith('[PERF]')).length;
-    const slowCount = consoleLogs.filter(l => l.includes('[PERF_SLOW]')).length;
-    console.log(`walk t=${i+1}s: PERF=${perfCount} SLOW=${slowCount}`);
-  }
-  await page.keyboard.up('KeyW');
-
-  // Print all perf logs
-  const perfLogs = consoleLogs.filter(l => l.startsWith('[PERF]'));
-  const slowLogs = consoleLogs.filter(l => l.includes('[PERF_SLOW]'));
-  
-  console.log(`\n=== ALL PERF LOGS (${perfLogs.length}) ===`);
-  for (const l of perfLogs) console.log(l);
-  
-  console.log(`\n=== ALL SLOW FRAMES (${slowLogs.length}) ===`);
-  for (const l of slowLogs) console.log(l);
-  
-  console.log(`\n=== TOTAL CONSOLE LOGS: ${consoleLogs.length} ===`);
-  // Check for error logs
-  const errors = consoleLogs.filter(l => l.toLowerCase().includes('error'));
-  if (errors.length > 0) {
-    console.log(`\n=== ERRORS ===`);
-    for (const e of errors.slice(0, 10)) console.log(e.substring(0, 300));
-  }
+  console.log(`\n=== All console logs (${allLogs.length}) ===`);
+  for (const l of allLogs) console.log(l);
 
   await browser.close();
 });
