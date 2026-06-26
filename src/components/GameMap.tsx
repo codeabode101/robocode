@@ -471,7 +471,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const repairCutsceneTimerRef = useRef(0);
   const repairCustomerRef = useRef<CustomerNpc | null>(null);
   const repairOutputRef = useRef('');
-  const registerCutscenePhaseRef = useRef<'idle' | 'place-robot' | 'player-to-robot' | 'player-to-laptop' | 'connect-wire' | 'done'>('idle');
+  const registerCutscenePhaseRef = useRef<'idle' | 'place-robot' | 'player-to-robot' | 'player-to-laptop' | 'connect-wire' | 'register-dlg' | 'laptop-ui' | 'done'>('idle');
   const registerCutsceneTimerRef = useRef(0);
   const registerCutsceneCustomerRef = useRef<CustomerNpc | null>(null);
   const sceneBgColorRef = useRef(new THREE.Color());
@@ -720,6 +720,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [showElectrocuteDlg, setShowElectrocuteDlg] = useState(false);
   const [electrocuteStep, setElectrocuteStep] = useState(0);
   const [electrocuteText, setElectrocuteText] = useState('');
+  const [showRegDlg, setShowRegDlg] = useState(false);
+  const [regDlgStep, setRegDlgStep] = useState(0);
+  const [regDlgText, setRegDlgText] = useState('');
+  const regDlgShownRef = useRef(false);
+  const regPanelShownRef = useRef(false);
   const [workshopIntroText, setWorkshopIntroText] = useState('');
   const [moneyAnim, setMoneyAnim] = useState<{active: boolean; bills: number; hits: number; total: number}>({active: false, bills: 0, hits: 0, total: 0});
   const [missionModal, setMissionModal] = useState<{show: boolean; msg: string}>({show: false, msg: ''});
@@ -737,6 +742,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
     return () => { (window.speechSynthesis as any).onvoiceschanged = null; };
   }, []);
+  const regDlgSteps = useMemo(() => [
+    { speaker: 'Customer', text: 'Thanks! The wire is connected.' },
+    { speaker: 'Customer', text: 'Here is the code I need — take a look.' },
+    { speaker: playerName || 'You', text: 'Let me see the request.' },
+  ], [playerName]);
   const cutsceneDlgSteps = useMemo(() => [
     { speaker: 'Sparky', text: "I'll get electrocuted if I code Scrap..." },
     { speaker: 'Sparky', text: '...can you code him?' },
@@ -1536,6 +1546,42 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }, 35);
     return () => clearInterval(interval);
   }, [electrocuteStep, showElectrocuteDlg, cutsceneDlgSteps]);
+
+  // Register dialog Enter key handler
+  useEffect(() => {
+    if (!showRegDlg) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const nextStep = regDlgStep + 1;
+        if (nextStep < regDlgSteps.length) {
+          setRegDlgStep(nextStep);
+        } else {
+          setShowRegDlg(false);
+          regDlgShownRef.current = false;
+          registerCutscenePhaseRef.current = 'laptop-ui';
+          registerCutsceneTimerRef.current = 0;
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showRegDlg, regDlgStep, regDlgSteps.length]);
+
+  // Register dialog typewriter effect
+  useEffect(() => {
+    if (!showRegDlg) return;
+    const step = regDlgSteps[regDlgStep];
+    if (!step) return;
+    setRegDlgText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setRegDlgText(step.text.slice(0, i));
+      if (i >= step.text.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [regDlgStep, showRegDlg, regDlgSteps]);
 
   // Battery dialog typewriter effect
   useEffect(() => {
@@ -5992,7 +6038,26 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           }
           if (registerCutsceneTimerRef.current > 0.3) {
+            registerCutscenePhaseRef.current = 'register-dlg';
+            registerCutsceneTimerRef.current = 0;
+          }
+        } else if (registerCutscenePhaseRef.current === 'register-dlg') {
+          if (!regDlgShownRef.current) {
+            regDlgShownRef.current = true;
+            document.exitPointerLock();
+            setShowRegDlg(true);
+            setRegDlgStep(0);
+          }
+        } else if (registerCutscenePhaseRef.current === 'laptop-ui') {
+          registerCutsceneTimerRef.current += delta;
+          if (registerCutsceneTimerRef.current > 0.5 && !regPanelShownRef.current) {
+            regPanelShownRef.current = true;
+            if (crn) {
+              setActiveCustomer(crn.request);
+              setWorkshopOutput(`${crn.request.customerName}: Here is my request.`);
+            }
             registerCutscenePhaseRef.current = 'done';
+            registerCutsceneTimerRef.current = 0;
           }
         } else if (registerCutscenePhaseRef.current === 'done') {
           if (crn) {
@@ -6415,9 +6480,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             } else if (registerCutscenePhaseRef.current === 'player-to-laptop') {
               camera.position.lerp(new THREE.Vector3(0.5, 2.2, 2.0), 0.06);
               camera.lookAt(2.0, 2.7, 0.3);
-            } else if (registerCutscenePhaseRef.current === 'connect-wire' || registerCutscenePhaseRef.current === 'done') {
+            } else if (registerCutscenePhaseRef.current === 'connect-wire' || registerCutscenePhaseRef.current === 'register-dlg') {
               camera.position.lerp(new THREE.Vector3(0.5, 2.2, 2.0), 0.06);
               camera.lookAt(2.0, 2.7, 0.3);
+            } else if (registerCutscenePhaseRef.current === 'laptop-ui' || registerCutscenePhaseRef.current === 'done') {
+              const regComp = workshopRegisterComputerRef.current;
+              if (regComp) {
+                const lid = regComp.children[2] as THREE.Group;
+                const display = lid.children[1] as THREE.Mesh;
+                const dp = new THREE.Vector3();
+                display.getWorldPosition(dp);
+                camera.position.set(dp.x, dp.y - 0.35, dp.z);
+                camera.lookAt(dp);
+              }
             } else {
               camera.position.lerp(new THREE.Vector3(1.5, 2.5, 1.2), 0.06);
               camera.lookAt(1.8, 3.0, 0.4);
@@ -7621,6 +7696,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (next < cutsceneDlgSteps.length) { setElectrocuteStep(next); } else {
             setShowElectrocuteDlg(false); electrocuteDlgShownRef.current = false;
             aptCutscenePhaseRef.current = 'walk-to-laptop'; aptCutsceneTimerRef.current = 0;
+          }
+        }}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
+
+      <TFB show={showRegDlg} step={regDlgStep} steps={regDlgSteps} text={regDlgText}
+        icon="auto" onEnter={() => {
+          stopTts(); const next = regDlgStep + 1;
+          if (next < regDlgSteps.length) { setRegDlgStep(next); } else {
+            setShowRegDlg(false); regDlgShownRef.current = false;
+            registerCutscenePhaseRef.current = 'laptop-ui'; registerCutsceneTimerRef.current = 0;
           }
         }}
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
