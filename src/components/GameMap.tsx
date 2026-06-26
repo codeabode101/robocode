@@ -6215,10 +6215,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const step = Math.min(dist, npc.speed * delta);
             const sx = (dx / dist) * step;
             const sy = (dy / dist) * step;
-            const blockCustomer = (px: number, py: number) =>
-              workshopCustomersRef.current.some(n => n.id !== npc.id && n.stage !== 'leaving' && (
-                Math.hypot(px - n.position.x, py - n.position.y) < 0.18
-              ));
+            const blockCustomer = (px: number, py: number) => {
+              const cs = workshopCustomersRef.current;
+              for (let j = 0; j < cs.length; j++) {
+                const n = cs[j];
+                if (n.id !== npc.id && n.stage !== 'leaving' && Math.hypot(px - n.position.x, py - n.position.y) < 0.18) return true;
+              }
+              return false;
+            };
             scratchVec2.current.set(npc.position.x + sx, npc.position.y + sy);
             if (!collidesWithAny(scratchVec2.current, roomObstacleHitboxesRef.current) && (npc.stage === 'leaving' || !blockCustomer(scratchVec2.current.x, scratchVec2.current.y))) {
               npc.position.x += sx;
