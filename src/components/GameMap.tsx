@@ -3892,12 +3892,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     let __pfx_prevNow = 0;
     let __pfx_r0_8 = 0, __pfx_r8_16 = 0, __pfx_r16_33 = 0, __pfx_r33_50 = 0, __pfx_r50_100 = 0, __pfx_r100p = 0;
     let __pfx_l0_1 = 0, __pfx_l1_5 = 0, __pfx_l5p = 0;
+    let __pfx_sectionTimings: { movement: number, sparky: number, camera: number, customers: number, misc: number, scrap: number, markers: number, mp: number } = { movement: 0, sparky: 0, camera: 0, customers: 0, misc: 0, scrap: 0, markers: 0, mp: 0 };
     const animate = (now: number) => {
       const __pfx_frameStart = performance.now();
       const __pfx_gap = now - __pfx_prevNow;
       if (__pfx_gap > 33) __pfx_gcDetect++;
       const __pfx_logicStart = performance.now();
       try {
+      (window as any).__pfx_lastFrameTime = performance.now();
+      (window as any).__pfx_frameCount2 = ((window as any).__pfx_frameCount2 || 0) + 1;
+      if ((window as any).__pfx_frameCount2 % 60 === 0) {
+        (window as any).__pfx_batches = ((window as any).__pfx_batches || 0) + 1;
+        console.log(`[HEARTBEAT] batch=${(window as any).__pfx_batches} totalFrames=${(window as any).__pfx_frameCount2}`);
+      }
       if (tabHiddenRef.current || tabHiddenAtRef.current > lastTime) {
         lastTime = now;
         tabHiddenRef.current = false;
