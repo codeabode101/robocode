@@ -3880,31 +3880,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
 
     let lastTime = performance.now();
-    let __pfx_frameCount = 0;
-    let __pfx_renderTotal = 0;
-    let __pfx_logicTotal = 0;
-    let __pfx_maxRender = 0;
-    let __pfx_maxLogic = 0;
-    let __pfx_totalTotal = 0;
-    let __pfx_minRender = 1000;
-    let __pfx_minLogic = 1000;
-    let __pfx_gcDetect = 0;
-    let __pfx_prevNow = 0;
-    let __pfx_r0_8 = 0, __pfx_r8_16 = 0, __pfx_r16_33 = 0, __pfx_r33_50 = 0, __pfx_r50_100 = 0, __pfx_r100p = 0;
-    let __pfx_l0_1 = 0, __pfx_l1_5 = 0, __pfx_l5p = 0;
-    let __pfx_sectionTimings: { movement: number, sparky: number, camera: number, customers: number, misc: number, scrap: number, markers: number, mp: number } = { movement: 0, sparky: 0, camera: 0, customers: 0, misc: 0, scrap: 0, markers: 0, mp: 0 };
     const animate = (now: number) => {
-      const __pfx_frameStart = performance.now();
-      const __pfx_gap = now - __pfx_prevNow;
-      if (__pfx_gap > 33) __pfx_gcDetect++;
-      const __pfx_logicStart = performance.now();
       try {
-      (window as any).__pfx_lastFrameTime = performance.now();
-      (window as any).__pfx_frameCount2 = ((window as any).__pfx_frameCount2 || 0) + 1;
-      if ((window as any).__pfx_frameCount2 % 60 === 0) {
-        (window as any).__pfx_batches = ((window as any).__pfx_batches || 0) + 1;
-        console.log(`[HEARTBEAT] batch=${(window as any).__pfx_batches} totalFrames=${(window as any).__pfx_frameCount2}`);
-      }
       if (tabHiddenRef.current || tabHiddenAtRef.current > lastTime) {
         lastTime = now;
         tabHiddenRef.current = false;
@@ -6634,61 +6611,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       }
 
-      const __pfx_beforeRender = performance.now();
       renderer.render(scene, camera);
-      const __pfx_afterRender = performance.now();
       rafRef.current = window.requestAnimationFrame(animate);
-      // Per-frame timing collection
-      __pfx_frameCount++;
-      const logicMs = __pfx_beforeRender - __pfx_logicStart;
-      const renderMs = __pfx_afterRender - __pfx_beforeRender;
-      const totalMs = __pfx_afterRender - __pfx_frameStart;
-      __pfx_logicTotal += logicMs;
-      __pfx_renderTotal += renderMs;
-      __pfx_totalTotal += totalMs;
-      if (renderMs > __pfx_maxRender) __pfx_maxRender = renderMs;
-      if (logicMs > __pfx_maxLogic) __pfx_maxLogic = logicMs;
-      if (renderMs < __pfx_minRender) __pfx_minRender = renderMs;
-      if (logicMs < __pfx_minLogic) __pfx_minLogic = logicMs;
-      // histogram buckets
-      if (renderMs > 16) {
-        const nObjs = scene.children.length;
-        const playerRoom = inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apt' : inShopRoomRef.current ? 'shop' : 'outdoor';
-        const isMoving = moved;
-        let nLights = 0; for (let __pi = 0; __pi < scene.children.length; __pi++) { if ((scene.children[__pi] as any).isLight) nLights++; }
-        console.log(`[PERF_SLOW] fr=${__pfx_frameCount} render=${renderMs.toFixed(2)}ms logic=${logicMs.toFixed(2)}ms objs=${nObjs} room=${playerRoom} moving=${isMoving} lights=${nLights}`);
-      }
-      if (renderMs > 100) __pfx_r100p++;
-      else if (renderMs > 50) __pfx_r50_100++;
-      else if (renderMs > 33) __pfx_r33_50++;
-      else if (renderMs > 16) __pfx_r16_33++;
-      else if (renderMs > 8) __pfx_r8_16++;
-      else __pfx_r0_8++;
-      if (logicMs > 5) __pfx_l5p++;
-      else if (logicMs > 1) __pfx_l1_5++;
-      else __pfx_l0_1++;
-      if (__pfx_frameCount >= 60) {
-        console.log(
-          `[PERF] 60f | avg=${(__pfx_totalTotal / 60).toFixed(1)}ms (${(60000 / __pfx_totalTotal).toFixed(0)}fps) ` +
-          `L:avg=${(__pfx_logicTotal / 60).toFixed(2)} [${__pfx_minLogic.toFixed(2)}-${__pfx_maxLogic.toFixed(2)}] ` +
-          `R:avg=${(__pfx_renderTotal / 60).toFixed(2)} [${__pfx_minRender.toFixed(2)}-${__pfx_maxRender.toFixed(2)}] ` +
-          `gap33=${__pfx_gcDetect} ` +
-          `rDist:[0-8=${__pfx_r0_8}|8-16=${__pfx_r8_16}|16-33=${__pfx_r16_33}|33-50=${__pfx_r33_50}|50-100=${__pfx_r50_100}|>100=${__pfx_r100p}] ` +
-          `lDist:[0-1=${__pfx_l0_1}|1-5=${__pfx_l1_5}|>5=${__pfx_l5p}]`
-        );
-        __pfx_frameCount = 0;
-        __pfx_logicTotal = 0;
-        __pfx_renderTotal = 0;
-        __pfx_totalTotal = 0;
-        __pfx_maxRender = 0;
-        __pfx_maxLogic = 0;
-        __pfx_minRender = 1000;
-        __pfx_minLogic = 1000;
-        __pfx_gcDetect = 0;
-        __pfx_r0_8 = 0; __pfx_r8_16 = 0; __pfx_r16_33 = 0; __pfx_r33_50 = 0; __pfx_r50_100 = 0; __pfx_r100p = 0;
-        __pfx_l0_1 = 0; __pfx_l1_5 = 0; __pfx_l5p = 0;
-      }
-      __pfx_prevNow = now;
     } catch (e) {
       console.error('❌ Animation loop error:', e);
       console.log('DEBUG animate state:', {
