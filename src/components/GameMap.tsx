@@ -434,6 +434,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const batteryLerpEndPosRef = useRef(new THREE.Vector3());
   const lastSparkyDlgTextRef = useRef('');
   const lastShowSparkyDlgRef = useRef(false);
+  const lastOutsidePromptRef = useRef<string | null>(null);
   const sparkyEventTriggeredRef = useRef(false);
   const sparkyAcknowledgedRef = useRef(false);
   const repairTimerRef = useRef(0);
@@ -4447,7 +4448,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
         }
 
-        setInteractionPromptName(outsidePrompt);
+        if (outsidePrompt !== lastOutsidePromptRef.current) {
+          lastOutsidePromptRef.current = outsidePrompt;
+          setInteractionPromptName(outsidePrompt);
+        }
         if (!outsidePrompt && workshopOutput && !inWorkshopRoomRef.current) setWorkshopOutput('');
         interactionCandidateIdRef.current = null;
       }
@@ -4572,7 +4576,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPos.x, playerPos.y - scrapPos.y);
       }
       if (speechBubbleRef.current && sparkyIntroStepRef.current >= 0) {
-        const headPos = new THREE.Vector3();
+        const headPos = scratchVec3.current;
         sparky.antennaTip.getWorldPosition(headPos);
         headPos.project(camera);
         if (headPos.z > 1) {
@@ -6136,7 +6140,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (inWorkshopRoomRef.current) {
 
         const walkSin = Math.sin(worldTime * WALK_BOB_SPEED);
-        workshopCustomersRef.current = workshopCustomersRef.current.filter((npc) => {
+        {
+          const customers = workshopCustomersRef.current;
+          for (let i = customers.length - 1; i >= 0; i--) {
+            const npc = customers[i];
           if (npc.stage === 'waiting' || npc.stage === 'awaiting-code') {
             npc.target.copy(npc.position);
             npc.visual.root.rotation.z = 0;
@@ -6181,13 +6188,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                     setActiveCustomer(null);
                     bonusTimerRef.current = null;
                   }
-                  return false;
+                    customers.splice(i, 1); continue;
                 }
                 if (npc.stage === 'walking-to-queue') {
                   npc.stage = 'waiting';
                 }
-              } else {
-                npc.target.copy(npc.waypoints[npc.wpIndex]);
               }
             } else if (npc.stage === 'leaving') {
               if (roomCustomerGroupRef.current) {
@@ -6201,7 +6206,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 setActiveCustomer(null);
                 bonusTimerRef.current = null;
               }
-              return false;
+              customers.splice(i, 1); continue;
             }
             if (npc.stage === 'walking-to-queue' && !(npc.waypoints && npc.wpIndex !== undefined && npc.wpIndex < npc.waypoints.length)) {
               npc.stage = 'waiting';
@@ -6285,8 +6290,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const bobZ = moving ? walkSin * 0.03 : 0;
           npc.visual.nameSprite.position.y = 1.15 + Math.sin(worldTime * 2 + npc.position.y) * 0.03;
           npc.visual.root.position.set(npc.position.x, npc.position.y, 0.26 + bobZ);
-          return true;
-        });
+          }
+        }
 
         const currentNpc = currentCustomerIdRef.current
           ? workshopCustomersRef.current.find((npc) => npc.id === currentCustomerIdRef.current) || null
