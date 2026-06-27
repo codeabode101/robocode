@@ -911,16 +911,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const [cutsceneTick, setCutsceneTick] = useState(0);
 
+  // Deferred state updates to prevent React re-render inside animation frames
+  const deferCutsceneTick = () => setTimeout(() => setCutsceneTick(t => t + 1), 0);
+  const deferTtsTick = () => setTimeout(() => setTtsTick(t => t + 1), 0);
+
   const startCinematicCutscene = useCallback(() => {
     cinemCamActiveRef.current = true;
     hideGameUiRef.current = true;
-    setCutsceneTick(t => t + 1);
+    deferCutsceneTick();
   }, []);
 
   const endCinematicCutscene = useCallback(() => {
     cinemCamActiveRef.current = false;
     hideGameUiRef.current = false;
-    setCutsceneTick(t => t + 1);
+    deferCutsceneTick();
   }, []);
 
   const speakStep = (text: string) => {
@@ -945,24 +949,24 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const startTime = performance.now();
       const rafTick = () => {
         const elapsed = performance.now() - startTime;
-        while (wIdx + 1 < wordBounds.length && elapsed >= wordTimes[wIdx + 1]) { wIdx++; ttsCharIndexRef.current = wordBounds[wIdx].start; setTtsTick(t => t + 1); }
+        while (wIdx + 1 < wordBounds.length && elapsed >= wordTimes[wIdx + 1]) { wIdx++; ttsCharIndexRef.current = wordBounds[wIdx].start; deferTtsTick(); }
         if (wIdx < wordBounds.length - 1) nativeRafRef.current = requestAnimationFrame(rafTick);
       };
       nativeRafRef.current = requestAnimationFrame(rafTick);
       u.onboundary = (e: SpeechSynthesisEvent) => {
         ttsCharIndexRef.current = e.charIndex;
-        setTtsTick(t => t + 1);
+        deferTtsTick();
       };
-      u.onend = () => { if (nativeRafRef.current !== null) { cancelAnimationFrame(nativeRafRef.current); nativeRafRef.current = null; } ttsUtteranceRef.current = null; ttsCharIndexRef.current = null; setTtsTick(t => t + 1); };
-      u.onerror = (e: any) => { console.error('TTS onerror:', e); if (nativeRafRef.current !== null) { cancelAnimationFrame(nativeRafRef.current); nativeRafRef.current = null; } ttsUtteranceRef.current = null; ttsCharIndexRef.current = null; setTtsTick(t => t + 1); };
+      u.onend = () => { if (nativeRafRef.current !== null) { cancelAnimationFrame(nativeRafRef.current); nativeRafRef.current = null; } ttsUtteranceRef.current = null; ttsCharIndexRef.current = null; deferTtsTick(); };
+      u.onerror = (e: any) => { console.error('TTS onerror:', e); if (nativeRafRef.current !== null) { cancelAnimationFrame(nativeRafRef.current); nativeRafRef.current = null; } ttsUtteranceRef.current = null; ttsCharIndexRef.current = null; deferTtsTick(); };
       ttsUtteranceRef.current = u;
-      setTtsTick(t => t + 1);
+      deferTtsTick();
       window.speechSynthesis.cancel();
       setTimeout(() => { window.speechSynthesis.speak(u); }, 10);
     } catch (e) {
       console.error('TTS error:', e);
       ttsUtteranceRef.current = null;
-      setTtsTick(t => t + 1);
+      deferTtsTick();
     }
   };
 
@@ -974,12 +978,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       while ((m = re.exec(text)) !== null) wordBounds.push({ start: m.index, end: m.index + m[0].length });
       ttsUtteranceRef.current = {} as any;
       ttsCharIndexRef.current = wordBounds[0]?.start ?? null;
-      setTtsTick(t => t + 1);
+      deferTtsTick();
       let idx = 0;
       puterTtsTimerRef.current = setInterval(() => {
         idx++;
         if (idx >= wordBounds.length) { clearInterval(puterTtsTimerRef.current!); puterTtsTimerRef.current = null; stopTts(); return; }
-        ttsCharIndexRef.current = wordBounds[idx].start; setTtsTick(t => t + 1);
+        ttsCharIndexRef.current = wordBounds[idx].start; deferTtsTick();
       }, 220);
       puterTtsAudioRef.current = audio;
       audio.play();
@@ -987,7 +991,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     } catch (e) {
       console.error('Puter TTS error:', e);
       ttsUtteranceRef.current = null;
-      setTtsTick(t => t + 1);
+      deferTtsTick();
     }
   };
 
@@ -3944,7 +3948,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           rafiqWalkPhaseRef.current = 'walking';
           rafiqCutsceneTimerRef.current = 0;
           keyStateRef.current.clear();
-          setTimeout(() => setCutsceneTick(t => t + 1), 0);
+          deferCutsceneTick();
           yawRef.current = Math.atan2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
         } else if (pendingAptCutsceneRef.current && !showControlsModalRef.current) {
           pendingAptCutsceneRef.current = false;
@@ -7371,6 +7375,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   // Track React re-renders
   if (typeof window !== 'undefined') {
     (window as any).__reactRenders = ((window as any).__reactRenders || 0) + 1;
+    const rr = (window as any).__reactRenders;
+    if (rr > 0 && rr % 10 === 0) {
+      console.log(`[RENDER#${rr}] triggered`);
+    }
   }
   return (
     <div className="relative" suppressHydrationWarning>
