@@ -33,7 +33,7 @@ test.describe('Login Page', () => {
     await page.getByLabel(/email/i).fill('test@example.com');
     await page.getByLabel(/password/i).fill('wrongpassword');
     await page.getByRole('button', { name: /sign in/i }).click();
-    await expect(page.getByText(/sign in failed/i)).toBeVisible();
+    await expect(page.getByText(/invalid credentials/i)).toBeVisible();
   });
 });
 
