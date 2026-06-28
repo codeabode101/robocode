@@ -747,6 +747,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const ttsCharIndexRef = useRef<number | null>(null);
   const puterTtsAudioRef = useRef<HTMLAudioElement | null>(null);
   const puterTtsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ttsActiveTextRef = useRef<string | null>(null);
   const nativeRafRef = useRef<number | null>(null);
   useEffect(() => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
@@ -1136,12 +1137,62 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
     ttsUtteranceRef.current = null;
     ttsCharIndexRef.current = null;
+    ttsActiveTextRef.current = null;
+    deferTtsTick();
   };
 
   const ttsActive = () => ttsUtteranceRef.current !== null;
 
   const onTtsToggle = (text: string) => {
     if (ttsUtteranceRef.current) { stopTts(); } else { speakStep(text); }
+  };
+
+  // Per-line TTS: click same line = stop, different line = switch
+  const playLineTts = (text: string) => {
+    if (ttsActiveTextRef.current === text && ttsUtteranceRef.current) {
+      stopTts();
+    } else {
+      stopTts();
+      ttsActiveTextRef.current = text;
+      speakStep(text);
+      deferTtsTick();
+    }
+  };
+
+  const renderTtsLine = (text: string) => {
+    const isActive = ttsActiveTextRef.current === text && ttsUtteranceRef.current !== null;
+    const charIdx = isActive ? ttsCharIndexRef.current : null;
+    if (charIdx !== null) {
+      const bounds: Array<{ start: number; end: number }> = [];
+      const re = /\S+/g; let m;
+      while ((m = re.exec(text)) !== null) bounds.push({ start: m.index, end: m.index + m[0].length });
+      const w = bounds.find(b => charIdx >= b.start && charIdx < b.end);
+      if (w) {
+        return <>{text.slice(0, w.start)}<span className="underline decoration-amber-400 decoration-2 underline-offset-4">{text.slice(w.start, Math.min(w.end, text.length))}</span>{text.slice(Math.min(w.end, text.length))}</>;
+      }
+    }
+    return text;
+  };
+
+  const makeLine = (label: string | null, value: string) => {
+    const fullLine = label ? `${label}: ${value}` : value;
+    const play = () => playLineTts(fullLine);
+    const isPlaying = ttsActiveTextRef.current === fullLine;
+    return (
+      <div className="flex items-center gap-1 mb-1 text-sm">
+        <span className="text-slate-100">
+          {label && <span className="font-semibold text-emerald-300">{label}: </span>}
+          {renderTtsLine(value)}
+        </span>
+        <button onClick={play} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={isPlaying ? 'Stop' : 'Read aloud'}>
+          {isPlaying ? (
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+          )}
+        </button>
+      </div>
+    );
   };
 
   function validateJavaLines(
@@ -7614,14 +7665,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return () => window.removeEventListener('keydown', onKey);
   }, [showRegLaptopUI]);
 
-  // Auto-TTS when reg laptop opens
-  useEffect(() => {
-    if (showRegLaptopUI && activeCustomer) {
-      const text = buildSpecSheetDisplayText(activeCustomer);
-      if (text) speakStep(text);
-    }
-  }, [showRegLaptopUI]);
-
   const finishWorkshopIntro = () => {
     interactionRequestedRef.current = false;
     workshopIntroSeenRef.current = true;
@@ -7752,17 +7795,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 <div className="w-3 h-3 rounded-full bg-green-500" />
               </div>
               <span className="text-slate-400 text-sm font-medium ml-2">{activeCustomer.customerName}'s Request</span>
-              <button
-                onClick={() => onTtsToggle(buildSpecSheetDisplayText(activeCustomer))}
-                className="ml-auto p-1.5 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors"
-                title={ttsUtteranceRef.current !== null ? 'Stop' : 'Read aloud'}
-              >
-                {ttsUtteranceRef.current !== null ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                )}
-              </button>
             </div>
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-52px)]">
               {activeCustomer.isSpecSheet ? (
@@ -7770,40 +7802,39 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   <div className={`text-lg font-bold mb-2 ${activeCustomer.tier === 'golden' ? 'text-amber-300' : 'text-cyan-300'}`}>
                     {activeCustomer.tier === 'golden' ? '⭐ Golden Spec Sheet' : '📋 Spec Sheet'}
                   </div>
-                  {(() => {
-                    const sdText = buildSpecSheetDisplayText(activeCustomer);
-                    const ttsOn = ttsUtteranceRef.current !== null;
-                    const ttsCharIdx = ttsCharIndexRef.current;
-                    const body = ttsOn && ttsCharIdx !== null
-                      ? (() => {
-                          const bounds: Array<{ start: number; end: number }> = [];
-                          const re = /\S+/g; let m;
-                          while ((m = re.exec(sdText)) !== null) bounds.push({ start: m.index, end: m.index + m[0].length });
-                          const w = bounds.find(b => ttsCharIdx! >= b.start && ttsCharIdx! < b.end);
-                          if (!w) return sdText;
-                          return <>{sdText.slice(0, w.start)}<span className="underline decoration-amber-400 decoration-2 underline-offset-4">{sdText.slice(w.start, Math.min(w.end, sdText.length))}</span>{sdText.slice(Math.min(w.end, sdText.length))}</>;
-                        })()
-                      : sdText;
-                    return (
-                      <div className="text-slate-100 text-sm mb-3 leading-relaxed bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-                        {body}
-                      </div>
-                    );
-                  })()}
+                  <div className="text-slate-100 text-sm mb-2 leading-relaxed bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                    <span>{renderTtsLine(buildSpecSheetDisplayText(activeCustomer))}</span>
+                    <button onClick={() => playLineTts(buildSpecSheetDisplayText(activeCustomer))} className="ml-2 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors align-middle" title={ttsActiveTextRef.current === buildSpecSheetDisplayText(activeCustomer) ? 'Stop' : 'Read aloud'}>
+                      {ttsActiveTextRef.current === buildSpecSheetDisplayText(activeCustomer) ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                      )}
+                    </button>
+                  </div>
                   <div className="text-xs text-slate-400 mt-1 mb-2">Rules:</div>
                   {activeCustomer.rules.map((r, i) => (
-                    <div key={i} className="text-slate-300 text-sm mb-1">• {r}</div>
+                    <div key={i} className="flex items-start gap-1 text-slate-300 text-sm mb-1">
+                      <span>• {renderTtsLine(r)}</span>
+                      <button onClick={() => playLineTts(r)} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ttsActiveTextRef.current === r ? 'Stop' : 'Read aloud'}>
+                        {ttsActiveTextRef.current === r ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                        )}
+                      </button>
+                    </div>
                   ))}
-                  {activeCustomer.required.includes('name') && <div className="text-slate-100 mt-2 text-sm">Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span></div>}
-                  {activeCustomer.required.includes('color') && <div className="text-slate-100 text-sm">Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span></div>}
-                  {activeCustomer.required.includes('size') && <div className="text-slate-100 text-sm">Size: <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span></div>}
+                  {activeCustomer.required.includes('name') && makeLine('Name', activeCustomer.petName)}
+                  {activeCustomer.required.includes('color') && makeLine('Color', activeCustomer.petColor)}
+                  {activeCustomer.required.includes('size') && makeLine('Size', String(activeCustomer.petSize))}
                 </div>
               ) : (
                 <>
-                  {activeCustomer.required.includes('name') && <div className="text-slate-100 mb-1">Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span></div>}
-                  {activeCustomer.required.includes('color') && <div className="text-slate-100 mb-1">Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span></div>}
-                  {activeCustomer.required.includes('size') && <div className="text-slate-100 mb-1">Size (int): <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span></div>}
-                  <div className="text-sky-100 mb-3">"I want my robot to have these settings!"</div>
+                  {activeCustomer.required.includes('name') && makeLine('Name', activeCustomer.petName)}
+                  {activeCustomer.required.includes('color') && makeLine('Color', activeCustomer.petColor)}
+                  {activeCustomer.required.includes('size') && makeLine('Size (int)', String(activeCustomer.petSize))}
+                  {makeLine(null, '"I want my robot to have these settings!"')}
                 </>
               )}
               {bonusFraction > 0 && (
