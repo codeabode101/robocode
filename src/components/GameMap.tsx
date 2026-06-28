@@ -157,14 +157,14 @@ const PET_COLOR_HEX: Record<string, number> = {
 const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
 const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
 const PET_COLORS = ['red', 'blue', 'green', 'gold', 'teal', 'violet', 'orange', 'silver'];
-const REQUEST_PATTERNS: ('name' | 'color' | 'size' | 'hasWireSurge')[][] = [
-  ['name'], ['color'], ['size'], ['hasWireSurge'],
-  ['name', 'color'], ['name', 'size'], ['name', 'hasWireSurge'],
-  ['color', 'size'], ['color', 'hasWireSurge'], ['size', 'hasWireSurge'],
-  ['name', 'color', 'size'], ['name', 'color', 'hasWireSurge'],
-  ['name', 'size', 'hasWireSurge'], ['color', 'size', 'hasWireSurge'],
-  ['name', 'color', 'size', 'hasWireSurge'],
-];
+const REQUEST_PATTERNS = [
+  ['name'],
+  ['color'],
+  ['size'],
+  ['name', 'color'],
+  ['name', 'size'],
+  ['color', 'size'],
+] as const;
 const WORKSHOP_INTRO_STEPS = [
   { speaker: 'Rafiq', text: "Customers line up for robot requests. Walk up to the front and press Space to start." },
   { speaker: 'Rafiq', text: "Each asks for different properties (name, color, size). Write code that matches exactly." },
@@ -317,6 +317,21 @@ function TFB({ show, step, steps, text, icon, onEnter, ttsOn, ttsCharIdx, onTtsT
       </div>
     </div>
   );
+}
+
+function buildSpecSheetDisplayText(req: CustomerRequest): string {
+  const size = req.given.find(g => g.name === 'size')?.value ?? '?';
+  const material = req.given.find(g => g.name === 'material')?.value ?? '?';
+  const sensorCount = req.given.find(g => g.name === 'sensorCount')?.value ?? '?';
+  const batteryLevel = req.given.find(g => g.name === 'batteryLevel')?.value ?? '?';
+  const age = req.given.find(g => g.name === 'age')?.value ?? '?';
+  let desc = `Customer ${req.customerName}'s robot: size ${size}, material ${material}, ${sensorCount} sensor${sensorCount !== 1 ? 's' : ''}, battery at ${batteryLevel} percent, age ${age} year${age !== 1 ? 's' : ''}.`;
+  if (req.tier === 'golden') {
+    const version = req.given.find(g => g.name === 'version')?.value ?? '?';
+    const maxSpeed = req.given.find(g => g.name === 'maxSpeed')?.value ?? '?';
+    desc += ` Version ${version}, max speed ${maxSpeed}.`;
+  }
+  return desc;
 }
 
 export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: GameMapProps) {
@@ -935,46 +950,61 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     robotRoot.userData.sizeBroken = broken;
   }, []);
 
-  const setActivationBroken = useCallback((robotRoot: THREE.Object3D, broken: boolean) => {
-    robotRoot.userData.activationBroken = broken;
-    robotRoot.traverse((node) => {
-      const m = node as THREE.Mesh;
-      if (!m.isMesh) return;
-      const mats = Array.isArray(m.material) ? m.material : [m.material];
-      for (const mat of mats) {
-        if (!(mat instanceof THREE.MeshToonMaterial)) continue;
-        if (broken) {
-          if (mat.userData.savedEmissive === undefined)
-            mat.userData.savedEmissive = mat.emissive.getHex();
-          mat.userData.savedEmissiveIntensity = mat.emissiveIntensity;
-        } else {
-          const saved = mat.userData.savedEmissive;
-          if (saved !== undefined) mat.emissive.setHex(saved);
-          const si = mat.userData.savedEmissiveIntensity;
-          if (si !== undefined) mat.emissiveIntensity = si;
-          delete mat.userData.savedEmissive;
-          delete mat.userData.savedEmissiveIntensity;
+  const cacheToonMats = useCallback((robotRoot: THREE.Object3D) => {
+    if (!robotRoot.userData.toonMats) {
+      robotRoot.userData.toonMats = [];
+      robotRoot.traverse((node) => {
+        const m = node as THREE.Mesh;
+        if (!m.isMesh) return;
+        const mats = Array.isArray(m.material) ? m.material : [m.material];
+        for (const mat of mats) {
+          if (mat instanceof THREE.MeshToonMaterial) {
+            if (mat.userData.savedEmissive === undefined)
+              mat.userData.savedEmissive = mat.emissive.getHex();
+            if (mat.userData.savedEmissiveIntensity === undefined)
+              mat.userData.savedEmissiveIntensity = mat.emissiveIntensity;
+            robotRoot.userData.toonMats.push(mat);
+          }
         }
-      }
-    });
+      });
+    }
+    return robotRoot.userData.toonMats as THREE.MeshToonMaterial[];
   }, []);
+
+  const restoreToonMats = useCallback((robotRoot: THREE.Object3D) => {
+    const mats: THREE.MeshToonMaterial[] = robotRoot.userData.toonMats || [];
+    for (const mat of mats) {
+      const saved = mat.userData.savedEmissive;
+      if (saved !== undefined) mat.emissive.setHex(saved);
+      const si = mat.userData.savedEmissiveIntensity;
+      if (si !== undefined) mat.emissiveIntensity = si;
+    }
+  }, []);
+
+  const setActivationBroken = useCallback((robotRoot: THREE.Object3D, broken: boolean) => {
+    if (broken) { cacheToonMats(robotRoot); robotRoot.userData.activationBroken = true; }
+    else { delete robotRoot.userData.activationBroken; restoreToonMats(robotRoot); }
+  }, [cacheToonMats, restoreToonMats]);
 
   const setReinforcedFrameBroken = useCallback((robotRoot: THREE.Object3D, broken: boolean) => {
     robotRoot.userData.reinforcedFrameBroken = broken;
   }, []);
 
   const setRequiresChargingBroken = useCallback((robotRoot: THREE.Object3D, broken: boolean) => {
-    robotRoot.userData.requiresChargingBroken = broken;
-  }, []);
+    if (broken) { cacheToonMats(robotRoot); robotRoot.userData.requiresChargingBroken = true; }
+    else { delete robotRoot.userData.requiresChargingBroken; restoreToonMats(robotRoot); }
+  }, [cacheToonMats, restoreToonMats]);
 
   const setHasRedundantSensorsBroken = useCallback((robotRoot: THREE.Object3D, broken: boolean) => {
-    robotRoot.userData.hasRedundantSensorsBroken = broken;
-  }, []);
+    if (broken) { cacheToonMats(robotRoot); robotRoot.userData.hasRedundantSensorsBroken = true; }
+    else { delete robotRoot.userData.hasRedundantSensorsBroken; restoreToonMats(robotRoot); }
+  }, [cacheToonMats, restoreToonMats]);
 
   // Golden defect — special corruption
   const setVersionBroken = useCallback((robotRoot: THREE.Object3D, broken: boolean) => {
-    robotRoot.userData.versionBroken = broken;
-  }, []);
+    if (broken) { cacheToonMats(robotRoot); robotRoot.userData.versionBroken = true; }
+    else { delete robotRoot.userData.versionBroken; restoreToonMats(robotRoot); }
+  }, [cacheToonMats, restoreToonMats]);
 
   const applyDefectFromRequest = useCallback((request: CustomerRequest, robotRoot: THREE.Object3D) => {
     if (request.isSpecSheet) {
@@ -3911,6 +3941,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         { name: 'batteryLevel', type: 'int', value: batteryLevel },
         { name: 'age', type: 'int', value: age },
       ];
+      if (isGolden && version !== undefined) given.push({ name: 'version', type: 'double', value: version });
+      if (isGolden && maxSpeed !== undefined) given.push({ name: 'maxSpeed', type: 'double', value: maxSpeed });
 
       const rules: string[] = [
         `Steel has density ${densityMap.steel}, plastic has density ${densityMap.plastic}, titanium has density ${densityMap.titanium}.`,
@@ -3919,10 +3951,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         `A robot requires charging if its battery level is less than 20 percent.`,
         `A robot has redundant sensors if its sensor count is greater than 2.`,
         `A robot needs an upgrade if its age is greater than 5.`,
-        `Write the derived value directly. For example, type "true" or the computed number.`,
       ];
       if (isGolden && version !== undefined) {
-        rules.push(`version is ${version} and should be written as a decimal number like ${version}.`);
+        rules.push(`version is a decimal number, write it as ${version}.`);
+        rules.push(`maxSpeed is a decimal number, write it as ${maxSpeed}.`);
       }
 
       return {
@@ -6526,18 +6558,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const s = 0.18 * (1 + Math.sin(worldTime * 6) * 0.15);
               crRoot.scale.set(s, s, s);
             }
-            if (ud.activationBroken) {
-              const pulse = (Math.sin(worldTime * 8) + 1) / 2;
+            // Cache toon materials once for defect animations
+            let toonMats: THREE.MeshToonMaterial[] = ud.toonMats;
+            if (!toonMats && (ud.activationBroken || ud.requiresChargingBroken || ud.hasRedundantSensorsBroken || ud.versionBroken)) {
+              toonMats = [];
               crRoot.traverse((node) => {
                 const m = node as THREE.Mesh;
                 if (!m.isMesh) return;
                 const mats = Array.isArray(m.material) ? m.material : [m.material];
                 for (const mat of mats) {
-                  if (!(mat instanceof THREE.MeshToonMaterial)) continue;
-                  mat.emissive.setHex(0xef4444);
-                  mat.emissiveIntensity = pulse * 0.6;
+                  if (mat instanceof THREE.MeshToonMaterial) toonMats.push(mat);
                 }
               });
+              ud.toonMats = toonMats;
+            }
+            if (ud.activationBroken && toonMats) {
+              const pulse = (Math.sin(worldTime * 8) + 1) / 2;
+              for (const mat of toonMats) { mat.emissive.setHex(0xef4444); mat.emissiveIntensity = pulse * 0.6; }
               crRoot.position.x += Math.sin(worldTime * 20) * 0.003;
             }
             if (ud.reinforcedFrameBroken) {
@@ -6545,48 +6582,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               crRoot.position.x += creak;
               crRoot.position.y += Math.sin(worldTime * 5 + 1) * 0.002;
             }
-            if (ud.requiresChargingBroken) {
+            if (ud.requiresChargingBroken && toonMats) {
               const dim = (Math.sin(worldTime * 3) + 1) / 2;
-              crRoot.traverse((node) => {
-                const m = node as THREE.Mesh;
-                if (!m.isMesh) return;
-                const mats = Array.isArray(m.material) ? m.material : [m.material];
-                for (const mat of mats) {
-                  if (!(mat instanceof THREE.MeshToonMaterial)) continue;
-                  mat.emissiveIntensity = dim * 0.3;
-                }
-              });
+              for (const mat of toonMats) { mat.emissiveIntensity = dim * 0.3; }
             }
-            if (ud.hasRedundantSensorsBroken) {
+            if (ud.hasRedundantSensorsBroken && toonMats) {
               const blinkPhase = Math.floor(worldTime / 0.3) % 2;
-              crRoot.traverse((node) => {
-                const m = node as THREE.Mesh;
-                if (!m.isMesh) return;
-                const mats = Array.isArray(m.material) ? m.material : [m.material];
-                for (const mat of mats) {
-                  if (!(mat instanceof THREE.MeshToonMaterial)) continue;
-                  if (blinkPhase === 0) {
-                    mat.emissive.setHex(0x22c55e);
-                    mat.emissiveIntensity = 0.8;
-                  } else {
-                    mat.emissive.setHex(0x000000);
-                    mat.emissiveIntensity = 0;
-                  }
-                }
-              });
+              for (const mat of toonMats) {
+                if (blinkPhase === 0) { mat.emissive.setHex(0x22c55e); mat.emissiveIntensity = 0.8; }
+                else { mat.emissive.setHex(0x000000); mat.emissiveIntensity = 0; }
+              }
             }
-            if (ud.versionBroken) {
+            if (ud.versionBroken && toonMats) {
               const saw = (worldTime % 1) / 1;
-              crRoot.traverse((node) => {
-                const m = node as THREE.Mesh;
-                if (!m.isMesh) return;
-                const mats = Array.isArray(m.material) ? m.material : [m.material];
-                for (const mat of mats) {
-                  if (!(mat instanceof THREE.MeshToonMaterial)) continue;
-                  mat.emissive.setHex(saw > 0.5 ? 0xf97316 : 0xffffff);
-                  mat.emissiveIntensity = saw * 0.8;
-                }
-              });
+              for (const mat of toonMats) {
+                mat.emissive.setHex(saw > 0.5 ? 0xf97316 : 0xffffff);
+                mat.emissiveIntensity = saw * 0.8;
+              }
               const altScale = saw > 0.5 ? 0.22 : 0.18;
               crRoot.scale.set(altScale, altScale, altScale);
             }
@@ -7602,6 +7614,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return () => window.removeEventListener('keydown', onKey);
   }, [showRegLaptopUI]);
 
+  // Auto-TTS when reg laptop opens
+  useEffect(() => {
+    if (showRegLaptopUI && activeCustomer) {
+      const text = buildSpecSheetDisplayText(activeCustomer);
+      if (text) speakStep(text);
+    }
+  }, [showRegLaptopUI]);
+
   const finishWorkshopIntro = () => {
     interactionRequestedRef.current = false;
     workshopIntroSeenRef.current = true;
@@ -7732,6 +7752,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 <div className="w-3 h-3 rounded-full bg-green-500" />
               </div>
               <span className="text-slate-400 text-sm font-medium ml-2">{activeCustomer.customerName}'s Request</span>
+              <button
+                onClick={() => onTtsToggle(buildSpecSheetDisplayText(activeCustomer))}
+                className="ml-auto p-1.5 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors"
+                title={ttsUtteranceRef.current !== null ? 'Stop' : 'Read aloud'}
+              >
+                {ttsUtteranceRef.current !== null ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                )}
+              </button>
             </div>
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-52px)]">
               {activeCustomer.isSpecSheet ? (
@@ -7739,24 +7770,39 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   <div className={`text-lg font-bold mb-2 ${activeCustomer.tier === 'golden' ? 'text-amber-300' : 'text-cyan-300'}`}>
                     {activeCustomer.tier === 'golden' ? '⭐ Golden Spec Sheet' : '📋 Spec Sheet'}
                   </div>
-                  <div className="text-xs text-slate-400 mb-2">Given values:</div>
-                  {activeCustomer.given.map((g, i) => (
-                    <div key={i} className="text-slate-100 mb-0.5 text-sm">{g.name} ({g.type}) = <span className="text-emerald-300">{String(g.value)}</span></div>
-                  ))}
-                  <div className="text-xs text-slate-400 mt-2 mb-1">Rules:</div>
+                  {(() => {
+                    const sdText = buildSpecSheetDisplayText(activeCustomer);
+                    const ttsOn = ttsUtteranceRef.current !== null;
+                    const ttsCharIdx = ttsCharIndexRef.current;
+                    const body = ttsOn && ttsCharIdx !== null
+                      ? (() => {
+                          const bounds: Array<{ start: number; end: number }> = [];
+                          const re = /\S+/g; let m;
+                          while ((m = re.exec(sdText)) !== null) bounds.push({ start: m.index, end: m.index + m[0].length });
+                          const w = bounds.find(b => ttsCharIdx! >= b.start && ttsCharIdx! < b.end);
+                          if (!w) return sdText;
+                          return <>{sdText.slice(0, w.start)}<span className="underline decoration-amber-400 decoration-2 underline-offset-4">{sdText.slice(w.start, Math.min(w.end, sdText.length))}</span>{sdText.slice(Math.min(w.end, sdText.length))}</>;
+                        })()
+                      : sdText;
+                    return (
+                      <div className="text-slate-100 text-sm mb-3 leading-relaxed bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        {body}
+                      </div>
+                    );
+                  })()}
+                  <div className="text-xs text-slate-400 mt-1 mb-2">Rules:</div>
                   {activeCustomer.rules.map((r, i) => (
-                    <div key={i} className="text-slate-300 text-sm mb-0.5">• {r}</div>
+                    <div key={i} className="text-slate-300 text-sm mb-1">• {r}</div>
                   ))}
-                  {activeCustomer.required.includes('name') && <div className="text-slate-100 mt-2 mb-1">Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span></div>}
-                  {activeCustomer.required.includes('color') && <div className="text-slate-100 mb-1">Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span></div>}
-                  {activeCustomer.required.includes('hasWireSurge') && <div className="text-slate-100 mb-1">Write the derived boolean value (true/false) based on the rules above.</div>}
+                  {activeCustomer.required.includes('name') && <div className="text-slate-100 mt-2 text-sm">Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span></div>}
+                  {activeCustomer.required.includes('color') && <div className="text-slate-100 text-sm">Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span></div>}
+                  {activeCustomer.required.includes('size') && <div className="text-slate-100 text-sm">Size: <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span></div>}
                 </div>
               ) : (
                 <>
                   {activeCustomer.required.includes('name') && <div className="text-slate-100 mb-1">Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span></div>}
                   {activeCustomer.required.includes('color') && <div className="text-slate-100 mb-1">Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span></div>}
                   {activeCustomer.required.includes('size') && <div className="text-slate-100 mb-1">Size (int): <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span></div>}
-                  {activeCustomer.required.includes('hasWireSurge') && <div className="text-slate-100 mb-1">hasWireSurge (boolean): <span className="font-semibold text-emerald-300">true</span></div>}
                   <div className="text-sky-100 mb-3">"I want my robot to have these settings!"</div>
                 </>
               )}
