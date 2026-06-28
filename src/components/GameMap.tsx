@@ -157,14 +157,14 @@ const PET_COLOR_HEX: Record<string, number> = {
 const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
 const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
 const PET_COLORS = ['red', 'blue', 'green', 'gold', 'teal', 'violet', 'orange', 'silver'];
-const REQUEST_PATTERNS = [
-  ['name'],
-  ['color'],
-  ['size'],
-  ['name', 'color'],
-  ['name', 'size'],
-  ['color', 'size'],
-] as const;
+const REQUEST_PATTERNS: ('name' | 'color' | 'size' | 'hasWireSurge')[][] = [
+  ['name'], ['color'], ['size'], ['hasWireSurge'],
+  ['name', 'color'], ['name', 'size'], ['name', 'hasWireSurge'],
+  ['color', 'size'], ['color', 'hasWireSurge'], ['size', 'hasWireSurge'],
+  ['name', 'color', 'size'], ['name', 'color', 'hasWireSurge'],
+  ['name', 'size', 'hasWireSurge'], ['color', 'size', 'hasWireSurge'],
+  ['name', 'color', 'size', 'hasWireSurge'],
+];
 const WORKSHOP_INTRO_STEPS = [
   { speaker: 'Rafiq', text: "Customers line up for robot requests. Walk up to the front and press Space to start." },
   { speaker: 'Rafiq', text: "Each asks for different properties (name, color, size). Write code that matches exactly." },
