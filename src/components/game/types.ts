@@ -32,9 +32,16 @@ export const SCRAP_PART_COSTS: Record<string, number> = {
 export const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
 export const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
 export const PET_COLORS = ['red', 'blue', 'green', 'gold', 'teal', 'violet', 'orange', 'silver'];
-export const REQUEST_PATTERNS = [
-  ['name'], ['color'], ['size'], ['name', 'color'], ['name', 'size'], ['color', 'size'],
-] as const;
+export const CUSTOMER_PROPERTIES = ['name', 'color', 'size', 'hasWireSurge'] as const;
+export type CustomerProperty = (typeof CUSTOMER_PROPERTIES)[number];
+export const REQUEST_PATTERNS: CustomerProperty[][] = [
+  ['name'], ['color'], ['size'], ['hasWireSurge'],
+  ['name', 'color'], ['name', 'size'], ['name', 'hasWireSurge'],
+  ['color', 'size'], ['color', 'hasWireSurge'], ['size', 'hasWireSurge'],
+  ['name', 'color', 'size'], ['name', 'color', 'hasWireSurge'],
+  ['name', 'size', 'hasWireSurge'], ['color', 'size', 'hasWireSurge'],
+  ['name', 'color', 'size', 'hasWireSurge'],
+];
 export const WORKSHOP_INTRO_PAGES = [
   { title: "Welcome to Rafiq's Robots", body: 'Customers browse robots here. Walk up and press Space to start a job.' },
   { title: 'Do the Java task', body: 'Each customer asks for properties (name, color, size). Write code that matches.' },
@@ -45,14 +52,18 @@ export const DATA_CUSTOMER_NAMES = ['Priya', 'Arjun', 'Kavya', 'Ravi', 'Neha', '
 
 export interface Vec2 { x: number; y: number }
 
-export type CustomerProperty = 'name' | 'color' | 'size';
-
 export type RequestType = 'standard' | 'data-processing';
 
 export interface DataProcessingStep {
   givenInfo: string[];
   expectedCode: string[];
   description: string;
+}
+
+export interface GivenVariable {
+  name: string;
+  type: string;
+  value: number | string | boolean;
 }
 
 export interface CustomerRequest {
@@ -63,6 +74,13 @@ export interface CustomerRequest {
   required: CustomerProperty[];
   requestType: RequestType;
   dataSteps?: DataProcessingStep[];
+  // Spec-sheet fields
+  isSpecSheet: boolean;
+  given: GivenVariable[];
+  rules: string[];
+  tier: 'standard' | 'spec-sheet' | 'golden';
+  baseReward: number;
+  bonusReward: number;
 }
 
 export type SparkyQuestStage = 'intro' | 'intro-done' | 'unit1' | 'unit1-done' | 'unit2' | 'unit2-done' | 'unit3' | 'unit3-done' | 'unit4' | 'all-done';

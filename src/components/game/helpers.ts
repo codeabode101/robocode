@@ -171,6 +171,18 @@ function checkLine(n: string, req: string, expectedType: string, expectedValue: 
     if (valMatch && valMatch[1] !== expectedValue) return `Wrong value. Expected "${expectedValue}", got "${valMatch[1]}".`;
     const correctAssign = new RegExp(`String\\s+[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*"${expectedValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"\\s*;`);
     if (!correctAssign.test(n)) return `Check the full shape: \`String name = "${expectedValue}";\``;
+  } else if (expectedType === 'boolean') {
+    const valMatch = n.match(/=\s*(\S+)\s*;/);
+    if (valMatch && valMatch[1] !== 'true' && valMatch[1] !== 'false') return `Use \`true\` or \`false\` for boolean values, got "${valMatch[1]}".`;
+    if (valMatch && valMatch[1] !== String(expectedValue)) return `Wrong value. Expected ${expectedValue}, got ${valMatch[1]}.`;
+    const correctAssign = new RegExp(`boolean\\s+[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*${expectedValue}\\s*;`);
+    if (!correctAssign.test(n)) return `Check the full shape: \`boolean name = ${expectedValue};\``;
+  } else if (expectedType === 'double') {
+    const valMatch = n.match(/=\s*(\S+)\s*;/);
+    if (valMatch && !/^-?\d+(\.\d+)?$/.test(valMatch[1])) return `Use a number for double values, got "${valMatch[1]}".`;
+    if (valMatch && parseFloat(valMatch[1]) !== parseFloat(String(expectedValue))) return `Wrong value. Expected ${expectedValue}, got ${valMatch[1]}.`;
+    const correctAssign = new RegExp(`double\\s+[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*${parseFloat(String(expectedValue))}\\s*;`);
+    if (!correctAssign.test(n)) return `Check the full shape: \`double name = ${expectedValue};\``;
   } else {
     const valMatch = n.match(/=\s*(\S+)\s*;/);
     if (valMatch && valMatch[1] !== String(expectedValue)) return `Wrong value. Expected ${expectedValue}, got ${valMatch[1]}.`;
@@ -191,8 +203,8 @@ export function validateWorkshopCode(input: string, request: CustomerRequest) {
   if (lines.length < request.required.length) return { valid: false, error: `You need ${request.required.length} statement${request.required.length > 1 ? 's' : ''}. Use separate lines or semicolons.` };
   if (lines.length > request.required.length) return { valid: false, error: `Too many statements. You only need ${request.required.length} line${request.required.length > 1 ? 's' : ''}.` };
 
-  const reqToVal = (r: string) => r === 'name' ? request.petName : r === 'color' ? request.petColor : String(request.petSize);
-  const reqToType = (r: string) => r === 'size' ? 'int' : 'String';
+  const reqToVal = (r: string) => r === 'name' ? request.petName : r === 'color' ? request.petColor : r === 'hasWireSurge' ? 'true' : String(request.petSize);
+  const reqToType = (r: string) => r === 'size' ? 'int' : r === 'hasWireSurge' ? 'boolean' : 'String';
 
   for (let i = 0; i < request.required.length; i++) {
     const req = request.required[i];
