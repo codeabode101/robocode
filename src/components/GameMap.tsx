@@ -7734,7 +7734,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
         onTtsToggle={onTtsToggle} />
 
-      {!showRegLaptopUI && <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />}
+      {!showRegLaptopUI && <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} showSparkyExamples={() => setShowSparkyExamples(true)} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />}
 
       {showRegLaptopUI && activeCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
@@ -7750,37 +7750,34 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-52px)]">
               {activeCustomer.isSpecSheet ? (
                 <div className="mb-3">
-                  <div className="text-lg font-bold mb-2 text-cyan-300">
-                    📋 Spec Sheet
-                  </div>
-                  {activeCustomer.specSheetPrompts?.map((p, i) => (
-                    <div key={i} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 mb-2">
-                      <div className="flex items-center gap-1 text-slate-100 text-sm leading-relaxed">
-                        <span>{renderTtsLine(p.lines[0])}</span>
-                        <button onClick={() => playLineTts(p.lines[0])} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ttsActiveTextRef.current === p.lines[0] ? 'Stop' : 'Read aloud'}>
-                          {ttsActiveTextRef.current === p.lines[0] ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                          )}
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-1 text-slate-100 text-sm leading-relaxed mt-1">
-                        <span>{renderTtsLine(p.lines[1])}</span>
-                        <button onClick={() => playLineTts(p.lines[1])} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ttsActiveTextRef.current === p.lines[1] ? 'Stop' : 'Read aloud'}>
-                          {ttsActiveTextRef.current === p.lines[1] ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {activeCustomer.required.includes('name') && makeLine(null, `Robot's name is ${activeCustomer.petName}`)}
-                  {activeCustomer.required.includes('color') && makeLine(null, `Color is ${activeCustomer.petColor}`)}
-                  {activeCustomer.required.includes('size') && makeLine(null, `Size is ${activeCustomer.petSize}`)}
-                  {activeCustomer.required.includes('version') && makeLine(null, `Version is 1.0`)}
+                  {(() => {
+                    let ln = 0;
+                    const el: any[] = [];
+                    const addNumLine = (text: string) => {
+                      ln++;
+                      const play = () => playLineTts(text);
+                      const isPlaying = ttsActiveTextRef.current === text;
+                      el.push(
+                        <div key={ln} className="flex items-center gap-1 mb-1 text-sm">
+                          <span className="text-cyan-300 font-bold shrink-0 min-w-[1.2rem]">{ln})</span>
+                          <span className="text-slate-100">{renderTtsLine(text)}</span>
+                          <button onClick={play} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={isPlaying ? 'Stop' : 'Read aloud'}>
+                            {isPlaying ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    };
+                    activeCustomer?.specSheetPrompts?.forEach(p => { addNumLine(p.lines[0]); addNumLine(p.lines[1]); });
+                    if (activeCustomer?.required.includes('name')) addNumLine(`Robot's name is ${activeCustomer.petName}`);
+                    if (activeCustomer?.required.includes('color')) addNumLine(`Color is ${activeCustomer.petColor}`);
+                    if (activeCustomer?.required.includes('size')) addNumLine(`Size is ${activeCustomer.petSize}`);
+                    if (activeCustomer?.required.includes('version')) addNumLine(`Version is 1.0`);
+                    return el;
+                  })()}
                 </div>
               ) : (
                 <>
@@ -7826,13 +7823,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   {regLaptopOutput}
                 </div>
               )}
-              <div className="mt-4">
+              <div className="mt-4 flex items-center justify-between">
                 <button
                   className="flex items-center gap-2 rounded-lg bg-emerald-500 px-5 py-2 text-sm font-bold text-white hover:bg-emerald-400 transition-colors"
                   onClick={handleRegLaptopSubmit}
                 >
                   <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-white/60 shrink-0 px-2 py-0.5">Ctrl+1</span>
                   Submit Java Code
+                </button>
+                <button
+                  className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-500 transition-colors"
+                  onClick={() => setShowSparkyExamples(true)}
+                >
+                  <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-white shrink-0 px-2 py-0.5">Ctrl+2</span>
+                  Need help?
                 </button>
               </div>
             </div>
@@ -7852,16 +7856,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         <button onClick={() => setActiveModal('profile')} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Profile">👤</button>
         <button onClick={() => setActiveModal('settings')} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Settings">⚙️</button>
       </div>
-
-      {inWorkshopRoom && !showSparkyExamples && !showRegLaptopUI && (
-        <button
-          onClick={() => setShowSparkyExamples(true)}
-          className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-500 transition-colors shadow-xl"
-        >
-          <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-white shrink-0 px-2 py-0.5">Ctrl+2</span>
-          Need help?
-        </button>
-      )}
 
       {interactionPromptName && (
         <div className="absolute bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full border border-cyan-300/70 bg-slate-900/90 px-6 py-2 text-lg font-semibold text-cyan-100 shadow-xl">

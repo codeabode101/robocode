@@ -11,6 +11,7 @@ interface Props {
   inWorkshopRoom: boolean;
   runWorkshopCode: () => void;
   reopenWorkshopIntro: () => void;
+  showSparkyExamples: () => void;
   bonusFraction: number;
   bonusDuration: number;
   firstTransactionDone: boolean;
@@ -18,21 +19,25 @@ interface Props {
 
 export default function WorkshopPanel({
   activeCustomer, workshopCode, setWorkshopCode, workshopOutput,
-  inWorkshopRoom, runWorkshopCode, reopenWorkshopIntro,
+  inWorkshopRoom, runWorkshopCode, reopenWorkshopIntro, showSparkyExamples,
   bonusFraction, bonusDuration, firstTransactionDone,
 }: Props) {
   const bonusAmount = Math.round(5 * bonusFraction);
   const isDataProcessing = activeCustomer?.requestType === 'data-processing';
   const runRef = useRef(runWorkshopCode);
+  const showRef = useRef(showSparkyExamples);
   runRef.current = runWorkshopCode;
+  showRef.current = showSparkyExamples;
 
   useEffect(() => {
     if (!activeCustomer) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === '1') { e.preventDefault(); runRef.current(); return; }
+      if (e.ctrlKey && e.key === '2') { e.preventDefault(); showRef.current(); return; }
       const t = e.target as HTMLElement;
       if (t?.tagName === 'TEXTAREA' || t?.tagName === 'INPUT' || t?.isContentEditable) return;
       if (e.key === '1') { e.preventDefault(); runRef.current(); }
+      if (e.key === '2') { e.preventDefault(); showRef.current(); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -97,12 +102,15 @@ export default function WorkshopPanel({
             <div className="px-4 py-2 text-base text-slate-200 border-b border-slate-800">Java Workshop Editor</div>
             <CodeInput value={workshopCode} onChange={setWorkshopCode} autoFocus minHeight="7rem" textareaClassName="p-4 text-base leading-7 text-slate-100" />
           </div>
-          <div className="mt-4 flex gap-3">
+          <div className="mt-4 flex gap-3 items-center">
             <button type="button" className="flex items-center gap-2 rounded bg-emerald-500 px-4 py-2.5 text-base font-semibold text-white hover:bg-emerald-400" onClick={runWorkshopCode}>
               <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-white shrink-0 px-2 py-0.5">Ctrl+1</span>
               Submit Java Code
             </button>
-
+            <button type="button" className="ml-auto flex items-center gap-2 rounded bg-amber-600 px-4 py-2.5 text-base font-semibold text-white hover:bg-amber-500" onClick={showSparkyExamples}>
+              <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-white shrink-0 px-2 py-0.5">Ctrl+2</span>
+              Need help?
+            </button>
           </div>
           </div>
         </div>
