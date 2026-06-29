@@ -7780,6 +7780,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   {activeCustomer.required.includes('name') && makeLine('Name', activeCustomer.petName)}
                   {activeCustomer.required.includes('color') && makeLine('Color', activeCustomer.petColor)}
                   {activeCustomer.required.includes('size') && makeLine('Size (int)', String(activeCustomer.petSize))}
+                  {activeCustomer.required.includes('hasWireSurge') && makeLine('hasWireSurge (boolean)', 'true')}
                   {makeLine(null, '"I want my robot to have these settings!"')}
                 </>
               )}
