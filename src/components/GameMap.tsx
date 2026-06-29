@@ -3961,9 +3961,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const rf = (min: number, max: number, dec = 1) => parseFloat((r() * (max - min) + min).toFixed(dec));
       const templates: (() => SpecSheetPrompt)[] = [
         // 1: Efficiency → boolean (needsNewBattery)
-        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff}%.`, `If it's below 90%, set needsNewBattery.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(eff < 90), exampleLines: ['Efficiency is 72%.', 'If it is below 90%, set isCharged.'], exampleCode: 'boolean isCharged = true;' }; },
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff}%.`, `If it's below 90%, set needsNewBattery to true.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(eff < 90), exampleLines: ['Efficiency is 72%.', 'If it is below 90%, set isCharged to true.'], exampleCode: 'boolean isCharged = true;' }; },
         // 2: Temperature → boolean (isOverheated)
-        () => { const temp = rf(70, 90); return { lines: [`Temperature is ${temp} degrees.`, `If it's above 80, set isOverheated.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(temp > 80), exampleLines: ['Temperature is 95 degrees.', 'If it is above 80, set isHot.'], exampleCode: 'boolean isHot = true;' }; },
+        () => { const temp = rf(70, 90); return { lines: [`Temperature is ${temp} degrees.`, `If it's above 80, set isOverheated to true.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(temp > 80), exampleLines: ['Temperature is 95 degrees.', 'If it is above 80, set isHot to true.'], exampleCode: 'boolean isHot = true;' }; },
         // 3: Arm count → int (toolCapacity)
         () => { const arms = ri(1, 4); return { lines: [`The robot has ${arms} arm${arms > 1 ? 's' : ''}.`, `Each arm carries 5 tools. Set toolCapacity.`], expectedType: 'int', expectedName: 'toolCapacity', expectedValue: String(arms * 5), exampleLines: ['The robot has 3 arms.', 'Each arm carries 5 tools. Set canCarry.'], exampleCode: 'int canCarry = 15;' }; },
         // 4: Efficiency → double (repairCost)
@@ -3975,7 +3975,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         // 7: Efficiency → String (status)
         () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff}%.`, `95 or higher means Excellent, otherwise Needs Repair. Set status.`], expectedType: 'String', expectedName: 'status', expectedValue: eff >= 95 ? 'Excellent' : 'Needs Repair', exampleLines: ['Efficiency is 56%.', '95 or higher means Excellent, otherwise Needs Repair. Set result.'], exampleCode: 'String result = "Needs Repair";' }; },
         // 8: Sensor count → boolean (hasConnectionIssue)
-        () => { const sensors = ri(0, 4); return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, set hasConnectionIssue.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(sensors < 2), exampleLines: ['The robot has 1 sensor.', 'If sensors are less than 2, set hasIssue.'], exampleCode: 'boolean hasIssue = true;' }; },
+        () => { const sensors = ri(0, 4); return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, set hasConnectionIssue to true.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(sensors < 2), exampleLines: ['The robot has 1 sensor.', 'If sensors are less than 2, set hasIssue to true.'], exampleCode: 'boolean hasIssue = true;' }; },
       ];
 
       const prompt = templates[Math.floor(r() * templates.length)]();
@@ -7797,7 +7797,37 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                         </div>
                       );
                     };
-                    activeCustomer?.specSheetPrompts?.forEach(p => { addNumLine(p.lines[0]); addNumLine(p.lines[1]); });
+                    activeCustomer?.specSheetPrompts?.forEach(p => {
+                      ln++;
+                      const t0 = p.lines[0], t1 = p.lines[1];
+                      const p0 = () => playLineTts(t0);
+                      const p1 = () => playLineTts(t1);
+                      const ip0 = ttsActiveTextRef.current === t0;
+                      const ip1 = ttsActiveTextRef.current === t1;
+                      el.push(
+                        <div key={`p${ln}-0`} className="flex items-center gap-1 mb-0.5 text-sm">
+                          <span className="text-cyan-300 font-bold shrink-0 min-w-[1.2rem]">{ln})</span>
+                          <span className="text-slate-100">{renderFormattedSpecLine(t0)}</span>
+                          <button onClick={p0} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ip0 ? 'Stop' : 'Read aloud'}>
+                            {ip0 ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                            )}
+                          </button>
+                        </div>,
+                        <div key={`p${ln}-1`} className="flex items-center gap-1 mb-1 text-sm pl-[1.8rem]">
+                          <span className="text-slate-100">{renderFormattedSpecLine(t1)}</span>
+                          <button onClick={p1} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ip1 ? 'Stop' : 'Read aloud'}>
+                            {ip1 ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    });
                     if (activeCustomer?.required.includes('name')) addNumLine(`Robot's name is ${activeCustomer.petName}`);
                     if (activeCustomer?.required.includes('color')) addNumLine(`Color is ${activeCustomer.petColor}`);
                     if (activeCustomer?.required.includes('size')) addNumLine(`Size is ${activeCustomer.petSize}`);
