@@ -1163,10 +1163,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const wsStart = i === 0 ? 0 : bounds[i - 1].end;
       if (b.start > wsStart) segs.push({ start: wsStart, end: b.start, cls: 'text-slate-100' });
       const word = text.slice(b.start, b.end);
+      const cleanWord = word.replace(/^["""]+|["""]+$/g, '').replace(/[.,!?;:]+$/, '');
       let wordCls = 'text-slate-100';
-      if (/^\d+(\.\d+)?%?$/.test(word)) wordCls = 'text-amber-300 font-bold';
-      else if (word === 'Excellent') wordCls = 'text-white font-bold';
-      else if (word === 'Needs' || word === 'Repair') wordCls = 'text-sky-300 italic';
+      if (/^\d+(\.\d+)?%?$/.test(cleanWord)) wordCls = 'text-amber-300 font-bold';
+      else if (cleanWord === 'Excellent') wordCls = 'text-white font-bold';
+      else if (cleanWord === 'Needs' || cleanWord === 'Repair') wordCls = 'text-sky-300 italic';
       if (activeWord && b.start === activeWord.start) wordCls += ' underline decoration-amber-400 decoration-2 underline-offset-4';
       segs.push({ start: b.start, end: b.end, cls: wordCls });
     }
@@ -3973,7 +3974,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         // 6: Pressure → int (safeLevel)
         () => { const pres = rf(20, 30); return { lines: [`Pressure reading is ${pres}.`, `Round down for safe level. Set safeLevel.`], expectedType: 'int', expectedName: 'safeLevel', expectedValue: String(Math.floor(pres)), exampleLines: ['Pressure reading is 45.2.', 'Round down for safe level. Set safeLevel.'], exampleCode: 'int safeLevel = 45;' }; },
         // 7: Efficiency → String (status)
-        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff}%.`, `95 or higher means Excellent, otherwise Needs Repair. Set status.`], expectedType: 'String', expectedName: 'status', expectedValue: eff >= 95 ? 'Excellent' : 'Needs Repair', exampleLines: ['Efficiency is 56%.', '95 or higher means Excellent, otherwise Needs Repair. Set result.'], exampleCode: 'String result = "Needs Repair";' }; },
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff}%.`, `95 or higher means "Excellent", otherwise "Needs Repair". Set status.`], expectedType: 'String', expectedName: 'status', expectedValue: eff >= 95 ? 'Excellent' : 'Needs Repair', exampleLines: ['Efficiency is 56%.', '95 or higher means "Excellent", otherwise "Needs Repair". Set result.'], exampleCode: 'String result = "Needs Repair";' }; },
         // 8: Sensor count → boolean (hasConnectionIssue)
         () => { const sensors = ri(0, 4); return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, set hasConnectionIssue to true.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(sensors < 2), exampleLines: ['The robot has 1 sensor.', 'If sensors are less than 2, set hasIssue to true.'], exampleCode: 'boolean hasIssue = true;' }; },
       ];
