@@ -66,6 +66,13 @@ export interface GivenVariable {
   value: number | string | boolean;
 }
 
+export interface SpecSheetPrompt {
+  lines: [string, string];
+  expectedType: string;
+  expectedName: string;
+  expectedValue: string;
+}
+
 export interface CustomerRequest {
   customerName: string;
   petName: string;
@@ -76,11 +83,10 @@ export interface CustomerRequest {
   dataSteps?: DataProcessingStep[];
   // Spec-sheet fields
   isSpecSheet: boolean;
-  given: GivenVariable[];
-  rules: string[];
   tier: 'standard' | 'spec-sheet' | 'golden';
   baseReward: number;
   bonusReward: number;
+  specSheetPrompts?: SpecSheetPrompt[];
 }
 
 export type SparkyQuestStage = 'intro' | 'intro-done' | 'unit1' | 'unit1-done' | 'unit2' | 'unit2-done' | 'unit3' | 'unit3-done' | 'unit4' | 'all-done';
