@@ -72,6 +72,8 @@ export interface SpecSheetPrompt {
   expectedType: string;
   expectedName: string;
   expectedValue: string;
+  exampleLines: [string, string];
+  exampleCode: string;
 }
 
 export interface CustomerRequest {
