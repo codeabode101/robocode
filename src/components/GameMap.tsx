@@ -7703,9 +7703,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 px-4" onClick={() => setShowSparkyExamples(false)}>
           <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-5 text-slate-100" onClick={(e) => e.stopPropagation()}>
             <div className="text-xl font-bold text-amber-300 mb-3">Example</div>
-            <div className="text-xs text-slate-400 mb-2 leading-relaxed">
-              Java syntax: <code className="text-amber-300">type name = value;</code>
-            </div>
             <div className="space-y-3">
               {activeCustomer?.isSpecSheet && activeCustomer.specSheetPrompts?.map((p, i) => (
                 <div key={i} className="rounded-lg border border-slate-700 bg-slate-950 p-3">
