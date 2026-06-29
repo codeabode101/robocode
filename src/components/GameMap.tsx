@@ -3933,22 +3933,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const ri = (min: number, max: number) => Math.floor(r() * (max - min + 1)) + min;
       const rf = (min: number, max: number, dec = 1) => parseFloat((r() * (max - min) + min).toFixed(dec));
       const templates: (() => SpecSheetPrompt)[] = [
-        // 1: Efficiency → boolean
-        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `If it's below 90 percent, the robot needs a new battery.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(eff < 90) }; },
-        // 2: Temperature → boolean
-        () => { const temp = rf(70, 90); return { lines: [`Temperature is ${temp} degrees.`, `If it's above 80, the robot is overheated.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(temp > 80) }; },
-        // 3: Arm count → int
-        () => { const arms = ri(1, 4); return { lines: [`The robot has ${arms} arm${arms > 1 ? 's' : ''}.`, `Each arm carries 5 tools. Calculate total tool capacity.`], expectedType: 'int', expectedName: 'toolCapacity', expectedValue: String(arms * 5) }; },
-        // 4: Efficiency → double
-        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `Repair cost is 100 minus efficiency.`], expectedType: 'double', expectedName: 'repairCost', expectedValue: String(parseFloat((100 - eff).toFixed(1))) }; },
-        // 5: Size → double (sneaky int→double)
-        () => { const sz = ri(1, 6); return { lines: [`The robot has ${sz} size unit${sz > 1 ? 's' : ''}.`, `Storage is size times 4. Store it as a decimal.`], expectedType: 'double', expectedName: 'storageTotal', expectedValue: `${sz * 4}.0` }; },
-        // 6: Pressure → int (sneaky double→int)
-        () => { const pres = rf(20, 30); return { lines: [`Pressure reading is ${pres}.`, `Round down for the safe level.`], expectedType: 'int', expectedName: 'safeLevel', expectedValue: String(Math.floor(pres)) }; },
-        // 7: Efficiency → String
-        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `95 or higher means Excellent. Otherwise Needs Repair.`], expectedType: 'String', expectedName: 'status', expectedValue: eff >= 95 ? 'Excellent' : 'Needs Repair' }; },
-        // 8: Sensor count → boolean
-        () => { const sensors = ri(0, 4); return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, there's a connection issue.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(sensors < 2) }; },
+        // 1: Efficiency → boolean (needsNewBattery)
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `If it's below 90 percent, set boolean needsNewBattery.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(eff < 90) }; },
+        // 2: Temperature → boolean (isOverheated)
+        () => { const temp = rf(70, 90); return { lines: [`Temperature is ${temp} degrees.`, `If it's above 80, set boolean isOverheated.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(temp > 80) }; },
+        // 3: Arm count → int (toolCapacity)
+        () => { const arms = ri(1, 4); return { lines: [`The robot has ${arms} arm${arms > 1 ? 's' : ''}.`, `Each arm carries 5 tools. Set int toolCapacity.`], expectedType: 'int', expectedName: 'toolCapacity', expectedValue: String(arms * 5) }; },
+        // 4: Efficiency → double (repairCost)
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `Repair cost is 100 minus efficiency. Set double repairCost.`], expectedType: 'double', expectedName: 'repairCost', expectedValue: String(parseFloat((100 - eff).toFixed(1))) }; },
+        // 5: Size → double (storageTotal) — sneaky int→double
+        () => { const sz = ri(1, 6); return { lines: [`The robot has ${sz} size unit${sz > 1 ? 's' : ''}.`, `Storage is size times 4. Set double storageTotal.`], expectedType: 'double', expectedName: 'storageTotal', expectedValue: `${sz * 4}.0` }; },
+        // 6: Pressure → int (safeLevel) — sneaky double→int
+        () => { const pres = rf(20, 30); return { lines: [`Pressure reading is ${pres}.`, `Round down for safe level. Set int safeLevel.`], expectedType: 'int', expectedName: 'safeLevel', expectedValue: String(Math.floor(pres)) }; },
+        // 7: Efficiency → String (status)
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `95 or higher means Excellent, otherwise Needs Repair. Set String status.`], expectedType: 'String', expectedName: 'status', expectedValue: eff >= 95 ? 'Excellent' : 'Needs Repair' }; },
+        // 8: Sensor count → boolean (hasConnectionIssue)
+        () => { const sensors = ri(0, 4); return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, set boolean hasConnectionIssue.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(sensors < 2) }; },
       ];
 
       const prompt = templates[Math.floor(r() * templates.length)]();
