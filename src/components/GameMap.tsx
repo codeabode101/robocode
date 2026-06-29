@@ -3962,9 +3962,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const rf = (min: number, max: number, dec = 1) => parseFloat((r() * (max - min) + min).toFixed(dec));
       const templates: (() => SpecSheetPrompt)[] = [
         // 1: Efficiency → boolean (needsNewBattery)
-        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff}%.`, `If it's below 90%, set needsNewBattery to true.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(eff < 90), exampleLines: ['Efficiency is 72%.', 'If it is below 90%, set isCharged to true.'], exampleCode: 'boolean isCharged = true;' }; },
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff}%.`, `Set needsNewBattery to true if below 90%, otherwise false.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(eff < 90), exampleLines: ['Efficiency is 72%.', 'Set isCharged to true if below 90%, otherwise false.'], exampleCode: 'boolean isCharged = true;' }; },
         // 2: Temperature → boolean (isOverheated)
-        () => { const temp = rf(70, 90); return { lines: [`Temperature is ${temp} degrees.`, `If it's above 80, set isOverheated to true.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(temp > 80), exampleLines: ['Temperature is 95 degrees.', 'If it is above 80, set isHot to true.'], exampleCode: 'boolean isHot = true;' }; },
+        () => { const temp = rf(70, 90); return { lines: [`Temperature is ${temp} degrees.`, `Set isOverheated to true if above 80, otherwise false.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(temp > 80), exampleLines: ['Temperature is 95 degrees.', 'Set isHot to true if above 80, otherwise false.'], exampleCode: 'boolean isHot = true;' }; },
         // 3: Arm count → int (toolCapacity)
         () => { const arms = ri(1, 4); return { lines: [`The robot has ${arms} arm${arms > 1 ? 's' : ''}.`, `Each arm carries 5 tools. Set toolCapacity.`], expectedType: 'int', expectedName: 'toolCapacity', expectedValue: String(arms * 5), exampleLines: ['The robot has 3 arms.', 'Each arm carries 5 tools. Set canCarry.'], exampleCode: 'int canCarry = 15;' }; },
         // 4: Efficiency → double (repairCost)
@@ -3976,7 +3976,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         // 7: Efficiency → String (status)
         () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff}%.`, `95 or higher means "Excellent", otherwise "Needs Repair". Set status.`], expectedType: 'String', expectedName: 'status', expectedValue: eff >= 95 ? 'Excellent' : 'Needs Repair', exampleLines: ['Efficiency is 56%.', '95 or higher means "Excellent", otherwise "Needs Repair". Set result.'], exampleCode: 'String result = "Needs Repair";' }; },
         // 8: Sensor count → boolean (hasConnectionIssue)
-        () => { const sensors = ri(0, 4); return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, set hasConnectionIssue to true.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(sensors < 2), exampleLines: ['The robot has 1 sensor.', 'If sensors are less than 2, set hasIssue to true.'], exampleCode: 'boolean hasIssue = true;' }; },
+        () => { const sensors = ri(0, 4); return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `Set hasConnectionIssue to true if sensors are less than 2, otherwise false.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(sensors < 2), exampleLines: ['The robot has 1 sensor.', 'Set hasIssue to true if sensors are less than 2, otherwise false.'], exampleCode: 'boolean hasIssue = true;' }; },
       ];
 
       const prompt = templates[Math.floor(r() * templates.length)]();
@@ -6529,7 +6529,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (cr.root.parent !== workshopRoomGroupRef.current) {
               workshopRoomGroupRef.current?.attach(cr.root);
               cr.root.position.set(npc.position.x, npc.position.y - 0.5, 0.251);
-              cr.root.rotation.set(0, 0, 0);
+              cr.root.rotation.set(Math.PI / 2, 0, 0);
               cr.root.scale.set(0.18, 0.18, 0.18);
             }
             const behindX = npc.position.x;
