@@ -196,29 +196,46 @@ export function validateWorkshopCode(input: string, request: CustomerRequest) {
   if (request.requestType === 'data-processing' && request.dataSteps) {
     return validateDataProcessingCode(input, request.dataSteps);
   }
-  // Spec-sheet validation: required lines (name/color/hasWireSurge) + prompt lines
+  // Spec-sheet validation: any-order matching
   if (request.isSpecSheet && request.specSheetPrompts?.length) {
     const n = input.replace(/\s+/g, ' ').trim();
     if (!n) return { valid: false, error: 'Write some code first.' };
     if (!n.endsWith(';')) return { valid: false, error: 'Missing semicolon at the end (;).' };
     const lines = n.split(';').filter(l => l.trim()).map(l => l.trim() + ';');
     const totalExpected = request.required.length + request.specSheetPrompts.length;
-    if (lines.length < totalExpected) return { valid: false, error: request.required.length > 0 ? `You need ${totalExpected} statements (${request.required.length} variable + ${request.specSheetPrompts.length} prompt).` : `You need 1 statement.` };
-    if (lines.length > totalExpected) return { valid: false, error: `Too many statements. You only need ${totalExpected} statements.` };
-    // Validate required lines first
-    for (let i = 0; i < request.required.length; i++) {
-      const req = request.required[i];
-      const reqToValSpec = (r: string) => r === 'name' ? request.petName : r === 'color' ? request.petColor : r === 'size' ? String(request.petSize) : r === 'version' ? '1.0' : 'true';
-      const reqToTypeSpec = (r: string) => r === 'size' ? 'int' : r === 'hasWireSurge' ? 'boolean' : r === 'version' ? 'double' : 'String';
-      const hint = checkLine(lines[i], req, reqToTypeSpec(req), reqToValSpec(req));
-      if (hint) return { valid: false, error: hint };
+    if (lines.length < totalExpected) return { valid: false, error: `You need ${totalExpected} statements in any order.` };
+    if (lines.length > totalExpected) return { valid: false, error: `Too many statements. You only need ${totalExpected}.` };
+
+    const reqToValSpec = (r: string) => r === 'name' ? request.petName : r === 'color' ? request.petColor : r === 'size' ? String(request.petSize) : r === 'version' ? '1.0' : 'true';
+    const reqToTypeSpec = (r: string) => r === 'size' ? 'int' : r === 'hasWireSurge' ? 'boolean' : r === 'version' ? 'double' : 'String';
+
+    // Build all expected declarations
+    type Expect = { name: string; type: string; value: string; label: string };
+    const expects: Expect[] = [];
+    for (const req of request.required) expects.push({ name: req, type: reqToTypeSpec(req), value: reqToValSpec(req), label: req });
+    for (const p of request.specSheetPrompts) expects.push({ name: p.expectedName, type: p.expectedType, value: p.expectedValue, label: `${p.expectedType} ${p.expectedName}` });
+
+    const used = new Array(expects.length).fill(false);
+    for (const line of lines) {
+      let matched = false;
+      for (let i = 0; i < expects.length; i++) {
+        if (used[i]) continue;
+        if (checkLine(line, expects[i].name, expects[i].type, expects[i].value) === null) {
+          used[i] = true; matched = true; break;
+        }
+      }
+      if (!matched) {
+        // Show best error from first unmatched expectation
+        for (let i = 0; i < expects.length; i++) {
+          if (used[i]) continue;
+          const hint = checkLine(line, expects[i].name, expects[i].type, expects[i].value);
+          if (hint) return { valid: false, error: `${hint} (looking for: ${expects[i].label})` };
+        }
+        return { valid: false, error: `Couldn't match this line to any expected declaration.` };
+      }
     }
-    // Validate prompt lines
-    for (let i = 0; i < request.specSheetPrompts.length; i++) {
-      const p = request.specSheetPrompts[i];
-      const hint = checkLine(lines[request.required.length + i], p.expectedName, p.expectedType, p.expectedValue);
-      if (hint) return { valid: false, error: hint };
-    }
+    const missing = expects.filter((_, i) => !used[i]);
+    if (missing.length) return { valid: false, error: `Missing: ${missing.map(m => m.label).join(', ')}` };
     return { valid: true, error: '' };
   }
   const n = input.replace(/\s+/g, ' ').trim();

@@ -7766,10 +7766,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                       </div>
                     </div>
                   ))}
-                  {activeCustomer.required.includes('name') && makeLine('String name', `"${activeCustomer.petName}"`)}
-                  {activeCustomer.required.includes('color') && makeLine('String color', `"${activeCustomer.petColor}"`)}
-                  {activeCustomer.required.includes('size') && makeLine('int size', String(activeCustomer.petSize))}
-                  {activeCustomer.required.includes('version') && makeLine('double version', '1.0')}
+                  {activeCustomer.required.includes('name') && makeLine('Name', activeCustomer.petName)}
+                  {activeCustomer.required.includes('color') && makeLine('Color', activeCustomer.petColor)}
+                  {activeCustomer.required.includes('size') && makeLine('Size (int)', String(activeCustomer.petSize))}
+                  {activeCustomer.required.includes('version') && makeLine('Version (double)', '1.0')}
                 </div>
               ) : (
                 <>
