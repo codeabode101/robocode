@@ -6550,10 +6550,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               crRoot.rotation.x = Math.sin(worldTime * 4) * 0.02;
               crRoot.rotation.y = Math.sin(worldTime * 3) * 0.02;
             }
-            if (ud.sizeBroken) {
-              const s = 0.18 * (1 + Math.sin(worldTime * 6) * 0.15);
-              crRoot.scale.set(s, s, s);
-            }
+            // sizeBroken flag kept for future use (no scale pulsing)
             // Cache toon materials once for defect animations
             let toonMats: THREE.MeshToonMaterial[] = ud.toonMats;
             if (!toonMats && (ud.activationBroken || ud.requiresChargingBroken || ud.hasRedundantSensorsBroken || ud.versionBroken)) {
@@ -6595,8 +6592,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 mat.emissive.setHex(saw > 0.5 ? 0xf97316 : 0xffffff);
                 mat.emissiveIntensity = saw * 0.8;
               }
-              const altScale = saw > 0.5 ? 0.22 : 0.18;
-              crRoot.scale.set(altScale, altScale, altScale);
             }
           }
           npc.visual.root.position.set(npc.position.x, npc.position.y, 0.26 + bobZ);
@@ -7774,6 +7769,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   {activeCustomer.required.includes('name') && makeLine('String name', `"${activeCustomer.petName}"`)}
                   {activeCustomer.required.includes('color') && makeLine('String color', `"${activeCustomer.petColor}"`)}
                   {activeCustomer.required.includes('size') && makeLine('int size', String(activeCustomer.petSize))}
+                  {activeCustomer.required.includes('version') && makeLine('double version', '1.0')}
                 </div>
               ) : (
                 <>
@@ -7781,6 +7777,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   {activeCustomer.required.includes('color') && makeLine('Color', activeCustomer.petColor)}
                   {activeCustomer.required.includes('size') && makeLine('Size (int)', String(activeCustomer.petSize))}
                   {activeCustomer.required.includes('hasWireSurge') && makeLine('hasWireSurge (boolean)', 'true')}
+                  {activeCustomer.required.includes('version') && makeLine('version (double)', '1.0')}
                   {makeLine(null, '"I want my robot to have these settings!"')}
                 </>
               )}

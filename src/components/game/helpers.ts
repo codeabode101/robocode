@@ -208,8 +208,8 @@ export function validateWorkshopCode(input: string, request: CustomerRequest) {
     // Validate required lines first
     for (let i = 0; i < request.required.length; i++) {
       const req = request.required[i];
-      const reqToValSpec = (r: string) => r === 'name' ? request.petName : r === 'color' ? request.petColor : r === 'size' ? String(request.petSize) : 'true';
-      const reqToTypeSpec = (r: string) => r === 'size' ? 'int' : r === 'hasWireSurge' ? 'boolean' : 'String';
+      const reqToValSpec = (r: string) => r === 'name' ? request.petName : r === 'color' ? request.petColor : r === 'size' ? String(request.petSize) : r === 'version' ? '1.0' : 'true';
+      const reqToTypeSpec = (r: string) => r === 'size' ? 'int' : r === 'hasWireSurge' ? 'boolean' : r === 'version' ? 'double' : 'String';
       const hint = checkLine(lines[i], req, reqToTypeSpec(req), reqToValSpec(req));
       if (hint) return { valid: false, error: hint };
     }
@@ -228,8 +228,8 @@ export function validateWorkshopCode(input: string, request: CustomerRequest) {
   if (lines.length < request.required.length) return { valid: false, error: `You need ${request.required.length} statement${request.required.length > 1 ? 's' : ''}. Use separate lines or semicolons.` };
   if (lines.length > request.required.length) return { valid: false, error: `Too many statements. You only need ${request.required.length} line${request.required.length > 1 ? 's' : ''}.` };
 
-  const reqToVal = (r: string) => r === 'name' ? request.petName : r === 'color' ? request.petColor : r === 'hasWireSurge' ? 'true' : String(request.petSize);
-  const reqToType = (r: string) => r === 'size' ? 'int' : r === 'hasWireSurge' ? 'boolean' : 'String';
+  const reqToVal = (r: string) => r === 'name' ? request.petName : r === 'color' ? request.petColor : r === 'hasWireSurge' ? 'true' : r === 'version' ? '1.0' : String(request.petSize);
+  const reqToType = (r: string) => r === 'size' ? 'int' : r === 'hasWireSurge' ? 'boolean' : r === 'version' ? 'double' : 'String';
 
   for (let i = 0; i < request.required.length; i++) {
     const req = request.required[i];

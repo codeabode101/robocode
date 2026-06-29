@@ -32,14 +32,16 @@ export const SCRAP_PART_COSTS: Record<string, number> = {
 export const CUSTOMER_NAMES = ['Aarav', 'Anaya', 'Rohan', 'Isha', 'Kabir', 'Meera', 'Vihaan', 'Diya'];
 export const PET_NAMES = ['Bolt', 'Pixel', 'Nano', 'Mochi', 'Orbit', 'Zippy', 'Luna', 'Rex'];
 export const PET_COLORS = ['red', 'blue', 'green', 'gold', 'teal', 'violet', 'orange', 'silver'];
-export const CUSTOMER_PROPERTIES = ['name', 'color', 'size', 'hasWireSurge'] as const;
+export const CUSTOMER_PROPERTIES = ['name', 'color', 'size', 'hasWireSurge', 'version'] as const;
 export type CustomerProperty = (typeof CUSTOMER_PROPERTIES)[number];
 export const REQUEST_PATTERNS: CustomerProperty[][] = [
-  ['name'], ['color'], ['size'],
+  ['name'], ['color'], ['size'], ['version'],
   ['name', 'color'], ['name', 'size'], ['name', 'hasWireSurge'],
-  ['color', 'size'], ['color', 'hasWireSurge'], ['size', 'hasWireSurge'],
+  ['name', 'version'], ['color', 'size'], ['color', 'hasWireSurge'],
+  ['color', 'version'], ['size', 'hasWireSurge'], ['size', 'version'],
   ['name', 'color', 'size'], ['name', 'color', 'hasWireSurge'],
-  ['name', 'size', 'hasWireSurge'], ['color', 'size', 'hasWireSurge'],
+  ['name', 'size', 'hasWireSurge'], ['name', 'size', 'version'],
+  ['color', 'size', 'hasWireSurge'], ['color', 'size', 'version'],
 ];
 export const WORKSHOP_INTRO_PAGES = [
   { title: "Welcome to Rafiq's Robots", body: 'Customers browse robots here. Walk up and press Space to start a job.' },
