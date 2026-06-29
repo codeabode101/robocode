@@ -7687,6 +7687,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const exVal = (t: string) => (exMap as any)[t]?.v ?? '0';
         const typeOf = (r: string) => r === 'name' || r === 'color' ? 'String' : r === 'size' ? 'int' : r === 'version' ? 'double' : 'boolean';
         const extraTypes: string[] = [...new Set((activeCustomer?.required ?? []).map(typeOf))];
+        const ttsLine = (text: string) => (
+          <div className="flex items-center gap-1">
+            <span className="text-slate-300 text-sm">{renderTtsLine(text)}</span>
+            <button onClick={() => playLineTts(text)} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ttsActiveTextRef.current === text ? 'Stop' : 'Read aloud'}>
+              {ttsActiveTextRef.current === text ? (
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+              )}
+            </button>
+          </div>
+        );
         return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 px-4" onClick={() => setShowSparkyExamples(false)}>
           <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-5 text-slate-100" onClick={(e) => e.stopPropagation()}>
@@ -7694,16 +7706,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             <div className="space-y-3">
               {activeCustomer?.isSpecSheet && activeCustomer.specSheetPrompts?.map((p, i) => (
                 <div key={i} className="rounded-lg border border-slate-700 bg-slate-950 p-3">
-                  <div className="text-slate-300 text-sm">{p.exampleLines[0]}</div>
-                  <div className="text-slate-300 text-sm mb-2">{p.exampleLines[1]}</div>
-                  <code className="text-emerald-300">→ {p.exampleCode}</code>
+                  {ttsLine(p.exampleLines[0])}
+                  <div className="mb-2">{ttsLine(p.exampleLines[1])}</div>
+                  {ttsLine(`→ ${p.exampleCode}`)}
                 </div>
               ))}
               {extraTypes.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {extraTypes.map(t => (
                     <div key={t} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
-                      <code className="text-slate-100 text-sm">{t} {(exMap as any)[t]?.n ?? 'value'} = {exVal(t)};</code>
+                      {ttsLine(`${t} ${(exMap as any)[t]?.n ?? 'value'} = ${exVal(t)};`)}
                     </div>
                   ))}
                 </div>
@@ -7722,7 +7734,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
         onTtsToggle={onTtsToggle} />
 
-      {!showRegLaptopUI && <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} showSparkyExamples={() => setShowSparkyExamples(true)} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />}
+      {!showRegLaptopUI && <WorkshopPanel activeCustomer={activeCustomer} workshopCode={workshopCode} setWorkshopCode={setWorkshopCode} workshopOutput={workshopOutput} inWorkshopRoom={inWorkshopRoom} runWorkshopCode={runWorkshopCode} reopenWorkshopIntro={reopenWorkshopIntro} bonusFraction={bonusFraction} bonusDuration={BONUS_DURATION} firstTransactionDone={firstTransactionDone} />}
 
       {showRegLaptopUI && activeCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
@@ -7814,20 +7826,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   {regLaptopOutput}
                 </div>
               )}
-              <div className="mt-4 flex gap-3">
+              <div className="mt-4">
                 <button
-                  className="flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2 text-sm font-bold text-slate-900 hover:bg-amber-400 transition-colors"
+                  className="flex items-center gap-2 rounded-lg bg-emerald-500 px-5 py-2 text-sm font-bold text-white hover:bg-emerald-400 transition-colors"
                   onClick={handleRegLaptopSubmit}
                 >
-                  <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-black/40 shrink-0 px-2 py-0.5">Ctrl+1</span>
+                  <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-white/60 shrink-0 px-2 py-0.5">Ctrl+1</span>
                   Submit Java Code
-                </button>
-                <button
-                  className="flex items-center gap-2 rounded-lg bg-amber-600 px-5 py-2 text-sm font-bold text-white hover:bg-amber-500 transition-colors"
-                  onClick={() => setShowSparkyExamples(true)}
-                >
-                  <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-white shrink-0 px-2 py-0.5">Ctrl+2</span>
-                  Need help?
                 </button>
               </div>
             </div>
@@ -7847,6 +7852,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         <button onClick={() => setActiveModal('profile')} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Profile">👤</button>
         <button onClick={() => setActiveModal('settings')} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Settings">⚙️</button>
       </div>
+
+      {inWorkshopRoom && !showSparkyExamples && !showRegLaptopUI && (
+        <button
+          onClick={() => setShowSparkyExamples(true)}
+          className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-500 transition-colors shadow-xl"
+        >
+          <span className="flex items-center justify-center rounded-full bg-black/20 text-[11px] font-bold text-white shrink-0 px-2 py-0.5">Ctrl+2</span>
+          Need help?
+        </button>
+      )}
 
       {interactionPromptName && (
         <div className="absolute bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full border border-cyan-300/70 bg-slate-900/90 px-6 py-2 text-lg font-semibold text-cyan-100 shadow-xl">
