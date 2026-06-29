@@ -3934,21 +3934,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const rf = (min: number, max: number, dec = 1) => parseFloat((r() * (max - min) + min).toFixed(dec));
       const templates: (() => SpecSheetPrompt)[] = [
         // 1: Efficiency → boolean (needsNewBattery)
-        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `If it's below 90 percent, set boolean needsNewBattery.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(eff < 90) }; },
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `If it's below 90 percent, set boolean needsNewBattery.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(eff < 90), exampleLines: ['Efficiency is 72 percent.', 'If it is below 90 percent, set boolean isCharged.'], exampleCode: 'boolean isCharged = true;' }; },
         // 2: Temperature → boolean (isOverheated)
-        () => { const temp = rf(70, 90); return { lines: [`Temperature is ${temp} degrees.`, `If it's above 80, set boolean isOverheated.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(temp > 80) }; },
+        () => { const temp = rf(70, 90); return { lines: [`Temperature is ${temp} degrees.`, `If it's above 80, set boolean isOverheated.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(temp > 80), exampleLines: ['Temperature is 95 degrees.', 'If it is above 80, set boolean isHot.'], exampleCode: 'boolean isHot = true;' }; },
         // 3: Arm count → int (toolCapacity)
-        () => { const arms = ri(1, 4); return { lines: [`The robot has ${arms} arm${arms > 1 ? 's' : ''}.`, `Each arm carries 5 tools. Set int toolCapacity.`], expectedType: 'int', expectedName: 'toolCapacity', expectedValue: String(arms * 5) }; },
+        () => { const arms = ri(1, 4); return { lines: [`The robot has ${arms} arm${arms > 1 ? 's' : ''}.`, `Each arm carries 5 tools. Set int toolCapacity.`], expectedType: 'int', expectedName: 'toolCapacity', expectedValue: String(arms * 5), exampleLines: ['The robot has 3 arms.', 'Each arm carries 5 tools. Set int canCarry.'], exampleCode: 'int canCarry = 15;' }; },
         // 4: Efficiency → double (repairCost)
-        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `Repair cost is 100 minus efficiency. Set double repairCost.`], expectedType: 'double', expectedName: 'repairCost', expectedValue: String(parseFloat((100 - eff).toFixed(1))) }; },
-        // 5: Size → double (storageTotal) — sneaky int→double
-        () => { const sz = ri(1, 6); return { lines: [`The robot has ${sz} size unit${sz > 1 ? 's' : ''}.`, `Storage is size times 4. Set double storageTotal.`], expectedType: 'double', expectedName: 'storageTotal', expectedValue: `${sz * 4}.0` }; },
-        // 6: Pressure → int (safeLevel) — sneaky double→int
-        () => { const pres = rf(20, 30); return { lines: [`Pressure reading is ${pres}.`, `Round down for safe level. Set int safeLevel.`], expectedType: 'int', expectedName: 'safeLevel', expectedValue: String(Math.floor(pres)) }; },
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `Repair cost is 100 minus efficiency. Set double repairCost.`], expectedType: 'double', expectedName: 'repairCost', expectedValue: String(parseFloat((100 - eff).toFixed(1))), exampleLines: ['Efficiency is 88 percent.', 'Repair cost is 100 minus efficiency. Set double cost.'], exampleCode: 'double cost = 12.0;' }; },
+        // 5: Size → double (storageTotal)
+        () => { const sz = ri(1, 6); return { lines: [`The robot has ${sz} size unit${sz > 1 ? 's' : ''}.`, `Storage is size times 4. Set double storageTotal.`], expectedType: 'double', expectedName: 'storageTotal', expectedValue: `${sz * 4}.0`, exampleLines: ['The robot has 5 size units.', 'Storage is size times 4. Store as double storage.'], exampleCode: 'double storage = 20.0;' }; },
+        // 6: Pressure → int (safeLevel)
+        () => { const pres = rf(20, 30); return { lines: [`Pressure reading is ${pres}.`, `Round down for safe level. Set int safeLevel.`], expectedType: 'int', expectedName: 'safeLevel', expectedValue: String(Math.floor(pres)), exampleLines: ['Pressure reading is 45.2.', 'Round down for safe level. Set int safeLevel.'], exampleCode: 'int safeLevel = 45;' }; },
         // 7: Efficiency → String (status)
-        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `95 or higher means Excellent, otherwise Needs Repair. Set String status.`], expectedType: 'String', expectedName: 'status', expectedValue: eff >= 95 ? 'Excellent' : 'Needs Repair' }; },
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `95 or higher means Excellent, otherwise Needs Repair. Set String status.`], expectedType: 'String', expectedName: 'status', expectedValue: eff >= 95 ? 'Excellent' : 'Needs Repair', exampleLines: ['Efficiency is 56 percent.', '95 or higher means Excellent, otherwise Needs Repair. Set String result.'], exampleCode: 'String result = "Needs Repair";' }; },
         // 8: Sensor count → boolean (hasConnectionIssue)
-        () => { const sensors = ri(0, 4); return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, set boolean hasConnectionIssue.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(sensors < 2) }; },
+        () => { const sensors = ri(0, 4); return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, set boolean hasConnectionIssue.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(sensors < 2), exampleLines: ['The robot has 1 sensor.', 'If sensors are less than 2, set boolean hasIssue.'], exampleCode: 'boolean hasIssue = true;' }; },
       ];
 
       const prompt = templates[Math.floor(r() * templates.length)]();
@@ -7684,38 +7684,33 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       `}</style>
       {showSparkyExamples && inWorkshopRoom && (() => {
         const exMap = { String: { n: 'greeting', v: '"Hello"' }, int: { n: 'count', v: '42' }, double: { n: 'price', v: '3.5' }, boolean: { n: 'isCharged', v: 'true' } } as const;
-        const exName = (t: string) => (exMap as any)[t]?.n ?? 'value';
         const exVal = (t: string) => (exMap as any)[t]?.v ?? '0';
         const typeOf = (r: string) => r === 'name' || r === 'color' ? 'String' : r === 'size' ? 'int' : r === 'version' ? 'double' : 'boolean';
-        const typesNeeded: string[] = [...new Set((activeCustomer?.required ?? []).map(typeOf))];
-        if (activeCustomer?.isSpecSheet) {
-          activeCustomer.specSheetPrompts?.forEach(p => typesNeeded.push(p.expectedType));
-        }
+        const extraTypes: string[] = [...new Set((activeCustomer?.required ?? []).map(typeOf))];
         return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 px-4" onClick={() => setShowSparkyExamples(false)}>
-          <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6 text-slate-100" onClick={(e) => e.stopPropagation()}>
-            <div className="text-2xl font-bold text-amber-300 mb-4">Sparky's Examples</div>
+          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-5 text-slate-100" onClick={(e) => e.stopPropagation()}>
+            <div className="text-xl font-bold text-amber-300 mb-3">Example</div>
             <div className="space-y-3">
               {activeCustomer?.isSpecSheet && activeCustomer.specSheetPrompts?.map((p, i) => (
-                <div key={i} className="rounded-lg border border-amber-700/40 bg-slate-950 p-4">
-                  <div className="text-amber-300 font-semibold mb-1">📋 Prompt Preview</div>
-                  <div className="text-slate-400 text-sm mb-1">{p.lines[0]}</div>
-                  <div className="text-slate-400 text-sm mb-2">{p.lines[1]}</div>
-                  <div className="text-slate-300 text-xs mt-2 mb-1">Example ({p.expectedType}):</div>
-                  <code className="text-slate-100">{p.expectedType} {exName(p.expectedType)} = {exVal(p.expectedType)};</code>
+                <div key={i} className="rounded-lg border border-slate-700 bg-slate-950 p-3">
+                  <div className="text-slate-300 text-sm">{p.exampleLines[0]}</div>
+                  <div className="text-slate-300 text-sm mb-2">{p.exampleLines[1]}</div>
+                  <code className="text-emerald-300">→ {p.exampleCode}</code>
                 </div>
               ))}
-              <div className="flex flex-wrap gap-3">
-                {[...new Set(typesNeeded)].map(t => (
-                  <div key={t} className="rounded-lg border border-slate-700 bg-slate-950 p-4 grow">
-                    <div className="text-emerald-300 font-semibold mb-1">{t}</div>
-                    <code className="text-slate-100">{t} {exName(t)} = {exVal(t)};</code>
-                  </div>
-                ))}
-              </div>
+              {extraTypes.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {extraTypes.map(t => (
+                    <div key={t} className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
+                      <code className="text-slate-100 text-sm">{t} {(exMap as any)[t]?.n ?? 'value'} = {exVal(t)};</code>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="mt-6 text-right">
-              <button className="rounded bg-emerald-500 px-6 py-3 text-lg font-semibold text-white hover:bg-emerald-400" onClick={() => setShowSparkyExamples(false)}>Got it!</button>
+            <div className="mt-4 text-right">
+              <button className="rounded bg-emerald-500 px-5 py-2 text-base font-semibold text-white hover:bg-emerald-400" onClick={() => setShowSparkyExamples(false)}>Got it!</button>
             </div>
           </div>
         </div>);
