@@ -1149,6 +1149,33 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return text;
   };
 
+  const renderFormattedSpecLine = (text: string) => {
+    const isActive = ttsActiveTextRef.current === text && ttsUtteranceRef.current !== null;
+    const charIdx = isActive ? ttsCharIndexRef.current : null;
+    const bounds: Array<{ start: number; end: number }> = [];
+    const re = /\S+/g; let m;
+    while ((m = re.exec(text)) !== null) bounds.push({ start: m.index, end: m.index + m[0].length });
+    const activeWord = charIdx !== null ? bounds.find(b => charIdx >= b.start && charIdx < b.end) : null;
+    if (!bounds.length) return text;
+    const segs: { start: number; end: number; cls: string }[] = [];
+    for (let i = 0; i < bounds.length; i++) {
+      const b = bounds[i];
+      const wsStart = i === 0 ? 0 : bounds[i - 1].end;
+      if (b.start > wsStart) segs.push({ start: wsStart, end: b.start, cls: 'text-slate-100' });
+      const word = text.slice(b.start, b.end);
+      let wordCls = 'text-slate-100';
+      if (/^\d+(\.\d+)?%?$/.test(word)) wordCls = 'text-amber-300 font-bold';
+      else if (word === 'Excellent') wordCls = 'text-white font-bold';
+      else if (word === 'Needs' || word === 'Repair') wordCls = 'text-sky-300 italic';
+      if (activeWord && b.start === activeWord.start) wordCls += ' underline decoration-amber-400 decoration-2 underline-offset-4';
+      segs.push({ start: b.start, end: b.end, cls: wordCls });
+    }
+    if (bounds[bounds.length - 1].end < text.length) {
+      segs.push({ start: bounds[bounds.length - 1].end, end: text.length, cls: 'text-slate-100' });
+    }
+    return <>{segs.map(s => <span key={s.start} className={s.cls}>{text.slice(s.start, s.end)}</span>)}</>;
+  };
+
   const makeLine = (label: string | null, value: string) => {
     const fullLine = label ? `${label}: ${value}` : value;
     const play = () => playLineTts(fullLine);
@@ -3934,21 +3961,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const rf = (min: number, max: number, dec = 1) => parseFloat((r() * (max - min) + min).toFixed(dec));
       const templates: (() => SpecSheetPrompt)[] = [
         // 1: Efficiency → boolean (needsNewBattery)
-        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `If it's below 90 percent, set boolean needsNewBattery.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(eff < 90), exampleLines: ['Efficiency is 72 percent.', 'If it is below 90 percent, set boolean isCharged.'], exampleCode: 'boolean isCharged = true;' }; },
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff}%.`, `If it's below 90%, set needsNewBattery.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(eff < 90), exampleLines: ['Efficiency is 72%.', 'If it is below 90%, set isCharged.'], exampleCode: 'boolean isCharged = true;' }; },
         // 2: Temperature → boolean (isOverheated)
-        () => { const temp = rf(70, 90); return { lines: [`Temperature is ${temp} degrees.`, `If it's above 80, set boolean isOverheated.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(temp > 80), exampleLines: ['Temperature is 95 degrees.', 'If it is above 80, set boolean isHot.'], exampleCode: 'boolean isHot = true;' }; },
+        () => { const temp = rf(70, 90); return { lines: [`Temperature is ${temp} degrees.`, `If it's above 80, set isOverheated.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(temp > 80), exampleLines: ['Temperature is 95 degrees.', 'If it is above 80, set isHot.'], exampleCode: 'boolean isHot = true;' }; },
         // 3: Arm count → int (toolCapacity)
-        () => { const arms = ri(1, 4); return { lines: [`The robot has ${arms} arm${arms > 1 ? 's' : ''}.`, `Each arm carries 5 tools. Set int toolCapacity.`], expectedType: 'int', expectedName: 'toolCapacity', expectedValue: String(arms * 5), exampleLines: ['The robot has 3 arms.', 'Each arm carries 5 tools. Set int canCarry.'], exampleCode: 'int canCarry = 15;' }; },
+        () => { const arms = ri(1, 4); return { lines: [`The robot has ${arms} arm${arms > 1 ? 's' : ''}.`, `Each arm carries 5 tools. Set toolCapacity.`], expectedType: 'int', expectedName: 'toolCapacity', expectedValue: String(arms * 5), exampleLines: ['The robot has 3 arms.', 'Each arm carries 5 tools. Set canCarry.'], exampleCode: 'int canCarry = 15;' }; },
         // 4: Efficiency → double (repairCost)
-        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `Repair cost is 100 minus efficiency. Set double repairCost.`], expectedType: 'double', expectedName: 'repairCost', expectedValue: String(parseFloat((100 - eff).toFixed(1))), exampleLines: ['Efficiency is 88 percent.', 'Repair cost is 100 minus efficiency. Set double cost.'], exampleCode: 'double cost = 12.0;' }; },
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff}%.`, `Repair cost is 100 minus efficiency. Set repairCost.`], expectedType: 'double', expectedName: 'repairCost', expectedValue: String(parseFloat((100 - eff).toFixed(1))), exampleLines: ['Efficiency is 88%.', 'Repair cost is 100 minus efficiency. Set cost.'], exampleCode: 'double cost = 12.0;' }; },
         // 5: Size → double (storageTotal)
-        () => { const sz = ri(1, 6); return { lines: [`The robot has ${sz} size unit${sz > 1 ? 's' : ''}.`, `Storage is size times 4. Set double storageTotal.`], expectedType: 'double', expectedName: 'storageTotal', expectedValue: `${sz * 4}.0`, exampleLines: ['The robot has 5 size units.', 'Storage is size times 4. Store as double storage.'], exampleCode: 'double storage = 20.0;' }; },
+        () => { const sz = ri(1, 6); return { lines: [`The robot has ${sz} size unit${sz > 1 ? 's' : ''}.`, `Storage is size times 4. Set storageTotal.`], expectedType: 'double', expectedName: 'storageTotal', expectedValue: `${sz * 4}.0`, exampleLines: ['The robot has 5 size units.', 'Storage is size times 4. Set storage.'], exampleCode: 'double storage = 20.0;' }; },
         // 6: Pressure → int (safeLevel)
-        () => { const pres = rf(20, 30); return { lines: [`Pressure reading is ${pres}.`, `Round down for safe level. Set int safeLevel.`], expectedType: 'int', expectedName: 'safeLevel', expectedValue: String(Math.floor(pres)), exampleLines: ['Pressure reading is 45.2.', 'Round down for safe level. Set int safeLevel.'], exampleCode: 'int safeLevel = 45;' }; },
+        () => { const pres = rf(20, 30); return { lines: [`Pressure reading is ${pres}.`, `Round down for safe level. Set safeLevel.`], expectedType: 'int', expectedName: 'safeLevel', expectedValue: String(Math.floor(pres)), exampleLines: ['Pressure reading is 45.2.', 'Round down for safe level. Set safeLevel.'], exampleCode: 'int safeLevel = 45;' }; },
         // 7: Efficiency → String (status)
-        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `95 or higher means Excellent, otherwise Needs Repair. Set String status.`], expectedType: 'String', expectedName: 'status', expectedValue: eff >= 95 ? 'Excellent' : 'Needs Repair', exampleLines: ['Efficiency is 56 percent.', '95 or higher means Excellent, otherwise Needs Repair. Set String result.'], exampleCode: 'String result = "Needs Repair";' }; },
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff}%.`, `95 or higher means Excellent, otherwise Needs Repair. Set status.`], expectedType: 'String', expectedName: 'status', expectedValue: eff >= 95 ? 'Excellent' : 'Needs Repair', exampleLines: ['Efficiency is 56%.', '95 or higher means Excellent, otherwise Needs Repair. Set result.'], exampleCode: 'String result = "Needs Repair";' }; },
         // 8: Sensor count → boolean (hasConnectionIssue)
-        () => { const sensors = ri(0, 4); return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, set boolean hasConnectionIssue.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(sensors < 2), exampleLines: ['The robot has 1 sensor.', 'If sensors are less than 2, set boolean hasIssue.'], exampleCode: 'boolean hasIssue = true;' }; },
+        () => { const sensors = ri(0, 4); return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, set hasConnectionIssue.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(sensors < 2), exampleLines: ['The robot has 1 sensor.', 'If sensors are less than 2, set hasIssue.'], exampleCode: 'boolean hasIssue = true;' }; },
       ];
 
       const prompt = templates[Math.floor(r() * templates.length)]();
@@ -7689,7 +7716,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const extraTypes: string[] = [...new Set((activeCustomer?.required ?? []).map(typeOf))];
         const ttsLine = (text: string) => (
           <div className="flex items-center gap-1">
-            <span className="text-slate-300 text-sm">{renderTtsLine(text)}</span>
+            <span className="text-slate-300 text-sm">{renderFormattedSpecLine(text)}</span>
             <button onClick={() => playLineTts(text)} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ttsActiveTextRef.current === text ? 'Stop' : 'Read aloud'}>
               {ttsActiveTextRef.current === text ? (
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
@@ -7760,7 +7787,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                       el.push(
                         <div key={ln} className="flex items-center gap-1 mb-1 text-sm">
                           <span className="text-cyan-300 font-bold shrink-0 min-w-[1.2rem]">{ln})</span>
-                          <span className="text-slate-100">{renderTtsLine(text)}</span>
+                          <span className="text-slate-100">{renderFormattedSpecLine(text)}</span>
                           <button onClick={play} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={isPlaying ? 'Stop' : 'Read aloud'}>
                             {isPlaying ? (
                               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
