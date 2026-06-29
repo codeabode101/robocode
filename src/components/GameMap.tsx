@@ -7682,40 +7682,44 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           animation: modal-pop 0.4s ease-out forwards;
         }
       `}</style>
-      {showSparkyExamples && inWorkshopRoom && (
+      {showSparkyExamples && inWorkshopRoom && (() => {
+        const exMap = { String: { n: 'greeting', v: '"Hello"' }, int: { n: 'count', v: '42' }, double: { n: 'price', v: '3.5' }, boolean: { n: 'isCharged', v: 'true' } } as const;
+        const exName = (t: string) => (exMap as any)[t]?.n ?? 'value';
+        const exVal = (t: string) => (exMap as any)[t]?.v ?? '0';
+        const typeOf = (r: string) => r === 'name' || r === 'color' ? 'String' : r === 'size' ? 'int' : r === 'version' ? 'double' : 'boolean';
+        const typesNeeded: string[] = [...new Set((activeCustomer?.required ?? []).map(typeOf))];
+        if (activeCustomer?.isSpecSheet) {
+          activeCustomer.specSheetPrompts?.forEach(p => typesNeeded.push(p.expectedType));
+        }
+        return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 px-4" onClick={() => setShowSparkyExamples(false)}>
           <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6 text-slate-100" onClick={(e) => e.stopPropagation()}>
-            <div className="text-2xl font-bold text-amber-300 mb-4">Sparky's Code Examples</div>
-            <div className="space-y-4 text-lg">
-              <div className="rounded-lg border border-slate-700 bg-slate-950 p-4">
-                <div className="text-emerald-300 font-semibold mb-1">Name (String)</div>
-                <code className="text-slate-100">String name = "Bolt";</code>
-              </div>
-              <div className="rounded-lg border border-slate-700 bg-slate-950 p-4">
-                <div className="text-emerald-300 font-semibold mb-1">Color (String)</div>
-                <code className="text-slate-100">String color = "teal";</code>
-              </div>
-              <div className="rounded-lg border border-slate-700 bg-slate-950 p-4">
-                <div className="text-emerald-300 font-semibold mb-1">Size (int)</div>
-                <code className="text-slate-100">int age = 2;</code>
-              </div>
-              <div className="rounded-lg border border-slate-700 bg-slate-950 p-4">
-                <div className="text-cyan-300 font-semibold mb-1">hasWireSurge (boolean)</div>
-                <code className="text-slate-100">boolean hasWireSurge = true;</code>
-              </div>
-              <div className="rounded-lg border border-amber-700/50 bg-slate-950 p-4">
-                <div className="text-amber-300 font-semibold mb-1">📋 Spec Sheet Example</div>
-                <div className="text-slate-300 text-sm mb-1">Given: size=4, material=steel, sensorCount=3</div>
-                <div className="text-slate-300 text-sm mb-1">Rules: steel has density 15. weight = size × density.</div>
-                <code className="text-slate-100 text-sm">int weight = 60;</code>
+            <div className="text-2xl font-bold text-amber-300 mb-4">Sparky's Examples</div>
+            <div className="space-y-3">
+              {activeCustomer?.isSpecSheet && activeCustomer.specSheetPrompts?.map((p, i) => (
+                <div key={i} className="rounded-lg border border-amber-700/40 bg-slate-950 p-4">
+                  <div className="text-amber-300 font-semibold mb-1">📋 Prompt Preview</div>
+                  <div className="text-slate-400 text-sm mb-1">{p.lines[0]}</div>
+                  <div className="text-slate-400 text-sm mb-2">{p.lines[1]}</div>
+                  <div className="text-slate-300 text-xs mt-2 mb-1">Example ({p.expectedType}):</div>
+                  <code className="text-slate-100">{p.expectedType} {exName(p.expectedType)} = {exVal(p.expectedType)};</code>
+                </div>
+              ))}
+              <div className="flex flex-wrap gap-3">
+                {[...new Set(typesNeeded)].map(t => (
+                  <div key={t} className="rounded-lg border border-slate-700 bg-slate-950 p-4 grow">
+                    <div className="text-emerald-300 font-semibold mb-1">{t}</div>
+                    <code className="text-slate-100">{t} {exName(t)} = {exVal(t)};</code>
+                  </div>
+                ))}
               </div>
             </div>
             <div className="mt-6 text-right">
               <button className="rounded bg-emerald-500 px-6 py-3 text-lg font-semibold text-white hover:bg-emerald-400" onClick={() => setShowSparkyExamples(false)}>Got it!</button>
             </div>
           </div>
-        </div>
-      )}
+        </div>);
+      })()}
 
       <TFB show={inWorkshopRoom && !workshopIntroSeen && profileLoadedRef.current}
         step={workshopIntroStep} steps={WORKSHOP_INTRO_STEPS} text={workshopIntroText}
