@@ -35,12 +35,11 @@ export const PET_COLORS = ['red', 'blue', 'green', 'gold', 'teal', 'violet', 'or
 export const CUSTOMER_PROPERTIES = ['name', 'color', 'size', 'hasWireSurge'] as const;
 export type CustomerProperty = (typeof CUSTOMER_PROPERTIES)[number];
 export const REQUEST_PATTERNS: CustomerProperty[][] = [
-  ['name'], ['color'], ['size'], ['hasWireSurge'],
+  ['name'], ['color'], ['size'],
   ['name', 'color'], ['name', 'size'], ['name', 'hasWireSurge'],
   ['color', 'size'], ['color', 'hasWireSurge'], ['size', 'hasWireSurge'],
   ['name', 'color', 'size'], ['name', 'color', 'hasWireSurge'],
   ['name', 'size', 'hasWireSurge'], ['color', 'size', 'hasWireSurge'],
-  ['name', 'color', 'size', 'hasWireSurge'],
 ];
 export const WORKSHOP_INTRO_PAGES = [
   { title: "Welcome to Rafiq's Robots", body: 'Customers browse robots here. Walk up and press Space to start a job.' },
