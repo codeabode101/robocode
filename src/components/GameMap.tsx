@@ -6529,6 +6529,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (cr.root.parent !== workshopRoomGroupRef.current) {
               workshopRoomGroupRef.current?.attach(cr.root);
               cr.root.position.set(npc.position.x, npc.position.y - 0.5, 0.251);
+              cr.root.rotation.set(0, 0, 0);
               cr.root.scale.set(0.18, 0.18, 0.18);
             }
             const behindX = npc.position.x;
