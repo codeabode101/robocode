@@ -203,7 +203,7 @@ export function validateWorkshopCode(input: string, request: CustomerRequest) {
     if (!n.endsWith(';')) return { valid: false, error: 'Missing semicolon at the end (;).' };
     const lines = n.split(';').filter(l => l.trim()).map(l => l.trim() + ';');
     const totalExpected = request.required.length + request.specSheetPrompts.length;
-    if (lines.length < totalExpected) return { valid: false, error: `You need ${totalExpected} statements (${request.required.length} variable${request.required.length > 1 ? 's' : ''} + ${request.specSheetPrompts.length} prompt${request.specSheetPrompts.length > 1 ? 's' : ''}).` };
+    if (lines.length < totalExpected) return { valid: false, error: request.required.length > 0 ? `You need ${totalExpected} statements (${request.required.length} variable + ${request.specSheetPrompts.length} prompt).` : `You need 1 statement.` };
     if (lines.length > totalExpected) return { valid: false, error: `Too many statements. You only need ${totalExpected} statements.` };
     // Validate required lines first
     for (let i = 0; i < request.required.length; i++) {

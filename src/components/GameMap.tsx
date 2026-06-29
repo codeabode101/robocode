@@ -3929,75 +3929,33 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     });
 
     const createSpecSheetRequest = (customerName: string): CustomerRequest => {
-      const pickPrompt = (): SpecSheetPrompt[] => {
-        const r = () => Math.random();
-        const ri = (min: number, max: number) => Math.floor(r() * (max - min + 1)) + min;
-        const rf = (min: number, max: number, dec = 1) => parseFloat((r() * (max - min) + min).toFixed(dec));
-        const templates: (() => SpecSheetPrompt)[] = [
-          // 1: Efficiency → boolean (if below 90, needs new battery)
-          () => {
-            const eff = rf(80, 99);
-            const val = eff < 90;
-            return { lines: [`Efficiency is ${eff} percent.`, `If it's below 90 percent, the robot needs a new battery.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(val) };
-          },
-          // 2: Temperature → boolean (if above 80, overheated)
-          () => {
-            const temp = rf(70, 90);
-            const val = temp > 80;
-            return { lines: [`Temperature is ${temp} degrees.`, `If it's above 80, the robot is overheated.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(val) };
-          },
-          // 3: Arm count → int (each arm = 5 tools)
-          () => {
-            const arms = ri(1, 4);
-            const val = arms * 5;
-            return { lines: [`The robot has ${arms} arm${arms > 1 ? 's' : ''}.`, `Each arm carries 5 tools. Calculate total tool capacity.`], expectedType: 'int', expectedName: 'toolCapacity', expectedValue: String(val) };
-          },
-          // 4: Efficiency → double (repair cost = 100 - efficiency)
-          () => {
-            const eff = rf(80, 99);
-            const val = parseFloat((100 - eff).toFixed(1));
-            return { lines: [`Efficiency is ${eff} percent.`, `Repair cost is 100 minus efficiency.`], expectedType: 'double', expectedName: 'repairCost', expectedValue: String(val) };
-          },
-          // 5: Size → double (storage = size * 4, store as double) — sneaky int→double
-          () => {
-            const sz = ri(1, 6);
-            const val = sz * 4;
-            return { lines: [`The robot has ${sz} size unit${sz > 1 ? 's' : ''}.`, `Storage is size times 4. Store it as a decimal.`], expectedType: 'double', expectedName: 'storageTotal', expectedValue: val + '.0' };
-          },
-          // 6: Pressure → int (round down) — sneaky double→int
-          () => {
-            const pres = rf(20, 30);
-            const val = Math.floor(pres);
-            return { lines: [`Pressure reading is ${pres}.`, `Round down for the safe level.`], expectedType: 'int', expectedName: 'safeLevel', expectedValue: String(val) };
-          },
-          // 7: Efficiency → String (95+ = Excellent, else Needs Repair)
-          () => {
-            const eff = rf(80, 99);
-            const val = eff >= 95 ? 'Excellent' : 'Needs Repair';
-            return { lines: [`Efficiency is ${eff} percent.`, `95 or higher means Excellent. Otherwise Needs Repair.`], expectedType: 'String', expectedName: 'status', expectedValue: val };
-          },
-          // 8: Sensor count → boolean (if < 2, connection issue)
-          () => {
-            const sensors = ri(0, 4);
-            const val = sensors < 2;
-            return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, there's a connection issue.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(val) };
-          },
-        ];
-        const promptCount = r() < 0.25 ? 2 : 1;
-        const chosen: SpecSheetPrompt[] = [];
-        const used = new Set<number>();
-        while (chosen.length < promptCount) {
-          const idx = Math.floor(r() * templates.length);
-          if (used.has(idx)) continue;
-          used.add(idx);
-          chosen.push(templates[idx]());
-        }
-        return chosen;
-      };
+      const r = () => Math.random();
+      const ri = (min: number, max: number) => Math.floor(r() * (max - min + 1)) + min;
+      const rf = (min: number, max: number, dec = 1) => parseFloat((r() * (max - min) + min).toFixed(dec));
+      const templates: (() => SpecSheetPrompt)[] = [
+        // 1: Efficiency → boolean
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `If it's below 90 percent, the robot needs a new battery.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(eff < 90) }; },
+        // 2: Temperature → boolean
+        () => { const temp = rf(70, 90); return { lines: [`Temperature is ${temp} degrees.`, `If it's above 80, the robot is overheated.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(temp > 80) }; },
+        // 3: Arm count → int
+        () => { const arms = ri(1, 4); return { lines: [`The robot has ${arms} arm${arms > 1 ? 's' : ''}.`, `Each arm carries 5 tools. Calculate total tool capacity.`], expectedType: 'int', expectedName: 'toolCapacity', expectedValue: String(arms * 5) }; },
+        // 4: Efficiency → double
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `Repair cost is 100 minus efficiency.`], expectedType: 'double', expectedName: 'repairCost', expectedValue: String(parseFloat((100 - eff).toFixed(1))) }; },
+        // 5: Size → double (sneaky int→double)
+        () => { const sz = ri(1, 6); return { lines: [`The robot has ${sz} size unit${sz > 1 ? 's' : ''}.`, `Storage is size times 4. Store it as a decimal.`], expectedType: 'double', expectedName: 'storageTotal', expectedValue: `${sz * 4}.0` }; },
+        // 6: Pressure → int (sneaky double→int)
+        () => { const pres = rf(20, 30); return { lines: [`Pressure reading is ${pres}.`, `Round down for the safe level.`], expectedType: 'int', expectedName: 'safeLevel', expectedValue: String(Math.floor(pres)) }; },
+        // 7: Efficiency → String
+        () => { const eff = rf(80, 99); return { lines: [`Efficiency is ${eff} percent.`, `95 or higher means Excellent. Otherwise Needs Repair.`], expectedType: 'String', expectedName: 'status', expectedValue: eff >= 95 ? 'Excellent' : 'Needs Repair' }; },
+        // 8: Sensor count → boolean
+        () => { const sensors = ri(0, 4); return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, there's a connection issue.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(sensors < 2) }; },
+      ];
 
-      const prompts = pickPrompt();
+      const prompt = templates[Math.floor(r() * templates.length)]();
       const isGolden = Math.random() < 0.15;
-      const required: ('name' | 'color' | 'size' | 'hasWireSurge')[] = ['name', 'color', 'hasWireSurge'];
+      const extraVars: ('name' | 'color' | 'size')[] = ['name', 'color', 'size'];
+      const addExtra = r() < 0.5;
+      const required: ('name' | 'color' | 'size' | 'hasWireSurge')[] = addExtra ? [extraVars[Math.floor(r() * extraVars.length)]] : [];
 
       return {
         customerName,
@@ -4010,7 +3968,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         tier: isGolden ? 'golden' : 'spec-sheet',
         baseReward: isGolden ? 8 : 5,
         bonusReward: isGolden ? 15 : 10,
-        specSheetPrompts: prompts,
+        specSheetPrompts: [prompt],
       };
     };
 
@@ -4044,9 +4002,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
 
       let nextRequest: CustomerRequest;
-      const repairsDone = repairsDoneRef.current;
 
-      if (repairsDone < 2 || Math.random() > 0.35) {
+      if (Math.random() > 0.5) {
         nextRequest = createStandardRequest(customerName);
       } else {
         nextRequest = createSpecSheetRequest(customerName);
@@ -4054,7 +4011,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       let tries = 0;
       while (blockedSignature && getWorkshopRequestSignature(nextRequest) === blockedSignature && tries < 8) {
-        if (repairsDone < 2 || Math.random() > 0.35) {
+        if (Math.random() > 0.5) {
           nextRequest = createStandardRequest(customerName);
         } else {
           nextRequest = createSpecSheetRequest(customerName);
@@ -6683,7 +6640,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const elapsed = (performance.now() - bonusTimerRef.current) / 1000;
         const frac = Math.max(0, 1 - elapsed / BONUS_DURATION);
         if (Math.abs(frac - bonusFraction) > 0.01) setBonusFraction(frac);
-        if (frac <= 0) bonusTimerRef.current = null;
+        if (frac <= 0) { bonusTimerRef.current = null; setBonusFraction(0); }
       } else if (bonusFraction !== 0) {
         setBonusFraction(0);
       }
@@ -7607,7 +7564,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       try { localStorage.setItem('rb_first_tx_done', '1'); } catch {}
     }
     clearDefectFromRequest(req, selectedNpc.cargoRobot.root);
-    repairsDoneRef.current += 1;
+    repairsDoneRef.current += req.isSpecSheet ? 2 : 1;
     regPanelShownRef.current = false;
     setShowRegLaptopUI(false);
     setRegLaptopCode('');
@@ -7814,10 +7771,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                       </div>
                     </div>
                   ))}
-                  <div className="text-xs text-slate-400 mt-2 mb-1">Write these declarations:</div>
                   {activeCustomer.required.includes('name') && makeLine('String name', `"${activeCustomer.petName}"`)}
                   {activeCustomer.required.includes('color') && makeLine('String color', `"${activeCustomer.petColor}"`)}
-                  {activeCustomer.required.includes('hasWireSurge') && makeLine('boolean hasWireSurge', 'true')}
+                  {activeCustomer.required.includes('size') && makeLine('int size', String(activeCustomer.petSize))}
                 </div>
               ) : (
                 <>
