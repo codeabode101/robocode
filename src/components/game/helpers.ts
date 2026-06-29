@@ -196,6 +196,31 @@ export function validateWorkshopCode(input: string, request: CustomerRequest) {
   if (request.requestType === 'data-processing' && request.dataSteps) {
     return validateDataProcessingCode(input, request.dataSteps);
   }
+  // Spec-sheet validation: required lines (name/color/hasWireSurge) + prompt lines
+  if (request.isSpecSheet && request.specSheetPrompts?.length) {
+    const n = input.replace(/\s+/g, ' ').trim();
+    if (!n) return { valid: false, error: 'Write some code first.' };
+    if (!n.endsWith(';')) return { valid: false, error: 'Missing semicolon at the end (;).' };
+    const lines = n.split(';').filter(l => l.trim()).map(l => l.trim() + ';');
+    const totalExpected = request.required.length + request.specSheetPrompts.length;
+    if (lines.length < totalExpected) return { valid: false, error: `You need ${totalExpected} statements (${request.required.length} variable${request.required.length > 1 ? 's' : ''} + ${request.specSheetPrompts.length} prompt${request.specSheetPrompts.length > 1 ? 's' : ''}).` };
+    if (lines.length > totalExpected) return { valid: false, error: `Too many statements. You only need ${totalExpected} statements.` };
+    // Validate required lines first
+    for (let i = 0; i < request.required.length; i++) {
+      const req = request.required[i];
+      const reqToValSpec = (r: string) => r === 'name' ? request.petName : r === 'color' ? request.petColor : r === 'size' ? String(request.petSize) : 'true';
+      const reqToTypeSpec = (r: string) => r === 'size' ? 'int' : r === 'hasWireSurge' ? 'boolean' : 'String';
+      const hint = checkLine(lines[i], req, reqToTypeSpec(req), reqToValSpec(req));
+      if (hint) return { valid: false, error: hint };
+    }
+    // Validate prompt lines
+    for (let i = 0; i < request.specSheetPrompts.length; i++) {
+      const p = request.specSheetPrompts[i];
+      const hint = checkLine(lines[request.required.length + i], p.expectedName, p.expectedType, p.expectedValue);
+      if (hint) return { valid: false, error: hint };
+    }
+    return { valid: true, error: '' };
+  }
   const n = input.replace(/\s+/g, ' ').trim();
   if (!n) return { valid: false, error: 'Write some code first.' };
   if (!n.endsWith(';')) return { valid: false, error: 'Missing semicolon at the end (;).' };

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useMultiplayer } from '@/hooks/useMultiplayer';
-import type { SparkyQuestStage, CustomerRequest, TutorialPhase, RoomType, GameGoal, ScrapPartId } from '@/components/game/types';
+import type { SparkyQuestStage, CustomerRequest, TutorialPhase, RoomType, GameGoal, ScrapPartId, SpecSheetPrompt } from '@/components/game/types';
 import Editor from '@/components/game/Editor';
 import TutorialOverlay from '@/components/game/TutorialOverlay';
 import ArenaOverlay from '@/components/game/ArenaOverlay';
@@ -317,21 +317,6 @@ function TFB({ show, step, steps, text, icon, onEnter, ttsOn, ttsCharIdx, onTtsT
       </div>
     </div>
   );
-}
-
-function buildSpecSheetDisplayText(req: CustomerRequest): string {
-  const size = req.given.find(g => g.name === 'size')?.value ?? '?';
-  const material = req.given.find(g => g.name === 'material')?.value ?? '?';
-  const sensorCount = req.given.find(g => g.name === 'sensorCount')?.value ?? '?';
-  const batteryLevel = req.given.find(g => g.name === 'batteryLevel')?.value ?? '?';
-  const age = req.given.find(g => g.name === 'age')?.value ?? '?';
-  let desc = `Customer ${req.customerName}'s robot: size ${size}, material ${material}, ${sensorCount} sensor${sensorCount !== 1 ? 's' : ''}, battery at ${batteryLevel} percent, age ${age} year${age !== 1 ? 's' : ''}.`;
-  if (req.tier === 'golden') {
-    const version = req.given.find(g => g.name === 'version')?.value ?? '?';
-    const maxSpeed = req.given.find(g => g.name === 'maxSpeed')?.value ?? '?';
-    desc += ` Version ${version}, max speed ${maxSpeed}.`;
-  }
-  return desc;
 }
 
 export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: GameMapProps) {
@@ -1009,26 +994,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const applyDefectFromRequest = useCallback((request: CustomerRequest, robotRoot: THREE.Object3D) => {
     if (request.isSpecSheet) {
-      const size = request.given.find(g => g.name === 'size')?.value as number;
-      const material = request.given.find(g => g.name === 'material')?.value as string;
-      const batteryLevel = request.given.find(g => g.name === 'batteryLevel')?.value as number;
-      const sensorCount = request.given.find(g => g.name === 'sensorCount')?.value as number;
-      const age = request.given.find(g => g.name === 'age')?.value as number;
-      const reinforcedFrame = material === 'steel' && size > 3;
-      const requiresCharging = batteryLevel < 20;
-      const hasRedundantSensors = sensorCount > 2;
-      const needsUpgrade = age > 5;
-      if (reinforcedFrame) setReinforcedFrameBroken(robotRoot, true);
-      else if (requiresCharging) setRequiresChargingBroken(robotRoot, true);
-      else if (hasRedundantSensors) setHasRedundantSensorsBroken(robotRoot, true);
-      else if (needsUpgrade) setActivationBroken(robotRoot, true);
+      setRobotBroken(robotRoot, true);
+      if (request.specSheetPrompts?.some(p => p.expectedType === 'boolean')) setActivationBroken(robotRoot, true);
+      if (request.specSheetPrompts?.some(p => p.expectedType === 'int' || p.expectedType === 'double')) setSizeBroken(robotRoot, true);
       if (request.tier === 'golden') setVersionBroken(robotRoot, true);
     } else {
       if (request.required.includes('name')) setNameBroken(robotRoot, true, request.petName);
       if (request.required.includes('size')) setSizeBroken(robotRoot, true);
       if (request.required.includes('hasWireSurge')) setActivationBroken(robotRoot, true);
+      if (request.required.includes('color')) setRobotBroken(robotRoot, true);
     }
-    if (request.required.includes('color')) setRobotBroken(robotRoot, true);
   }, []);
 
   const clearDefectFromRequest = useCallback((request: CustomerRequest, robotRoot: THREE.Object3D) => {
@@ -3948,79 +3923,94 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       required: [...REQUEST_PATTERNS[Math.floor(Math.random() * REQUEST_PATTERNS.length)]],
       requestType: 'standard',
       isSpecSheet: false,
-      given: [],
-      rules: [],
       tier: 'standard',
       baseReward: 2,
       bonusReward: 5,
     });
 
     const createSpecSheetRequest = (customerName: string): CustomerRequest => {
-      const size = 2 + Math.floor(Math.random() * 5);
-      const materials = ['steel', 'plastic', 'titanium'] as const;
-      const material = materials[Math.floor(Math.random() * materials.length)];
-      const sensorCount = Math.floor(Math.random() * 6);
-      const batteryLevel = Math.floor(Math.random() * 101);
-      const age = Math.floor(Math.random() * 11);
-      const densityMap: Record<string, number> = { steel: 15, plastic: 5, titanium: 10 };
-      const density = densityMap[material];
-      const weight = size * density;
-      const reinforcedFrame = material === 'steel' && size > 3;
-      const requiresCharging = batteryLevel < 20;
-      const hasRedundantSensors = sensorCount > 2;
-      const needsUpgrade = age > 5;
+      const pickPrompt = (): SpecSheetPrompt[] => {
+        const r = () => Math.random();
+        const ri = (min: number, max: number) => Math.floor(r() * (max - min + 1)) + min;
+        const rf = (min: number, max: number, dec = 1) => parseFloat((r() * (max - min) + min).toFixed(dec));
+        const templates: (() => SpecSheetPrompt)[] = [
+          // 1: Efficiency → boolean (if below 90, needs new battery)
+          () => {
+            const eff = rf(80, 99);
+            const val = eff < 90;
+            return { lines: [`Efficiency is ${eff} percent.`, `If it's below 90 percent, the robot needs a new battery.`], expectedType: 'boolean', expectedName: 'needsNewBattery', expectedValue: String(val) };
+          },
+          // 2: Temperature → boolean (if above 80, overheated)
+          () => {
+            const temp = rf(70, 90);
+            const val = temp > 80;
+            return { lines: [`Temperature is ${temp} degrees.`, `If it's above 80, the robot is overheated.`], expectedType: 'boolean', expectedName: 'isOverheated', expectedValue: String(val) };
+          },
+          // 3: Arm count → int (each arm = 5 tools)
+          () => {
+            const arms = ri(1, 4);
+            const val = arms * 5;
+            return { lines: [`The robot has ${arms} arm${arms > 1 ? 's' : ''}.`, `Each arm carries 5 tools. Calculate total tool capacity.`], expectedType: 'int', expectedName: 'toolCapacity', expectedValue: String(val) };
+          },
+          // 4: Efficiency → double (repair cost = 100 - efficiency)
+          () => {
+            const eff = rf(80, 99);
+            const val = parseFloat((100 - eff).toFixed(1));
+            return { lines: [`Efficiency is ${eff} percent.`, `Repair cost is 100 minus efficiency.`], expectedType: 'double', expectedName: 'repairCost', expectedValue: String(val) };
+          },
+          // 5: Size → double (storage = size * 4, store as double) — sneaky int→double
+          () => {
+            const sz = ri(1, 6);
+            const val = sz * 4;
+            return { lines: [`The robot has ${sz} size unit${sz > 1 ? 's' : ''}.`, `Storage is size times 4. Store it as a decimal.`], expectedType: 'double', expectedName: 'storageTotal', expectedValue: val + '.0' };
+          },
+          // 6: Pressure → int (round down) — sneaky double→int
+          () => {
+            const pres = rf(20, 30);
+            const val = Math.floor(pres);
+            return { lines: [`Pressure reading is ${pres}.`, `Round down for the safe level.`], expectedType: 'int', expectedName: 'safeLevel', expectedValue: String(val) };
+          },
+          // 7: Efficiency → String (95+ = Excellent, else Needs Repair)
+          () => {
+            const eff = rf(80, 99);
+            const val = eff >= 95 ? 'Excellent' : 'Needs Repair';
+            return { lines: [`Efficiency is ${eff} percent.`, `95 or higher means Excellent. Otherwise Needs Repair.`], expectedType: 'String', expectedName: 'status', expectedValue: val };
+          },
+          // 8: Sensor count → boolean (if < 2, connection issue)
+          () => {
+            const sensors = ri(0, 4);
+            const val = sensors < 2;
+            return { lines: [`The robot has ${sensors} sensor${sensors !== 1 ? 's' : ''}.`, `If sensors are less than 2, there's a connection issue.`], expectedType: 'boolean', expectedName: 'hasConnectionIssue', expectedValue: String(val) };
+          },
+        ];
+        const promptCount = r() < 0.25 ? 2 : 1;
+        const chosen: SpecSheetPrompt[] = [];
+        const used = new Set<number>();
+        while (chosen.length < promptCount) {
+          const idx = Math.floor(r() * templates.length);
+          if (used.has(idx)) continue;
+          used.add(idx);
+          chosen.push(templates[idx]());
+        }
+        return chosen;
+      };
 
-      const required: ('name' | 'color' | 'size' | 'hasWireSurge')[] = [];
-      const requiredBooleans: string[] = [];
-      if (reinforcedFrame) { required.push('hasWireSurge'); requiredBooleans.push('reinforcedFrame'); }
-      else if (requiresCharging) { required.push('hasWireSurge'); requiredBooleans.push('requiresCharging'); }
-      else if (hasRedundantSensors) { required.push('hasWireSurge'); requiredBooleans.push('hasRedundantSensors'); }
-      else { required.push('name'); required.push('color'); required.push('size'); }
-      if (required.length === 1 && required[0] === 'hasWireSurge') {
-        required.push('size');
-      }
-
+      const prompts = pickPrompt();
       const isGolden = Math.random() < 0.15;
-      const version = isGolden ? parseFloat((1 + Math.random() * 4).toFixed(1)) : undefined;
-      const maxSpeed = isGolden ? parseFloat((10 + Math.random() * 90).toFixed(1)) : undefined;
-      if (isGolden && maxSpeed !== undefined) required.push('size');
-
-      const given = [
-        { name: 'size', type: 'int', value: size },
-        { name: 'material', type: 'String', value: material },
-        { name: 'sensorCount', type: 'int', value: sensorCount },
-        { name: 'batteryLevel', type: 'int', value: batteryLevel },
-        { name: 'age', type: 'int', value: age },
-      ];
-      if (isGolden && version !== undefined) given.push({ name: 'version', type: 'double', value: version });
-      if (isGolden && maxSpeed !== undefined) given.push({ name: 'maxSpeed', type: 'double', value: maxSpeed });
-
-      const rules: string[] = [
-        `Steel has density ${densityMap.steel}, plastic has density ${densityMap.plastic}, titanium has density ${densityMap.titanium}.`,
-        `weight equals size multiplied by density.`,
-        `A robot needs a reinforced frame if it is made of steel and its size is greater than 3.`,
-        `A robot requires charging if its battery level is less than 20 percent.`,
-        `A robot has redundant sensors if its sensor count is greater than 2.`,
-        `A robot needs an upgrade if its age is greater than 5.`,
-      ];
-      if (isGolden && version !== undefined) {
-        rules.push(`version is a decimal number, write it as ${version}.`);
-        rules.push(`maxSpeed is a decimal number, write it as ${maxSpeed}.`);
-      }
+      const required: ('name' | 'color' | 'size' | 'hasWireSurge')[] = ['name', 'color', 'hasWireSurge'];
 
       return {
         customerName,
         petName: pickRandom(PET_NAMES),
         petColor: pickRandom(PET_COLORS),
-        petSize: size,
+        petSize: 2 + Math.floor(Math.random() * 5),
         required,
         requestType: 'standard',
         isSpecSheet: true,
-        given,
-        rules,
         tier: isGolden ? 'golden' : 'spec-sheet',
         baseReward: isGolden ? 8 : 5,
         bonusReward: isGolden ? 15 : 10,
+        specSheetPrompts: prompts,
       };
     };
 
@@ -4040,8 +4030,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           requestType: 'data-processing',
           dataSteps: dp.dataSteps,
           isSpecSheet: false,
-          given: [],
-          rules: [],
           tier: 'standard',
           baseReward: 2,
           bonusReward: 5,
@@ -7799,35 +7787,37 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-52px)]">
               {activeCustomer.isSpecSheet ? (
                 <div className="mb-3">
-                  <div className={`text-lg font-bold mb-2 ${activeCustomer.tier === 'golden' ? 'text-amber-300' : 'text-cyan-300'}`}>
-                    {activeCustomer.tier === 'golden' ? '⭐ Golden Spec Sheet' : '📋 Spec Sheet'}
+                  <div className="text-lg font-bold mb-2 text-cyan-300">
+                    📋 Spec Sheet
                   </div>
-                  <div className="text-slate-100 text-sm mb-2 leading-relaxed bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-                    <span>{renderTtsLine(buildSpecSheetDisplayText(activeCustomer))}</span>
-                    <button onClick={() => playLineTts(buildSpecSheetDisplayText(activeCustomer))} className="ml-2 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors align-middle" title={ttsActiveTextRef.current === buildSpecSheetDisplayText(activeCustomer) ? 'Stop' : 'Read aloud'}>
-                      {ttsActiveTextRef.current === buildSpecSheetDisplayText(activeCustomer) ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                      )}
-                    </button>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-1 mb-2">Rules:</div>
-                  {activeCustomer.rules.map((r, i) => (
-                    <div key={i} className="flex items-start gap-1 text-slate-300 text-sm mb-1">
-                      <span>• {renderTtsLine(r)}</span>
-                      <button onClick={() => playLineTts(r)} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ttsActiveTextRef.current === r ? 'Stop' : 'Read aloud'}>
-                        {ttsActiveTextRef.current === r ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                        )}
-                      </button>
+                  {activeCustomer.specSheetPrompts?.map((p, i) => (
+                    <div key={i} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 mb-2">
+                      <div className="flex items-center gap-1 text-slate-100 text-sm leading-relaxed">
+                        <span>{renderTtsLine(p.lines[0])}</span>
+                        <button onClick={() => playLineTts(p.lines[0])} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ttsActiveTextRef.current === p.lines[0] ? 'Stop' : 'Read aloud'}>
+                          {ttsActiveTextRef.current === p.lines[0] ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          )}
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1 text-slate-100 text-sm leading-relaxed mt-1">
+                        <span>{renderTtsLine(p.lines[1])}</span>
+                        <button onClick={() => playLineTts(p.lines[1])} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ttsActiveTextRef.current === p.lines[1] ? 'Stop' : 'Read aloud'}>
+                          {ttsActiveTextRef.current === p.lines[1] ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   ))}
-                  {activeCustomer.required.includes('name') && makeLine('Name', activeCustomer.petName)}
-                  {activeCustomer.required.includes('color') && makeLine('Color', activeCustomer.petColor)}
-                  {activeCustomer.required.includes('size') && makeLine('Size', String(activeCustomer.petSize))}
+                  <div className="text-xs text-slate-400 mt-2 mb-1">Write these declarations:</div>
+                  {activeCustomer.required.includes('name') && makeLine('String name', `"${activeCustomer.petName}"`)}
+                  {activeCustomer.required.includes('color') && makeLine('String color', `"${activeCustomer.petColor}"`)}
+                  {activeCustomer.required.includes('hasWireSurge') && makeLine('boolean hasWireSurge', 'true')}
                 </div>
               ) : (
                 <>
