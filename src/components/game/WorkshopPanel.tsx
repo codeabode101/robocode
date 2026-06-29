@@ -68,9 +68,12 @@ export default function WorkshopPanel({
             </div>
           ) : (
             <>
-              {activeCustomer.required.includes('name') && <div className="mt-1">Name: <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span></div>}
-              {activeCustomer.required.includes('color') && <div className="mt-1">Color: <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span></div>}
-              {activeCustomer.required.includes('size') && <div className="mt-1">Size (int): <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span></div>}
+              {activeCustomer.required.includes('name') && <div className="mt-1 text-slate-100">Robot's name is <span className="font-semibold text-emerald-300">{activeCustomer.petName}</span>.</div>}
+              {activeCustomer.required.includes('color') && <div className="mt-1 text-slate-100">Color is <span className="font-semibold text-emerald-300">{activeCustomer.petColor}</span>.</div>}
+              {activeCustomer.required.includes('size') && <div className="mt-1 text-slate-100">Size is <span className="font-semibold text-emerald-300">{activeCustomer.petSize}</span>.</div>}
+              {activeCustomer.required.includes('hasWireSurge') && <div className="mt-1 text-slate-100">Robot has a wire surge.</div>}
+              {activeCustomer.required.includes('hasWireSurge') && <div className="mt-1 text-slate-100">Store it in <code className="text-amber-300">hasWireSurge</code>.</div>}
+              {activeCustomer.required.includes('version') && <div className="mt-1 text-slate-100">Version is <span className="font-semibold text-emerald-300">1.0</span>.</div>}
               <div className="mt-1 text-sky-100">"I want my robot to have these settings!"</div>
             </>
           )}
