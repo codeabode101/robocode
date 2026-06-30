@@ -4663,7 +4663,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         // Reparent to right hand when holding, otherwise player body
         if (isHolding && rightArmRef.current && heldGroup.parent !== rightArmRef.current) {
           rightArmRef.current.attach(heldGroup);
-          heldGroup.position.set(0, 0.12, 0);
+          heldGroup.position.set(0, 0.16, 0.04);
         } else if (!isHolding && heldGroup.parent === rightArmRef.current) {
           localGroup.attach(heldGroup);
           heldGroup.position.set(0.15, 0, 0.50);
