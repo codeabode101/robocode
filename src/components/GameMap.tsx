@@ -3695,7 +3695,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Sparky inside apartment (hidden until Sparky walks home)
       const aptSparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
       aptSparky.root.scale.set(0.7, 0.7, 0.7);
-      aptSparky.root.position.set(0.2, 2.2, 0.22);
+      aptSparky.root.position.set(0.2, 2.2, 0.28);
       aptSparky.nameSprite.visible = false;
       aptSparky.root.visible = false;
       apartmentRoomGroup.add(aptSparky.root);
@@ -4929,7 +4929,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (inApartmentRoomRef.current) {
         const aptSparky = apartmentSparkyRef.current;
         if (aptSparky && aptSparky.root.visible && aptCutscenePhaseRef.current === 'idle' && !installBatteryPhaseRef.current) {
-          aptSparky.root.position.z = 0.24 + Math.sin(worldTime * 3) * 0.04;
+          aptSparky.root.position.z = 0.28 + Math.sin(worldTime * 3) * 0.04;
           animateRobotVisual(aptSparky, worldTime, 0.3, -0.2, 0.1);
         }
         // Cutscene phase
@@ -5812,7 +5812,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const playerArrived = walkPlayer(localPositionRef.current, playerTarget, MOVE_SPEED * 0.29, delta, worldTime, 0.28, localRobotRef.current, leftLegPivotRef.current, rightLegPivotRef.current, yawRef);
             // Sparky walks beside Scrap
             const sparkyTarget = new THREE.Vector2(-2.3, 1.5);
-            const sDist = aptPos.distanceTo(new THREE.Vector3(sparkyTarget.x, sparkyTarget.y, 0.14));
+            const sDist = aptPos.distanceTo(new THREE.Vector3(sparkyTarget.x, sparkyTarget.y, 0.28));
             if (sDist > 0.15) {
               const sDir = new THREE.Vector2(sparkyTarget.x - aptPos.x, sparkyTarget.y - aptPos.y).normalize();
               aptPos.x += sDir.x * MOVE_SPEED * 1.36 * delta;
@@ -5826,7 +5826,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 installBatteryTimerRef.current = 0;
               }
             } else {
-              aptSparky.root.position.set(sparkyTarget.x, sparkyTarget.y, 0.22);
+              aptSparky.root.position.set(sparkyTarget.x, sparkyTarget.y, 0.28);
             }
             // Both arrived
             if (playerArrived && sDist < 0.15) {
