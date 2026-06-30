@@ -4213,6 +4213,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           installBatteryTimerRef.current = 0;
           startCinematicCutscene();
           keyStateRef.current.clear();
+console.log('📸 pending battery cutscene started | phase=', installBatteryPhaseRef.current, 'cinemCam=', cinemCamActiveRef.current);
         }
       }
 
@@ -5810,6 +5811,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const ibPhase = installBatteryPhaseRef.current;
           const aptPos = aptSparky.root.position;
           if (ibPhase === 'approach') {
+console.log('📸 approach frame | player=' + localPositionRef.current.x.toFixed(3) + ',' + localPositionRef.current.y.toFixed(3) + ' | cameraLookAt=' + localPositionRef.current.x.toFixed(3) + ',' + (localPositionRef.current.y - 0.8).toFixed(3));
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
             // Player walks toward Scrap
             const playerTarget = new THREE.Vector2(-2.0, 0.5);
@@ -7381,19 +7383,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const prepBatteryInstallProps = () => {
     console.log('🔧 prepBatteryInstallProps called');
     if (computerRef.current) {
-      console.log('  computerRef.current:', { visible: computerRef.current.visible, parent: computerRef.current.parent?.type, pos: computerRef.current.position });
+      const p = computerRef.current.position;
+      console.log('  computerRef: visible=' + computerRef.current.visible + ' parent=' + (computerRef.current.parent?.type || 'none') + ' pos=(' + p.x.toFixed(3) + ',' + p.y.toFixed(3) + ',' + p.z.toFixed(3) + ')');
       computerRef.current.visible = true;
     } else {
       console.log('  computerRef.current: NULL');
     }
     if (cutsceneBoxRef.current) {
-      console.log('  cutsceneBoxRef.current:', { visible: cutsceneBoxRef.current.visible, parent: cutsceneBoxRef.current.parent?.type, pos: cutsceneBoxRef.current.position });
+      const p = cutsceneBoxRef.current.position;
+      console.log('  cutsceneBoxRef: visible=' + cutsceneBoxRef.current.visible + ' parent=' + (cutsceneBoxRef.current.parent?.type || 'none') + ' pos=(' + p.x.toFixed(3) + ',' + p.y.toFixed(3) + ',' + p.z.toFixed(3) + ')');
       cutsceneBoxRef.current.visible = true;
     } else {
       console.log('  cutsceneBoxRef.current: NULL');
     }
     if (wireRef.current) {
-      console.log('  wireRef.current:', { visible: wireRef.current.visible, parent: wireRef.current.parent?.type, pos: wireRef.current.position });
+      const p = wireRef.current.position;
+      console.log('  wireRef: visible=' + wireRef.current.visible + ' parent=' + (wireRef.current.parent?.type || 'none') + ' pos=(' + p.x.toFixed(3) + ',' + p.y.toFixed(3) + ',' + p.z.toFixed(3) + ')');
       wireRef.current.visible = true;
       const lapPort = new THREE.Vector3(-3.4, 1.025, 0.253);
       const scrapPos = new THREE.Vector3(-2.6, 0.976, 0.36);
@@ -7404,9 +7409,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       dir.normalize();
       wireRef.current.scale.set(1, dist, 1);
       wireRef.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      const p2 = wireRef.current.position;
+      console.log('  wireRef AFTER: visible=' + wireRef.current.visible + ' pos=(' + p2.x.toFixed(3) + ',' + p2.y.toFixed(3) + ',' + p2.z.toFixed(3) + ')');
     } else {
       console.log('  wireRef.current: NULL');
     }
+    console.log('  aptRoomGroup visible=' + (apartmentRoomGroupRef.current?.visible ?? 'NULL'));
     // Debug: orange cube at computer's position
     if (!batteryDebugCubeRef.current && apartmentRoomGroupRef.current) {
       const geo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
