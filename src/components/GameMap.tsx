@@ -6081,7 +6081,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const behindY = sn2 ? sn2.position.y - 0.5 : -5.5;
             robotRoot.position.set(behindX, behindY, 0.251);
             robotRoot.rotation.set(Math.PI / 2, 0, 0);
-            robotRoot.scale.set(0.18, 0.18, 0.18);
+            robotRoot.scale.set(0.35, 0.35, 0.35);
           }
           // Reset emissive
           if (robotRoot) {
@@ -6530,10 +6530,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               workshopRoomGroupRef.current?.attach(cr.root);
               cr.root.position.set(npc.position.x, npc.position.y - 0.5, 0.251);
               cr.root.rotation.set(Math.PI / 2, 0, 0);
-              cr.root.scale.set(0.18, 0.18, 0.18);
+              cr.root.scale.set(0.35, 0.35, 0.35);
             }
-            cr.root.position.x += (npc.position.x - cr.root.position.x) * 0.08;
-            cr.root.position.y += (npc.position.y - 0.5 - cr.root.position.y) * 0.08;
+            const rotZ = npc.visual.root.rotation.z;
+            const behindX = npc.position.x + Math.sin(rotZ) * 0.5;
+            const behindY = npc.position.y - Math.cos(rotZ) * 0.5;
+            const prevRx = cr.root.position.x;
+            const prevRy = cr.root.position.y;
+            cr.root.position.x += (behindX - cr.root.position.x) * 0.08;
+            cr.root.position.y += (behindY - cr.root.position.y) * 0.08;
+            const rdx = cr.root.position.x - prevRx;
+            const rdy = cr.root.position.y - prevRy;
+            if (Math.hypot(rdx, rdy) > 0.0001) cr.root.rotation.z = Math.atan2(rdx, -rdy);
             animateRobotVisual(cr, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, 0, -1);
           } else {
             const isRegisterCutscene = registerCutscenePhaseRef.current !== 'idle' && registerCutsceneCustomerRef.current?.id === npc.id;
