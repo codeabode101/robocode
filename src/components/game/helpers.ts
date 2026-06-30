@@ -1,4 +1,6 @@
 import type { Hitbox, CustomerRequest, Vec2, DataProcessingStep, SparkyQuestStage, ScrapPartId, GameGoal, RoomType } from './types';
+import type { RobotVisual } from './scene';
+import { WALK_BOB_SPEED } from './scene';
 import * as THREE from 'three';
 
 export function isInsideHitbox(point: Vec2, hitbox: Hitbox) {
@@ -639,4 +641,48 @@ export function getMissionText(goal: GameGoal, money: number, stage: SparkyQuest
     case 'install-battery': return stage === 'intro' ? 'Talk to Sparky.' : 'Bring the battery to Sparky in the apartment!';
     case 'free-roam': return 'Scrap is fully repaired!';
   }
+}
+
+export function walkPlayer(
+  pos: { x: number; y: number },
+  target: { x: number; y: number },
+  speed: number,
+  delta: number,
+  worldTime: number,
+  baseZ: number,
+  visual: RobotVisual | null,
+  leftLegPivot: THREE.Object3D | null,
+  rightLegPivot: THREE.Object3D | null,
+  yawRef: { current: number } | null,
+): boolean {
+  const dx = target.x - pos.x;
+  const dy = target.y - pos.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 0.01) {
+    if (leftLegPivot) leftLegPivot.rotation.x = 0;
+    if (rightLegPivot) rightLegPivot.rotation.x = 0;
+    if (visual) {
+      visual.leftArm.rotation.x = -Math.PI / 2;
+      visual.rightArm.rotation.x = -Math.PI / 2;
+    }
+    if (visual) visual.root.position.set(pos.x, pos.y, baseZ);
+    return true;
+  }
+  const dirX = dx / dist;
+  const dirY = dy / dist;
+  pos.x += dirX * speed * delta;
+  pos.y += dirY * speed * delta;
+  if (yawRef) yawRef.current = Math.atan2(dirX, dirY);
+  if (visual) {
+    visual.root.position.set(pos.x, pos.y, baseZ + Math.sin(worldTime * 10) * 0.02);
+  }
+  const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
+  if (leftLegPivot) leftLegPivot.rotation.x = walkSwing;
+  if (rightLegPivot) rightLegPivot.rotation.x = -walkSwing;
+  const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
+  if (visual) {
+    visual.leftArm.rotation.x = -Math.PI / 2 + armSwing;
+    visual.rightArm.rotation.x = -Math.PI / 2 - armSwing;
+  }
+  return false;
 }
