@@ -337,6 +337,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const leftLegPivotRef = useRef<THREE.Group | null>(null);
   const rightLegPivotRef = useRef<THREE.Group | null>(null);
   const rightArmPivotRef = useRef<THREE.Group | null>(null);
+  const rightArmRef = useRef<THREE.Object3D | null>(null);
   const remoteAvatarsRef = useRef<Record<string, RemoteAvatar>>({});
   const keyStateRef = useRef<Set<string>>(new Set());
   const tutorialPhasesRef = useRef<TutorialPhase[]>(unit1Phases);
@@ -3280,6 +3281,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     leftLegPivotRef.current = playerVis.leftLegPivot;
     rightLegPivotRef.current = playerVis.rightLegPivot;
     rightArmPivotRef.current = playerVis.rightArmPivot;
+    rightArmRef.current = playerVis.rightArm;
 
     localGroup.position.set(0, -7, 0.24);
     scene.add(localGroup);
@@ -4645,7 +4647,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       }
 
-      // Held item 3D model
+      // Held item 3D model — attaches to right arm tip when held
       const heldGroup = heldItemGroupRef.current;
       if (heldGroup && heldSlotIndexRef.current !== null && heldSlotIndexRef.current < gameStore.get('backpack').length) {
         heldGroup.visible = true;
@@ -4656,12 +4658,29 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           heldGroup.add(model);
           heldGroup.userData.partId = partId;
         }
-        // Position — in front of player when holding, right-side float otherwise
-        heldGroup.position.set(isHolding ? 0.16 : 0.15, isHolding ? 0.25 : 0, isHolding ? 0.34 : 0.50);
-        heldGroup.rotation.y = Math.sin(worldTime * 2) * 0.3;
-        heldGroup.rotation.x = Math.sin(worldTime * 1.5) * 0.15;
+        if (isHolding) {
+          // Reparent to right arm mesh if not already there
+          const arm = rightArmRef.current;
+          if (arm && heldGroup.parent !== arm) {
+            arm.add(heldGroup);
+          }
+          // Position at arm tip (0.14 > hand sphere center 0.12, extends past palm surface)
+          heldGroup.position.set(0, 0.14, 0);
+          heldGroup.rotation.set(0, 0, 0);
+        } else {
+          // Reparent back to player root at side float position
+          if (heldGroup.parent !== localGroup) {
+            localGroup.add(heldGroup);
+          }
+          heldGroup.position.set(0.15, 0, 0.50);
+          heldGroup.rotation.y = Math.sin(worldTime * 2) * 0.3;
+          heldGroup.rotation.x = Math.sin(worldTime * 1.5) * 0.15;
+        }
       } else if (heldGroup) {
         heldGroup.visible = false;
+        if (heldGroup.parent !== localGroup) {
+          localGroup.add(heldGroup);
+        }
         if (heldGroup.position.x !== 0.15 || heldGroup.position.y !== 0 || heldGroup.position.z !== 0.50) {
           heldGroup.position.set(0.15, 0, 0.50);
         }
