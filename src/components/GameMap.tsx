@@ -5896,7 +5896,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 installBatteryTimerRef.current = 0;
               }
             } else {
-              aptSparky.root.position.set(sparkyTarget.x, sparkyTarget.y, 0.14);
+              aptSparky.root.position.set(sparkyTarget.x, sparkyTarget.y, 0.22);
             }
             // Both arrived
             if (pDist < 0.08 && sDist < 0.15) {
@@ -6851,9 +6851,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               camera.lookAt(1.8, 3.0, 0.4);
             }
           } else if (installBatteryPhaseRef.current) {
-            scratchVec3.current.set(-2.7, 0.8, 1.5);
-            camera.position.lerp(scratchVec3.current, 0.06);
-            camera.lookAt(-2.6, 1.2, 0.3);
+            if (installBatteryPhaseRef.current === 'approach') {
+              scratchVec3.current.set(localPositionRef.current.x, localPositionRef.current.y + 1.3, 2.0);
+              camera.position.lerp(scratchVec3.current, 0.04);
+              camera.lookAt(localPositionRef.current.x, localPositionRef.current.y - 0.8, 0.3);
+            } else {
+              scratchVec3.current.set(-2.7, 0.8, 1.5);
+              camera.position.lerp(scratchVec3.current, 0.06);
+              camera.lookAt(-2.6, 1.2, 0.3);
+            }
           } else if (csSparky) {
             const sp = csSparky.root.position;
             if (phase === 'fetch-laptop') {
