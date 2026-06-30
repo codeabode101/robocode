@@ -6539,7 +6539,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const targetDy = behindY - cr.root.position.y;
             cr.root.position.x += targetDx * 0.08;
             cr.root.position.y += targetDy * 0.08;
-            cr.root.rotation.set(Math.PI / 2, 0, Math.atan2(targetDx, -targetDy));
+            cr.root.rotation.set(Math.PI / 2, 0, 0);
+            cr.root.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), Math.atan2(targetDx, -targetDy));
             animateRobotVisual(cr, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, 0, -1);
           } else {
             const isRegisterCutscene = registerCutscenePhaseRef.current !== 'idle' && registerCutsceneCustomerRef.current?.id === npc.id;
