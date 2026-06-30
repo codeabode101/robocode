@@ -3288,7 +3288,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     localGroup.position.set(0, -7, 0.24);
     scene.add(localGroup);
     localPositionRef.current.set(0, -7);
-    const localRobot = { root: localGroup, nameSprite: new THREE.Sprite(), body: playerVis.torso, shadow: playerVis.torso, leftPupil: playerVis.torso, rightPupil: playerVis.torso, antennaTip: playerVis.torso, leftArm: playerVis.torso, rightArm: playerVis.torso, leftLeg: playerVis.torso, rightLeg: playerVis.torso };
+    const localRobot = { root: localGroup, nameSprite: new THREE.Sprite(), body: playerVis.torso, shadow: playerVis.torso, leftPupil: playerVis.torso, rightPupil: playerVis.torso, antennaTip: playerVis.torso, leftArm: playerVis.leftArm, rightArm: playerVis.rightArm, leftLeg: playerVis.torso, rightLeg: playerVis.torso };
     localRobotRef.current = localRobot;
 
     // Held item group — attaches to right hand for 3D inventory display
