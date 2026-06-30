@@ -6535,14 +6535,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const rotZ = npc.visual.root.rotation.z;
             const behindX = npc.position.x + Math.sin(rotZ) * 0.5;
             const behindY = npc.position.y - Math.cos(rotZ) * 0.5;
-            const prevRx = cr.root.position.x;
-            const prevRy = cr.root.position.y;
-            cr.root.position.x += (behindX - cr.root.position.x) * 0.08;
-            cr.root.position.y += (behindY - cr.root.position.y) * 0.08;
-            const rdx = cr.root.position.x - prevRx;
-            const rdy = cr.root.position.y - prevRy;
-            if (Math.hypot(rdx, rdy) > 0.0001) cr.root.rotation.set(Math.PI / 2, 0, Math.atan2(rdx, -rdy));
-            else cr.root.rotation.set(Math.PI / 2, 0, 0);
+            const targetDx = behindX - cr.root.position.x;
+            const targetDy = behindY - cr.root.position.y;
+            cr.root.position.x += targetDx * 0.08;
+            cr.root.position.y += targetDy * 0.08;
+            cr.root.rotation.set(Math.PI / 2, 0, Math.atan2(targetDx, -targetDy));
             animateRobotVisual(cr, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, 0, -1);
           } else {
             const isRegisterCutscene = registerCutscenePhaseRef.current !== 'idle' && registerCutsceneCustomerRef.current?.id === npc.id;
