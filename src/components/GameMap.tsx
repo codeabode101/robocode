@@ -4659,17 +4659,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           heldGroup.userData.partId = partId;
         }
         if (isHolding) {
-          // Ensure on player root, track hand world position
-          if (heldGroup.parent !== localGroup) localGroup.add(heldGroup);
+          // Reparent to right arm mesh at palm surface
           const arm = rightArmRef.current;
-          if (arm && arm.children[0]) {
-            arm.children[0].getWorldPosition(scratchVec3.current);
-            localGroup.worldToLocal(scratchVec3.current);
-            scratchVec3.current.z += 0.02;
-            heldGroup.position.copy(scratchVec3.current);
+          if (arm && heldGroup.parent !== arm) {
+            arm.add(heldGroup);
           }
-          heldGroup.scale.set(2, 2, 2);
+          heldGroup.position.set(0, 0.14, 0);
           heldGroup.rotation.set(0, 0, 0);
+          heldGroup.scale.set(2, 2, 2);
         } else {
           if (heldGroup.parent !== localGroup) localGroup.add(heldGroup);
           heldGroup.scale.set(1, 1, 1);
