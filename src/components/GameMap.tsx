@@ -4657,7 +4657,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           heldGroup.userData.partId = partId;
         }
         // Position — in front of player when holding, right-side float otherwise
-        heldGroup.position.set(isHolding ? 0.15 : 0.15, isHolding ? 0.255 : 0, isHolding ? 0.35 : 0.50);
+        heldGroup.position.set(isHolding ? 0.16 : 0.15, isHolding ? 0.25 : 0, isHolding ? 0.34 : 0.50);
         heldGroup.rotation.y = Math.sin(worldTime * 2) * 0.3;
         heldGroup.rotation.x = Math.sin(worldTime * 1.5) * 0.15;
       } else if (heldGroup) {
