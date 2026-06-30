@@ -5818,7 +5818,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               aptPos.x += sDir.x * MOVE_SPEED * 1.36 * delta;
               aptPos.y += sDir.y * MOVE_SPEED * 1.36 * delta;
               animateRobotVisual(aptSparky, worldTime, 1.0, sDir.x, sDir.y);
-              aptSparky.root.rotation.z = -Math.atan2(sDir.x, sDir.y);
+              aptSparky.root.rotation.y = Math.atan2(sDir.x, -sDir.y);
               if (installBatteryTimerRef.current === 0) installBatteryTimerRef.current = 0.3;
               installBatteryTimerRef.current += delta;
               if (installBatteryTimerRef.current > 0.3) {
@@ -5844,7 +5844,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (ibPhase === 'sparky-turn') {
             installBatteryTimerRef.current += delta;
             const faceDir = new THREE.Vector2(-2.6 - aptPos.x, 1.2 - aptPos.y).normalize();
-            aptSparky.root.rotation.z = -Math.atan2(faceDir.x, faceDir.y);
+            aptSparky.root.rotation.y = Math.atan2(faceDir.x, -faceDir.y);
             if (installBatteryTimerRef.current > 0.3) {
               installBatteryPhaseRef.current = 'open-chest';
               installBatteryTimerRef.current = 0;
@@ -6542,7 +6542,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             animateRobotVisual(npc.cargoRobot, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, dx, dy);
           }
           if (moving) {
-            npc.visual.root.rotation.z = -Math.atan2(dx, dy);
+            npc.visual.root.rotation.y = Math.atan2(dx, -dy);
           }
           const swing = walkSin * 0.3 * (moving ? 1 : 0);
           if (npc.visual.leftLegPivot) npc.visual.leftLegPivot.rotation.x = swing;
@@ -6714,9 +6714,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         avatar.leftArm.rotation.x = -Math.PI / 2 + remoteArmSwing;
         avatar.rightArm.rotation.x = -Math.PI / 2 - remoteArmSwing;
         if (Math.abs(lookX) > 0.001 || Math.abs(lookY) > 0.001) {
-          avatar.root.rotation.z = -Math.atan2(lookX, lookY);
+          avatar.root.rotation.y = Math.atan2(lookX, -lookY);
         } else {
-          avatar.root.rotation.z = -avatar.facingRotation;
+          avatar.root.rotation.y = -avatar.facingRotation;
         }
       }
 
