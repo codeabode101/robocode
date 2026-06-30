@@ -4668,8 +4668,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             scratchVec3.current.z += 0.02;
             heldGroup.position.copy(scratchVec3.current);
           }
-          heldGroup.scale.set(5, 5, 5);
-          heldGroup.rotation.set(Math.PI / 2, 0, 0);
+          heldGroup.scale.set(2, 2, 2);
+          heldGroup.rotation.set(0, 0, 0);
         } else {
           if (heldGroup.parent !== localGroup) localGroup.add(heldGroup);
           heldGroup.scale.set(1, 1, 1);
