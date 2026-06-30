@@ -4639,7 +4639,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const isHolding = heldSlotIndexRef.current !== null && heldSlotIndexRef.current < gameStore.get('backpack').length;
       if (rightArmPivotRef.current) {
         if (isHolding) {
-          rightArmPivotRef.current.rotation.set(0.6, 0.2, 0);
+          rightArmPivotRef.current.rotation.set(0.5, -0.2, 0);
         } else {
           rightArmPivotRef.current.rotation.set(0, -0.42, 0);
         }
