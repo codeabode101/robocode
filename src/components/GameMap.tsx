@@ -338,6 +338,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const rightLegPivotRef = useRef<THREE.Group | null>(null);
   const rightArmPivotRef = useRef<THREE.Group | null>(null);
   const rightArmRef = useRef<THREE.Object3D | null>(null);
+  const onSparkyDlgCloseRef = useRef<(() => void) | null>(null);
   const remoteAvatarsRef = useRef<Record<string, RemoteAvatar>>({});
   const keyStateRef = useRef<Set<string>>(new Set());
   const tutorialPhasesRef = useRef<TutorialPhase[]>(unit1Phases);
@@ -1770,6 +1771,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (e.key === 'Enter') {
         e.preventDefault();
         if (hideGameUiRef.current) return;
+        onSparkyDlgCloseRef.current?.();
         setShowSparkyDlg(false);
       }
     };
@@ -5875,8 +5877,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 playStepPop(performance.now());
                 installBatteryTimerRef.current = 0;
               }
-              setSparkyDlgFull("Let's get this battery into Scrap!");
-              setShowSparkyDlg(true);
             } else {
               installBatteryPhaseRef.current = 'open-chest';
               installBatteryTimerRef.current = 0;
@@ -5889,8 +5889,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const openZ = 0.08 + Math.min(installBatteryTimerRef.current / 1.0, 1) * 0.15;
               chestPanelRef.current.position.z = openZ;
             }
-            setSparkyDlgFull("Opening Scrap's chest panel...");
-            setShowSparkyDlg(true);
             if (installBatteryTimerRef.current > 1.0) {
               installBatteryPhaseRef.current = 'place-battery';
               installBatteryTimerRef.current = 0;
@@ -5917,8 +5915,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               prop.rotation.z = progress * Math.PI * 2;
               prop.scale.setScalar(0.5 + progress * 0.2);
             }
-            setSparkyDlgFull('Placing the battery...');
-            setShowSparkyDlg(true);
             if (installBatteryTimerRef.current > 1.2) {
               const scrap = scrapRobotRef.current;
               if (scrap && scrap.body && !batteryGlowRef.current) {
@@ -5954,32 +5950,30 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const closedZ = 0.23 - closeProgress * 0.15;
               chestPanelRef.current.position.z = closedZ;
             }
-            setSparkyDlgFull('Power flowing! Scrap is charging up!');
-            setShowSparkyDlg(true);
             if (installBatteryTimerRef.current > 2.0) {
               installBatteryPhaseRef.current = 'done';
               installBatteryTimerRef.current = 0;
             }
           } else if (ibPhase === 'done') {
-            installBatteryTimerRef.current += delta;
+            // First frame only: end cinematic, show Sparky dialog with cleanup callback
+            installBatteryPhaseRef.current = null;
+            batteryInstalledRef.current = true;
+            setBatteryInstalled(true);
+            if (scrapRobotRef.current) {
+              if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
+              if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
+            }
+            if (installBatteryPropRef.current) {
+              installBatteryPropRef.current.parent?.remove(installBatteryPropRef.current);
+              disposeObject(installBatteryPropRef.current);
+              installBatteryPropRef.current = null;
+            }
+            endCinematicCutscene();
             setSparkyDlgFull("Scrap is all yours! He'll follow you everywhere.");
             setShowSparkyDlg(true);
-            if (installBatteryTimerRef.current > 2.5) {
-              installBatteryPhaseRef.current = null;
-              batteryInstalledRef.current = true;
-              setBatteryInstalled(true);
-              if (scrapRobotRef.current) {
-                if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
-                if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
-              }
-              // Cleanup battery prop
-              if (installBatteryPropRef.current) {
-                installBatteryPropRef.current.parent?.remove(installBatteryPropRef.current);
-                disposeObject(installBatteryPropRef.current);
-                installBatteryPropRef.current = null;
-              }
-              endCinematicCutscene();
+            onSparkyDlgCloseRef.current = () => {
               setShowSparkyDlg(false);
+              onSparkyDlgCloseRef.current = null;
               const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
               updateBackpack(newBackpack);
               updateQuestStage('all-done');
@@ -5992,7 +5986,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               setScrapVisible(true);
               setShowScrapToggle(true);
               if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
-            }
+            };
           }
         } else if (sparkyInstallPhaseRef.current && aptSparky) {
           const phase = sparkyInstallPhaseRef.current;
@@ -8034,7 +8028,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       )}
 
       <TFB show={showSparkyDlg} step={0} steps={[{ speaker: 'Sparky', text: sparkyDlgFull }]} text={sparkyDlgText}
-        icon="person" onEnter={() => setShowSparkyDlg(false)}
+        icon="person" onEnter={() => { onSparkyDlgCloseRef.current?.(); setShowSparkyDlg(false); }}
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
         onTtsToggle={onTtsToggle} hideEnter={hideGameUiRef.current} />
 
