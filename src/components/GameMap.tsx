@@ -4641,7 +4641,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const isHolding = heldSlotIndexRef.current !== null && heldSlotIndexRef.current < gameStore.get('backpack').length;
       if (rightArmPivotRef.current) {
         if (isHolding) {
-          rightArmPivotRef.current.rotation.set(1.2, -0.42, 0);
+          rightArmPivotRef.current.rotation.set(0.4, -0.42, 0);
         } else {
           rightArmPivotRef.current.rotation.set(0, -0.42, 0);
         }
@@ -4659,28 +4659,28 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           heldGroup.userData.partId = partId;
         }
         if (isHolding) {
-          // Reparent to right arm mesh if not already there
+          // Ensure on player root, track hand world position
+          if (heldGroup.parent !== localGroup) localGroup.add(heldGroup);
           const arm = rightArmRef.current;
-          if (arm && heldGroup.parent !== arm) {
-            arm.add(heldGroup);
+          if (arm && arm.children[0]) {
+            arm.children[0].getWorldPosition(scratchVec3.current);
+            localGroup.worldToLocal(scratchVec3.current);
+            scratchVec3.current.z += 0.02;
+            heldGroup.position.copy(scratchVec3.current);
           }
-          // Position at arm tip (0.14 > hand sphere center 0.12, extends past palm surface)
-          heldGroup.position.set(0, 0.14, 0);
-          heldGroup.rotation.set(0, 0, 0);
+          heldGroup.scale.set(5, 5, 5);
+          heldGroup.rotation.set(Math.PI / 2, 0, 0);
         } else {
-          // Reparent back to player root at side float position
-          if (heldGroup.parent !== localGroup) {
-            localGroup.add(heldGroup);
-          }
+          if (heldGroup.parent !== localGroup) localGroup.add(heldGroup);
+          heldGroup.scale.set(1, 1, 1);
           heldGroup.position.set(0.15, 0, 0.50);
           heldGroup.rotation.y = Math.sin(worldTime * 2) * 0.3;
           heldGroup.rotation.x = Math.sin(worldTime * 1.5) * 0.15;
         }
       } else if (heldGroup) {
         heldGroup.visible = false;
-        if (heldGroup.parent !== localGroup) {
-          localGroup.add(heldGroup);
-        }
+        if (heldGroup.parent !== localGroup) localGroup.add(heldGroup);
+        heldGroup.scale.set(1, 1, 1);
         if (heldGroup.position.x !== 0.15 || heldGroup.position.y !== 0 || heldGroup.position.z !== 0.50) {
           heldGroup.position.set(0.15, 0, 0.50);
         }
