@@ -336,6 +336,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const localRobotRef = useRef<RobotVisual | null>(null);
   const leftLegPivotRef = useRef<THREE.Group | null>(null);
   const rightLegPivotRef = useRef<THREE.Group | null>(null);
+  const rightArmPivotRef = useRef<THREE.Group | null>(null);
+  const rightArmRef = useRef<THREE.Object3D | null>(null);
   const remoteAvatarsRef = useRef<Record<string, RemoteAvatar>>({});
   const keyStateRef = useRef<Set<string>>(new Set());
   const tutorialPhasesRef = useRef<TutorialPhase[]>(unit1Phases);
@@ -3278,6 +3280,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const localGroup = playerVis.root;
     leftLegPivotRef.current = playerVis.leftLegPivot;
     rightLegPivotRef.current = playerVis.rightLegPivot;
+    rightArmPivotRef.current = playerVis.rightArmPivot;
+    rightArmRef.current = playerVis.rightArm;
 
     localGroup.position.set(0, -7, 0.24);
     scene.add(localGroup);
@@ -4621,16 +4625,28 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       localGroup.rotation.z = -playerYaw;
       const baseZ = inApartmentRoomRef.current ? 0.28 : inArenaRoomRef.current ? 0.28 : inWorkshopRoomRef.current ? 0.26 : inShopRoomRef.current ? 0.08 : 0.24;
       localGroup.position.z = baseZ + (moved ? Math.sin(worldTime * 14) * 0.03 : 0);
-      // Walk animation for player legs and arms (rotation.x = forward/backward swing)
+      // Walk animation for player legs
       const localVis = localRobotRef.current;
       const playerSpeed = moved ? 1 : 0;
       const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3 * playerSpeed;
       if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = walkSwing;
       if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -walkSwing;
+      // Torso proxy swing (visual stand-in for arm swing)
       const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2 * playerSpeed;
       if (localVis) {
         localVis.leftArm.rotation.x = -Math.PI / 2 + armSwing;
         localVis.rightArm.rotation.x = -Math.PI / 2 - armSwing;
+      }
+      // Real arm pose — adapted for holding
+      const isHolding = heldSlotIndexRef.current !== null && heldSlotIndexRef.current < gameStore.get('backpack').length;
+      if (rightArmPivotRef.current && rightArmRef.current) {
+        if (isHolding) {
+          rightArmPivotRef.current.rotation.y = 0.15;
+          rightArmRef.current.rotation.x = -Math.PI / 2 - 0.35;
+        } else {
+          rightArmPivotRef.current.rotation.y = -0.42;
+          rightArmRef.current.rotation.x = -Math.PI / 2;
+        }
       }
 
       // Held item 3D model
@@ -4644,10 +4660,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           heldGroup.add(model);
           heldGroup.userData.partId = partId;
         }
+        // Reparent to right hand when holding, otherwise player body
+        if (isHolding && rightArmRef.current && heldGroup.parent !== rightArmRef.current) {
+          rightArmRef.current.attach(heldGroup);
+          heldGroup.position.set(0, 0.12, 0);
+        } else if (!isHolding && heldGroup.parent === rightArmRef.current) {
+          localGroup.attach(heldGroup);
+          heldGroup.position.set(0.15, 0, 0.50);
+        }
         heldGroup.rotation.y = Math.sin(worldTime * 2) * 0.3;
         heldGroup.rotation.x = Math.sin(worldTime * 1.5) * 0.15;
       } else if (heldGroup) {
         heldGroup.visible = false;
+        if (heldGroup.parent === rightArmRef.current) {
+          localGroup.attach(heldGroup);
+          heldGroup.position.set(0.15, 0, 0.50);
+        }
       }
 
       // Animate event particles (smoke/sparks expand outward)
@@ -7049,6 +7077,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       disposeObject(localRobot.root);
       leftLegPivotRef.current = null;
       rightLegPivotRef.current = null;
+      rightArmPivotRef.current = null;
+      rightArmRef.current = null;
       disposeObject(sparky.root);
       clouds.forEach((cloud) => disposeObject(cloud));
       shops.forEach((shop) => disposeObject(shop));
