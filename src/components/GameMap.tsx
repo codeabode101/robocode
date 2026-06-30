@@ -428,7 +428,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyInstallTimerRef = useRef(0);
   const sparkyInstallPartIdRef = useRef<ScrapPartId | null>(null);
   const sparkyInstallNextStageRef = useRef<SparkyQuestStage | null>(null);
-  const installBatteryPhaseRef = useRef<'idle' | 'walk-to-scrap' | 'open-chest' | 'place-battery' | 'chest-glow' | 'done'>(null);
+  const installBatteryPhaseRef = useRef<'approach' | 'sparky-turn' | 'open-chest' | 'place-battery' | 'chest-glow' | 'done' | null>(null);
   const installBatteryTimerRef = useRef(0);
   const batteryInstalledRef = useRef(false);
   const batteryGlowRef = useRef<THREE.Mesh | null>(null);
@@ -4207,7 +4207,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           keyStateRef.current.clear();
         } else if (pendingBatteryCutsceneRef.current && !showControlsModalRef.current) {
           pendingBatteryCutsceneRef.current = false;
-          installBatteryPhaseRef.current = 'walk-to-scrap';
+          installBatteryPhaseRef.current = 'approach';
           installBatteryTimerRef.current = 0;
           startCinematicCutscene();
           keyStateRef.current.clear();
@@ -4216,7 +4216,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       let moved = false;
       const moveDir2 = scratchVec2.current.set(0, 0);
-      if (aptCutscenePhaseRef.current !== 'idle' || registerCutscenePhaseRef.current !== 'idle' || rafiqWalkPhaseRef.current !== 'idle' || rafiqDlgOpenRef.current) {
+      if (aptCutscenePhaseRef.current !== 'idle' || registerCutscenePhaseRef.current !== 'idle' || rafiqWalkPhaseRef.current !== 'idle' || rafiqDlgOpenRef.current || installBatteryPhaseRef.current) {
         // Cutscene or Rafiq dialog active — freeze player
         keyStateRef.current.clear();
       } else if (!showTutorialRef.current) {
@@ -4465,7 +4465,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 yawRef.current = Math.atan2(-2.3, 0.53); // face toward walk direction
                 document.exitPointerLock();
               } else if (!batteryInstalledRef.current && (gameStore.get('backpack') as ScrapPartId[]).includes('battery' as ScrapPartId)) {
-                installBatteryPhaseRef.current = 'walk-to-scrap';
+                installBatteryPhaseRef.current = 'approach';
                 installBatteryTimerRef.current = 0;
                 startCinematicCutscene();
                 keyStateRef.current.clear();
@@ -5862,15 +5862,33 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         } else if (installBatteryPhaseRef.current && aptSparky) {
           const ibPhase = installBatteryPhaseRef.current;
           const aptPos = aptSparky.root.position;
-          if (ibPhase === 'walk-to-scrap') {
-            const target = new THREE.Vector2(-2.6, 1.2);
-            const dist = aptPos.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
-            if (dist > 0.15) {
-              const dir = new THREE.Vector2(target.x - aptPos.x, target.y - aptPos.y).normalize();
-              aptPos.x += dir.x * MOVE_SPEED * 1.36 * delta;
-              aptPos.y += dir.y * MOVE_SPEED * 1.36 * delta;
-              animateRobotVisual(aptSparky, worldTime, 1.0, dir.x, dir.y);
-              aptSparky.root.rotation.z = -Math.atan2(dir.x, dir.y);
+          if (ibPhase === 'approach') {
+            // Player walks toward Scrap
+            const playerTarget = new THREE.Vector2(-2.0, 0.5);
+            const pDist = localPositionRef.current.distanceTo(playerTarget);
+            if (pDist > 0.08) {
+              const pDir = new THREE.Vector2(playerTarget.x - localPositionRef.current.x, playerTarget.y - localPositionRef.current.y).normalize();
+              localPositionRef.current.x += pDir.x * MOVE_SPEED * 0.29 * delta;
+              localPositionRef.current.y += pDir.y * MOVE_SPEED * 0.29 * delta;
+              yawRef.current = Math.atan2(pDir.x, pDir.y);
+              if (localRobotRef.current) {
+                localRobotRef.current.root.position.set(localPositionRef.current.x, localPositionRef.current.y, 0.28);
+                if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
+                if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
+                const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
+                localRobotRef.current.leftArm.rotation.x = -Math.PI / 2 + armSwing;
+                localRobotRef.current.rightArm.rotation.x = -Math.PI / 2 - armSwing;
+              }
+            }
+            // Sparky walks beside Scrap
+            const sparkyTarget = new THREE.Vector2(-2.3, 1.5);
+            const sDist = aptPos.distanceTo(new THREE.Vector3(sparkyTarget.x, sparkyTarget.y, 0.14));
+            if (sDist > 0.15) {
+              const sDir = new THREE.Vector2(sparkyTarget.x - aptPos.x, sparkyTarget.y - aptPos.y).normalize();
+              aptPos.x += sDir.x * MOVE_SPEED * 1.36 * delta;
+              aptPos.y += sDir.y * MOVE_SPEED * 1.36 * delta;
+              animateRobotVisual(aptSparky, worldTime, 1.0, sDir.x, sDir.y);
+              aptSparky.root.rotation.z = -Math.atan2(sDir.x, sDir.y);
               if (installBatteryTimerRef.current === 0) installBatteryTimerRef.current = 0.3;
               installBatteryTimerRef.current += delta;
               if (installBatteryTimerRef.current > 0.3) {
@@ -5878,9 +5896,28 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 installBatteryTimerRef.current = 0;
               }
             } else {
+              aptSparky.root.position.set(sparkyTarget.x, sparkyTarget.y, 0.14);
+            }
+            // Both arrived
+            if (pDist < 0.08 && sDist < 0.15) {
+              installBatteryPhaseRef.current = 'sparky-turn';
+              installBatteryTimerRef.current = 0;
+              if (localRobotRef.current) {
+                if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = 0;
+                if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = 0;
+                localRobotRef.current.leftArm.rotation.x = -Math.PI / 2;
+                localRobotRef.current.rightArm.rotation.x = -Math.PI / 2;
+              }
+              const faceDir = new THREE.Vector2(-2.6 - localPositionRef.current.x, 1.2 - localPositionRef.current.y).normalize();
+              yawRef.current = Math.atan2(faceDir.x, faceDir.y);
+            }
+          } else if (ibPhase === 'sparky-turn') {
+            installBatteryTimerRef.current += delta;
+            const faceDir = new THREE.Vector2(-2.6 - aptPos.x, 1.2 - aptPos.y).normalize();
+            aptSparky.root.rotation.z = -Math.atan2(faceDir.x, faceDir.y);
+            if (installBatteryTimerRef.current > 0.3) {
               installBatteryPhaseRef.current = 'open-chest';
               installBatteryTimerRef.current = 0;
-              aptSparky.root.rotation.z = 0;
             }
           } else if (ibPhase === 'open-chest') {
             installBatteryTimerRef.current += delta;
@@ -5893,11 +5930,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               installBatteryPhaseRef.current = 'place-battery';
               installBatteryTimerRef.current = 0;
               const batteryGroup = createPartModel('battery');
-              batteryGroup.scale.set(0.5, 0.5, 0.5);
-              batteryGroup.position.set(-2.6, 1.2, 0.35);
+              batteryGroup.scale.set(2, 2, 2);
+              batteryGroup.position.set(localPositionRef.current.x, localPositionRef.current.y + 0.3, 0.4);
               apartmentRoomGroupRef.current?.add(batteryGroup);
               installBatteryPropRef.current = batteryGroup;
-              batteryLerpStartPosRef.current.set(-2.6, 1.2, 0.35);
+              batteryLerpStartPosRef.current.copy(batteryGroup.position);
               if (chestPanelRef.current) {
                 const endPos = new THREE.Vector3();
                 chestPanelRef.current.getWorldPosition(endPos);
@@ -5913,7 +5950,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const progress = Math.min(installBatteryTimerRef.current / 1.2, 1);
               prop.position.lerpVectors(batteryLerpStartPosRef.current, batteryLerpEndPosRef.current, progress);
               prop.rotation.z = progress * Math.PI * 2;
-              prop.scale.setScalar(0.5 + progress * 0.2);
+              prop.scale.setScalar(2 + progress * 0.3);
             }
             if (installBatteryTimerRef.current > 1.2) {
               const scrap = scrapRobotRef.current;
@@ -5926,7 +5963,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 scrap.body.add(glow);
                 batteryGlowRef.current = glow;
               }
-              // Hide battery model after placement
               if (installBatteryPropRef.current) installBatteryPropRef.current.visible = false;
               installBatteryPhaseRef.current = 'chest-glow';
               installBatteryTimerRef.current = 0;
@@ -5955,7 +5991,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               installBatteryTimerRef.current = 0;
             }
           } else if (ibPhase === 'done') {
-            // First frame only: end cinematic, show Sparky dialog with cleanup callback
             installBatteryPhaseRef.current = null;
             batteryInstalledRef.current = true;
             setBatteryInstalled(true);
@@ -7410,7 +7445,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Battery install takes priority — if player has a battery, trigger install cutscene
     if (bp.includes('battery') && !batteryInstalledRef.current) {
       if (installBatteryPhaseRef.current) return;
-      installBatteryPhaseRef.current = 'walk-to-scrap';
+      installBatteryPhaseRef.current = 'approach';
       installBatteryTimerRef.current = 0;
       startCinematicCutscene();
       keyStateRef.current.clear();
