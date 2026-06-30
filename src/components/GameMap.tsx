@@ -18,7 +18,7 @@ import {
   createRobotVisual, buildPlayerVisual, createHumanVisual, createPartsShop, createPartModel, createApartmentBuilding, animateRobotVisual, LABEL_BUILD_TAG, WALK_BOB_SPEED,
   addExclamationMarker, createRepairKiosk, animateRepairKiosk, animateRepairSparky, animateSparkyWave,
 } from '@/components/game/scene';
-import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest, computeCameraZoom, createCardboardBox, createLaptop, createWire, createWireCoil, animateWirePulse, openBoxLid, isInsideHitbox, collidesWithAny, escapeHtml, highlightJava, computeGoal, getMissionText } from '@/components/game/helpers';
+import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest, computeCameraZoom, createCardboardBox, createLaptop, createWire, createWireCoil, animateWirePulse, openBoxLid, isInsideHitbox, collidesWithAny, escapeHtml, highlightJava, computeGoal, getMissionText, walkPlayer } from '@/components/game/helpers';
 import type { BuildingFootprint } from '@/components/game/helpers';
 import { buildObstacles } from '@/components/game/city';
 import { unit1Phases, unit2Phases } from '@/components/game/tutorialData';
@@ -4626,7 +4626,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const playerYaw = yawRef.current;
       localGroup.rotation.z = -playerYaw;
       const baseZ = inApartmentRoomRef.current ? 0.28 : inArenaRoomRef.current ? 0.28 : inWorkshopRoomRef.current ? 0.26 : inShopRoomRef.current ? 0.08 : 0.24;
-      localGroup.position.z = baseZ + (moved ? Math.sin(worldTime * 14) * 0.03 : 0);
+      localGroup.position.z = baseZ + (moved ? Math.sin(worldTime * 10) * 0.02 : 0);
       // Walk animation for player legs
       const localVis = localRobotRef.current;
       const playerSpeed = moved ? 1 : 0;
@@ -4928,7 +4928,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Apartment Sparky animation + part installation animation
       if (inApartmentRoomRef.current) {
         const aptSparky = apartmentSparkyRef.current;
-        if (aptSparky && aptSparky.root.visible && aptCutscenePhaseRef.current === 'idle') {
+        if (aptSparky && aptSparky.root.visible && aptCutscenePhaseRef.current === 'idle' && !installBatteryPhaseRef.current) {
           aptSparky.root.position.z = 0.24 + Math.sin(worldTime * 3) * 0.04;
           animateRobotVisual(aptSparky, worldTime, 0.3, -0.2, 0.1);
         }
@@ -4966,30 +4966,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
             }
             // Player walks to spectator position (camera-left of box, in line with it)
-            const pDist = localPositionRef.current.distanceTo(playerTarget);
-            if (pDist > 0.08) {
-              const pDir = new THREE.Vector2(playerTarget.x - localPositionRef.current.x, playerTarget.y - localPositionRef.current.y).normalize();
-              localPositionRef.current.x += pDir.x * MOVE_SPEED * 0.29 * delta;
-              localPositionRef.current.y += pDir.y * MOVE_SPEED * 0.29 * delta;
-              yawRef.current = Math.atan2(pDir.x, pDir.y); // face walk direction
-              if (localRobotRef.current) {
-                localRobotRef.current.root.position.set(localPositionRef.current.x, localPositionRef.current.y, 0.28);
-                if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
-                if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
-                const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
-                localRobotRef.current.leftArm.rotation.x = -Math.PI / 2 + armSwing;
-                localRobotRef.current.rightArm.rotation.x = -Math.PI / 2 - armSwing;
-              }
-            } else {
+            if (walkPlayer(localPositionRef.current, playerTarget, MOVE_SPEED * 0.29, delta, worldTime, 0.28, localRobotRef.current, leftLegPivotRef.current, rightLegPivotRef.current, yawRef)) {
               // Arrived — face the box
-              yawRef.current = Math.atan2(-0.5, 0.5); // toward box center
-              if (localRobotRef.current) {
-                localRobotRef.current.root.position.set(-2.3, 1.73, 0.28);
-                if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = 0;
-                if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = 0;
-                localRobotRef.current.leftArm.rotation.x = -Math.PI / 2;
-                localRobotRef.current.rightArm.rotation.x = -Math.PI / 2;
-              }
+              yawRef.current = Math.atan2(-0.5, 0.5);
             }
           } else if (phase === 'open-box') {
             aptCutsceneTimerRef.current += delta;
@@ -5446,43 +5425,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else if (phase === 'walk-to-laptop') {
             aptCutsceneTimerRef.current += delta;
-            // Player walks south then west to stand in front of laptop screen
             const wlTgt = new THREE.Vector2(-3.4, 0.6);
-            const wlDir = new THREE.Vector2(
-              wlTgt.x - localPositionRef.current.x,
-              wlTgt.y - localPositionRef.current.y
-            );
-            const wlAbsX = Math.abs(wlDir.x), wlAbsY = Math.abs(wlDir.y);
-            if (wlAbsX > 0.08 || wlAbsY > 0.08) {
-              const wlStep = MOVE_SPEED * 0.29 * delta;
-              if (wlAbsY > 0.08) {
-                const sy = Math.sign(wlDir.y);
-                localPositionRef.current.y += sy * Math.min(wlStep, wlAbsY);
-                yawRef.current = Math.atan2(0, sy);
-              } else {
-                const sx = Math.sign(wlDir.x);
-                localPositionRef.current.x += sx * Math.min(wlStep, wlAbsX);
-                yawRef.current = Math.atan2(sx, 0);
-              }
-              if (localRobotRef.current) {
-                localRobotRef.current.root.position.set(
-                  localPositionRef.current.x, localPositionRef.current.y, 0.28
-                );
-                if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
-                if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
-                const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
-                localRobotRef.current.leftArm.rotation.x = -Math.PI / 2 + armSwing;
-                localRobotRef.current.rightArm.rotation.x = -Math.PI / 2 - armSwing;
-              }
-            } else {
-              localPositionRef.current.set(wlTgt.x, wlTgt.y);
-              if (localRobotRef.current) {
-                localRobotRef.current.root.position.set(wlTgt.x, wlTgt.y, 0.28);
-                if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = 0;
-                if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = 0;
-                localRobotRef.current.leftArm.rotation.x = -Math.PI / 2;
-                localRobotRef.current.rightArm.rotation.x = -Math.PI / 2;
-              }
+            if (walkPlayer(localPositionRef.current, wlTgt, MOVE_SPEED * 0.29, delta, worldTime, 0.28, localRobotRef.current, leftLegPivotRef.current, rightLegPivotRef.current, yawRef)) {
               yawRef.current = Math.atan2(0, 1); // face north toward laptop screen
             }
             // Sparky walks west of the laptop
@@ -5865,21 +5809,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (ibPhase === 'approach') {
             // Player walks toward Scrap
             const playerTarget = new THREE.Vector2(-2.0, 0.5);
-            const pDist = localPositionRef.current.distanceTo(playerTarget);
-            if (pDist > 0.08) {
-              const pDir = new THREE.Vector2(playerTarget.x - localPositionRef.current.x, playerTarget.y - localPositionRef.current.y).normalize();
-              localPositionRef.current.x += pDir.x * MOVE_SPEED * 0.29 * delta;
-              localPositionRef.current.y += pDir.y * MOVE_SPEED * 0.29 * delta;
-              yawRef.current = Math.atan2(pDir.x, pDir.y);
-              if (localRobotRef.current) {
-                localRobotRef.current.root.position.set(localPositionRef.current.x, localPositionRef.current.y, 0.28);
-                if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
-                if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
-                const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
-                localRobotRef.current.leftArm.rotation.x = -Math.PI / 2 + armSwing;
-                localRobotRef.current.rightArm.rotation.x = -Math.PI / 2 - armSwing;
-              }
-            }
+            const playerArrived = walkPlayer(localPositionRef.current, playerTarget, MOVE_SPEED * 0.29, delta, worldTime, 0.28, localRobotRef.current, leftLegPivotRef.current, rightLegPivotRef.current, yawRef);
             // Sparky walks beside Scrap
             const sparkyTarget = new THREE.Vector2(-2.3, 1.5);
             const sDist = aptPos.distanceTo(new THREE.Vector3(sparkyTarget.x, sparkyTarget.y, 0.14));
@@ -5899,7 +5829,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               aptSparky.root.position.set(sparkyTarget.x, sparkyTarget.y, 0.22);
             }
             // Both arrived
-            if (pDist < 0.08 && sDist < 0.15) {
+            if (playerArrived && sDist < 0.15) {
               installBatteryPhaseRef.current = 'sparky-turn';
               installBatteryTimerRef.current = 0;
               if (localRobotRef.current) {
@@ -6241,7 +6171,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             localPositionRef.current.set(cx, cy);
             localGroup.position.set(cx, cy, 0.26);
             yawRef.current = Math.atan2(walkTarget.x - cx, walkTarget.y - cy);
-            localGroup.position.z = 0.26 + Math.sin(worldTime * 14) * 0.03;
+            localGroup.position.z = 0.26 + Math.sin(worldTime * 10) * 0.02;
             const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
             if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = walkSwing;
             if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -walkSwing;
@@ -6267,10 +6197,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             localPositionRef.current.set(cx, cy);
             localGroup.position.set(cx, cy, 0.26);
             yawRef.current = Math.atan2(laptopTarget.x - cx, laptopTarget.y - cy);
-            localGroup.position.z = 0.26 + Math.sin(worldTime * 14) * 0.03;
+            localGroup.position.z = 0.26 + Math.sin(worldTime * 10) * 0.02;
             const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
-            if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = walkSwing;
-            if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -walkSwing;
             const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
             if (localRobotRef.current) {
               localRobotRef.current.leftArm.rotation.x = -Math.PI / 2 + armSwing;
