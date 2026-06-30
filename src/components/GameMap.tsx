@@ -4639,7 +4639,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const isHolding = heldSlotIndexRef.current !== null && heldSlotIndexRef.current < gameStore.get('backpack').length;
       if (rightArmPivotRef.current) {
         if (isHolding) {
-          rightArmPivotRef.current.rotation.set(1.2, -0.1, 0);
+          rightArmPivotRef.current.rotation.set(1.2, -0.42, 0);
         } else {
           rightArmPivotRef.current.rotation.set(0, -0.42, 0);
         }
@@ -4657,7 +4657,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           heldGroup.userData.partId = partId;
         }
         // Position — in front of player when holding, right-side float otherwise
-        heldGroup.position.set(isHolding ? 0.13 : 0.15, isHolding ? 0.22 : 0, isHolding ? 0.34 : 0.50);
+        heldGroup.position.set(isHolding ? 0.15 : 0.15, isHolding ? 0.30 : 0, isHolding ? 0.36 : 0.50);
         heldGroup.rotation.y = Math.sin(worldTime * 2) * 0.3;
         heldGroup.rotation.x = Math.sin(worldTime * 1.5) * 0.15;
       } else if (heldGroup) {
