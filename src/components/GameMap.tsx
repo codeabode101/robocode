@@ -2123,6 +2123,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         sparkyHomeArrivedRef.current = true;
         if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
         if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
+        prepBatteryInstallProps();
       }
       if (data.batteryInstalled) {
         batteryInstalledRef.current = true;
@@ -4207,6 +4208,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           keyStateRef.current.clear();
         } else if (pendingBatteryCutsceneRef.current && !showControlsModalRef.current) {
           pendingBatteryCutsceneRef.current = false;
+          prepBatteryInstallProps();
           installBatteryPhaseRef.current = 'approach';
           installBatteryTimerRef.current = 0;
           startCinematicCutscene();
@@ -4465,6 +4467,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 yawRef.current = Math.atan2(-2.3, 0.53); // face toward walk direction
                 document.exitPointerLock();
               } else if (!batteryInstalledRef.current && (gameStore.get('backpack') as ScrapPartId[]).includes('battery' as ScrapPartId)) {
+                prepBatteryInstallProps();
                 installBatteryPhaseRef.current = 'approach';
                 installBatteryTimerRef.current = 0;
                 startCinematicCutscene();
@@ -5807,6 +5810,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const ibPhase = installBatteryPhaseRef.current;
           const aptPos = aptSparky.root.position;
           if (ibPhase === 'approach') {
+            if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
             // Player walks toward Scrap
             const playerTarget = new THREE.Vector2(-2.0, 0.5);
             const playerArrived = walkPlayer(localPositionRef.current, playerTarget, MOVE_SPEED * 0.29, delta, worldTime, 0.28, localRobotRef.current, leftLegPivotRef.current, rightLegPivotRef.current, yawRef);
@@ -7373,12 +7377,55 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     apiSync({ position: { x: outsideDoor.x, y: outsideDoor.y, rotation: null, room: 'outside' } });
   };
 
+  const batteryDebugCubeRef = useRef<THREE.Mesh | null>(null);
+  const prepBatteryInstallProps = () => {
+    console.log('🔧 prepBatteryInstallProps called');
+    if (computerRef.current) {
+      console.log('  computerRef.current:', { visible: computerRef.current.visible, parent: computerRef.current.parent?.type, pos: computerRef.current.position });
+      computerRef.current.visible = true;
+    } else {
+      console.log('  computerRef.current: NULL');
+    }
+    if (cutsceneBoxRef.current) {
+      console.log('  cutsceneBoxRef.current:', { visible: cutsceneBoxRef.current.visible, parent: cutsceneBoxRef.current.parent?.type, pos: cutsceneBoxRef.current.position });
+      cutsceneBoxRef.current.visible = true;
+    } else {
+      console.log('  cutsceneBoxRef.current: NULL');
+    }
+    if (wireRef.current) {
+      console.log('  wireRef.current:', { visible: wireRef.current.visible, parent: wireRef.current.parent?.type, pos: wireRef.current.position });
+      wireRef.current.visible = true;
+      const lapPort = new THREE.Vector3(-3.4, 1.025, 0.253);
+      const scrapPos = new THREE.Vector3(-2.6, 0.976, 0.36);
+      const mid = new THREE.Vector3().addVectors(lapPort, scrapPos).multiplyScalar(0.5);
+      wireRef.current.position.copy(mid);
+      const dir = new THREE.Vector3().subVectors(scrapPos, lapPort);
+      const dist = dir.length();
+      dir.normalize();
+      wireRef.current.scale.set(1, dist, 1);
+      wireRef.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    } else {
+      console.log('  wireRef.current: NULL');
+    }
+    // Debug: orange cube at computer's position
+    if (!batteryDebugCubeRef.current && apartmentRoomGroupRef.current) {
+      const geo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xff6600 });
+      const cube = new THREE.Mesh(geo, mat);
+      cube.position.set(-3.4, 1.2, 0.4);
+      apartmentRoomGroupRef.current.add(cube);
+      batteryDebugCubeRef.current = cube;
+      console.log('  Added debug cube at (-3.4, 1.2, 0.4)');
+    }
+  };
+
   const runApartmentSparkyInteraction = useCallback(() => {
     const stage = sparkyQuestStageRef.current;
     const bp = gameStore.get('backpack');
     // Battery install takes priority — if player has a battery, trigger install cutscene
     if (bp.includes('battery') && !batteryInstalledRef.current) {
       if (installBatteryPhaseRef.current) return;
+      prepBatteryInstallProps();
       installBatteryPhaseRef.current = 'approach';
       installBatteryTimerRef.current = 0;
       startCinematicCutscene();
