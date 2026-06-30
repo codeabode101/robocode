@@ -337,7 +337,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const leftLegPivotRef = useRef<THREE.Group | null>(null);
   const rightLegPivotRef = useRef<THREE.Group | null>(null);
   const rightArmPivotRef = useRef<THREE.Group | null>(null);
-  const rightArmRef = useRef<THREE.Object3D | null>(null);
   const remoteAvatarsRef = useRef<Record<string, RemoteAvatar>>({});
   const keyStateRef = useRef<Set<string>>(new Set());
   const tutorialPhasesRef = useRef<TutorialPhase[]>(unit1Phases);
@@ -3281,7 +3280,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     leftLegPivotRef.current = playerVis.leftLegPivot;
     rightLegPivotRef.current = playerVis.rightLegPivot;
     rightArmPivotRef.current = playerVis.rightArmPivot;
-    rightArmRef.current = playerVis.rightArm;
 
     localGroup.position.set(0, -7, 0.24);
     scene.add(localGroup);
@@ -4637,15 +4635,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         localVis.leftArm.rotation.x = -Math.PI / 2 + armSwing;
         localVis.rightArm.rotation.x = -Math.PI / 2 - armSwing;
       }
-      // Real arm pose — adapted for holding
+      // Arm pose — adapted for holding
       const isHolding = heldSlotIndexRef.current !== null && heldSlotIndexRef.current < gameStore.get('backpack').length;
-      if (rightArmPivotRef.current && rightArmRef.current) {
+      if (rightArmPivotRef.current) {
         if (isHolding) {
-          rightArmPivotRef.current.rotation.y = 0.15;
-          rightArmRef.current.rotation.x = -Math.PI / 2 - 0.35;
+          rightArmPivotRef.current.rotation.set(0.6, 0.2, 0);
         } else {
-          rightArmPivotRef.current.rotation.y = -0.42;
-          rightArmRef.current.rotation.x = -Math.PI / 2;
+          rightArmPivotRef.current.rotation.set(0, -0.42, 0);
         }
       }
 
@@ -4660,20 +4656,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           heldGroup.add(model);
           heldGroup.userData.partId = partId;
         }
-        // Reparent to right hand when holding, otherwise player body
-        if (isHolding && rightArmRef.current && heldGroup.parent !== rightArmRef.current) {
-          rightArmRef.current.attach(heldGroup);
-          heldGroup.position.set(0, 0.16, 0.04);
-        } else if (!isHolding && heldGroup.parent === rightArmRef.current) {
-          localGroup.attach(heldGroup);
-          heldGroup.position.set(0.15, 0, 0.50);
-        }
+        // Position — in front of player when holding, right-side float otherwise
+        heldGroup.position.set(isHolding ? 0 : 0.15, isHolding ? 0.35 : 0, isHolding ? 0.40 : 0.50);
         heldGroup.rotation.y = Math.sin(worldTime * 2) * 0.3;
         heldGroup.rotation.x = Math.sin(worldTime * 1.5) * 0.15;
       } else if (heldGroup) {
         heldGroup.visible = false;
-        if (heldGroup.parent === rightArmRef.current) {
-          localGroup.attach(heldGroup);
+        if (heldGroup.position.x !== 0.15 || heldGroup.position.y !== 0 || heldGroup.position.z !== 0.50) {
           heldGroup.position.set(0.15, 0, 0.50);
         }
       }
@@ -7078,7 +7067,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       leftLegPivotRef.current = null;
       rightLegPivotRef.current = null;
       rightArmPivotRef.current = null;
-      rightArmRef.current = null;
       disposeObject(sparky.root);
       clouds.forEach((cloud) => disposeObject(cloud));
       shops.forEach((shop) => disposeObject(shop));
