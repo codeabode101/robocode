@@ -7392,11 +7392,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       scrapRobotRef.current.root.rotation.x = Math.PI / 2;
       scrapRobotRef.current.root.rotation.z = 0.08;
     }
-    if (apartmentSparkyRef.current) {
-      const s = apartmentSparkyRef.current;
-      s.root.position.set(-2.6, 0.2, 0.28);
-      if (sparkyBaseQuatRef.current) s.root.quaternion.copy(sparkyBaseQuatRef.current);
-    }
   };
 
   const runApartmentSparkyInteraction = useCallback(() => {
