@@ -5811,8 +5811,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const aptPos = aptSparky.root.position;
           if (ibPhase === 'approach') {
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
-            // Sparky waits in front of Scrap, facing him
-            aptPos.set(-2.6, 1.8, 0.28);
+            // Sparky waits right in front of Scrap, facing him
+            aptPos.set(-2.6, 1.15, 0.28);
             aptSparky.root.rotation.y = Math.PI;
             const sparkyLookDir = new THREE.Vector2(-2.6 - aptPos.x, 1.2 - aptPos.y).normalize();
             animateRobotVisual(aptSparky, worldTime, 0, sparkyLookDir.x, sparkyLookDir.y);
