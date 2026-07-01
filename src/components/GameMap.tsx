@@ -5811,9 +5811,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const aptPos = aptSparky.root.position;
           if (ibPhase === 'approach') {
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
-            // Sparky waits right in front of Scrap, facing him
-            aptPos.set(-2.6, 0.2, 0.28);
-            if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
+            // Smoothly move Sparky to his target position (lerp, no snap)
+            const sparkyTargetPos = scratchVec3.current.set(-2.6, 0.2, 0.28);
+            aptPos.x += (sparkyTargetPos.x - aptPos.x) * 0.08;
+            aptPos.y += (sparkyTargetPos.y - aptPos.y) * 0.08;
+            aptPos.z += (sparkyTargetPos.z - aptPos.z) * 0.08;
+            if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.slerp(sparkyBaseQuatRef.current, 0.08);
             animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
             // Player walks toward Sparky and Scrap
             const playerTarget = new THREE.Vector2(-2.0, 0.5);
