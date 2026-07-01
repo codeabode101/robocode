@@ -5811,29 +5811,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const aptPos = aptSparky.root.position;
           if (ibPhase === 'approach') {
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
-            // Player walks toward Scrap
+            // Sparky waits in front of Scrap, facing him
+            aptPos.set(-2.6, 1.8, 0.28);
+            aptSparky.root.rotation.y = Math.PI;
+            const sparkyLookDir = new THREE.Vector2(-2.6 - aptPos.x, 1.2 - aptPos.y).normalize();
+            animateRobotVisual(aptSparky, worldTime, 0, sparkyLookDir.x, sparkyLookDir.y);
+            // Player walks toward Sparky and Scrap
             const playerTarget = new THREE.Vector2(-2.0, 0.5);
             const playerArrived = walkPlayer(localPositionRef.current, playerTarget, MOVE_SPEED * 0.29, delta, worldTime, 0.28, localRobotRef.current, leftLegPivotRef.current, rightLegPivotRef.current, yawRef);
-            // Sparky walks beside Scrap
-            const sparkyTarget = new THREE.Vector2(-2.3, 1.5);
-            const sDist = aptPos.distanceTo(new THREE.Vector3(sparkyTarget.x, sparkyTarget.y, 0.28));
-            if (sDist > 0.15) {
-              const sDir = new THREE.Vector2(sparkyTarget.x - aptPos.x, sparkyTarget.y - aptPos.y).normalize();
-              aptPos.x += sDir.x * MOVE_SPEED * 1.36 * delta;
-              aptPos.y += sDir.y * MOVE_SPEED * 1.36 * delta;
-              animateRobotVisual(aptSparky, worldTime, 1.0, sDir.x, sDir.y);
-              aptSparky.root.rotation.y = Math.atan2(sDir.x, -sDir.y);
-              if (installBatteryTimerRef.current === 0) installBatteryTimerRef.current = 0.3;
-              installBatteryTimerRef.current += delta;
-              if (installBatteryTimerRef.current > 0.3) {
-                playStepPop(performance.now());
-                installBatteryTimerRef.current = 0;
-              }
-            } else {
-              aptSparky.root.position.set(sparkyTarget.x, sparkyTarget.y, 0.28);
-            }
-            // Both arrived
-            if (playerArrived && sDist < 0.15) {
+            if (playerArrived) {
               installBatteryPhaseRef.current = 'sparky-turn';
               installBatteryTimerRef.current = 0;
               if (localRobotRef.current) {
@@ -5847,7 +5833,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else if (ibPhase === 'sparky-turn') {
             installBatteryTimerRef.current += delta;
-            const faceDir = new THREE.Vector2(-2.6 - aptPos.x, 1.2 - aptPos.y).normalize();
+            const faceDir = new THREE.Vector2(localPositionRef.current.x - aptPos.x, localPositionRef.current.y - aptPos.y).normalize();
             aptSparky.root.rotation.y = Math.atan2(faceDir.x, -faceDir.y);
             if (installBatteryTimerRef.current > 0.3) {
               installBatteryPhaseRef.current = 'open-chest';
