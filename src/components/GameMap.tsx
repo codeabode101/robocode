@@ -5812,7 +5812,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (ibPhase === 'approach') {
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
             // Sparky waits right in front of Scrap, facing him
-            aptPos.set(-2.6, 0.2, 0.28);
+            aptPos.set(-2.6, -0.3, 0.28);
             if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
             animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
             // Player walks toward Sparky and Scrap
@@ -5834,6 +5834,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             installBatteryTimerRef.current += delta;
             const faceDir = new THREE.Vector2(localPositionRef.current.x - aptPos.x, localPositionRef.current.y - aptPos.y).normalize();
             aptSparky.root.rotation.set(Math.PI / 2, 0, -Math.atan2(faceDir.x, faceDir.y));
+            animateRobotVisual(aptSparky, worldTime, 0, faceDir.x, faceDir.y);
             if (installBatteryTimerRef.current > 1.5) {
               installBatteryPhaseRef.current = 'open-chest';
               installBatteryTimerRef.current = 0;
@@ -7390,6 +7391,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       scrapRobotRef.current.root.scale.set(0.65, 0.65, 0.65);
       scrapRobotRef.current.root.rotation.x = Math.PI / 2;
       scrapRobotRef.current.root.rotation.z = 0.08;
+    }
+    if (apartmentSparkyRef.current) {
+      const s = apartmentSparkyRef.current;
+      s.root.position.set(-2.6, -0.3, 0.28);
+      if (sparkyBaseQuatRef.current) s.root.quaternion.copy(sparkyBaseQuatRef.current);
     }
   };
 
