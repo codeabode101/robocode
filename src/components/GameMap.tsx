@@ -6769,9 +6769,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else if (installBatteryPhaseRef.current) {
             if (installBatteryPhaseRef.current === 'approach') {
-              scratchVec3.current.set(localPositionRef.current.x, localPositionRef.current.y + 1.3, 2.0);
+              scratchVec3.current.set(localPositionRef.current.x, localPositionRef.current.y - 1.0, 2.0);
               camera.position.lerp(scratchVec3.current, 0.04);
-              camera.lookAt(localPositionRef.current.x, localPositionRef.current.y - 0.8, 0.3);
+              camera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 1.5, 0.3);
             } else {
               scratchVec3.current.set(-2.7, 0.8, 1.5);
               camera.position.lerp(scratchVec3.current, 0.06);
