@@ -5812,7 +5812,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (ibPhase === 'approach') {
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
             // Sparky waits right in front of Scrap, facing him
-            aptPos.set(-2.6, 0.5, 0.28);
+            aptPos.set(-2.6, 0.9, 0.28);
             if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
             animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
             // Player walks toward Sparky and Scrap
