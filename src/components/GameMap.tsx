@@ -5834,7 +5834,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             installBatteryTimerRef.current += delta;
             const faceDir = new THREE.Vector2(localPositionRef.current.x - aptPos.x, localPositionRef.current.y - aptPos.y).normalize();
             aptSparky.root.rotation.set(Math.PI / 2, 0, -Math.atan2(faceDir.x, faceDir.y));
-            if (installBatteryTimerRef.current > 0.3) {
+            if (installBatteryTimerRef.current > 1.5) {
               installBatteryPhaseRef.current = 'open-chest';
               installBatteryTimerRef.current = 0;
             }
@@ -6773,9 +6773,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               camera.position.lerp(scratchVec3.current, 0.04);
               camera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 1.5, 0.3);
             } else {
-              scratchVec3.current.set(-2.7, 0.8, 1.5);
-              camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(-2.6, 1.2, 0.3);
+              scratchVec3.current.set(-3.5, 0.7, 1.8);
+              camera.position.lerp(scratchVec3.current, 0.08);
+              camera.lookAt(-2.6, 0.7, 0.3);
             }
           } else if (csSparky) {
             const sp = csSparky.root.position;
