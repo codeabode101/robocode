@@ -4213,7 +4213,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           installBatteryTimerRef.current = 0;
           startCinematicCutscene();
           keyStateRef.current.clear();
-console.log('📸 pending battery cutscene started | phase=', installBatteryPhaseRef.current, 'cinemCam=', cinemCamActiveRef.current);
         }
       }
 
@@ -5811,7 +5810,6 @@ console.log('📸 pending battery cutscene started | phase=', installBatteryPhas
           const ibPhase = installBatteryPhaseRef.current;
           const aptPos = aptSparky.root.position;
           if (ibPhase === 'approach') {
-console.log('📸 approach frame | player=' + localPositionRef.current.x.toFixed(3) + ',' + localPositionRef.current.y.toFixed(3) + ' | cameraLookAt=' + localPositionRef.current.x.toFixed(3) + ',' + (localPositionRef.current.y - 0.8).toFixed(3));
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
             // Player walks toward Scrap
             const playerTarget = new THREE.Vector2(-2.0, 0.5);
@@ -7379,26 +7377,17 @@ console.log('📸 approach frame | player=' + localPositionRef.current.x.toFixed
     apiSync({ position: { x: outsideDoor.x, y: outsideDoor.y, rotation: null, room: 'outside' } });
   };
 
-  const batteryDebugCubeRef = useRef<THREE.Mesh | null>(null);
   const prepBatteryInstallProps = () => {
-    console.log('🔧 prepBatteryInstallProps called');
     if (computerRef.current) {
-      const p = computerRef.current.position;
-      console.log('  computerRef: visible=' + computerRef.current.visible + ' parent=' + (computerRef.current.parent?.type || 'none') + ' pos=(' + p.x.toFixed(3) + ',' + p.y.toFixed(3) + ',' + p.z.toFixed(3) + ')');
       computerRef.current.visible = true;
-    } else {
-      console.log('  computerRef.current: NULL');
+      computerRef.current.position.set(-3.41, 0.96, 0.24);
+      computerRef.current.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
     }
     if (cutsceneBoxRef.current) {
-      const p = cutsceneBoxRef.current.position;
-      console.log('  cutsceneBoxRef: visible=' + cutsceneBoxRef.current.visible + ' parent=' + (cutsceneBoxRef.current.parent?.type || 'none') + ' pos=(' + p.x.toFixed(3) + ',' + p.y.toFixed(3) + ',' + p.z.toFixed(3) + ')');
       cutsceneBoxRef.current.visible = true;
-    } else {
-      console.log('  cutsceneBoxRef.current: NULL');
+      cutsceneBoxRef.current.position.set(-2.8, 1.9, 0.24);
     }
     if (wireRef.current) {
-      const p = wireRef.current.position;
-      console.log('  wireRef: visible=' + wireRef.current.visible + ' parent=' + (wireRef.current.parent?.type || 'none') + ' pos=(' + p.x.toFixed(3) + ',' + p.y.toFixed(3) + ',' + p.z.toFixed(3) + ')');
       wireRef.current.visible = true;
       const lapPort = new THREE.Vector3(-3.4, 1.025, 0.253);
       const scrapPos = new THREE.Vector3(-2.6, 0.976, 0.36);
@@ -7409,21 +7398,13 @@ console.log('📸 approach frame | player=' + localPositionRef.current.x.toFixed
       dir.normalize();
       wireRef.current.scale.set(1, dist, 1);
       wireRef.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-      const p2 = wireRef.current.position;
-      console.log('  wireRef AFTER: visible=' + wireRef.current.visible + ' pos=(' + p2.x.toFixed(3) + ',' + p2.y.toFixed(3) + ',' + p2.z.toFixed(3) + ')');
-    } else {
-      console.log('  wireRef.current: NULL');
     }
-    console.log('  aptRoomGroup visible=' + (apartmentRoomGroupRef.current?.visible ?? 'NULL'));
-    // Debug: orange cube at computer's position
-    if (!batteryDebugCubeRef.current && apartmentRoomGroupRef.current) {
-      const geo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-      const mat = new THREE.MeshBasicMaterial({ color: 0xff6600 });
-      const cube = new THREE.Mesh(geo, mat);
-      cube.position.set(-3.4, 1.2, 0.4);
-      apartmentRoomGroupRef.current.add(cube);
-      batteryDebugCubeRef.current = cube;
-      console.log('  Added debug cube at (-3.4, 1.2, 0.4)');
+    if (scrapRobotRef.current) {
+      scrapRobotRef.current.root.visible = true;
+      scrapRobotRef.current.root.position.set(-2.6, 1.2, 0.24);
+      scrapRobotRef.current.root.scale.set(0.65, 0.65, 0.65);
+      scrapRobotRef.current.root.rotation.x = Math.PI / 2;
+      scrapRobotRef.current.root.rotation.z = 0.08;
     }
   };
 
