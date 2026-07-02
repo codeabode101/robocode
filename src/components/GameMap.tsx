@@ -428,7 +428,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyInstallTimerRef = useRef(0);
   const sparkyInstallPartIdRef = useRef<ScrapPartId | null>(null);
   const sparkyInstallNextStageRef = useRef<SparkyQuestStage | null>(null);
-  const installBatteryPhaseRef = useRef<'approach' | 'sparky-turn' | 'open-chest' | 'place-battery' | 'chest-glow' | 'done' | null>(null);
+  const installBatteryPhaseRef = useRef<'approach' | 'open-chest' | 'place-battery' | 'chest-glow' | 'done' | null>(null);
   const installBatteryTimerRef = useRef(0);
   const batteryInstalledRef = useRef(false);
   const batteryGlowRef = useRef<THREE.Mesh | null>(null);
@@ -5820,7 +5820,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const playerTarget = new THREE.Vector2(-2.0, 0.5);
             const playerArrived = walkPlayer(localPositionRef.current, playerTarget, MOVE_SPEED * 0.29, delta, worldTime, 0.28, localRobotRef.current, leftLegPivotRef.current, rightLegPivotRef.current, yawRef);
             if (playerArrived) {
-              installBatteryPhaseRef.current = 'sparky-turn';
+              installBatteryPhaseRef.current = 'open-chest';
               installBatteryTimerRef.current = 0;
               if (localRobotRef.current) {
                 if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = 0;
@@ -5830,15 +5830,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
               const faceDir = new THREE.Vector2(-2.6 - localPositionRef.current.x, 1.2 - localPositionRef.current.y).normalize();
               yawRef.current = Math.atan2(faceDir.x, faceDir.y);
-            }
-          } else if (ibPhase === 'sparky-turn') {
-            installBatteryTimerRef.current += delta;
-            const faceDir = new THREE.Vector2(localPositionRef.current.x - aptPos.x, localPositionRef.current.y - aptPos.y).normalize();
-            aptSparky.root.rotation.set(Math.PI / 2, 0, -Math.atan2(faceDir.x, faceDir.y));
-            animateRobotVisual(aptSparky, worldTime, 0, faceDir.x, faceDir.y);
-            if (installBatteryTimerRef.current > 1.5) {
-              installBatteryPhaseRef.current = 'open-chest';
-              installBatteryTimerRef.current = 0;
             }
           } else if (ibPhase === 'open-chest') {
             installBatteryTimerRef.current += delta;
