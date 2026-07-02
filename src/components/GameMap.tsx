@@ -2225,7 +2225,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         localPositionRef.current.set(-1.8, -0.55);
         if (localRobotRef.current) {
           localRobotRef.current.root.position.set(-1.8, -0.55, 0.28);
-          if (localGroup) localGroup.position.set(-1.8, -0.55, 0.28);
           if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = 0;
           if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = 0;
           localRobotRef.current.leftArm.rotation.x = -Math.PI / 2;
