@@ -2219,11 +2219,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       } else if (data.position?.room === 'apartment' && !data.cutsceneDone) {
         pendingAptCutsceneRef.current = true;
       } else if (data.position?.room === 'apartment' && data.cutsceneDone && Array.isArray(data.backpack) && data.backpack.includes('battery') && !batteryInstalledRef.current) {
-        // Immediate trigger to prevent visual teleport on reload during cutscene
-        installBatteryPhaseRef.current = 'approach';
-        installBatteryTimerRef.current = 0;
-        startCinematicCutscene();
-        keyStateRef.current.clear();
+        pendingBatteryCutsceneRef.current = true;
       }
       profileLoadedRef.current = true;
       const savedName = localStorage.getItem('rb_robot_name');
@@ -4208,6 +4204,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           pendingAptCutsceneRef.current = false;
           aptCutscenePhaseRef.current = 'walk-west';
           aptCutsceneTimerRef.current = 0;
+          startCinematicCutscene();
+          keyStateRef.current.clear();
+        } else if (pendingBatteryCutsceneRef.current && !showControlsModalRef.current) {
+          pendingBatteryCutsceneRef.current = false;
+          prepBatteryInstallProps();
+          installBatteryPhaseRef.current = 'approach';
+          installBatteryTimerRef.current = 0;
           startCinematicCutscene();
           keyStateRef.current.clear();
         }
