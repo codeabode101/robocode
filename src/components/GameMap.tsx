@@ -5811,7 +5811,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const aptPos = aptSparky.root.position;
           if (ibPhase === 'approach') {
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
-            // Sparky stays where he is, just faces north toward Scrap
+            // Sparky stands 1 unit south of Scrap, facing north toward him
+            aptPos.set(-2.6, 0.2, 0.28);
+            // Sparky faces north toward Scrap
             if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
             animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
             // Player walks toward Sparky and Scrap
@@ -7390,6 +7392,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       scrapRobotRef.current.root.scale.set(0.65, 0.65, 0.65);
       scrapRobotRef.current.root.rotation.x = Math.PI / 2;
       scrapRobotRef.current.root.rotation.z = 0.08;
+    }
+    if (apartmentSparkyRef.current) {
+      apartmentSparkyRef.current.root.visible = true;
     }
   };
 
