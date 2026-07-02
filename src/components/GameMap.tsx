@@ -4479,7 +4479,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               fetch('/api/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ position: { x: APARTMENT_SPAWN.x, y: APARTMENT_SPAWN.y, room: 'apartment', rotation: yawRef.current } }),
+                body: JSON.stringify({ position: { x: APARTMENT_SPAWN.x, y: APARTMENT_SPAWN.y, room: 'apartment', rotation: yawRef.current }, questStage: sparkyQuestStageRef.current, backpack: gameStore.get('backpack'), money: gameStore.get('money') }),
                 keepalive: true,
               }).catch(() => {});
             } else if (!hitsObstacle) {
