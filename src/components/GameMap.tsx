@@ -2220,6 +2220,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         pendingAptCutsceneRef.current = true;
       } else if (data.position?.room === 'apartment' && data.cutsceneDone && Array.isArray(data.backpack) && data.backpack.includes('battery') && !batteryInstalledRef.current) {
         pendingBatteryCutsceneRef.current = true;
+        startCinematicCutscene();
       }
       profileLoadedRef.current = true;
       const savedName = localStorage.getItem('rb_robot_name');
