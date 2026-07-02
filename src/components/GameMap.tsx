@@ -3696,7 +3696,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Sparky inside apartment (hidden until Sparky walks home)
       const aptSparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
       aptSparky.root.scale.set(0.7, 0.7, 0.7);
-      aptSparky.root.position.set(-2.6, 0.2, 0.28);
+      aptSparky.root.position.set(-2.6, -0.55, 0.28);
       aptSparky.nameSprite.visible = false;
       aptSparky.root.visible = false;
       apartmentRoomGroup.add(aptSparky.root);
@@ -5793,7 +5793,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           endCinematicCutscene();
           aptCutscenePhaseRef.current = 'idle';
             // Position Sparky near Scrap for battery cutscene
-            if (aptSparky) aptSparky.root.position.set(-2.6, 0.2, 0.28);
+            if (aptSparky) aptSparky.root.position.set(-2.6, -0.55, 0.28);
             shopUnlockedRef.current = true;
             setShopUnlocked(true);
             cutsceneDoneRef.current = true;
