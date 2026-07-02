@@ -855,21 +855,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const updateQuestStage = useCallback((stage: SparkyQuestStage) => {
     setSparkyQuestStage(stage);
     sparkyQuestStageRef.current = stage;
-    apiSync({ questStage: stage });
+    fetch('/api/profile/quest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stage }), keepalive: true }).catch(() => {});
     lastConfirmedQuestRef.current = stage;
-  }, [apiSync]);
+  }, []);
 
   const updateBackpack = useCallback((items: ScrapPartId[]) => {
     gameStore.set('backpack', items);
-    apiSync({ backpack: items });
+    fetch('/api/profile/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }), keepalive: true }).catch(() => {});
     lastConfirmedBackpackRef.current = items;
-  }, [apiSync]);
+  }, []);
 
   const updateMoney = useCallback((val: number) => {
     gameStore.set('money', val);
-    apiSync({ money: val });
+    fetch('/api/profile/money', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: val }), keepalive: true }).catch(() => {});
     lastConfirmedMoneyRef.current = val;
-  }, [apiSync]);
+  }, []);
 
   const createCustomerCargoRobot = useCallback((customerName: string, petColor: string) => {
     const colorHex = PET_COLOR_HEX[petColor] ?? 0x8b5cf6;
@@ -1737,7 +1737,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (!bp.includes('letter' as ScrapPartId)) {
             const newBackpack: ScrapPartId[] = [...bp, 'letter'];
             gameStore.set('backpack', newBackpack);
-            apiSync({ backpack: newBackpack });
+            fetch('/api/profile/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: newBackpack }), keepalive: true }).catch(() => {});
             lastConfirmedBackpackRef.current = newBackpack;
           }
           setShowBatteryDlg(false);
@@ -1816,7 +1816,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (bp.includes('letter' as ScrapPartId)) {
       const newBackpack = bp.filter((id: string) => id !== 'letter');
       gameStore.set('backpack', newBackpack);
-      apiSync({ backpack: newBackpack });
+      fetch('/api/profile/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: newBackpack }), keepalive: true }).catch(() => {});
       lastConfirmedBackpackRef.current = newBackpack;
     }
   };
@@ -7575,7 +7575,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const totalEarned = 2 + bonusNow;
     const newMoney = gameStore.get('money') + totalEarned;
     gameStore.set('money', newMoney);
-    apiSync({ money: newMoney });
+    fetch('/api/profile/money', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: newMoney }), keepalive: true }).catch(() => {});
     lastConfirmedMoneyRef.current = newMoney;
     playHappyChime();
     const billCount = Math.min(7, totalEarned);
@@ -7632,7 +7632,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const totalEarned = basePay + bonusNow;
     const newMoney = gameStore.get('money') + totalEarned;
     gameStore.set('money', newMoney);
-    apiSync({ money: newMoney });
+    fetch('/api/profile/money', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: newMoney }), keepalive: true }).catch(() => {});
     lastConfirmedMoneyRef.current = newMoney;
     playHappyChime();
     spawnConfetti(selectedNpc.position);
@@ -8279,7 +8279,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const bp = gameStore.get('backpack');
             if (!bp.includes('letter' as ScrapPartId)) {
               const newBackpack: ScrapPartId[] = [...bp, 'letter']; gameStore.set('backpack', newBackpack);
-              apiSync({ backpack: newBackpack }); lastConfirmedBackpackRef.current = newBackpack;
+              fetch('/api/profile/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: newBackpack }), keepalive: true }).catch(() => {}); lastConfirmedBackpackRef.current = newBackpack;
             }
             setShowBatteryDlg(false); aptCutscenePhaseRef.current = 'done'; aptCutsceneTimerRef.current = 0;
           }
