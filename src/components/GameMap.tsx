@@ -5813,8 +5813,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const aptPos = aptSparky.root.position;
           if (ibPhase === 'approach') {
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
-            // Sparky faces north toward Scrap (180° rotation in XY plane = PI on Z)
-            aptSparky.root.rotation.set(Math.PI / 2, 0, Math.PI);
+            // Sparky faces north toward Scrap using the base quaternion
+            if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
             animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
             // Player walks toward Sparky and Scrap
             const playerTarget = new THREE.Vector2(-2.0, 0.5);
@@ -5834,7 +5834,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (ibPhase === 'sparky-turn') {
             installBatteryTimerRef.current += delta;
             const faceDir = new THREE.Vector2(localPositionRef.current.x - aptPos.x, localPositionRef.current.y - aptPos.y).normalize();
-            aptSparky.root.rotation.set(Math.PI / 2, 0, Math.PI - Math.atan2(faceDir.x, faceDir.y));
+            aptSparky.root.rotation.set(Math.PI / 2, 0, -Math.atan2(faceDir.x, faceDir.y));
             animateRobotVisual(aptSparky, worldTime, 0, faceDir.x, faceDir.y);
             if (installBatteryTimerRef.current > 1.5) {
               installBatteryPhaseRef.current = 'open-chest';
