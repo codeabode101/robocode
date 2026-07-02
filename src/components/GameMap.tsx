@@ -684,6 +684,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [interactionPromptName, setInteractionPromptName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [workshopIntroSeen, setWorkshopIntroSeen] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setLoading(false), 8000); return () => clearTimeout(t); }, []);
   const [workshopIntroStep, setWorkshopIntroStep] = useState(0);
   const [cutsceneDone, setCutsceneDone] = useState(false);
   const [batteryInstalled, setBatteryInstalled] = useState(false);
@@ -2229,6 +2230,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }).catch(() => {
       if (--retries > 0) return new Promise(r => setTimeout(r, 1500)).then(loadProfile);
       profileLoadedRef.current = true;
+      setLoading(false);
     });
     loadProfile();
   }, []);
