@@ -5846,7 +5846,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (ibPhase === 'sparky-walk') {
             installBatteryTimerRef.current += delta;
             // Sparky walks toward Scrap
-            const sparkyTarget = new THREE.Vector2(-2.6, 0.2);
+            const sparkyTarget = new THREE.Vector3(-2.6, 0.2, 0.28);
             const dist = aptPos.distanceTo(sparkyTarget);
             if (dist > 0.05) {
               const dir = new THREE.Vector2(sparkyTarget.x - aptPos.x, sparkyTarget.y - aptPos.y).normalize();
