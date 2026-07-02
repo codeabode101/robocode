@@ -6555,7 +6555,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             animateRobotVisual(npc.cargoRobot, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, dx, dy);
           }
           if (moving) {
-            npc.visual.root.rotation.y = Math.atan2(dx, -dy);
+            npc.visual.root.rotation.z = -Math.atan2(dx, dy);
           }
           const swing = walkSin * 0.3 * (moving ? 1 : 0);
           if (npc.visual.leftLegPivot) npc.visual.leftLegPivot.rotation.x = swing;
