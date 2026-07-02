@@ -3696,7 +3696,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Sparky inside apartment (hidden until Sparky walks home)
       const aptSparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
       aptSparky.root.scale.set(0.7, 0.7, 0.7);
-      aptSparky.root.position.set(0.2, 2.2, 0.28);
+      aptSparky.root.position.set(-2.6, 0.2, 0.28);
       aptSparky.nameSprite.visible = false;
       aptSparky.root.visible = false;
       apartmentRoomGroup.add(aptSparky.root);
@@ -5792,6 +5792,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             sceneBgOverrideRef.current = null;
           endCinematicCutscene();
           aptCutscenePhaseRef.current = 'idle';
+            // Position Sparky near Scrap for battery cutscene
+            if (aptSparky) aptSparky.root.position.set(-2.6, 0.2, 0.28);
             shopUnlockedRef.current = true;
             setShopUnlocked(true);
             cutsceneDoneRef.current = true;
@@ -5811,9 +5813,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const aptPos = aptSparky.root.position;
           if (ibPhase === 'approach') {
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
-            // Sparky stands 1 unit south of Scrap, facing north toward him
-            aptPos.set(-2.6, 0.2, 0.28);
-            // Sparky faces north toward Scrap
+            // Sparky already at (-2.6, 0.2) from creation — faces north toward Scrap
             if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
             animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
             // Player walks toward Sparky and Scrap
@@ -5925,6 +5925,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               installBatteryPropRef.current = null;
             }
             endCinematicCutscene();
+            // Move Sparky back to his usual spot near the bed
+            aptPos.set(0.2, 2.2, 0.28);
             setSparkyDlgFull("Scrap is all yours! He'll follow you everywhere.");
             setShowSparkyDlg(true);
             onSparkyDlgCloseRef.current = () => {
