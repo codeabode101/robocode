@@ -428,7 +428,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyInstallTimerRef = useRef(0);
   const sparkyInstallPartIdRef = useRef<ScrapPartId | null>(null);
   const sparkyInstallNextStageRef = useRef<SparkyQuestStage | null>(null);
-  const installBatteryPhaseRef = useRef<'approach' | 'open-chest' | 'place-battery' | 'chest-glow' | 'done' | null>(null);
+  const installBatteryPhaseRef = useRef<'approach' | 'hand-off' | 'sparky-walk' | 'open-chest' | 'place-battery' | 'chest-glow' | 'done' | null>(null);
   const installBatteryTimerRef = useRef(0);
   const batteryInstalledRef = useRef(false);
   const batteryGlowRef = useRef<THREE.Mesh | null>(null);
@@ -5816,11 +5816,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             // Sparky faces north toward Scrap using the base quaternion
             if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
             animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
-            // Player walks toward Sparky and Scrap
-            const playerTarget = new THREE.Vector2(-2.0, 0.5);
+            // Player walks next to Sparky
+            const playerTarget = new THREE.Vector2(-2.2, -0.7);
             const playerArrived = walkPlayer(localPositionRef.current, playerTarget, MOVE_SPEED * 0.29, delta, worldTime, 0.28, localRobotRef.current, leftLegPivotRef.current, rightLegPivotRef.current, yawRef);
             if (playerArrived) {
-              installBatteryPhaseRef.current = 'open-chest';
+              installBatteryPhaseRef.current = 'hand-off';
               installBatteryTimerRef.current = 0;
               if (localRobotRef.current) {
                 if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = 0;
@@ -5828,8 +5828,38 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 localRobotRef.current.leftArm.rotation.x = -Math.PI / 2;
                 localRobotRef.current.rightArm.rotation.x = -Math.PI / 2;
               }
-              const faceDir = new THREE.Vector2(-2.6 - localPositionRef.current.x, 1.2 - localPositionRef.current.y).normalize();
-              yawRef.current = Math.atan2(faceDir.x, faceDir.y);
+              // Player turns to face Sparky
+              const sparkyDir = new THREE.Vector2(aptPos.x - localPositionRef.current.x, aptPos.y - localPositionRef.current.y).normalize();
+              yawRef.current = Math.atan2(sparkyDir.x, sparkyDir.y);
+            }
+          } else if (ibPhase === 'hand-off') {
+            installBatteryTimerRef.current += delta;
+            animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
+            if (installBatteryTimerRef.current < delta) playHappyChime();
+            if (installBatteryTimerRef.current > 0.6) {
+              // Remove battery from backpack — handed to Sparky
+              const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
+              updateBackpack(newBackpack);
+              installBatteryPhaseRef.current = 'sparky-walk';
+              installBatteryTimerRef.current = 0;
+            }
+          } else if (ibPhase === 'sparky-walk') {
+            installBatteryTimerRef.current += delta;
+            // Sparky walks toward Scrap
+            const sparkyTarget = new THREE.Vector2(-2.6, 0.2);
+            const dist = aptPos.distanceTo(sparkyTarget);
+            if (dist > 0.05) {
+              const dir = new THREE.Vector2(sparkyTarget.x - aptPos.x, sparkyTarget.y - aptPos.y).normalize();
+              aptPos.x += dir.x * MOVE_SPEED * 1.36 * delta;
+              aptPos.y += dir.y * MOVE_SPEED * 1.36 * delta;
+              const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.atan2(dir.x, dir.y));
+              if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+              animateRobotVisual(aptSparky, worldTime, 1, dir.x, dir.y);
+            } else {
+              // Sparky arrived — face north toward Scrap
+              if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
+              installBatteryPhaseRef.current = 'open-chest';
+              installBatteryTimerRef.current = 0;
             }
           } else if (ibPhase === 'open-chest') {
             installBatteryTimerRef.current += delta;
@@ -5843,7 +5873,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               installBatteryTimerRef.current = 0;
               const batteryGroup = createPartModel('battery');
               batteryGroup.scale.set(2, 2, 2);
-              batteryGroup.position.set(localPositionRef.current.x, localPositionRef.current.y + 0.3, 0.4);
+              batteryGroup.position.set(aptPos.x, aptPos.y + 0.3, 0.4);
               apartmentRoomGroupRef.current?.add(batteryGroup);
               installBatteryPropRef.current = batteryGroup;
               batteryLerpStartPosRef.current.copy(batteryGroup.position);
@@ -6763,10 +6793,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               camera.lookAt(1.8, 3.0, 0.4);
             }
           } else if (installBatteryPhaseRef.current) {
-            if (installBatteryPhaseRef.current === 'approach') {
+            const ibPhase = installBatteryPhaseRef.current;
+            if (ibPhase === 'approach' || ibPhase === 'hand-off') {
               scratchVec3.current.set(localPositionRef.current.x, localPositionRef.current.y - 1.0, 2.0);
               camera.position.lerp(scratchVec3.current, 0.04);
               camera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 1.5, 0.3);
+            } else if (ibPhase === 'sparky-walk') {
+              scratchVec3.current.set(-2.6, -0.2, 1.8);
+              camera.position.lerp(scratchVec3.current, 0.06);
+              camera.lookAt(-2.6, 0.6, 0.3);
             } else {
               scratchVec3.current.set(-3.5, 0.7, 1.8);
               camera.position.lerp(scratchVec3.current, 0.08);
