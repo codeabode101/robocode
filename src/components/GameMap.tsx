@@ -5813,8 +5813,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const aptPos = aptSparky.root.position;
           if (ibPhase === 'approach') {
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
-            // Sparky already at (-2.6, 0.2) from creation — faces north toward Scrap
-            if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
+            // Sparky faces north toward Scrap (rotation.z=0 = north in this convention)
+            aptSparky.root.rotation.set(Math.PI / 2, 0, 0);
             animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
             // Player walks toward Sparky and Scrap
             const playerTarget = new THREE.Vector2(-2.0, 0.5);
