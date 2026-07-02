@@ -5816,8 +5816,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             // Sparky faces north toward Scrap using the base quaternion
             if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
             animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
-            // Player walks next to Sparky
-            const playerTarget = new THREE.Vector2(-2.2, -0.7);
+            // Player walks to Sparky's east side — both face north toward Scrap
+            const playerTarget = new THREE.Vector2(-1.8, -0.55);
             const playerArrived = walkPlayer(localPositionRef.current, playerTarget, MOVE_SPEED * 0.29, delta, worldTime, 0.28, localRobotRef.current, leftLegPivotRef.current, rightLegPivotRef.current, yawRef);
             if (playerArrived) {
               installBatteryPhaseRef.current = 'hand-off';
@@ -5828,9 +5828,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 localRobotRef.current.leftArm.rotation.x = -Math.PI / 2;
                 localRobotRef.current.rightArm.rotation.x = -Math.PI / 2;
               }
-              // Player turns to face Sparky
-              const sparkyDir = new THREE.Vector2(aptPos.x - localPositionRef.current.x, aptPos.y - localPositionRef.current.y).normalize();
-              yawRef.current = Math.atan2(sparkyDir.x, sparkyDir.y);
+              // Player faces north toward Scrap — side by side with Sparky
+              yawRef.current = Math.PI;
             }
           } else if (ibPhase === 'hand-off') {
             installBatteryTimerRef.current += delta;
