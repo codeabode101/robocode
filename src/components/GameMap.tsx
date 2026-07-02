@@ -682,6 +682,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [workshopCode, setWorkshopCode] = useState('');
   const [workshopOutput, setWorkshopOutput] = useState('');
   const [interactionPromptName, setInteractionPromptName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [workshopIntroSeen, setWorkshopIntroSeen] = useState(false);
   const [workshopIntroStep, setWorkshopIntroStep] = useState(0);
   const [cutsceneDone, setCutsceneDone] = useState(false);
@@ -2222,6 +2223,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         pendingBatteryCutsceneRef.current = true;
       }
       profileLoadedRef.current = true;
+      setLoading(false);
       const savedName = localStorage.getItem('rb_robot_name');
       if (savedName) { setRobotName(savedName); robotNameRef.current = savedName; }
     }).catch(() => {
@@ -7960,6 +7962,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       {roomEntryFlash && <div className="pointer-events-none fixed inset-0 z-[70] animate-pulse bg-cyan-200/35 backdrop-blur-[1px]" />}
 
+      {loading && <div className="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center"><div className="text-cyan-300 text-xl font-mono animate-pulse">Loading...</div></div>}
       <div className="w-full h-screen" ref={mountRef} />
 
       <div className="fixed top-4 right-4 z-50 flex gap-3">
