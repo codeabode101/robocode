@@ -2219,7 +2219,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       } else if (data.position?.room === 'apartment' && !data.cutsceneDone) {
         pendingAptCutsceneRef.current = true;
       } else if (data.position?.room === 'apartment' && data.cutsceneDone && Array.isArray(data.backpack) && data.backpack.includes('battery') && !batteryInstalledRef.current) {
-        pendingBatteryCutsceneRef.current = true;
+        // Immediate trigger to prevent visual teleport on reload during cutscene
+        installBatteryPhaseRef.current = 'hand-off';
+        installBatteryTimerRef.current = 0.61;
+        localPositionRef.current.set(-1.8, -0.55);
+        if (localRobotRef.current) {
+          localRobotRef.current.root.position.set(-1.8, -0.55, 0.28);
+          if (localGroup) localGroup.position.set(-1.8, -0.55, 0.28);
+          if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = 0;
+          if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = 0;
+          localRobotRef.current.leftArm.rotation.x = -Math.PI / 2;
+          localRobotRef.current.rightArm.rotation.x = -Math.PI / 2;
+        }
+        yawRef.current = Math.PI;
+        startCinematicCutscene();
+        keyStateRef.current.clear();
       }
       profileLoadedRef.current = true;
       const savedName = localStorage.getItem('rb_robot_name');
@@ -4204,13 +4218,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           pendingAptCutsceneRef.current = false;
           aptCutscenePhaseRef.current = 'walk-west';
           aptCutsceneTimerRef.current = 0;
-          startCinematicCutscene();
-          keyStateRef.current.clear();
-        } else if (pendingBatteryCutsceneRef.current && !showControlsModalRef.current) {
-          pendingBatteryCutsceneRef.current = false;
-          prepBatteryInstallProps();
-          installBatteryPhaseRef.current = 'approach';
-          installBatteryTimerRef.current = 0;
           startCinematicCutscene();
           keyStateRef.current.clear();
         }
