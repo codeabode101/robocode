@@ -5808,6 +5808,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             try { localStorage.setItem('rb_cutscene_done', '1'); } catch {}
             apiSync({ cutsceneDone: true });
+            updateQuestStage('unit1-done');
           }
         } else if (installBatteryPhaseRef.current && aptSparky) {
           const ibPhase = installBatteryPhaseRef.current;
