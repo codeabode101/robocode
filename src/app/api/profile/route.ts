@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
       backpack_json: users.backpack_json,
       cutscene_done: users.cutscene_done,
       battery_installed: users.battery_installed,
+      pending_battery_cutscene: users.pending_battery_cutscene,
     }).from(users).where(eq(users.id, userId)).limit(1).then(r => r[0]);
 
     // Auto-create user record if missing (e.g., after migration reset)
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
       position: pos ? { x: pos.x, y: pos.y, room: pos.map, rotation: pos.rotation } : null,
       cutsceneDone: user.cutscene_done === 1,
       batteryInstalled: (user as any).battery_installed === 1,
+      pendingBatteryCutscene: (user as any).pending_battery_cutscene === 1,
       xp: xpData,
     });
   } catch (err) {

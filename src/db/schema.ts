@@ -10,6 +10,7 @@ export const users = sqliteTable('users', {
   playtime_seconds: integer('playtime_seconds').notNull().default(0),
   cutscene_done: integer('cutscene_done').notNull().default(0),
   battery_installed: integer('battery_installed').notNull().default(0),
+  pending_battery_cutscene: integer('pending_battery_cutscene').notNull().default(0),
   created_at: text('created_at').notNull().default("datetime('now')"),
 });
 

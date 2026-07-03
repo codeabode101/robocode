@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN pending_battery_cutscene INTEGER NOT NULL DEFAULT 0;

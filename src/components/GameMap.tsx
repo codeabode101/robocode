@@ -2130,7 +2130,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (data.batteryInstalled) {
         batteryInstalledRef.current = true;
         setBatteryInstalled(true);
-        localStorage.removeItem('pendingBatteryCutscene');
+        fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pendingBatteryCutscene: false }), keepalive: true }).catch(() => {});
         const bp = gameStore.get('backpack') as ScrapPartId[];
         if (bp.includes('battery' as ScrapPartId)) {
           const cleaned = bp.filter(id => id !== 'battery');
@@ -2220,10 +2220,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         pendingRafiqCutsceneRef.current = true;
       } else if (data.position?.room === 'apartment' && !data.cutsceneDone) {
         pendingAptCutsceneRef.current = true;
-      } else if (data.position?.room === 'apartment' && data.cutsceneDone && !batteryInstalledRef.current && (Array.isArray(data.backpack) && data.backpack.includes('battery') || localStorage.getItem('pendingBatteryCutscene') === 'true')) {
+      } else if (data.position?.room === 'apartment' && data.cutsceneDone && !batteryInstalledRef.current && data.pendingBatteryCutscene) {
         pendingBatteryCutsceneRef.current = true;
         startCinematicCutscene();
-        localStorage.setItem('pendingBatteryCutscene', 'true');
         updateQuestStage('unit1-done');
         const bp = gameStore.get('backpack') as ScrapPartId[];
         if (!bp.includes('battery' as ScrapPartId)) {
@@ -6023,7 +6022,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             installBatteryPhaseRef.current = null;
             batteryInstalledRef.current = true;
             setBatteryInstalled(true);
-            localStorage.removeItem('pendingBatteryCutscene');
+            fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pendingBatteryCutscene: false }), keepalive: true }).catch(() => {});
             if (scrapRobotRef.current) {
               if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
               if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
@@ -8294,6 +8293,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                                 updateMoney(newMoney);
                                 updateBackpack(newBackpack);
                                 setShowShopModal(false);
+                                if (part.id === 'battery') {
+                                  fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pendingBatteryCutscene: true }), keepalive: true }).catch(() => {});
+                                }
                               }}
                             >
                               {money >= part.cost ? 'Buy' : `Need $${part.cost - money} more`}

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
   }
 
-  const { questStage, backpack, money, position, playtime, cutsceneDone, batteryInstalled, workshopIntroSeen } = body;
+  const { questStage, backpack, money, position, playtime, cutsceneDone, batteryInstalled, pendingBatteryCutscene, workshopIntroSeen } = body;
 
   try {
     const email = (payload.email as string) || `${userId}@sync`;
@@ -63,6 +63,12 @@ export async function POST(request: NextRequest) {
     if (typeof batteryInstalled === 'boolean') {
       await db.run(sql`
         UPDATE users SET battery_installed = ${batteryInstalled ? 1 : 0} WHERE id = ${userId}
+      `);
+    }
+
+    if (typeof pendingBatteryCutscene === 'boolean') {
+      await db.run(sql`
+        UPDATE users SET pending_battery_cutscene = ${pendingBatteryCutscene ? 1 : 0} WHERE id = ${userId}
       `);
     }
 
