@@ -2040,6 +2040,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         } else if (mappedStage === 'unit1') {
           setTutorialComplete(false); setShopUnlocked(true);
           tutorialCompleteRef.current = false; showTutorialRef.current = false;
+        } else if (mappedStage === 'all-done') {
+          setTutorialComplete(true); setShopUnlocked(true);
+          tutorialCompleteRef.current = true; showTutorialRef.current = false;
         } else {
           setTutorialComplete(true); setShopUnlocked(true);
           tutorialCompleteRef.current = true; showTutorialRef.current = false;
@@ -2136,6 +2139,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       showTutorialRef.current = false;
     }
   }, [tutorialComplete, sparkyQuestStage]);
+
+  // Enable scrap follower when quest stage is all-done
+  useEffect(() => {
+    if (sparkyQuestStage === 'all-done') {
+      scrapFollowerEnabledRef.current = true;
+      scrapVisibleRef.current = true;
+      setScrapVisible(true);
+      setShowScrapToggle(true);
+      if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
+    }
+  }, [sparkyQuestStage]);
 
   // Periodic sync (30s safety net for crash recovery)
   // (no beforeunload beacon — would re-save stale data after reset)
@@ -3249,6 +3263,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.add(scrapFollower.root);
     scrapFollowerRef.current = scrapFollower;
     console.log('[scrap] FOLLOWER CREATED at', scrapFollower.root.position.x.toFixed(2), scrapFollower.root.position.y.toFixed(2));
+    if (sparkyQuestStageRef.current === 'all-done') {
+      scrapFollowerEnabledRef.current = true;
+      scrapVisibleRef.current = true;
+      scrapFollower.root.visible = true;
+      setScrapVisible(true);
+      setShowScrapToggle(true);
+    }
 
     // Repair kiosk — proper kiosk at Snack Stop spot
     const kiosk = createRepairKiosk();
