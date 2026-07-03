@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         VALUES (${userId}, ${email}, ${name}, 'migrated', 0)
         ON CONFLICT (id) DO NOTHING
       `);
-      user = { name, email, currency: 0, playtime_seconds: 0, backpack_json: '[]', cutscene_done: 0, battery_installed: 0 };
+      user = { name, email, currency: 0, playtime_seconds: 0, backpack_json: '[]', cutscene_done: 0, battery_installed: 0, pending_battery_cutscene: 0 };
     }
 
     const tutorials = await db.select({ concept: tutorialProgress.concept })
