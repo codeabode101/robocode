@@ -2130,7 +2130,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (data.batteryInstalled) {
         batteryInstalledRef.current = true;
         setBatteryInstalled(true);
-        // Remove battery from backpack if still present (fallback for failed sync)
+        localStorage.removeItem('pendingBatteryCutscene');
         const bp = gameStore.get('backpack') as ScrapPartId[];
         if (bp.includes('battery' as ScrapPartId)) {
           const cleaned = bp.filter(id => id !== 'battery');
@@ -2220,9 +2220,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         pendingRafiqCutsceneRef.current = true;
       } else if (data.position?.room === 'apartment' && !data.cutsceneDone) {
         pendingAptCutsceneRef.current = true;
-      } else if (data.position?.room === 'apartment' && data.cutsceneDone && !batteryInstalledRef.current && (Array.isArray(data.backpack) && data.backpack.includes('battery') || (sparkyQuestStageRef.current !== 'intro' && sparkyQuestStageRef.current !== 'earn-money'))) {
+      } else if (data.position?.room === 'apartment' && data.cutsceneDone && !batteryInstalledRef.current && (Array.isArray(data.backpack) && data.backpack.includes('battery') || localStorage.getItem('pendingBatteryCutscene') === 'true')) {
         pendingBatteryCutsceneRef.current = true;
         startCinematicCutscene();
+        localStorage.setItem('pendingBatteryCutscene', 'true');
         updateQuestStage('unit1-done');
         const bp = gameStore.get('backpack') as ScrapPartId[];
         if (!bp.includes('battery' as ScrapPartId)) {
@@ -6022,6 +6023,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             installBatteryPhaseRef.current = null;
             batteryInstalledRef.current = true;
             setBatteryInstalled(true);
+            localStorage.removeItem('pendingBatteryCutscene');
             if (scrapRobotRef.current) {
               if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
               if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
