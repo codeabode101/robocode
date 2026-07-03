@@ -3262,7 +3262,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scrapFollower.root.visible = false;
     scene.add(scrapFollower.root);
     scrapFollowerRef.current = scrapFollower;
-    console.log('[scrap] FOLLOWER CREATED at', scrapFollower.root.position.x.toFixed(2), scrapFollower.root.position.y.toFixed(2));
+    console.log('[scrap] FOLLOWER CREATED at', scrapFollower.root.position.x.toFixed(2), scrapFollower.root.position.y.toFixed(2), 'parent:', scrapFollower.root.parent?.type, 'stage:', sparkyQuestStageRef.current);
     if (sparkyQuestStageRef.current === 'all-done') {
       scrapFollowerEnabledRef.current = true;
       scrapVisibleRef.current = true;
@@ -4794,19 +4794,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (sparky.root.visible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
         animateSparkyWave(sparky, worldTime);
       }
-      // Scrap follower AI
-      if (scrapFollowerEnabledRef.current && !(window as any).__scrapLogged) {
+      // Bulletproof: if all-done but follower not activated, activate it
+      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && !(window as any).__scrapLogged) {
         (window as any).__scrapLogged = true;
-        console.log('[scrap]', {
-          ref: !!scrapFollowerRef.current,
-          vis: scrapVisibleRef.current,
-          ap: inApartmentRoomRef.current,
-          ws: inWorkshopRoomRef.current,
-          sh: inShopRoomRef.current,
-          ar: inArenaRoomRef.current,
-        });
+        console.log('[scrap] ACTIVATED pos:', scrapFollowerRef.current.root.position.x.toFixed(2), scrapFollowerRef.current.root.position.y.toFixed(2), 'vis:', scrapFollowerRef.current.root.visible, 'parent:', scrapFollowerRef.current.root.parent?.type, 'stage:', sparkyQuestStageRef.current);
       }
-      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
+      if (sparkyQuestStageRef.current === 'all-done' && scrapFollowerRef.current && !scrapFollowerEnabledRef.current) {
+        console.log('[scrap] EMERGENCY ACTIVATION');
+        scrapFollowerEnabledRef.current = true;
+        scrapVisibleRef.current = true;
+        scrapFollowerRef.current.root.visible = true;
+      }
+      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current) {
+        // Every frame: ensure visible root + position near player
+        scrapFollowerRef.current.root.visible = true;
+        scrapFollowerRef.current.nameSprite.visible = true;
+        if (!inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
         // Antenna color: green when scrap is held, gray otherwise
         if (scrapFollowerRef.current.antennaTip) {
           const heldIdx = heldSlotIndexRef.current;
@@ -4831,6 +4834,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
         const scrapSpeed = followDist > 1.2 ? 1 : 0;
         animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPos.x, playerPos.y - scrapPos.y);
+      }
       }
       if (speechBubbleRef.current && sparkyIntroStepRef.current >= 0) {
         const headPos = scratchVec3.current;
