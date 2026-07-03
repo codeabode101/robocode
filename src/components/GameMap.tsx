@@ -5887,11 +5887,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
              }
           } else if (ibPhase === 'sparky-walk') {
             installBatteryTimerRef.current += delta;
-            const sparkyTarget = new THREE.Vector3(-2.6, 0.0, 0.28);
+            const sparkyTarget = new THREE.Vector3(-2.6, 0.8, 0.28);
             const dist = aptPos.distanceTo(sparkyTarget);
             if (dist > 0.05) {
               const dir = new THREE.Vector2(sparkyTarget.x - aptPos.x, sparkyTarget.y - aptPos.y).normalize();
-              aptPos.x += dir.x * MOVE_SPEED * 1.36 * delta;
+              aptPos.x += dir.x * MOVE_SPEED * 0.29 * delta;
               aptPos.y += dir.y * MOVE_SPEED * 0.29 * delta;
               const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.atan2(dir.x, dir.y));
               if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ).premultiply(facingQ);
