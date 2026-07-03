@@ -1632,8 +1632,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           scrapVisibleRef.current = true;
           setScrapVisible(true);
           setShowScrapToggle(true);
-          if (scrapFollowerRef.current) { scrapFollowerRef.current.root.visible = true; console.log('[scrap] FOLLOWER ACTIVATED'); }
-          else console.warn('[scrap] scrapFollowerRef is NULL!');
+          if (scrapFollowerRef.current) {
+            scrapFollowerRef.current.root.visible = true;
+            scrapFollowerRef.current.root.position.set(-3.6, -5, 0.24);
+            console.log('[scrap] FOLLOWER ACTIVATED');
+          } else console.warn('[scrap] scrapFollowerRef is NULL!');
         }
       }
     };
@@ -2147,7 +2150,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       scrapVisibleRef.current = true;
       setScrapVisible(true);
       setShowScrapToggle(true);
-      if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
+      if (scrapFollowerRef.current) { scrapFollowerRef.current.root.visible = true; scrapFollowerRef.current.root.position.set(-3.6, -5, 0.24); }
     }
   }, [sparkyQuestStage]);
 
@@ -3254,7 +3257,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Scrap follower robot (outdoor, follows player after battery install)
     const scrapFollower = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
     scrapFollower.root.scale.set(0.65, 0.65, 0.65);
-    scrapFollower.root.position.set(0, -8, 0.24);
+    scrapFollower.root.position.set(-3.6, -5, 0.24);
     scrapFollower.nameSprite.visible = true;
     if (scrapFollower.leftPupil) scrapFollower.leftPupil.material.color.setHex(0x222222);
     if (scrapFollower.rightPupil) scrapFollower.rightPupil.material.color.setHex(0x222222);
