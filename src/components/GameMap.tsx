@@ -119,9 +119,9 @@ const BATTERY_DLG_STEPS = [
   { speaker: 'Sparky', text: "Rafiq's shop is just outside, down the street. Show him my letter and he'll know what to do. Good luck!" },
 ];
 const BATTERY_INSTALL_DLG_STEPS = [
-  { speaker: 'Sparky', text: "Scrap's powered up! He can run the workstation now — finally we can help people with their busted bots." },
-  { speaker: 'Sparky', text: "He's not ready to wander yet though. You'll need to fix up his sensor, voice, and navigation bits first." },
-  { speaker: 'Sparky', text: "Start with a sensor — grab one from the Parts Shop near the lake. Then come back and I'll help you install it." },
+  { speaker: 'Sparky', text: "Scrap is all yours! He'll power the workstation — finally we can help people with their busted bots." },
+  { speaker: 'Sparky', text: "The world's a wreck. Folks drag in robots with fried circuits, dead power cells... they need someone who can do the math to bring 'em back." },
+  { speaker: 'Sparky', text: "Head outside to the repair kiosk. Customers are waiting — and every fix earns you something." },
 ] as const;
 const RAFIQ_GREET_STEPS = [
   { speaker: 'Rafiq', text: "Wait — who are you?" },
@@ -782,13 +782,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     sparkyQuestStageRef.current = stage;
     fetch('/api/profile/quest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stage }), keepalive: true }).catch(() => {});
     lastConfirmedQuestRef.current = stage;
-    if (stage === 'all-done') {
-      scrapFollowerEnabledRef.current = true;
-      scrapVisibleRef.current = true;
-      setScrapVisible(true);
-      setShowScrapToggle(true);
-      if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
-    }
   }, []);
 
   const updateBackpack = useCallback((items: ScrapPartId[]) => {
@@ -1627,13 +1620,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setBatteryInstallStep(nextStep);
         } else {
           setShowBatteryInstallDlg(false);
-          const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
+          const newBackpack: ScrapPartId[] = [...gameStore.get('backpack').filter(id => id !== 'battery'), 'scrap'];
           updateBackpack(newBackpack);
-          apiSync({ batteryInstalled: true, pendingBatteryCutscene: false });
+          updateQuestStage('all-done');
+          apiSync({ batteryInstalled: true, questStage: 'all-done', pendingBatteryCutscene: false });
           if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
             setHeldSlotIndex(null);
             heldSlotIndexRef.current = null;
           }
+          scrapFollowerEnabledRef.current = true;
+          scrapVisibleRef.current = true;
+          setScrapVisible(true);
+          setShowScrapToggle(true);
+          if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
         }
       }
     };
