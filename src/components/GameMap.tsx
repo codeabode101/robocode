@@ -738,6 +738,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [batteryInstallText, setBatteryInstallText] = useState('');
   const [showCelebration, setShowCelebration] = useState(false);
   const celebrationTimerRef = useRef(0);
+  const savedSceneBgRef = useRef<THREE.Color | THREE.Texture | null>(null);
+  const savedScrapPosRef = useRef(new THREE.Vector3());
+  const savedScrapScaleRef = useRef(new THREE.Vector3(1,1,1));
+  const savedAptChildrenVisRef = useRef<{child: THREE.Object3D; vis: boolean}[]>([]);
   const [showLightFlash, setShowLightFlash] = useState(false);
 
   const [scrapVisible, setScrapVisible] = useState(false);
@@ -6101,15 +6105,62 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (ibPhase === 'celebration') {
             installBatteryTimerRef.current += delta;
             const t = installBatteryTimerRef.current;
-            // Scrap bounce
-            if (scrapRobotRef.current) {
-              scrapRobotRef.current.root.position.z = 0.24 + Math.sin(t * 12) * 0.05;
-              scrapRobotRef.current.root.rotation.z = Math.sin(t * 8) * 0.02;
+            if (t < delta) {
+              // Save and setup scene
+              const scene = sceneRef.current;
+              if (scene) {
+                savedSceneBgRef.current = scene.background?.clone() ?? null;
+                scene.background = new THREE.Color(0x2563eb);
+              }
+              const scrap = scrapRobotRef.current;
+              if (scrap) {
+                savedScrapPosRef.current.copy(scrap.root.position);
+                savedScrapScaleRef.current.copy(scrap.root.scale);
+                scrap.root.position.set(-2.6, 0.5, 0.28);
+                scrap.root.scale.set(1.2, 1.2, 1.2);
+              }
+              // Hide apartment objects except Scrap
+              const aptGroup = apartmentRoomGroupRef.current;
+              if (aptGroup) {
+                savedAptChildrenVisRef.current = [];
+                aptGroup.children.forEach(child => {
+                  if (child === scrap?.root || child === batteryGlowRef.current) return;
+                  savedAptChildrenVisRef.current.push({ child, vis: child.visible });
+                  child.visible = false;
+                });
+              }
             }
-            if (t > 2.5) {
-              if (scrapRobotRef.current) {
-                scrapRobotRef.current.root.position.z = 0.24;
-                scrapRobotRef.current.root.rotation.z = 0;
+            // Scrap 360° rotation + bounce
+            if (scrapRobotRef.current) {
+              scrapRobotRef.current.root.rotation.z = t * (Math.PI * 2 / 3);
+              scrapRobotRef.current.root.position.z = 0.28 + Math.sin(t * 8) * 0.06;
+              if (scrapRobotRef.current.leftPupil) {
+                const pupilMove = Math.sin(t * 4) * 0.02;
+                scrapRobotRef.current.leftPupil.position.x = -0.07 + pupilMove;
+                scrapRobotRef.current.rightPupil.position.x = 0.07 + pupilMove;
+              }
+            }
+            // Camera slowly zooms in on Scrap
+            scratchVec3.current.set(-3.2, 0.2, 1.4);
+            camera.position.lerp(scratchVec3.current, 0.03);
+            camera.lookAt(-2.6, 0.7, 0.3);
+            if (t > 3.0) {
+              // Restore everything
+              const scene = sceneRef.current;
+              if (scene && savedSceneBgRef.current) scene.background = savedSceneBgRef.current as THREE.Color;
+              const scrap = scrapRobotRef.current;
+              if (scrap) {
+                scrap.root.position.copy(savedScrapPosRef.current);
+                scrap.root.scale.copy(savedScrapScaleRef.current);
+                scrap.root.rotation.z = 0;
+                scrap.root.position.z = 0.24;
+                if (scrap.leftPupil) scrap.leftPupil.position.x = -0.07;
+                if (scrap.rightPupil) scrap.rightPupil.position.x = 0.07;
+              }
+              const aptGroup = apartmentRoomGroupRef.current;
+              if (aptGroup) {
+                savedAptChildrenVisRef.current.forEach(({ child, vis }) => { child.visible = vis; });
+                savedAptChildrenVisRef.current = [];
               }
               setShowCelebration(false);
               installBatteryPhaseRef.current = 'done';
@@ -8499,7 +8550,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           size: `${4 + Math.random() * 6}px`,
         }));
         return (
-          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 select-none overflow-hidden cursor-pointer" onClick={() => { setShowCelebration(false); installBatteryPhaseRef.current = 'done'; installBatteryTimerRef.current = 0; }}>
+          <div className="fixed inset-0 z-[90] flex flex-col select-none overflow-hidden cursor-pointer" onClick={() => { setShowCelebration(false); installBatteryPhaseRef.current = 'done'; installBatteryTimerRef.current = 0; }}>
             {confettiPieces.map((p, i) => (
               <div key={i} className="absolute top-0 animate-confetti-fall" style={{
                 left: p.left, width: p.size, height: p.size,
@@ -8508,13 +8559,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 borderRadius: Math.random() > 0.5 ? '50%' : '2px',
               }} />
             ))}
-            <div className="text-center z-10">
-              <div className="text-5xl font-bold text-amber-300 tracking-wider mb-8 drop-shadow-[0_0_30px_rgba(251,191,36,0.5)] animate-celebration-pop">
-                ⚡ POWER CORE UNLOCKED
+            <div className="flex items-center justify-center bg-gradient-to-b from-blue-700 via-blue-600 to-blue-500/90 h-[30vh] z-10">
+              <div className="text-center">
+                <div className="text-5xl font-bold text-amber-300 tracking-wider drop-shadow-[0_0_30px_rgba(251,191,36,0.5)] animate-celebration-pop">
+                  ⚡ POWER CORE UNLOCKED
+                </div>
+                <div className="text-slate-300 text-sm mt-3 opacity-0 animate-celebration-subtitle">New ability available</div>
               </div>
-              <div className="flex justify-center gap-4 mb-8">
+            </div>
+            <div className="flex-1" />
+            <div className="flex items-center justify-center bg-gradient-to-t from-cyan-600 via-blue-500 to-blue-400/80 h-[30vh] z-10">
+              <div className="flex justify-center gap-4">
                 {[{ icon: '⚡', name: 'Power Up', unlocked: true }, { icon: '🔒', name: '???', unlocked: false }, { icon: '🔒', name: '???', unlocked: false }, { icon: '🔒', name: '???', unlocked: false }].map((card, i) => (
-                  <div key={i} className={`w-32 h-44 rounded-xl border-2 flex flex-col items-center justify-center gap-2 ${card.unlocked ? 'border-amber-400/60 bg-slate-800/80 shadow-[0_0_15px_rgba(251,191,36,0.2)]' : 'border-slate-600/50 bg-slate-800/40'} animate-card-slide-up`}
+                  <div key={i} className={`w-28 h-40 rounded-xl border-2 flex flex-col items-center justify-center gap-2 ${card.unlocked ? 'border-amber-400/60 bg-slate-800/80 shadow-[0_0_15px_rgba(251,191,36,0.2)]' : 'border-slate-600/50 bg-slate-800/40'} animate-card-slide-up`}
                     style={{ animationDelay: `${i * 150}ms` }}>
                     {card.unlocked ? (
                       <>
@@ -8531,7 +8588,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   </div>
                 ))}
               </div>
-              <div className="text-slate-400 text-sm animate-celebration-subtitle">Explore the world to unlock more abilities</div>
             </div>
           </div>
         );
