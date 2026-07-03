@@ -741,7 +741,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const savedSceneBgRef = useRef<THREE.Color | THREE.Texture | null>(null);
   const savedScrapPosRef = useRef(new THREE.Vector3());
   const savedScrapScaleRef = useRef(new THREE.Vector3(1,1,1));
-  const savedAptChildrenVisRef = useRef<{child: THREE.Object3D; vis: boolean}[]>([]);
+  const savedScrapQuatRef = useRef(new THREE.Quaternion());
   const [showLightFlash, setShowLightFlash] = useState(false);
 
   const [scrapVisible, setScrapVisible] = useState(false);
@@ -6116,13 +6116,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (scrap) {
                 savedScrapPosRef.current.copy(scrap.root.position);
                 savedScrapScaleRef.current.copy(scrap.root.scale);
+                savedScrapQuatRef.current.copy(scrap.root.quaternion);
                 scrap.root.scale.set(1.2, 1.2, 1.2);
               }
               // Keep apartment visible (floor/walls = ground reference)
             }
-            // Scrap 360° rotation (spins in XY/ground plane around Z axis)
+            // Scrap 360° rotation — quaternion around world Z axis (ground plane spin)
             if (scrapRobotRef.current) {
-              scrapRobotRef.current.root.rotation.z = Math.PI + t * (Math.PI * 2 / 3);
+              const spinQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI + t * (Math.PI * 2 / 3));
+              scrapRobotRef.current.root.quaternion.copy(savedScrapQuatRef.current).premultiply(spinQ);
               scrapRobotRef.current.root.position.z = 0.28 + Math.sin(t * 8) * 0.06;
             }
             // Camera zooms in on Scrap
@@ -6137,7 +6139,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (scrap) {
                 scrap.root.position.copy(savedScrapPosRef.current);
                 scrap.root.scale.copy(savedScrapScaleRef.current);
-                scrap.root.rotation.z = 0;
+                scrap.root.quaternion.copy(savedScrapQuatRef.current);
                 scrap.root.position.z = 0.24;
                 if (scrap.leftPupil) scrap.leftPupil.position.x = -0.07;
                 if (scrap.rightPupil) scrap.rightPupil.position.x = 0.07;
