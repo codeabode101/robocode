@@ -398,6 +398,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const scrapChallengesDoneRef = useRef(0);
   const scrapFollowerRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
   const scrapFollowerEnabledRef = useRef(false);
+  const scrapVisibleRef = useRef(false);
   const miniRobotRefs = useRef<ReturnType<typeof createRobotVisual>[]>([]);
   const sceneBgOverrideRef = useRef<number | null>(null);
 
@@ -1628,6 +1629,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             heldSlotIndexRef.current = null;
           }
           scrapFollowerEnabledRef.current = true;
+          scrapVisibleRef.current = true;
           setScrapVisible(true);
           setShowScrapToggle(true);
           if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
@@ -4770,7 +4772,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         animateSparkyWave(sparky, worldTime);
       }
       // Scrap follower AI
-      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
+      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
         // Antenna color: green when scrap is held, gray otherwise
         if (scrapFollowerRef.current.antennaTip) {
           const heldIdx = heldSlotIndexRef.current;
