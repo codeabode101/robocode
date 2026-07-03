@@ -299,18 +299,23 @@ Renders 30vh bottom bar with speaker icon, name, TTS play/stop button, typewrite
 ## ⚠️ BRANCH SAFETY — READ BEFORE EDITING GameMap.tsx
 
 ### ALWAYS work on a separate branch for risky edits.
-The file `GameMap.tsx` is ~7300 lines with complex state/ref/effect interdependencies.
+The file `GameMap.tsx` is ~7400 lines with complex state/ref/effect interdependencies.
 A bad edit can silently break the entire game. Protect `main` at all costs.
 
-### Current branch: `battery-only-flow`
-This branch strips out the tutorial system and old sensor/voice/nav progression.
-After battery install cutscene → Scrap follower → free roam. No tutorial, no Sparky dialogs about sensors.
-
 ### Workflow:
-1. `git checkout -b <feature-name>` — create branch from `main`
-2. `git commit` after each logical change
-3. `git push -u origin <branch>` — if you need to share/deploy from branch
-4. Only merge to `main` after the user explicitly confirms and tests the branch
+1. Always start from `main` unless a feature branch already exists
+2. `git checkout -b <feature-name>` — create branch from `main`
+3. `git commit` after each logical change
+4. `git push -u origin <branch>` — share/deploy from branch
+5. Only merge to `main` after the user explicitly confirms and tests the branch
+
+### Current branch: `battery-cutscene-cinematic`
+Redesigns the battery install cutscene:
+- Hand-off: Sparky turns to player, takes battery, turns back
+- Hinged chest hatch (opens like a lid), not a sliding panel
+- Battery carried in Sparky's hand during walk to Scrap
+- Close-doors phase after battery insertion
+- Dramatic power-on: Scrap vibrates, eyes snap cyan, spark burst + chime
 
 ### If something goes wrong:
 - `git checkout main` — return to known-good state

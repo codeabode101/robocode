@@ -428,14 +428,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyInstallTimerRef = useRef(0);
   const sparkyInstallPartIdRef = useRef<ScrapPartId | null>(null);
   const sparkyInstallNextStageRef = useRef<SparkyQuestStage | null>(null);
-  const installBatteryPhaseRef = useRef<'approach' | 'hand-off' | 'sparky-walk' | 'open-chest' | 'place-battery' | 'chest-glow' | 'done' | null>(null);
+  const installBatteryPhaseRef = useRef<'approach' | 'hand-off' | 'sparky-walk' | 'open-chest' | 'place-battery' | 'close-chest' | 'power-on' | 'done' | null>(null);
   const installBatteryTimerRef = useRef(0);
   const batteryInstalledRef = useRef(false);
   const batteryGlowRef = useRef<THREE.Mesh | null>(null);
+  const chestHingeGroupRef = useRef<THREE.Group | null>(null);
   const chestPanelRef = useRef<THREE.Mesh | null>(null);
   const installBatteryPropRef = useRef<THREE.Group | null>(null);
   const batteryLerpStartPosRef = useRef(new THREE.Vector3());
   const batteryLerpEndPosRef = useRef(new THREE.Vector3());
+  const batteryHandGroupRef = useRef<THREE.Group | null>(null);
   const lastSparkyDlgTextRef = useRef('');
   const lastShowSparkyDlgRef = useRef(false);
   const lastOutsidePromptRef = useRef<string | null>(null);
@@ -3324,12 +3326,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       scrapRobot.body = torusBody as unknown as typeof scrapRobot.body;
       scrapRobot.root.add(torusBody);
 
+      // Hinged chest hatch — rotates open like a lid
+      const hingeGroup = new THREE.Group();
+      hingeGroup.position.set(0, 0.17, 0.08); // pivot at top rim of torus
+      torusBody.add(hingeGroup);
+      chestHingeGroupRef.current = hingeGroup;
+
       const chestPanel = new THREE.Mesh(
         new THREE.CircleGeometry(0.09, 16),
         createToonMaterial(0x2a1a0a)
       );
-      chestPanel.position.set(0, 0, 0.08);
-      torusBody.add(chestPanel);
+      chestPanel.position.set(0, -0.17, 0); // offset downward from hinge pivot
+      hingeGroup.add(chestPanel);
       chestPanelRef.current = chestPanel;
     }
 
@@ -5813,12 +5821,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         } else if (installBatteryPhaseRef.current && aptSparky) {
           const ibPhase = installBatteryPhaseRef.current;
           const aptPos = aptSparky.root.position;
+          const sparkyBaseQ = sparkyBaseQuatRef.current;
+          const rightArm = aptSparky.rightArm;
           if (ibPhase === 'approach') {
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
-            // Sparky faces north toward Scrap using the base quaternion
-            if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
+            if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ);
             animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
-            // Player walks to Sparky's east side — both face north toward Scrap
             const playerTarget = new THREE.Vector2(-1.8, -0.55);
             const playerArrived = walkPlayer(localPositionRef.current, playerTarget, MOVE_SPEED * 0.29, delta, worldTime, 0.28, localRobotRef.current, leftLegPivotRef.current, rightLegPivotRef.current, yawRef);
             if (playerArrived) {
@@ -5830,23 +5838,48 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 localRobotRef.current.leftArm.rotation.x = -Math.PI / 2;
                 localRobotRef.current.rightArm.rotation.x = -Math.PI / 2;
               }
-              // Player faces north toward Scrap — side by side with Sparky
               yawRef.current = Math.PI;
             }
           } else if (ibPhase === 'hand-off') {
             installBatteryTimerRef.current += delta;
-            animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
-            if (installBatteryTimerRef.current < delta) playHappyChime();
-            if (installBatteryTimerRef.current > 0.6) {
-              // Remove battery from backpack — handed to Sparky
-              const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
-              updateBackpack(newBackpack);
+            // Sparky turns right toward player (0.4s), then turns back with battery (0.4s)
+            const turnRight = Math.min(installBatteryTimerRef.current / 0.4, 1);
+            const rightAngle = -Math.PI / 2 * turnRight;
+            const rightFacingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rightAngle);
+            if (installBatteryTimerRef.current < 0.4) {
+              if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ).premultiply(rightFacingQ);
+              animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
+            } else if (installBatteryTimerRef.current < 0.5) {
+              // Pause facing player — battery appears in Sparky's hand
+              if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ).premultiply(rightFacingQ);
+              animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
+              if (installBatteryTimerRef.current - delta < 0.4 && installBatteryTimerRef.current >= 0.4) {
+                playHappyChime();
+                // Create battery in Sparky's right hand
+                const batteryGroup = createPartModel('battery');
+                batteryGroup.scale.set(2, 2, 2);
+                batteryGroup.position.set(0.1, -0.08, 0.08);
+                batteryGroup.rotation.set(Math.PI / 2, 0, 0);
+                if (rightArm) {
+                  rightArm.add(batteryGroup);
+                  batteryHandGroupRef.current = batteryGroup;
+                 }
+               }
+             } else {
+               // Turn back north-facing (0.4 -> 0.8)
+              const turnBack = Math.min((installBatteryTimerRef.current - 0.5) / 0.3, 1);
+              const backAngle = -Math.PI / 2 * (1 - turnBack);
+              const backFacingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), backAngle);
+              if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ).premultiply(backFacingQ);
+              animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
+            }
+            if (installBatteryTimerRef.current > 0.8) {
+              if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ);
               installBatteryPhaseRef.current = 'sparky-walk';
               installBatteryTimerRef.current = 0;
             }
           } else if (ibPhase === 'sparky-walk') {
             installBatteryTimerRef.current += delta;
-            // Sparky walks toward Scrap
             const sparkyTarget = new THREE.Vector3(-2.6, 0.2, 0.28);
             const dist = aptPos.distanceTo(sparkyTarget);
             if (dist > 0.05) {
@@ -5854,35 +5887,45 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               aptPos.x += dir.x * MOVE_SPEED * 1.36 * delta;
               aptPos.y += dir.y * MOVE_SPEED * 1.36 * delta;
               const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.atan2(dir.x, dir.y));
-              if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+              if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ).premultiply(facingQ);
               animateRobotVisual(aptSparky, worldTime, 1, dir.x, dir.y);
             } else {
-              // Sparky arrived — face north toward Scrap
-              if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
+              if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ);
               installBatteryPhaseRef.current = 'open-chest';
               installBatteryTimerRef.current = 0;
             }
           } else if (ibPhase === 'open-chest') {
             installBatteryTimerRef.current += delta;
             if (installBatteryTimerRef.current < delta) playToolClank();
-            if (chestPanelRef.current) {
-              const openZ = 0.08 + Math.min(installBatteryTimerRef.current / 1.0, 1) * 0.15;
-              chestPanelRef.current.position.z = openZ;
+            // Hinged hatch: panel rotates about X axis (top hinge) — swings downward
+            if (chestHingeGroupRef.current) {
+              const openAngle = Math.min(installBatteryTimerRef.current / 0.8, 1) * (-Math.PI / 2);
+              chestHingeGroupRef.current.rotation.x = openAngle;
             }
-            if (installBatteryTimerRef.current > 1.0) {
+            if (installBatteryTimerRef.current > 0.8) {
               installBatteryPhaseRef.current = 'place-battery';
               installBatteryTimerRef.current = 0;
-              const batteryGroup = createPartModel('battery');
-              batteryGroup.scale.set(2, 2, 2);
-              batteryGroup.position.set(aptPos.x, aptPos.y + 0.3, 0.4);
-              apartmentRoomGroupRef.current?.add(batteryGroup);
-              installBatteryPropRef.current = batteryGroup;
-              batteryLerpStartPosRef.current.copy(batteryGroup.position);
-              if (chestPanelRef.current) {
-                const endPos = new THREE.Vector3();
-                chestPanelRef.current.getWorldPosition(endPos);
-                apartmentRoomGroupRef.current?.worldToLocal(endPos);
-                batteryLerpEndPosRef.current.copy(endPos);
+              // Detach battery from Sparky's hand, attach to room
+              const batGroup = batteryHandGroupRef.current;
+              if (batGroup) {
+                if (rightArm) rightArm.remove(batGroup);
+                const worldPos = new THREE.Vector3();
+                batGroup.getWorldPosition(worldPos);
+                apartmentRoomGroupRef.current?.add(batGroup);
+                batGroup.position.copy(apartmentRoomGroupRef.current!.worldToLocal(worldPos.clone()));
+                installBatteryPropRef.current = batGroup;
+                batteryLerpStartPosRef.current.copy(batGroup.position);
+              }
+              // Target position: inside the chest (torus center)
+              const scrapBody = scrapRobotRef.current?.body;
+              if (scrapBody) {
+                const chestCenter = new THREE.Vector3();
+                scrapBody.getWorldPosition(chestCenter);
+                if (apartmentRoomGroupRef.current) {
+                  apartmentRoomGroupRef.current.worldToLocal(chestCenter);
+                }
+                chestCenter.z += 0.02;
+                batteryLerpEndPosRef.current.copy(chestCenter);
               }
             }
           } else if (ibPhase === 'place-battery') {
@@ -5890,12 +5933,42 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (installBatteryTimerRef.current < delta) playSparkBurst();
             const prop = installBatteryPropRef.current;
             if (prop) {
-              const progress = Math.min(installBatteryTimerRef.current / 1.2, 1);
+              const progress = Math.min(installBatteryTimerRef.current / 0.8, 1);
               prop.position.lerpVectors(batteryLerpStartPosRef.current, batteryLerpEndPosRef.current, progress);
               prop.rotation.z = progress * Math.PI * 2;
-              prop.scale.setScalar(2 + progress * 0.3);
+              prop.scale.setScalar(2 + progress * 0.2);
             }
-            if (installBatteryTimerRef.current > 1.2) {
+            if (installBatteryTimerRef.current > 0.8) {
+              if (installBatteryPropRef.current) installBatteryPropRef.current.visible = false;
+              installBatteryPhaseRef.current = 'close-chest';
+              installBatteryTimerRef.current = 0;
+            }
+          } else if (ibPhase === 'close-chest') {
+            installBatteryTimerRef.current += delta;
+            // Hinged hatch closes
+            if (chestHingeGroupRef.current) {
+              const closeProgress = Math.min(installBatteryTimerRef.current / 0.5, 1);
+              const closeAngle = (-Math.PI / 2) * (1 - closeProgress);
+              chestHingeGroupRef.current.rotation.x = closeAngle;
+            }
+            if (installBatteryTimerRef.current > 0.5) {
+              if (chestHingeGroupRef.current) chestHingeGroupRef.current.rotation.x = 0;
+              if (installBatteryTimerRef.current - delta < 0.5 && installBatteryTimerRef.current >= 0.5) {
+                playToolClank();
+              }
+              installBatteryPhaseRef.current = 'power-on';
+              installBatteryTimerRef.current = 0;
+            }
+          } else if (ibPhase === 'power-on') {
+            installBatteryTimerRef.current += delta;
+            const t = installBatteryTimerRef.current;
+            if (t < delta) {
+              // Snap eyes cyan
+              if (scrapRobotRef.current) {
+                if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
+                if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
+              }
+              // Create glow sphere in chest
               const scrap = scrapRobotRef.current;
               if (scrap && scrap.body && !batteryGlowRef.current) {
                 const glow = new THREE.Mesh(
@@ -5906,30 +5979,34 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 scrap.body.add(glow);
                 batteryGlowRef.current = glow;
               }
-              if (installBatteryPropRef.current) installBatteryPropRef.current.visible = false;
-              installBatteryPhaseRef.current = 'chest-glow';
-              installBatteryTimerRef.current = 0;
             }
-          } else if (ibPhase === 'chest-glow') {
-            installBatteryTimerRef.current += delta;
-            if (installBatteryTimerRef.current < delta) {
-              playHappyChime();
+            // 0.0-0.25: vibration (whole-body Z-axis oscillation)
+            if (t < 0.25) {
+              const shake = Math.sin(t * 80) * 0.008 * (1 - t / 0.25);
               if (scrapRobotRef.current) {
-                if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
-                if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
+                scrapRobotRef.current.root.position.z = 0.24 + shake;
               }
             }
+            // 0.25: spark burst sound
+            if (t > 0.25 && t - delta <= 0.25) {
+              playSparkBurst();
+            }
+            // 0.5: happy chime (success)
+            if (t > 0.5 && t - delta <= 0.5) {
+              playHappyChime();
+            }
+            // Glow pulse
             if (batteryGlowRef.current) {
               const glow = batteryGlowRef.current;
-              const intensity = 0.3 + Math.sin(installBatteryTimerRef.current * 6) * 0.15;
-              (glow.material as THREE.MeshBasicMaterial).opacity = intensity;
+              const rampUp = Math.min(t / 0.5, 1);
+              const pulse = 0.3 + Math.sin(t * 6) * 0.15;
+              (glow.material as THREE.MeshBasicMaterial).opacity = rampUp * pulse;
             }
-            if (chestPanelRef.current) {
-              const closeProgress = Math.min(installBatteryTimerRef.current / 1.0, 1);
-              const closedZ = 0.23 - closeProgress * 0.15;
-              chestPanelRef.current.position.z = closedZ;
-            }
-            if (installBatteryTimerRef.current > 2.0) {
+            if (t > 1.5) {
+              // Reset Scrap position
+              if (scrapRobotRef.current) {
+                scrapRobotRef.current.root.position.z = 0.24;
+              }
               installBatteryPhaseRef.current = 'done';
               installBatteryTimerRef.current = 0;
             }
@@ -5946,8 +6023,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               disposeObject(installBatteryPropRef.current);
               installBatteryPropRef.current = null;
             }
+            if (batteryHandGroupRef.current) {
+              batteryHandGroupRef.current.parent?.remove(batteryHandGroupRef.current);
+              disposeObject(batteryHandGroupRef.current);
+              batteryHandGroupRef.current = null;
+            }
             endCinematicCutscene();
-            // Move Sparky back to his usual spot near the bed
             aptPos.set(0.2, 2.2, 0.28);
             setSparkyDlgFull("Scrap is all yours! He'll follow you everywhere.");
             setShowSparkyDlg(true);
@@ -6803,10 +6884,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               scratchVec3.current.set(-2.6, -0.2, 1.8);
               camera.position.lerp(scratchVec3.current, 0.06);
               camera.lookAt(-2.6, 0.6, 0.3);
-            } else {
+            } else if (ibPhase === 'open-chest' || ibPhase === 'place-battery' || ibPhase === 'close-chest') {
               scratchVec3.current.set(-3.5, 0.7, 1.8);
               camera.position.lerp(scratchVec3.current, 0.08);
               camera.lookAt(-2.6, 0.7, 0.3);
+            } else {
+              scratchVec3.current.set(-3.2, 0.6, 1.6);
+              camera.position.lerp(scratchVec3.current, 0.06);
+              camera.lookAt(-2.6, 0.9, 0.3);
             }
           } else if (csSparky) {
             const sp = csSparky.root.position;
