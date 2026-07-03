@@ -5849,18 +5849,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else if (ibPhase === 'hand-off') {
             installBatteryTimerRef.current += delta;
-            // Sparky turns right toward player (0.4s), then turns back with battery (0.4s)
-            const turnRight = Math.min(installBatteryTimerRef.current / 0.4, 1);
+            // Sparky turns right toward player (0.8s), then turns back with battery (0.6s)
+            const turnRight = Math.min(installBatteryTimerRef.current / 0.8, 1);
             const rightAngle = -Math.PI / 2 * turnRight;
             const rightFacingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rightAngle);
-            if (installBatteryTimerRef.current < 0.4) {
+            if (installBatteryTimerRef.current < 0.8) {
               if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ).premultiply(rightFacingQ);
               animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
-            } else if (installBatteryTimerRef.current < 0.5) {
+            } else if (installBatteryTimerRef.current < 0.9) {
               // Pause facing player — battery appears in Sparky's hand
               if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ).premultiply(rightFacingQ);
               animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
-              if (installBatteryTimerRef.current - delta < 0.4 && installBatteryTimerRef.current >= 0.4) {
+              if (installBatteryTimerRef.current - delta < 0.8 && installBatteryTimerRef.current >= 0.8) {
                 playHappyChime();
                 // Create battery in Sparky's right hand
                 const batteryGroup = createPartModel('battery');
@@ -5871,23 +5871,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   rightArm.add(batteryGroup);
                   batteryHandGroupRef.current = batteryGroup;
                  }
-               }
-             } else {
-               // Turn back north-facing (0.4 -> 0.8)
-              const turnBack = Math.min((installBatteryTimerRef.current - 0.5) / 0.3, 1);
-              const backAngle = -Math.PI / 2 * (1 - turnBack);
-              const backFacingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), backAngle);
-              if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ).premultiply(backFacingQ);
-              animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
-            }
-            if (installBatteryTimerRef.current > 0.8) {
-              if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ);
-              installBatteryPhaseRef.current = 'sparky-walk';
-              installBatteryTimerRef.current = 0;
-            }
+                }
+              } else {
+                // Turn back north-facing (0.8 -> 1.4)
+               const turnBack = Math.min((installBatteryTimerRef.current - 0.9) / 0.6, 1);
+               const backAngle = -Math.PI / 2 * (1 - turnBack);
+               const backFacingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), backAngle);
+               if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ).premultiply(backFacingQ);
+               animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
+             }
+             if (installBatteryTimerRef.current > 1.4) {
+               if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ);
+               installBatteryPhaseRef.current = 'sparky-walk';
+               installBatteryTimerRef.current = 0;
+             }
           } else if (ibPhase === 'sparky-walk') {
             installBatteryTimerRef.current += delta;
-            const sparkyTarget = new THREE.Vector3(-2.6, 0.2, 0.28);
+            const sparkyTarget = new THREE.Vector3(-2.6, 0.0, 0.28);
             const dist = aptPos.distanceTo(sparkyTarget);
             if (dist > 0.05) {
               const dir = new THREE.Vector2(sparkyTarget.x - aptPos.x, sparkyTarget.y - aptPos.y).normalize();
