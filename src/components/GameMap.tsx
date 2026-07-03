@@ -118,6 +118,11 @@ const BATTERY_DLG_STEPS = [
   { speaker: 'Sparky', text: "I've written a letter to Rafiq at the robot shop. Take this to him — he'll sort you out with a job so you can earn enough for a battery." },
   { speaker: 'Sparky', text: "Rafiq's shop is just outside, down the street. Show him my letter and he'll know what to do. Good luck!" },
 ];
+const BATTERY_INSTALL_DLG_STEPS = [
+  { speaker: 'Sparky', text: "Scrap is all yours! He'll power the workstation — finally we can help people with their busted bots." },
+  { speaker: 'Sparky', text: "The world's a wreck. Folks drag in robots with fried circuits, dead power cells... they need someone who can do the math to bring 'em back." },
+  { speaker: 'Sparky', text: "Head outside to the repair kiosk. Customers are waiting — and every fix earns you something." },
+] as const;
 const RAFIQ_GREET_STEPS = [
   { speaker: 'Rafiq', text: "Wait — who are you?" },
   { speaker: 'Rafiq', text: "I wasn't expecting anyone today." },
@@ -428,7 +433,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyInstallTimerRef = useRef(0);
   const sparkyInstallPartIdRef = useRef<ScrapPartId | null>(null);
   const sparkyInstallNextStageRef = useRef<SparkyQuestStage | null>(null);
-  const installBatteryPhaseRef = useRef<'approach' | 'hand-off' | 'sparky-walk' | 'open-chest' | 'place-battery' | 'close-chest' | 'power-on' | 'done' | null>(null);
+  const installBatteryPhaseRef = useRef<'approach' | 'hand-off' | 'sparky-walk' | 'open-chest' | 'place-battery' | 'close-chest' | 'power-on' | 'celebration' | 'done' | null>(null);
   const installBatteryTimerRef = useRef(0);
   const batteryInstalledRef = useRef(false);
   const batteryGlowRef = useRef<THREE.Mesh | null>(null);
@@ -562,6 +567,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         osc.connect(g).connect(ctx.destination);
         osc.start(ctx.currentTime + i * 0.2);
         osc.stop(ctx.currentTime + i * 0.2 + 0.15);
+      });
+    } catch {}
+  };
+
+  const playFanfare = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.15);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, ctx.currentTime + i * 0.15);
+        g.gain.linearRampToValueAtTime(0.3, ctx.currentTime + i * 0.15 + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.35);
+        osc.connect(g).connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.15);
+        osc.stop(ctx.currentTime + i * 0.15 + 0.4);
       });
     } catch {}
   };
@@ -709,6 +733,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [showBatteryDlg, setShowBatteryDlg] = useState(false);
   const [batteryDlgStep, setBatteryDlgStep] = useState(0);
   const [batteryDlgText, setBatteryDlgText] = useState('');
+  const [showBatteryInstallDlg, setShowBatteryInstallDlg] = useState(false);
+  const [batteryInstallStep, setBatteryInstallStep] = useState(0);
+  const [batteryInstallText, setBatteryInstallText] = useState('');
+  const [showCelebration, setShowCelebration] = useState(false);
+  const celebrationTimerRef = useRef(0);
+  const [showLightFlash, setShowLightFlash] = useState(false);
 
   const [scrapVisible, setScrapVisible] = useState(false);
   const [showScrapToggle, setShowScrapToggle] = useState(false);
@@ -1751,6 +1781,51 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [showBatteryDlg, batteryDlgStep]);
+
+  // Battery install dialog typewriter effect
+  useEffect(() => {
+    if (!showBatteryInstallDlg) return;
+    const step = BATTERY_INSTALL_DLG_STEPS[batteryInstallStep];
+    if (!step) return;
+    setBatteryInstallText('');
+    let i = 0;
+    const interval = setInterval(() => {
+      i++;
+      setBatteryInstallText(step.text.slice(0, i));
+      if (i >= step.text.length) clearInterval(interval);
+    }, 35);
+    return () => clearInterval(interval);
+  }, [batteryInstallStep, showBatteryInstallDlg]);
+
+  // Battery install dialog Enter key handler
+  useEffect(() => {
+    if (!showBatteryInstallDlg) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const nextStep = batteryInstallStep + 1;
+        if (nextStep < BATTERY_INSTALL_DLG_STEPS.length) {
+          setBatteryInstallStep(nextStep);
+        } else {
+          setShowBatteryInstallDlg(false);
+          const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
+          updateBackpack(newBackpack);
+          updateQuestStage('all-done');
+          apiSync({ batteryInstalled: true, questStage: 'all-done', pendingBatteryCutscene: false });
+          if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
+            setHeldSlotIndex(null);
+            heldSlotIndexRef.current = null;
+          }
+          scrapFollowerEnabledRef.current = true;
+          setScrapVisible(true);
+          setShowScrapToggle(true);
+          if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showBatteryInstallDlg, batteryInstallStep]);
 
   // Sparky dialog typewriter effect
   useEffect(() => {
@@ -5986,34 +6061,57 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 scrap.body.add(glow);
                 batteryGlowRef.current = glow;
               }
+              // White flash at start
+              setShowLightFlash(true);
+              setTimeout(() => setShowLightFlash(false), 200);
             }
-            // 0.0-0.25: vibration (whole-body Z-axis oscillation)
-            if (t < 0.25) {
-              const shake = Math.sin(t * 80) * 0.008 * (1 - t / 0.25);
+            // 0.0-0.2: vibration (whole-body Z-axis oscillation)
+            if (t < 0.2) {
+              const shake = Math.sin(t * 100) * 0.012 * (1 - t / 0.2);
               if (scrapRobotRef.current) {
                 scrapRobotRef.current.root.position.z = 0.24 + shake;
               }
             }
-            // 0.25: spark burst sound
-            if (t > 0.25 && t - delta <= 0.25) {
+            // 0.2: spark burst sound
+            if (t > 0.2 && t - delta <= 0.2) {
               playSparkBurst();
             }
-            // 0.5: happy chime (success)
-            if (t > 0.5 && t - delta <= 0.5) {
+            // 0.45: happy chime (success)
+            if (t > 0.45 && t - delta <= 0.45) {
               playHappyChime();
             }
-            // Glow pulse
+            // Glow pulse (faster)
             if (batteryGlowRef.current) {
               const glow = batteryGlowRef.current;
-              const rampUp = Math.min(t / 0.5, 1);
-              const pulse = 0.3 + Math.sin(t * 6) * 0.15;
+              const rampUp = Math.min(t / 0.4, 1);
+              const pulse = 0.3 + Math.sin(t * 10) * 0.18;
               (glow.material as THREE.MeshBasicMaterial).opacity = rampUp * pulse;
             }
-            if (t > 1.5) {
+            if (t > 1.2) {
               // Reset Scrap position
               if (scrapRobotRef.current) {
                 scrapRobotRef.current.root.position.z = 0.24;
               }
+              installBatteryPhaseRef.current = 'celebration';
+              installBatteryTimerRef.current = 0;
+              celebrationTimerRef.current = 0;
+              setShowCelebration(true);
+              playFanfare();
+            }
+          } else if (ibPhase === 'celebration') {
+            installBatteryTimerRef.current += delta;
+            const t = installBatteryTimerRef.current;
+            // Scrap bounce
+            if (scrapRobotRef.current) {
+              scrapRobotRef.current.root.position.z = 0.24 + Math.sin(t * 12) * 0.05;
+              scrapRobotRef.current.root.rotation.z = Math.sin(t * 8) * 0.02;
+            }
+            if (t > 2.5) {
+              if (scrapRobotRef.current) {
+                scrapRobotRef.current.root.position.z = 0.24;
+                scrapRobotRef.current.root.rotation.z = 0;
+              }
+              setShowCelebration(false);
               installBatteryPhaseRef.current = 'done';
               installBatteryTimerRef.current = 0;
             }
@@ -6037,24 +6135,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             endCinematicCutscene();
             aptPos.set(0.2, 2.2, 0.28);
-            setSparkyDlgFull("Scrap is all yours! He'll follow you everywhere.");
-            setShowSparkyDlg(true);
-            onSparkyDlgCloseRef.current = () => {
-              setShowSparkyDlg(false);
-              onSparkyDlgCloseRef.current = null;
-              const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
-              updateBackpack(newBackpack);
-              updateQuestStage('all-done');
-              apiSync({ batteryInstalled: true, questStage: 'all-done', pendingBatteryCutscene: false });
-              if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
-                setHeldSlotIndex(null);
-                heldSlotIndexRef.current = null;
-              }
-              scrapFollowerEnabledRef.current = true;
-              setScrapVisible(true);
-              setShowScrapToggle(true);
-              if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
-            };
+            setShowBatteryInstallDlg(true);
+            setBatteryInstallStep(0);
           }
         } else if (sparkyInstallPhaseRef.current && aptSparky) {
           const phase = sparkyInstallPhaseRef.current;
@@ -7857,6 +7939,43 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         .animate-modal-pop {
           animation: modal-pop 0.4s ease-out forwards;
         }
+        @keyframes confetti-fall {
+          0% { opacity: 1; transform: translateY(-10vh) rotate(0deg); }
+          100% { opacity: 0; transform: translateY(110vh) rotate(720deg); }
+        }
+        .animate-confetti-fall {
+          animation: confetti-fall 2s ease-in forwards;
+        }
+        @keyframes celebration-pop {
+          0% { opacity: 0; transform: scale(0.3); filter: brightness(0.5); }
+          50% { opacity: 1; transform: scale(1.1); filter: brightness(1.5); }
+          100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+        }
+        .animate-celebration-pop {
+          animation: celebration-pop 0.8s ease-out forwards;
+        }
+        @keyframes card-slide-up {
+          0% { opacity: 0; transform: translateY(40px) scale(0.8); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-card-slide-up {
+          animation: card-slide-up 0.5s ease-out forwards;
+        }
+        @keyframes flash-fade {
+          0% { opacity: 0.6; }
+          100% { opacity: 0; }
+        }
+        .animate-flash-fade {
+          animation: flash-fade 0.2s ease-out forwards;
+        }
+        @keyframes celebration-subtitle {
+          0% { opacity: 0; transform: translateY(10px); }
+          100% { opacity: 0.7; transform: translateY(0); }
+        }
+        .animate-celebration-subtitle {
+          animation: celebration-subtitle 0.8s ease-out 1.5s forwards;
+          opacity: 0;
+        }
       `}</style>
       {showSparkyExamples && inWorkshopRoom && (() => {
         const exMap = { String: { n: 'greeting', v: '"Hello"' }, int: { n: 'count', v: '42' }, double: { n: 'price', v: '3.5' }, boolean: { n: 'isCharged', v: 'true' } } as const;
@@ -8367,6 +8486,57 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
+      {showLightFlash && <div className="fixed inset-0 z-50 bg-white pointer-events-none animate-flash-fade" />}
+
+      {showCelebration && (() => {
+        const confettiColors = ['#fbbf24', '#22d3ee', '#f472b6', '#a78bfa', '#34d399', '#fb923c', '#f87171'];
+        const confettiPieces = Array.from({ length: 40 }, (_, i) => ({
+          left: `${Math.random() * 100}%`,
+          color: confettiColors[i % confettiColors.length],
+          delay: `${Math.random() * 1.5}s`,
+          duration: `${1.5 + Math.random() * 1.5}s`,
+          rotation: `${Math.random() * 360}deg`,
+          size: `${4 + Math.random() * 6}px`,
+        }));
+        return (
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 select-none overflow-hidden cursor-pointer" onClick={() => { setShowCelebration(false); installBatteryPhaseRef.current = 'done'; installBatteryTimerRef.current = 0; }}>
+            {confettiPieces.map((p, i) => (
+              <div key={i} className="absolute top-0 animate-confetti-fall" style={{
+                left: p.left, width: p.size, height: p.size,
+                backgroundColor: p.color, animationDelay: p.delay, animationDuration: p.duration,
+                transform: `rotate(${p.rotation})`,
+                borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+              }} />
+            ))}
+            <div className="text-center z-10">
+              <div className="text-5xl font-bold text-amber-300 tracking-wider mb-8 drop-shadow-[0_0_30px_rgba(251,191,36,0.5)] animate-celebration-pop">
+                ⚡ POWER CORE UNLOCKED
+              </div>
+              <div className="flex justify-center gap-4 mb-8">
+                {[{ icon: '⚡', name: 'Power Up', unlocked: true }, { icon: '🔒', name: '???', unlocked: false }, { icon: '🔒', name: '???', unlocked: false }, { icon: '🔒', name: '???', unlocked: false }].map((card, i) => (
+                  <div key={i} className={`w-32 h-44 rounded-xl border-2 flex flex-col items-center justify-center gap-2 ${card.unlocked ? 'border-amber-400/60 bg-slate-800/80 shadow-[0_0_15px_rgba(251,191,36,0.2)]' : 'border-slate-600/50 bg-slate-800/40'} animate-card-slide-up`}
+                    style={{ animationDelay: `${i * 150}ms` }}>
+                    {card.unlocked ? (
+                      <>
+                        <span className="text-3xl">{card.icon}</span>
+                        <span className="text-sm font-semibold text-slate-200">{card.name}</span>
+                        <span className="text-xs font-bold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full border border-green-400/30">UNLOCKED</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-3xl">{card.icon}</span>
+                        <span className="text-sm text-slate-500">{card.name}</span>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="text-slate-400 text-sm animate-celebration-subtitle">Explore the world to unlock more abilities</div>
+            </div>
+          </div>
+        );
+      })()}
+
       <TFB show={showBatteryDlg} step={batteryDlgStep} steps={BATTERY_DLG_STEPS} text={batteryDlgText}
         icon="robot" onEnter={() => {
           stopTts();
@@ -8381,6 +8551,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
         }}
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
+
+      <TFB show={showBatteryInstallDlg} step={batteryInstallStep} steps={BATTERY_INSTALL_DLG_STEPS} text={batteryInstallText}
+        icon="auto" onEnter={() => { stopTts(); const next = batteryInstallStep + 1; if (next < BATTERY_INSTALL_DLG_STEPS.length) { setBatteryInstallStep(next); } }} ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
         onTtsToggle={onTtsToggle} />
 
       <TFB show={showWhoDlg} step={whoStep} steps={RAFIQ_GREET_STEPS} text={whoText}

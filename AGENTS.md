@@ -1,3 +1,22 @@
+## 🔴🔴🔴 BRANCHING RULE: ONE FEATURE = ONE BRANCH 🔴🔴🔴
+
+- **New feature** → new branch off `main`
+- **Bug fix on current feature** → same branch, keep working
+- **Starting ANOTHER new feature** → first merge current branch to `main`, THEN branch off `main` again
+- NEVER pile two features on one branch
+- NEVER start a new feature without merging the previous one to main first
+
+## 🔴🔴🔴 NEW FEATURE REQUESTS — NEVER IMPLEMENT WITHOUT ASKING FIRST 🔴🔴🔴
+
+The user has a clear vision. **Do NOT assume you know what they want.**
+Even if you think your idea is cool, small, or obvious — **ask first**.
+
+**Exception**: when the user explicitly says "make it good" or "you decide."
+
+**If you ignore this rule, you will waste time shipping things the user didn't ask for and will have to undo them.**
+
+---
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
