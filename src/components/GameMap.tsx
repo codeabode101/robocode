@@ -6116,34 +6116,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (scrap) {
                 savedScrapPosRef.current.copy(scrap.root.position);
                 savedScrapScaleRef.current.copy(scrap.root.scale);
-                scrap.root.position.set(-2.6, 0.5, 0.28);
                 scrap.root.scale.set(1.2, 1.2, 1.2);
               }
-              // Hide apartment objects except Scrap
-              const aptGroup = apartmentRoomGroupRef.current;
-              if (aptGroup) {
-                savedAptChildrenVisRef.current = [];
-                aptGroup.children.forEach(child => {
-                  if (child === scrap?.root || child === batteryGlowRef.current) return;
-                  savedAptChildrenVisRef.current.push({ child, vis: child.visible });
-                  child.visible = false;
-                });
-              }
+              // Keep apartment visible (floor/walls = ground reference)
             }
-            // Scrap 360° rotation + bounce
+            // Scrap 360° rotation (spins in XY/ground plane around Z axis)
             if (scrapRobotRef.current) {
-              scrapRobotRef.current.root.rotation.z = t * (Math.PI * 2 / 3);
+              scrapRobotRef.current.root.rotation.z = Math.PI + t * (Math.PI * 2 / 3);
               scrapRobotRef.current.root.position.z = 0.28 + Math.sin(t * 8) * 0.06;
-              if (scrapRobotRef.current.leftPupil) {
-                const pupilMove = Math.sin(t * 4) * 0.02;
-                scrapRobotRef.current.leftPupil.position.x = -0.07 + pupilMove;
-                scrapRobotRef.current.rightPupil.position.x = 0.07 + pupilMove;
-              }
             }
-            // Camera slowly zooms in on Scrap
-            scratchVec3.current.set(-3.2, 0.2, 1.4);
+            // Camera zooms in on Scrap
+            scratchVec3.current.set(-2.6, 0.2, 1.2);
             camera.position.lerp(scratchVec3.current, 0.03);
-            camera.lookAt(-2.6, 0.7, 0.3);
+            camera.lookAt(-2.6, 1.2, 0.3);
             if (t > 3.0) {
               // Restore everything
               const scene = sceneRef.current;
@@ -6158,10 +6143,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 if (scrap.rightPupil) scrap.rightPupil.position.x = 0.07;
               }
               const aptGroup = apartmentRoomGroupRef.current;
-              if (aptGroup) {
-                savedAptChildrenVisRef.current.forEach(({ child, vis }) => { child.visible = vis; });
-                savedAptChildrenVisRef.current = [];
-              }
               setShowCelebration(false);
               installBatteryPhaseRef.current = 'done';
               installBatteryTimerRef.current = 0;

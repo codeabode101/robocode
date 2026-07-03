@@ -109,6 +109,17 @@ Procedural city generation:
 - For a BoxGeometry sign on a building facade: use `MeshBasicMaterial({ map: st })` with `st.flipY = false`. If the text reads backwards, the mesh is on the wrong side of the face or the face normal points inward.
 Orthographic camera (top-down, z-up), viewHeight=26 units, ACESFilmic tone mapping, PCFSoft shadows, Fog at 38-58 units for depth. No post-processing (EffectComposer) — would need to import from `three/examples/jsm/postprocessing/`.
 
+## ⚠️ Coordinate System: Z = UP, XY = ground plane
+This is NOT Three.js default (Y-up). **Z is the vertical axis (height).**
+- X = left/right (east/west)
+- Y = forward/back (north/south)
+- Z = up/down (height)
+- `rotation.z` = spin in the ground plane (facing direction)
+- `rotation.x` / `rotation.y` = tilt (rarely used)
+- Position: `object.position.set(x, y, z)` — third value is height
+- Camera `up.set(0, 0, 1)` — up vector is Z
+- Floor is at Z ≈ 0. Characters stand at Z ≈ 0.24–0.28.
+
 ## ⚠️ Hitbox Rule — Every visible object MUST have a hitbox
 Every visible 3D object in a room (furniture, counter, machine) must have a corresponding collision hitbox in that room's obstacle array (`workshopObstaclesRef.current`, `shopObstaclesRef.current`, etc.). The hitbox should match the object's actual dimensions. Hitboxes are defined as `{ shape: 'box', center: { x, y }, halfWidth, halfHeight }` or `{ shape: 'circle', center: { x, y }, radius }`.
 
