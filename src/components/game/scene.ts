@@ -1342,6 +1342,8 @@ export function createPartModel(partId: string): THREE.Group {
     );
     seal.position.set(0, 0, 0.002);
     g.add(seal);
+  } else if (partId === 'scrap') {
+    // No held model needed — scrap is a follower robot
   }
 
   return g;

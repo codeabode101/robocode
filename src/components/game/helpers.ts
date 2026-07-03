@@ -538,6 +538,22 @@ export function createPartIcon(partId: string): string {
     ctx.textAlign = 'center';
     ctx.fillText('+', 32, 10);
     ctx.fillText('−', 32, 58);
+  } else if (partId === 'scrap') {
+    // Robot head icon
+    ctx.fillStyle = '#475569';
+    ctx.beginPath(); ctx.roundRect(12, 18, 40, 30, 6); ctx.fill();
+    ctx.fillStyle = '#334155';
+    ctx.beginPath(); ctx.roundRect(16, 22, 32, 22, 4); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(24, 32, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(40, 32, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#000000';
+    ctx.beginPath(); ctx.arc(24, 32, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(40, 32, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(30, 14, 4, 6);
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath(); ctx.arc(32, 13, 3, 0, Math.PI * 2); ctx.fill();
   } else if (partId === 'letter') {
     ctx.fillStyle = '#f5e6c8';
     ctx.beginPath(); ctx.roundRect(8, 14, 48, 34, 3); ctx.fill();

@@ -94,7 +94,7 @@ export interface CustomerRequest {
 
 export type SparkyQuestStage = 'intro' | 'intro-done' | 'unit1' | 'unit1-done' | 'unit2' | 'unit2-done' | 'unit3' | 'unit3-done' | 'unit4' | 'all-done';
 
-export type ScrapPartId = 'letter' | 'battery';
+export type ScrapPartId = 'letter' | 'battery' | 'scrap';
 
 export type RoomType = 'outside' | 'workshop' | 'apartment' | 'shop' | 'arena';
 

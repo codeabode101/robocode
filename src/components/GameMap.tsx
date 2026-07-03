@@ -358,7 +358,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sendAtRef = useRef(0);
   const lastStepAtRef = useRef(0);
   const rafRef = useRef<number | null>(null);
-  const audioRef = useRef<AudioContext | null>(null);
   const petShopRef = useRef<THREE.Group | null>(null);
   const obstacleHitboxesRef = useRef<Hitbox[]>([]);
   const yawRef = useRef(0);
@@ -522,171 +521,60 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const tabHiddenRef = useRef(false);
   const tabHiddenAtRef = useRef(0);
 
-  const playAwakenSound = () => {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      // Thump — low sine burst
-      const thump = ctx.createOscillator();
-      thump.type = 'sine';
-      thump.frequency.setValueAtTime(80, ctx.currentTime);
-      thump.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.15);
-      const g1 = ctx.createGain();
-      g1.gain.setValueAtTime(0.6, ctx.currentTime);
-      g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-      thump.connect(g1).connect(ctx.destination);
-      thump.start(ctx.currentTime);
-      thump.stop(ctx.currentTime + 0.15);
-      // Rising chime — 300→1200Hz sweep
-      const chime = ctx.createOscillator();
-      chime.type = 'sine';
-      chime.frequency.setValueAtTime(300, ctx.currentTime + 0.1);
-      chime.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.9);
-      const g2 = ctx.createGain();
-      g2.gain.setValueAtTime(0, ctx.currentTime + 0.1);
-      g2.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.3);
-      g2.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.9);
-      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-      chime.connect(g2).connect(ctx.destination);
-      chime.start(ctx.currentTime + 0.1);
-      chime.stop(ctx.currentTime + 1.2);
-    } catch {}
+  // Shared audio helpers
+  const fx = {
+    ctx: () => new (window.AudioContext || (window as any).webkitAudioContext)(),
+    tone: (ctx: AudioContext, freq: number, start: number, dur: number, gain: number, type: OscillatorType = 'sine') => {
+      const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(freq, start);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, start); g.gain.linearRampToValueAtTime(gain, start + 0.02); g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+      o.connect(g).connect(ctx.destination); o.start(start); o.stop(start + dur + 0.02);
+    },
+    notes: (ctx: AudioContext, freqs: number[], start: number, spacing: number, dur: number, gain: number, type: OscillatorType = 'sine') => {
+      freqs.forEach((f, i) => fx.tone(ctx, f, start + i * spacing, dur, gain, type));
+    },
+    noise: (ctx: AudioContext, start: number, dur: number, gain: number, hpFreq = 0) => {
+      const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+      const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      const s = ctx.createBufferSource(); s.buffer = buf;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, start); g.gain.linearRampToValueAtTime(gain, start + 0.02); g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+      if (hpFreq) { const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.setValueAtTime(hpFreq, start); s.connect(f).connect(g); }
+      else s.connect(g);
+      g.connect(ctx.destination); s.start(start); s.stop(start + dur + 0.02);
+    },
+    sweep: (ctx: AudioContext, from: number, to: number, start: number, dur: number, gain: number, type: OscillatorType = 'sine') => {
+      const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(from, start); o.frequency.exponentialRampToValueAtTime(to, start + dur);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, start); g.gain.linearRampToValueAtTime(gain, start + 0.03); g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+      o.connect(g).connect(ctx.destination); o.start(start); o.stop(start + dur + 0.02);
+    },
   };
 
-  const playStartupChime = () => {
+  const playAwakenSound = () => { try { const c = fx.ctx(); fx.sweep(c, 80, 40, c.currentTime, 0.15, 0.6); fx.sweep(c, 300, 1200, c.currentTime + 0.1, 0.8, 0.3); } catch {} };
+  const playStartupChime = () => { try { const c = fx.ctx(); fx.notes(c, [523, 659, 784, 1047], c.currentTime, 0.2, 0.14, 0.25); } catch {} };
+  const playAchievementSound = () => {
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const notes = [523, 659, 784, 1047];
-      notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.2);
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0, ctx.currentTime + i * 0.2);
-        g.gain.linearRampToValueAtTime(0.25, ctx.currentTime + i * 0.2 + 0.02);
-        g.gain.linearRampToValueAtTime(0, ctx.currentTime + i * 0.2 + 0.14);
-        osc.connect(g).connect(ctx.destination);
-        osc.start(ctx.currentTime + i * 0.2);
-        osc.stop(ctx.currentTime + i * 0.2 + 0.15);
-      });
+      const c = fx.ctx();
+      fx.notes(c, [523.25, 659.25, 783.99, 1046.5, 1318.5], c.currentTime, 0.1, 0.45, 0.35);
+      fx.noise(c, c.currentTime + 0.5, 0.25, 0.08, 6000);
     } catch {}
   };
-
-  const playFanfare = () => {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const notes = [523.25, 659.25, 783.99, 1046.5];
-      notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.15);
-        const g = ctx.createGain();
-        g.gain.setValueAtTime(0, ctx.currentTime + i * 0.15);
-        g.gain.linearRampToValueAtTime(0.3, ctx.currentTime + i * 0.15 + 0.04);
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.35);
-        osc.connect(g).connect(ctx.destination);
-        osc.start(ctx.currentTime + i * 0.15);
-        osc.stop(ctx.currentTime + i * 0.15 + 0.4);
-      });
-    } catch {}
-  };
-
   const playConnectSound = () => {
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(200, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.5);
-      osc.frequency.setValueAtTime(600, ctx.currentTime + 0.7);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.15, ctx.currentTime);
-      g.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.3);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
-      osc.connect(g).connect(ctx.destination);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 1.0);
-      const osc2 = ctx.createOscillator();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(1200, ctx.currentTime + 0.6);
-      osc2.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.9);
-      const g2 = ctx.createGain();
-      g2.gain.setValueAtTime(0, ctx.currentTime + 0.6);
-      g2.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.65);
-      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
-      osc2.connect(g2).connect(ctx.destination);
-      osc2.start(ctx.currentTime + 0.6);
-      osc2.stop(ctx.currentTime + 1.0);
+      const c = fx.ctx();
+      fx.sweep(c, 200, 800, c.currentTime, 0.5, 0.3, 'sawtooth');
+      fx.tone(c, 600, c.currentTime + 0.7, 0.3, 0.2);
+      fx.sweep(c, 1200, 400, c.currentTime + 0.6, 0.3, 0.2);
     } catch {}
   };
-
   const playUsbConnectSound = () => {
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const click = ctx.createOscillator();
-      click.type = 'square';
-      click.frequency.setValueAtTime(120, ctx.currentTime);
-      click.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.04);
-      const cg = ctx.createGain();
-      cg.gain.setValueAtTime(0.25, ctx.currentTime);
-      cg.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
-      click.connect(cg).connect(ctx.destination);
-      click.start(ctx.currentTime);
-      click.stop(ctx.currentTime + 0.04);
-      const osc1 = ctx.createOscillator();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(500, ctx.currentTime + 0.05);
-      osc1.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.15);
-      const g1 = ctx.createGain();
-      g1.gain.setValueAtTime(0, ctx.currentTime + 0.05);
-      g1.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.07);
-      g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
-      osc1.connect(g1).connect(ctx.destination);
-      osc1.start(ctx.currentTime + 0.05);
-      osc1.stop(ctx.currentTime + 0.22);
-      const osc2 = ctx.createOscillator();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(1000, ctx.currentTime + 0.2);
-      osc2.frequency.exponentialRampToValueAtTime(1800, ctx.currentTime + 0.28);
-      const g2 = ctx.createGain();
-      g2.gain.setValueAtTime(0, ctx.currentTime + 0.2);
-      g2.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.22);
-      g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-      osc2.connect(g2).connect(ctx.destination);
-      osc2.start(ctx.currentTime + 0.2);
-      osc2.stop(ctx.currentTime + 0.35);
+      const c = fx.ctx();
+      fx.sweep(c, 120, 60, c.currentTime, 0.04, 0.25, 'square');
+      fx.sweep(c, 500, 1200, c.currentTime + 0.05, 0.1, 0.2);
+      fx.sweep(c, 1000, 1800, c.currentTime + 0.2, 0.08, 0.15);
     } catch {}
   };
-
-  const playBootBeep = () => {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.15, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
-      osc.connect(g).connect(ctx.destination);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.08);
-    } catch {}
-  };
-
-  const playThumpSound = () => {
-    try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(80, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.15);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.4, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-      osc.connect(g).connect(ctx.destination);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.15);
-    } catch {}
-  };
+  const playBootBeep = () => { try { const c = fx.ctx(); fx.tone(c, 880, c.currentTime, 0.08, 0.15); } catch {} };
+  const playThumpSound = () => { try { const c = fx.ctx(); fx.sweep(c, 80, 40, c.currentTime, 0.15, 0.4); } catch {} };
 
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
@@ -1461,98 +1349,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
 
 
-  const playHappyChime = () => {
-    const context = audioRef.current || new AudioContext();
-    audioRef.current = context;
-    const now = context.currentTime;
-
-    const playTone = (frequency: number, start: number, duration: number, gain: number) => {
-      const oscillator = context.createOscillator();
-      const volume = context.createGain();
-      oscillator.type = 'triangle';
-      oscillator.frequency.value = frequency;
-      volume.gain.setValueAtTime(0.0001, start);
-      volume.gain.exponentialRampToValueAtTime(gain, start + 0.01);
-      volume.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-      oscillator.connect(volume);
-      volume.connect(context.destination);
-      oscillator.start(start);
-      oscillator.stop(start + duration + 0.02);
-    };
-
-    playTone(523.25, now, 0.16, 0.04);
-    playTone(659.25, now + 0.11, 0.18, 0.045);
-    playTone(783.99, now + 0.22, 0.22, 0.05);
-  };
-
-  const playStepPop = (nowTime: number) => {
-    const context = audioRef.current || new AudioContext();
-    audioRef.current = context;
-    const oscillator = context.createOscillator();
-    const volume = context.createGain();
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(220 + Math.random() * 30, nowTime);
-    volume.gain.setValueAtTime(0.0001, nowTime);
-    volume.gain.exponentialRampToValueAtTime(0.01, nowTime + 0.01);
-    volume.gain.exponentialRampToValueAtTime(0.0001, nowTime + 0.08);
-    oscillator.connect(volume);
-    volume.connect(context.destination);
-    oscillator.start(nowTime);
-    oscillator.stop(nowTime + 0.1);
-  };
-
-  const playToolClank = () => {
-    const context = audioRef.current || new AudioContext();
-    audioRef.current = context;
-    const osc = context.createOscillator();
-    const gain = context.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(800 + Math.random() * 200, context.currentTime);
-    gain.gain.setValueAtTime(0.03, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.06);
-    osc.connect(gain);
-    gain.connect(context.destination);
-    osc.start(context.currentTime);
-    osc.stop(context.currentTime + 0.08);
-  };
-
+  const playHappyChime = () => { try { const c = fx.ctx(); fx.notes(c, [523.25, 659.25, 783.99], c.currentTime, 0.11, 0.22, 0.05, 'triangle'); } catch {} };
+  const playStepPop = (nowTime: number) => { try { const c = fx.ctx(); fx.tone(c, 220 + Math.random() * 30, nowTime, 0.08, 0.01); } catch {} };
+  const playToolClank = () => { try { const c = fx.ctx(); fx.tone(c, 800 + Math.random() * 200, c.currentTime, 0.06, 0.03, 'triangle'); } catch {} };
   const playSparkBurst = () => {
-    const context = audioRef.current || new AudioContext();
-    audioRef.current = context;
-    const now = context.currentTime;
-    // Noise burst
-    const bufferSize = context.sampleRate * 0.15;
-    const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.max(0, 1 - i / bufferSize);
-    const noise = context.createBufferSource();
-    noise.buffer = buffer;
-    const bp = context.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = 2000;
-    bp.Q.value = 1;
-    const ng = context.createGain();
-    ng.gain.setValueAtTime(0.08, now);
-    ng.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
-    noise.connect(bp);
-    bp.connect(ng);
-    ng.connect(context.destination);
-    noise.start(now);
-    noise.stop(now + 0.15);
-    // Descending pitch sweep
-    const osc = context.createOscillator();
-    const og = context.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(2000, now);
-    osc.frequency.exponentialRampToValueAtTime(200, now + 0.15);
-    og.gain.setValueAtTime(0.04, now);
-    og.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
-    osc.connect(og);
-    og.connect(context.destination);
-    osc.start(now);
-    osc.stop(now + 0.15);
+    try {
+      const c = fx.ctx();
+      const now = c.currentTime;
+      fx.noise(c, now, 0.15, 0.08, 2000);
+      fx.sweep(c, 2000, 200, now, 0.15, 0.04, 'sawtooth');
+    } catch {}
   };
-
   const triggerAttentionEvent = () => {
     playSparkBurst();
     const kioskPos = new THREE.Vector3(NPC_POSITION.x, NPC_POSITION.y - 0.1, 0.15);
@@ -1812,7 +1619,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           setBatteryInstallStep(nextStep);
         } else {
           setShowBatteryInstallDlg(false);
-          const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
+          const newBackpack: ScrapPartId[] = [...gameStore.get('backpack').filter(id => id !== 'battery'), 'scrap'];
           updateBackpack(newBackpack);
           updateQuestStage('all-done');
           apiSync({ batteryInstalled: true, questStage: 'all-done', pendingBatteryCutscene: false });
@@ -4715,9 +4522,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }).catch(() => {});
       }
       if (moved && now - lastStepAtRef.current > 190) {
-        const context = audioRef.current || new AudioContext();
-        audioRef.current = context;
-        playStepPop(context.currentTime);
+        playStepPop(now);
         lastStepAtRef.current = now;
       }
 
@@ -4966,6 +4771,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
       // Scrap follower AI
       if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
+        // Antenna color: green when scrap is held, gray otherwise
+        if (scrapFollowerRef.current.antennaTip) {
+          const heldIdx = heldSlotIndexRef.current;
+          const bp = gameStore.get('backpack');
+          const isHeld = heldIdx !== null && heldIdx < bp.length && bp[heldIdx] === 'scrap';
+          (scrapFollowerRef.current.antennaTip.material as THREE.MeshToonMaterial).color.setHex(isHeld ? 0x22dd22 : 0x555555);
+        }
         const playerPos = localPositionRef.current;
         const scrapPosX = scrapFollowerRef.current.root.position.x;
         const scrapPosY = scrapFollowerRef.current.root.position.y;
@@ -6100,7 +5912,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               installBatteryTimerRef.current = 0;
               celebrationTimerRef.current = 0;
               setShowCelebration(true);
-              playFanfare();
+              playAchievementSound();
             }
           } else if (ibPhase === 'celebration') {
             installBatteryTimerRef.current += delta;
