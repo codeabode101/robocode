@@ -4805,11 +4805,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         scrapVisibleRef.current = true;
         scrapFollowerRef.current.root.visible = true;
       }
-      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current) {
-        // Every frame: ensure visible root + position near player
-        scrapFollowerRef.current.root.visible = true;
-        scrapFollowerRef.current.nameSprite.visible = true;
-        if (!inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
+      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
         // Antenna color: green when scrap is held, gray otherwise
         if (scrapFollowerRef.current.antennaTip) {
           const heldIdx = heldSlotIndexRef.current;
@@ -4834,7 +4830,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
         const scrapSpeed = followDist > 1.2 ? 1 : 0;
         animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPos.x, playerPos.y - scrapPos.y);
-      }
       }
       if (speechBubbleRef.current && sparkyIntroStepRef.current >= 0) {
         const headPos = scratchVec3.current;
