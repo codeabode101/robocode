@@ -5887,7 +5887,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
              }
           } else if (ibPhase === 'sparky-walk') {
             installBatteryTimerRef.current += delta;
-            const sparkyTarget = new THREE.Vector3(-2.6, 0.8, 0.28);
+            const sparkyTarget = new THREE.Vector3(-2.6, 0.0, 0.28);
             const dist = aptPos.distanceTo(sparkyTarget);
             if (dist > 0.05) {
               const dir = new THREE.Vector2(sparkyTarget.x - aptPos.x, sparkyTarget.y - aptPos.y).normalize();
@@ -5915,9 +5915,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               // Detach battery from Sparky's hand, attach to room
               const batGroup = batteryHandGroupRef.current;
               if (batGroup) {
-                if (rightArm) rightArm.remove(batGroup);
                 const worldPos = new THREE.Vector3();
                 batGroup.getWorldPosition(worldPos);
+                if (rightArm) rightArm.remove(batGroup);
                 apartmentRoomGroupRef.current?.add(batGroup);
                 batGroup.position.copy(apartmentRoomGroupRef.current!.worldToLocal(worldPos.clone()));
                 installBatteryPropRef.current = batGroup;
