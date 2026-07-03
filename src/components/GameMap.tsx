@@ -2130,7 +2130,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (data.batteryInstalled) {
         batteryInstalledRef.current = true;
         setBatteryInstalled(true);
-        fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pendingBatteryCutscene: false }), keepalive: true }).catch(() => {});
         const bp = gameStore.get('backpack') as ScrapPartId[];
         if (bp.includes('battery' as ScrapPartId)) {
           const cleaned = bp.filter(id => id !== 'battery');
@@ -6022,7 +6021,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             installBatteryPhaseRef.current = null;
             batteryInstalledRef.current = true;
             setBatteryInstalled(true);
-            fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pendingBatteryCutscene: false, batteryInstalled: true }), keepalive: true }).catch(() => {});
             if (scrapRobotRef.current) {
               if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
               if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
@@ -6047,7 +6045,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
               updateBackpack(newBackpack);
               updateQuestStage('all-done');
-              apiSync({ batteryInstalled: true, questStage: 'all-done' });
+              apiSync({ batteryInstalled: true, questStage: 'all-done', pendingBatteryCutscene: false });
               if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
                 setHeldSlotIndex(null);
                 heldSlotIndexRef.current = null;
