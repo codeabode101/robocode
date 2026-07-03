@@ -1632,7 +1632,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           scrapVisibleRef.current = true;
           setScrapVisible(true);
           setShowScrapToggle(true);
-          if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
+          if (scrapFollowerRef.current) { scrapFollowerRef.current.root.visible = true; console.log('[scrap] FOLLOWER ACTIVATED'); }
+          else console.warn('[scrap] scrapFollowerRef is NULL!');
         }
       }
     };
@@ -3247,6 +3248,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scrapFollower.root.visible = false;
     scene.add(scrapFollower.root);
     scrapFollowerRef.current = scrapFollower;
+    console.log('[scrap] FOLLOWER CREATED at', scrapFollower.root.position.x.toFixed(2), scrapFollower.root.position.y.toFixed(2));
 
     // Repair kiosk — proper kiosk at Snack Stop spot
     const kiosk = createRepairKiosk();
@@ -4772,6 +4774,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         animateSparkyWave(sparky, worldTime);
       }
       // Scrap follower AI
+      if (scrapFollowerEnabledRef.current && !(window as any).__scrapLogged) {
+        (window as any).__scrapLogged = true;
+        console.log('[scrap]', {
+          ref: !!scrapFollowerRef.current,
+          vis: scrapVisibleRef.current,
+          ap: inApartmentRoomRef.current,
+          ws: inWorkshopRoomRef.current,
+          sh: inShopRoomRef.current,
+          ar: inArenaRoomRef.current,
+        });
+      }
       if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
         // Antenna color: green when scrap is held, gray otherwise
         if (scrapFollowerRef.current.antennaTip) {
