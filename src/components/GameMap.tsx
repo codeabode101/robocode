@@ -5809,7 +5809,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           endCinematicCutscene();
           aptCutscenePhaseRef.current = 'idle';
             // Position Sparky near Scrap for battery cutscene
-            if (aptSparky) aptSparky.root.position.set(-2.6, -1.8, 0.28);
+            if (aptSparky) aptSparky.root.position.set(-2.6, -0.55, 0.28);
             shopUnlockedRef.current = true;
             setShopUnlocked(true);
             cutsceneDoneRef.current = true;
@@ -5834,7 +5834,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
             if (sparkyBaseQ) aptSparky.root.quaternion.copy(sparkyBaseQ);
             animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
-            const playerTarget = new THREE.Vector2(-1.8, -1.8);
+            const playerTarget = new THREE.Vector2(-1.8, -0.55);
             const playerArrived = walkPlayer(localPositionRef.current, playerTarget, MOVE_SPEED * 0.29, delta, worldTime, 0.28, localRobotRef.current, leftLegPivotRef.current, rightLegPivotRef.current, yawRef);
             if (playerArrived) {
               installBatteryPhaseRef.current = 'hand-off';
