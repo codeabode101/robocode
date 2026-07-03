@@ -2220,7 +2220,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         pendingRafiqCutsceneRef.current = true;
       } else if (data.position?.room === 'apartment' && !data.cutsceneDone) {
         pendingAptCutsceneRef.current = true;
-      } else if (data.position?.room === 'apartment' && data.cutsceneDone && !batteryInstalledRef.current && data.pendingBatteryCutscene) {
+      } else if (data.position?.room === 'apartment' && data.cutsceneDone && !batteryInstalledRef.current && (data.pendingBatteryCutscene || (Array.isArray(data.backpack) && data.backpack.includes('battery')))) {
         pendingBatteryCutsceneRef.current = true;
         startCinematicCutscene();
         updateQuestStage('unit1-done');
@@ -6022,7 +6022,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             installBatteryPhaseRef.current = null;
             batteryInstalledRef.current = true;
             setBatteryInstalled(true);
-            fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pendingBatteryCutscene: false }), keepalive: true }).catch(() => {});
+            fetch('/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pendingBatteryCutscene: false, batteryInstalled: true }), keepalive: true }).catch(() => {});
             if (scrapRobotRef.current) {
               if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
               if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
