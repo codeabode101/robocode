@@ -2220,9 +2220,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         pendingRafiqCutsceneRef.current = true;
       } else if (data.position?.room === 'apartment' && !data.cutsceneDone) {
         pendingAptCutsceneRef.current = true;
-      } else if (data.position?.room === 'apartment' && data.cutsceneDone && Array.isArray(data.backpack) && data.backpack.includes('battery') && !batteryInstalledRef.current) {
+      } else if (data.position?.room === 'apartment' && data.cutsceneDone && !batteryInstalledRef.current && (Array.isArray(data.backpack) && data.backpack.includes('battery') || (sparkyQuestStageRef.current !== 'intro' && sparkyQuestStageRef.current !== 'earn-money'))) {
         pendingBatteryCutsceneRef.current = true;
         startCinematicCutscene();
+        updateQuestStage('unit1-done');
+        const bp = gameStore.get('backpack') as ScrapPartId[];
+        if (!bp.includes('battery' as ScrapPartId)) {
+          const withBattery = [...bp, 'battery' as ScrapPartId];
+          gameStore.set('backpack', withBattery);
+          lastConfirmedBackpackRef.current = withBattery;
+          fetch('/api/profile/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: withBattery }), keepalive: true }).catch(() => {});
+        }
       }
       profileLoadedRef.current = true;
       const savedName = localStorage.getItem('rb_robot_name');
