@@ -2014,8 +2014,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       gameStore.set('money', data.currency ?? 0);
       lastConfirmedMoneyRef.current = data.currency ?? 0;
       if (Array.isArray(data.backpack)) {
-        gameStore.set('backpack', data.backpack);
-        lastConfirmedBackpackRef.current = data.backpack;
+        const deduped = data.backpack.filter((id: string, idx: number, arr: string[]) => arr.indexOf(id) === idx);
+        gameStore.set('backpack', deduped as ScrapPartId[]);
+        lastConfirmedBackpackRef.current = deduped as ScrapPartId[];
       }
       if (data.cutsceneDone) {
         cutsceneDoneRef.current = true;
@@ -4817,7 +4818,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         scrapFollowerRef.current.root.visible = true;
         if (scrapRobotRef.current) scrapRobotRef.current.root.visible = false;
       }
-      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
+      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
         // Antenna color: green when scrap is held, gray otherwise
         if (scrapFollowerRef.current.antennaTip) {
           const heldIdx = heldSlotIndexRef.current;
