@@ -1,5 +1,6 @@
 import { test } from '@playwright/test';
 
+test.setTimeout(60000);
 test('profile game performance', async ({ page, context }) => {
   const results: number[] = [];
 

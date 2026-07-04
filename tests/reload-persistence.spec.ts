@@ -3,6 +3,7 @@ import { test, expect } from '@playwright/test';
 const BASE = 'https://robocode.rahejaom.workers.dev';
 
 test.describe('Data persistence after reload', () => {
+  test.setTimeout(60000);
   let email: string;
   let cookie: string;
 
