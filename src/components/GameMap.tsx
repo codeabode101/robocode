@@ -397,6 +397,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const scrapRobotRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
   const scrapChallengesDoneRef = useRef(0);
   const scrapFollowerRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
+  const scrapFollowerBaseQuatRef = useRef<THREE.Quaternion | null>(null);
   const scrapFollowerEnabledRef = useRef(false);
   const scrapVisibleRef = useRef(false);
   const batteryInstallDialogGuardRef = useRef(false);
@@ -3272,6 +3273,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (scrapFollower.antennaTip) scrapFollower.antennaTip.material.color.setHex(0x555555);
     scrapFollower.root.visible = false;
     scene.add(scrapFollower.root);
+    scrapFollowerBaseQuatRef.current = scrapFollower.root.quaternion.clone();
     scrapFollowerRef.current = scrapFollower;
     console.log('[scrap] FOLLOWER CREATED at', scrapFollower.root.position.x.toFixed(2), scrapFollower.root.position.y.toFixed(2), 'parent:', scrapFollower.root.parent?.type, 'stage:', sparkyQuestStageRef.current);
     if (sparkyQuestStageRef.current === 'all-done') {
@@ -4848,6 +4850,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
         const scrapSpeed = followDist > 0.6 ? 1 : 0;
         animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPosX, playerPos.y - scrapPosY);
+        if (scrapFollowerBaseQuatRef.current) {
+          const facing = -Math.atan2(playerPos.x - scrapPosX, playerPos.y - scrapPosY);
+          const facingQ = scratchQuat.current.setFromAxisAngle(scratchVec3.current.set(0, 0, 1), facing);
+          scrapFollowerRef.current.root.quaternion.copy(scrapFollowerBaseQuatRef.current).premultiply(facingQ);
+        }
       }
       if (scrapFollowerEnabledRef.current && scrapFollowerRef.current) {
         (window as any).__scrapFollowerX = scrapFollowerRef.current.root.position.x;
