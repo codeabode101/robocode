@@ -4829,20 +4829,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const playerPos = localPositionRef.current;
         const scrapPosX = scrapFollowerRef.current.root.position.x;
         const scrapPosY = scrapFollowerRef.current.root.position.y;
-        const scrapPos = scratchVec2.current.set(scrapPosX, scrapPosY);
-        const followDist = scrapPos.distanceTo(playerPos);
+        const followDist = Math.hypot(scrapPosX - playerPos.x, scrapPosY - playerPos.y);
         if (followDist > 1.2) {
-          const target = scratchVec2b.current.set(playerPos.x, playerPos.y - 0.8);
-          const dir = scratchVec2.current.copy(target).sub(scrapPos).normalize();
-          const step = Math.min(followDist - 0.8, 3.0 * delta);
-          const cand = scratchVec2.current.set(scrapPosX + dir.x * step, scrapPosY + dir.y * step);
-          if (!collidesWithAny(cand, obstacleHitboxesRef.current)) {
-            scrapFollowerRef.current.root.position.x = cand.x;
-            scrapFollowerRef.current.root.position.y = cand.y;
+          const targetX = playerPos.x;
+          const targetY = playerPos.y - 0.8;
+          const dx = targetX - scrapPosX;
+          const dy = targetY - scrapPosY;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          if (len > 0.001) {
+            const step = Math.min(followDist - 0.8, 3.0 * delta);
+            const candX = scrapPosX + (dx / len) * step;
+            const candY = scrapPosY + (dy / len) * step;
+            if (!collidesWithAny({ x: candX, y: candY }, obstacleHitboxesRef.current)) {
+              scrapFollowerRef.current.root.position.x = candX;
+              scrapFollowerRef.current.root.position.y = candY;
+            }
           }
         }
         const scrapSpeed = followDist > 1.2 ? 1 : 0;
-        animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPos.x, playerPos.y - scrapPos.y);
+        animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPosX, playerPos.y - scrapPosY);
       }
       if (speechBubbleRef.current && sparkyIntroStepRef.current >= 0) {
         const headPos = scratchVec3.current;
