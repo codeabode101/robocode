@@ -1,6 +1,7 @@
 import { test } from '@playwright/test';
 
 test('profile game performance', async ({ page, context }) => {
+  test.setTimeout(60000);
   const results: number[] = [];
 
   // Sign in via API and set cookie

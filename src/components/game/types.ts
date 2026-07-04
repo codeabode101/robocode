@@ -4,7 +4,6 @@ export const MOVE_SPEED = 3.8;
 export const NETWORK_SYNC_MS = 50;
 export const NPC_POSITION = { x: 3.6, y: 1.8 };
 export const ROOM_SPAWN = { x: 0, y: -3.7 };
-export const ARENA_ROOM_SPAWN = { x: 0, y: -3.7 };
 export const ROOM_OWNER_POS = { x: 2.35, y: 1.95 };
 export const ROOM_COUNTER_POS = { x: 2.35, y: 2.25 };
 export const CUSTOMER_TALK_DISTANCE = 1.25;
@@ -96,7 +95,7 @@ export type SparkyQuestStage = 'intro' | 'intro-done' | 'unit1' | 'unit1-done' |
 
 export type ScrapPartId = 'letter' | 'battery';
 
-export type RoomType = 'outside' | 'workshop' | 'apartment' | 'shop' | 'arena';
+export type RoomType = 'outside' | 'workshop' | 'apartment' | 'shop';
 
 export type GameGoal =
   | 'watch-cutscene'

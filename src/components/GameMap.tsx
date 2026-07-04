@@ -6,7 +6,6 @@ import { useMultiplayer } from '@/hooks/useMultiplayer';
 import type { SparkyQuestStage, CustomerRequest, TutorialPhase, RoomType, GameGoal, ScrapPartId, SpecSheetPrompt } from '@/components/game/types';
 import Editor from '@/components/game/Editor';
 import TutorialOverlay from '@/components/game/TutorialOverlay';
-import ArenaOverlay from '@/components/game/ArenaOverlay';
 import ModalShell from './ModalShell';
 import WorkshopPanel from '@/components/game/WorkshopPanel';
 import CodeInput from '@/components/game/CodeInput';
@@ -134,7 +133,6 @@ const RAFIQ_MEET_STEPS = [
 ] as const;
 const PLAYER_EYE_HEIGHT = 1.5;
 const ROOM_SPAWN = new THREE.Vector2(0, -3.7);
-const ARENA_ROOM_SPAWN = new THREE.Vector2(0, 3.7);
 const APARTMENT_SPAWN = new THREE.Vector2(0, -1.5);
 const SHOP_SPAWN = new THREE.Vector2(0, 1.2);
 const ROOM_OWNER_POS = new THREE.Vector2(-2.5, 2.0);
@@ -185,11 +183,6 @@ type BoxHitbox = {
 };
 
 type Hitbox = CircleHitbox | BoxHitbox;
-
-type ArenaPlayer = {
-  id: string;
-  name: string;
-};
 
   type RemoteAvatar = {
     root: THREE.Group;
@@ -326,8 +319,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const mp = useMultiplayer(userId, apinatorAppKey, apinatorCluster);
   const { players, connected, playerCount, sendPosition, triggerEvent, positionBroadcastRef } = mp;
   positionBroadcastRef.current = () => {
-    const room = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apartment' : inShopRoomRef.current ? 'shop' : 'outside';
-    const spawns: Record<string, { x: number; y: number }> = { workshop: ROOM_SPAWN, arena: ARENA_ROOM_SPAWN, apartment: APARTMENT_SPAWN, shop: { x: 0, y: 1.2 } };
+    const room = inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apartment' : inShopRoomRef.current ? 'shop' : 'outside';
+    const spawns: Record<string, { x: number; y: number }> = { workshop: ROOM_SPAWN, apartment: APARTMENT_SPAWN, shop: { x: 0, y: 1.2 } };
     const pos = room !== 'outside' ? spawns[room] : { x: localPositionRef.current.x, y: localPositionRef.current.y };
     sendPosition(pos.x, pos.y, room, yawRef.current);
   };
@@ -348,7 +341,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const tutorialCompleteRef = useRef(false);
   const shopUnlockedRef = useRef(false);
   const inWorkshopRoomRef = useRef(false);
-  const inArenaRoomRef = useRef(false);
   const inApartmentRoomRef = useRef(false);
   const sendAtRef = useRef(0);
   const lastStepAtRef = useRef(0);
@@ -399,11 +391,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const outdoorGroupRef = useRef<THREE.Group | null>(null);
   const workshopRoomGroupRef = useRef<THREE.Group | null>(null);
-  const arenaRoomGroupRef = useRef<THREE.Group | null>(null);
   const apartmentRoomGroupRef = useRef<THREE.Group | null>(null);
-  const arenaBuildingRef = useRef<THREE.Group | null>(null);
-  const arenaDoorHitboxRef = useRef<CircleHitbox | null>(null);
-  const arenaDoorArmedRef = useRef(true);
   const apartmentDoorHitboxRef = useRef<CircleHitbox | null>(null);
   const apartmentDoorArmedRef = useRef(false);
   const apartmentDoorMarkerRef = useRef<THREE.Sprite | null>(null);
@@ -419,7 +407,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const shopDoorArmedRef = useRef(true);
   const shopRoomGroupRef = useRef<THREE.Group | null>(null);
   const shopNpcRef = useRef<{ root: THREE.Group } | null>(null);
-  const transportHitboxRef = useRef<CircleHitbox | null>(null);
+
   const sparkyPathIndexRef = useRef(0);
   const sparkyWaitTimerRef = useRef(0);
   const outdoorSparkyRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
@@ -686,20 +674,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [workshopIntroStep, setWorkshopIntroStep] = useState(0);
   const [cutsceneDone, setCutsceneDone] = useState(false);
   const [batteryInstalled, setBatteryInstalled] = useState(false);
-  const [inArenaRoom, setInArenaRoom] = useState(false);
   const [inApartmentRoom, setInApartmentRoom] = useState(false);
-  const [arenaPlayers, setArenaPlayers] = useState<ArenaPlayer[]>([]);
-  const [arenaChallenge, setArenaChallenge] = useState<{
-    id?: string;
-    fromId?: string;
-    fromName?: string;
-    toId?: string;
-    toName?: string;
-    status: 'pending' | 'active' | 'accepted' | 'declined';
-  } | null>(null);
-  const [arenaCode, setArenaCode] = useState('');
-  const [arenaOutput, setArenaOutput] = useState('');
-  const [arenaBattleActive, setArenaBattleActive] = useState(false);
   const [showSparkyDlg, setShowSparkyDlg] = useState(false);
   const [sparkyDlgFull, setSparkyDlgFull] = useState('');
   const [sparkyDlgText, setSparkyDlgText] = useState('');
@@ -801,8 +776,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [showBootDlg, setShowBootDlg] = useState(false);
   const [bootDlgStep, setBootDlgStep] = useState(0);
   const [bootDlgText, setBootDlgText] = useState('');
-  const [showTransportModal, setShowTransportModal] = useState(false);
-  const [transportMessage, setTransportMessage] = useState<string | null>(null);
+
   const [showFirstSaleModal, setShowFirstSaleModal] = useState(false);
   const backpack = useGameStoreKey('backpack');
   const [heldSlotIndex, setHeldSlotIndex] = useState<number | null>(null);
@@ -1640,10 +1614,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   // Universal cursor release — exit pointer lock when any clickable modal opens
   useEffect(() => {
-    if (showControlsModal || showBatteryDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showLaptopUI || showFirstSaleModal || showTransportModal || showShopModal || shopkeeperGreeting !== null) {
+    if (showControlsModal || showBatteryDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showLaptopUI || showFirstSaleModal || showShopModal || shopkeeperGreeting !== null) {
       if (document.pointerLockElement) document.exitPointerLock();
     }
-  }, [showControlsModal, showBatteryDlg, showRafiqLetterDlg, showWhoDlg, showSparkyDlg, showElectrocuteDlg, showStringDlg, showDateDlg, showVersionDlg, showBootDlg, showLaptopUI, showFirstSaleModal, showTransportModal, showShopModal, shopkeeperGreeting]);
+  }, [showControlsModal, showBatteryDlg, showRafiqLetterDlg, showWhoDlg, showSparkyDlg, showElectrocuteDlg, showStringDlg, showDateDlg, showVersionDlg, showBootDlg, showLaptopUI, showFirstSaleModal, showShopModal, shopkeeperGreeting]);
 
   // Controls modal Enter key handler
   useEffect(() => {
@@ -2174,13 +2148,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (localRobotRef.current) {
             localRobotRef.current.root.position.set(pos.x, pos.y, 0.26);
           }
-        } else if (data.position.room === 'arena') {
-          inArenaRoomRef.current = true;
-          setInArenaRoom(true);
-          roomObstacleHitboxesRef.current = [];
-          if (localRobotRef.current) {
-            localRobotRef.current.root.position.set(pos.x, pos.y, 0.28);
-          }
         } else if (data.position.room === 'apartment') {
           inApartmentRoomRef.current = true;
           setInApartmentRoom(true);
@@ -2250,7 +2217,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   useEffect(() => {
     if (connected && !joinedRef.current) {
       joinedRef.current = true;
-      const joinRoom = inWorkshopRoomRef.current ? 'workshop' : inArenaRoomRef.current ? 'arena' : inApartmentRoomRef.current ? 'apartment' : 'outside';
+      const joinRoom = inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apartment' : 'outside';
       triggerEvent('client-player-join', { x: localPositionRef.current.x, y: localPositionRef.current.y, room: joinRoom });
     }
   }, [connected, triggerEvent]);
@@ -2260,7 +2227,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const mountElement = mountRef.current;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x4a7a9a);
+    scene.background = new THREE.Color(0x3a5a7a);
+    scene.fog = new THREE.Fog(0x3a5a7a, 22, 50);
     sceneRef.current = scene;
 
     const outdoorGroup = new THREE.Group();
@@ -2271,11 +2239,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     workshopRoomGroup.visible = false;
     scene.add(workshopRoomGroup);
     workshopRoomGroupRef.current = workshopRoomGroup;
-
-    const arenaRoomGroup = new THREE.Group();
-    arenaRoomGroup.visible = false;
-    scene.add(arenaRoomGroup);
-    arenaRoomGroupRef.current = arenaRoomGroup;
 
     const apartmentRoomGroup = new THREE.Group();
     apartmentRoomGroup.visible = false;
@@ -2299,7 +2262,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     mountElement.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    const ambientLight = new THREE.AmbientLight(0xffeedd, 0.6);
+    const ambientLight = new THREE.AmbientLight(0xffcc88, 0.7);
     scene.add(ambientLight);
 
     const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -2324,7 +2287,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const water = new THREE.Mesh(
       new THREE.PlaneGeometry(2000, 2000),
-      createToonMaterial(0x4a7a9a)
+      createToonMaterial(0x2a4a6a)
     );
     water.position.z = 0.02;
     water.receiveShadow = true;
@@ -2349,7 +2312,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const sw = 0.5;
 
     // SINGLE continuous road rectangle covering ALL road areas (y:-22 to y:9.5, h:31.5)
-    const roadColor = 0x5a6a7a;
+    const roadColor = 0x6b635e;
     const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(48, 32, 0.04), createToonMaterial(roadColor));
     roadMesh.position.set(0, -6.25, 0.14);
     roadMesh.receiveShadow = true;
@@ -2496,7 +2459,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       outdoorGroup.add(can);
     });
 
-    // No buildings yet — story hasn't progressed past the pet workshop job
+    // Street trees along the road
 
     const poleMat = createToonMaterial(0x6a6a7a);
     const lampMat = createToonMaterial(0xfef08a);
@@ -2716,194 +2679,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const shopDoorMarker = addExclamationMarker(shopDoorAnchor);
     shopDoorMarkerRef.current = shopDoorMarker;
 
-    // Transport store at (-18.75, -12) — within left grass block, clears sidewalks
-    const bCx = -18.75, bCy = -12;
-    const bHw = 4.65, bHh = 1.95;
-    // Bounds check: east edge -14.1 clears vSW(-13.75) at x[-14.0,-13.5],
-    // north edge -10.05 clears hSW(-9.75) at y[-10.0,-9.5],
-    // south edge -13.95 clears hSW(-14.25) at y[-14.5,-14.0].
-    {
-      // Concrete floor slab
-      const floor = new THREE.Mesh(new THREE.BoxGeometry(bHw * 2, bHh * 2, 0.08), createToonMaterial(0x94a3b8));
-      floor.position.set(bCx, bCy, 0.04);
-      floor.receiveShadow = true;
-      outdoorGroup.add(floor);
-
-      // South wall (y-)
-      const sWall = new THREE.Mesh(new THREE.BoxGeometry(bHw * 2 - 0.2, 0.2, 2.4), createToonMaterial(0x64748b));
-      sWall.position.set(bCx, bCy - bHh + 0.1, 1.2);
-      sWall.castShadow = true;
-      outdoorGroup.add(sWall);
-
-      // North wall (y+)
-      const nWall = new THREE.Mesh(new THREE.BoxGeometry(bHw * 2 - 0.2, 0.2, 2.4), createToonMaterial(0x64748b));
-      nWall.position.set(bCx, bCy + bHh - 0.1, 1.2);
-      nWall.castShadow = true;
-      outdoorGroup.add(nWall);
-
-      // West wall (x-)
-      const wWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, bHh * 2 - 0.2, 2.4), createToonMaterial(0x64748b));
-      wWall.position.set(bCx - bHw + 0.1, bCy, 1.2);
-      wWall.castShadow = true;
-      outdoorGroup.add(wWall);
-
-      // East entrance pillars (x+ side, open)
-      for (let s = -1; s <= 1; s += 2) {
-        const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 2.4), createToonMaterial(0x475569));
-        pillar.position.set(bCx + bHw - 0.1, bCy + s * 1.5, 1.2);
-        pillar.castShadow = true;
-        outdoorGroup.add(pillar);
-      }
-
-      // Roof
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(bHw * 2 + 0.4, bHh * 2 + 0.4, 0.08), createToonMaterial(0xdc2626));
-      roof.position.set(bCx, bCy, 2.44);
-      roof.castShadow = true;
-      outdoorGroup.add(roof);
-
-      // 3D sign above entrance — BoxGeometry(thin (faces east), wide, tall)
-      {
-        const sc = document.createElement('canvas');
-        sc.width = 512; sc.height = 96;
-        const sctx = sc.getContext('2d')!;
-        const rad = 12;
-        sctx.fillStyle = 'rgba(220,38,38,0.92)';
-        sctx.beginPath(); sctx.moveTo(rad, 0); sctx.lineTo(512 - rad, 0);
-        sctx.quadraticCurveTo(512, 0, 512, rad); sctx.lineTo(512, 96 - rad);
-        sctx.quadraticCurveTo(512, 96, 512 - rad, 96); sctx.lineTo(rad, 96);
-        sctx.quadraticCurveTo(0, 96, 0, 96 - rad); sctx.lineTo(0, rad);
-        sctx.quadraticCurveTo(0, 0, rad, 0); sctx.closePath(); sctx.fill();
-        sctx.fillStyle = '#f8fafc'; sctx.font = '700 48px system-ui'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
-        sctx.fillText('TRANSPORTER', 256, 50);
-        const st = new THREE.CanvasTexture(sc);
-        st.minFilter = THREE.LinearFilter;
-        st.flipY = false;
-        const tSign = new THREE.Mesh(new THREE.BoxGeometry(4, 0.06, 0.7), new THREE.MeshBasicMaterial({ map: st }));
-        tSign.position.set(bCx + bHw + 0.3, bCy, 2.1);
-        tSign.scale.x = -1;
-        tSign.rotation.z = -Math.PI / 2;
-        outdoorGroup.add(tSign);
-      }
-
-      // Bicycle display (left side, human-scale)
-      {
-        const bg = new THREE.Group();
-        const wheelMat = new THREE.MeshToonMaterial({ color: 0x1a1a1a, gradientMap: createGradientTexture(3) });
-        const frameMat = createToonMaterial(0xf59e0b);
-        const spokeMat = new THREE.MeshToonMaterial({ color: 0x94a3b8, gradientMap: createGradientTexture(3) });
-        const seatMat = createToonMaterial(0x1f2937);
-
-        const rw = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 10, 16), wheelMat);
-        rw.rotation.x = Math.PI / 2;
-        rw.position.set(-0.45, 0, 0);
-        bg.add(rw);
-        const fw = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 10, 16), wheelMat);
-        fw.rotation.x = Math.PI / 2;
-        fw.position.set(0.45, 0, 0);
-        bg.add(fw);
-        for (let i = 0; i < 6; i++) {
-          const a = (Math.PI * 2 * i) / 6;
-          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.2, 4), spokeMat);
-          spoke.rotation.x = Math.PI / 2;
-          spoke.rotation.z = a;
-          spoke.position.set(-0.45, 0, 0);
-          bg.add(spoke);
-        }
-        for (let i = 0; i < 6; i++) {
-          const a = (Math.PI * 2 * i) / 6;
-          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.2, 4), spokeMat);
-          spoke.rotation.x = Math.PI / 2;
-          spoke.rotation.z = a;
-          spoke.position.set(0.45, 0, 0);
-          bg.add(spoke);
-        }
-
-        const hb = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.35, 6), frameMat);
-        hb.rotation.x = Math.PI / 2;
-        hb.position.set(0.45, 0, 0.2);
-        bg.add(hb);
-        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.03), seatMat);
-        seat.position.set(-0.1, 0, 0.27);
-        bg.add(seat);
-
-        bg.position.set(bCx - 3, bCy + 0.5, 0.1);
-        outdoorGroup.add(bg);
-
-        const bp = createLabelSprite('$100', '#f8fafc', 'rgba(0,0,0,0.8)', '#f59e0b', 140, 55);
-        bp.scale.set(1.6, 0.6, 1);
-        bp.position.set(bCx - 3, bCy - 0.4, 0.7);
-        bp.renderOrder = 33;
-        outdoorGroup.add(bp);
-      }
-
-      // Broken car display (right side, human-scale)
-      {
-        const cg = new THREE.Group();
-        const cBody = new THREE.Mesh(
-          new THREE.BoxGeometry(1.2, 0.55, 0.45),
-          createToonMaterial(0xdc2626)
-        );
-        cBody.position.set(0, 0, 0.25);
-        cBody.rotation.z = 0.08;
-        cg.add(cBody);
-
-        const cCab = new THREE.Mesh(
-          new THREE.BoxGeometry(0.6, 0.35, 0.22),
-          createToonMaterial(0xdc2626)
-        );
-        cCab.position.set(-0.05, 0, 0.53);
-        cCab.rotation.z = 0.05;
-        cg.add(cCab);
-
-        const ws = new THREE.Mesh(
-          new THREE.BoxGeometry(0.5, 0.04, 0.2),
-          new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.25 })
-        );
-        ws.position.set(0.2, 0, 0.48);
-        ws.rotation.z = 0.25;
-        cg.add(ws);
-
-        const wheelMatCar = createToonMaterial(0x1a1a1a);
-        const wPoses: [number, number, number, number][] = [
-          [-0.4, -0.32, 0.04, 0], [0.4, -0.32, 0.04, 0.2],
-          [-0.4, 0.32, 0.04, 0], [0.4, 0.32, 0.02, 0.6],
-        ];
-        wPoses.forEach(([wx, wy, wz, rot]) => {
-          const w = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 8, 12), wheelMatCar);
-          w.rotation.x = Math.PI / 2;
-          w.rotation.y = rot;
-          w.position.set(wx, wy, wz);
-          cg.add(w);
-        });
-
-        for (let i = 0; i < 3; i++) {
-          const sm = new THREE.Mesh(
-            new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 8, 8),
-            new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.3 })
-          );
-          sm.position.set(-0.4 + Math.random() * 0.2, -0.2 + Math.random() * 0.2, 0.6 + Math.random() * 0.15);
-          cg.add(sm);
-        }
-
-        cg.position.set(bCx + 3, bCy + 0.3, 0.1);
-        outdoorGroup.add(cg);
-
-        const cp = createLabelSprite('$1,000', '#f8fafc', 'rgba(0,0,0,0.8)', '#f59e0b', 170, 55);
-        cp.scale.set(1.8, 0.6, 1);
-        cp.position.set(bCx + 3, bCy - 0.4, 0.85);
-        cp.renderOrder = 33;
-        outdoorGroup.add(cp);
-      }
-
-      // Vendor (mechanic) at back center
-      {
-        const vPerson = buildPlayerVisual(0x1e293b, 'Mechanic');
-        vPerson.root.position.set(bCx, bCy - bHh + 0.6, 0.24);
-        outdoorGroup.add(vPerson.root);
-      }
-
-      transportHitboxRef.current = { shape: 'circle', center: { x: bCx + bHw + 0.5, y: bCy }, radius: 3.0 };
-    }
+    // Transport store removed
 
     // Parts shop at (6.0, -12.0) — fills the entire grass patch east of Rafiq's
     {
@@ -2926,12 +2702,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const buildingFootprints: { x1: number; y1: number; x2: number; y2: number; cx: number; cy: number; bw: number; bd: number }[] = [
       { x1: -10.08, y1: -4.98, x2: -1.92, y2: -2.02, cx: -6, cy: -3.5, bw: 8.0, bd: 2.8 },
       { x1: -9.7, y1: -13.0, x2: -2.3, y2: -10.6, cx: -6, cy: -11.8, bw: 7.4, bd: 2.4 },
-      { x1: -23.4, y1: -13.95, x2: -14.2, y2: -10.05, cx: -18.75, cy: -12, bw: 9.3, bd: 3.9 },
       { x1: 2.0, y1: -14.0, x2: 10.0, y2: -10.0, cx: 6, cy: -12, bw: 8.0, bd: 4.0 },
     ];
     for (let bi = 0; bi < buildingFootprints.length; bi++) {
       const b = buildingFootprints[bi];
-      if (bi >= 3) continue; // parts shop has peaked roof, no occluder needed
+      if (bi >= 2) continue; // parts shop has peaked roof, no occluder needed
       const hw = b.bw / 2, hd = b.bd / 2;
       const addPanel = (w: number, d: number, x: number, y: number) => {
         const m = new THREE.Mesh(new THREE.BoxGeometry(w, d, panelH), occluderMat);
@@ -2942,6 +2717,421 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       addPanel(b.bw, 0.02, b.cx, b.cy - hd + INSET);
       addPanel(0.02, b.bd, b.cx + hw - INSET, b.cy);
       addPanel(0.02, b.bd, b.cx - hw + INSET, b.cy);
+    }
+
+    // === PORT & BEACH (west grass block, former transporter area) ===
+    const portBaseX = -18.75, portBaseY = -12;
+
+    // Sand patch covering the west grass block
+    const sandMat = createToonMaterial(0xd4b896);
+    const sand = new THREE.Mesh(new THREE.BoxGeometry(10.0, 4.5, 0.04), sandMat);
+    sand.position.set(portBaseX, portBaseY, 0.15);
+    sand.receiveShadow = true;
+    outdoorGroup.add(sand);
+
+    // Canal — narrow water channel from port westward
+    const canalMat = createToonMaterial(0x1a3a5a);
+    const canal = new THREE.Mesh(new THREE.BoxGeometry(20, 0.6, 0.04), canalMat);
+    canal.position.set(portBaseX - 9, portBaseY, 0.13);
+    outdoorGroup.add(canal);
+
+    // Canal banks (two thin strips)
+    const bankMat = createToonMaterial(0x8b7d6b);
+    for (let s = -1; s <= 1; s += 2) {
+      const bank = new THREE.Mesh(new THREE.BoxGeometry(20, 0.08, 0.06), bankMat);
+      bank.position.set(portBaseX - 9, portBaseY + s * 0.35, 0.15);
+      outdoorGroup.add(bank);
+    }
+
+    // Wooden dock/wharf — main platform
+    const dockMat = createToonMaterial(0x8b6b4a);
+    const dockPosts = (px: number, py: number, count: number, spacing: number, dir: 'x' | 'y') => {
+      for (let i = 0; i < count; i++) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.3, 8), dockMat);
+        const off = (i - (count - 1) / 2) * spacing;
+        if (dir === 'x') { post.position.set(px + off, py, 0.15); post.rotation.x = Math.PI / 2; }
+        else { post.position.set(px, py + off, 0.15); post.rotation.x = Math.PI / 2; }
+        outdoorGroup.add(post);
+      }
+    };
+    // Main dock surface
+    const dock = new THREE.Mesh(new THREE.BoxGeometry(4.0, 1.8, 0.04), createToonMaterial(0x7a5a3a));
+    dock.position.set(portBaseX + 2, portBaseY + 1.0, 0.28);
+    dock.receiveShadow = true;
+    outdoorGroup.add(dock);
+    // Dock posts
+    dockPosts(portBaseX + 2, portBaseY + 0.1, 5, 0.8, 'x');
+    dockPosts(portBaseX + 2, portBaseY + 1.9, 5, 0.8, 'x');
+
+    // Secondary smaller dock
+    const dock2 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.0, 0.04), createToonMaterial(0x7a5a3a));
+    dock2.position.set(portBaseX + 2.5, portBaseY - 0.8, 0.28);
+    dock2.receiveShadow = true;
+    outdoorGroup.add(dock2);
+    dockPosts(portBaseX + 2.5, portBaseY - 1.3, 4, 0.6, 'x');
+    dockPosts(portBaseX + 2.5, portBaseY - 0.3, 4, 0.6, 'x');
+
+    // Dock railings (thin horizontal beams along dock edges)
+    const railMat = createToonMaterial(0x6a4a2a);
+    const railing = (rx: number, ry: number, rw: number, rh: number, horiz: boolean) => {
+      const r = new THREE.Mesh(new THREE.BoxGeometry(horiz ? rw : 0.03, horiz ? 0.03 : rh, 0.03), railMat);
+      r.position.set(rx, ry, 0.38);
+      outdoorGroup.add(r);
+    };
+    railing(portBaseX + 0.1, portBaseY + 1.9, 3.6, 0, true);
+    railing(portBaseX + 3.9, portBaseY + 1.0, 0, 1.8, false);
+    railing(portBaseX + 2.2, portBaseY - 0.9, 2.0, 0, true);
+
+    // Small fishing boat (in dry dock / tied to main dock)
+    const boatGroup = new THREE.Group();
+    const hullMat = createToonMaterial(0x5a3a1a);
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.25, 0.12), hullMat);
+    hull.position.set(0, 0, 0.06);
+    boatGroup.add(hull);
+    // Bow (triangular front)
+    const bowMat = createToonMaterial(0x4a2a0a);
+    const bow = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.2, 0.1, 6), bowMat);
+    bow.rotation.x = Math.PI / 2;
+    bow.position.set(0.3, 0, 0.06);
+    bow.scale.set(1, 1, 0.5);
+    boatGroup.add(bow);
+    // Mast
+    const mastMat = createToonMaterial(0x3a2a1a);
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.4, 6), mastMat);
+    mast.position.set(0.1, 0, 0.28);
+    boatGroup.add(mast);
+    // Simple sail
+    const sailMat = new THREE.MeshBasicMaterial({ color: 0xf0e8d8, transparent: true, opacity: 0.7 });
+    const sail = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.25), sailMat);
+    sail.position.set(-0.05, 0, 0.35);
+    sail.rotation.z = 0.15;
+    boatGroup.add(sail);
+    boatGroup.position.set(portBaseX + 3.2, portBaseY + 0.4, 0.30);
+    outdoorGroup.add(boatGroup);
+
+    // Cargo crates stacked near dock entrance
+    const crateMat = createToonMaterial(0x6b4a2a);
+    const crateDark = createToonMaterial(0x4a3020);
+    const createCrate = (cx: number, cy: number, cs: number, dark = false) => {
+      const c = new THREE.Mesh(new THREE.BoxGeometry(cs, cs, cs * 0.6), dark ? crateDark : crateMat);
+      c.position.set(cx, cy, cs * 0.3 + 0.15);
+      c.castShadow = true;
+      outdoorGroup.add(c);
+    };
+    createCrate(portBaseX - 0.8, portBaseY + 1.5, 0.3);
+    createCrate(portBaseX - 0.4, portBaseY + 1.5, 0.3, true);
+    createCrate(portBaseX - 0.6, portBaseY + 1.8, 0.3);
+    createCrate(portBaseX + 0.5, portBaseY - 1.0, 0.4);
+    createCrate(portBaseX + 0.5, portBaseY - 0.5, 0.4, true);
+    createCrate(portBaseX + 0.9, portBaseY - 0.75, 0.4);
+
+    // Barrel next to crates
+    const barrelMat = createToonMaterial(0x5a3a1a);
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.25, 10), barrelMat);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(portBaseX - 0.5, portBaseY + 0.2, 0.27);
+    outdoorGroup.add(barrel);
+
+    // Small crane (A-frame)
+    const craneMat = createToonMaterial(0x4a4a4a);
+    const craneGroup = new THREE.Group();
+    // Two angled legs
+    for (let s = -1; s <= 1; s += 2) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.2, 0.6), craneMat);
+      leg.position.set(s * 0.15, 0, 0.3);
+      leg.rotation.z = s * 0.2;
+      craneGroup.add(leg);
+    }
+    // Cross beam at top
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.03, 0.03), craneMat);
+    beam.position.set(0, 0, 0.62);
+    craneGroup.add(beam);
+    // Hoist (small box hanging from beam)
+    const hoist = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.04), craneMat);
+    hoist.position.set(0.1, 0, 0.45);
+    craneGroup.add(hoist);
+    craneGroup.position.set(portBaseX - 1.0, portBaseY - 0.3, 0.28);
+    outdoorGroup.add(craneGroup);
+
+    // Port lanterns on poles
+    const portLampMat = createToonMaterial(0xfef08a);
+    const portPoleMat = createToonMaterial(0x6a6a7a);
+    const portLightPositions: [number, number][] = [
+      [portBaseX + 0.5, portBaseY + 2.2], [portBaseX + 3.5, portBaseY + 2.2],
+      [portBaseX + 0.8, portBaseY - 1.5], [portBaseX + 4.0, portBaseY - 1.0],
+    ];
+    portLightPositions.forEach(([lx, ly]) => {
+      const pp = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.5, 6), portPoleMat);
+      pp.rotation.x = Math.PI / 2;
+      pp.position.set(lx, ly, 0.25);
+      outdoorGroup.add(pp);
+      const pl = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), portLampMat);
+      pl.position.set(lx, ly, 0.52);
+      outdoorGroup.add(pl);
+    });
+
+    // Cobblestone path from port to main road (south edge of block)
+    const cobbleMat = createToonMaterial(0x7a7268);
+    const path = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.5, 0.04), cobbleMat);
+    path.position.set(portBaseX + 1.5, portBaseY - 2.0, 0.16);
+    path.receiveShadow = true;
+    outdoorGroup.add(path);
+
+    // === TREE / RUIN BARRIER (east of Parts Shop, x=10 to 13) ===
+    const barrierBaseX = 11.0, barrierBaseY = -9.0;
+
+    // Fallen tree trunks
+    const trunkMat = createToonMaterial(0x5a3a1a);
+    const fallenTrunk = (tx: number, ty: number, len: number, angle: number) => {
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, len, 8), trunkMat);
+      t.rotation.x = Math.PI / 2;
+      t.rotation.z = angle;
+      t.position.set(tx, ty, 0.12);
+      t.castShadow = true;
+      outdoorGroup.add(t);
+    };
+    fallenTrunk(barrierBaseX - 1.0, barrierBaseY + 1.0, 2.0, 0.1);
+    fallenTrunk(barrierBaseX + 0.5, barrierBaseY + 0.2, 2.5, -0.15);
+    fallenTrunk(barrierBaseX - 0.3, barrierBaseY - 1.0, 1.8, 0.3);
+
+    // Overgrown bushes
+    const bushMat = createToonMaterial(0x2a5a2a);
+    const bushDark = createToonMaterial(0x1a4a1a);
+    const createBush = (bx: number, by: number, size: number, dark = false) => {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(size, 8, 8), dark ? bushDark : bushMat);
+      b.position.set(bx, by, size * 0.5 + 0.1);
+      b.castShadow = true;
+      outdoorGroup.add(b);
+    };
+    createBush(barrierBaseX - 1.5, barrierBaseY + 1.5, 0.3);
+    createBush(barrierBaseX - 1.2, barrierBaseY + 1.3, 0.25, true);
+    createBush(barrierBaseX + 1.0, barrierBaseY + 0.5, 0.35);
+    createBush(barrierBaseX + 0.8, barrierBaseY - 0.8, 0.3);
+    createBush(barrierBaseX - 0.5, barrierBaseY - 1.5, 0.4, true);
+    createBush(barrierBaseX + 1.5, barrierBaseY - 1.3, 0.25);
+
+    // Crumbled wall (tilted box segments)
+    const wallMat = createToonMaterial(0x6a6a7a);
+    const wallSeg = (wx: number, wy: number, ww: number, wh: number, angle: number) => {
+      const seg = new THREE.Mesh(new THREE.BoxGeometry(ww, 0.3, wh), wallMat);
+      seg.position.set(wx, wy, wh * 0.4);
+      seg.rotation.z = angle;
+      seg.castShadow = true;
+      outdoorGroup.add(seg);
+    };
+    wallSeg(barrierBaseX + 2.0, barrierBaseY + 0.8, 0.8, 0.5, 0.05);
+    wallSeg(barrierBaseX + 2.5, barrierBaseY + 0.6, 0.4, 0.3, -0.12);
+    wallSeg(barrierBaseX + 2.8, barrierBaseY + 0.2, 0.6, 0.4, 0.08);
+
+    // Rubble pile at base of wall
+    const rubbleMat = createToonMaterial(0x5a5a6a);
+    for (let i = 0; i < 5; i++) {
+      const rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.06 + Math.random() * 0.04), rubbleMat);
+      rubble.position.set(barrierBaseX + 2.2 + Math.random() * 0.8, barrierBaseY + 1.0 + Math.random() * 0.5, 0.1 + Math.random() * 0.1);
+      outdoorGroup.add(rubble);
+    }
+
+    // DANGER sign on a post
+    const signMat = createToonMaterial(0xdc2626);
+    const signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.6, 6), createToonMaterial(0x6a6a7a));
+    signPost.rotation.x = Math.PI / 2;
+    signPost.position.set(barrierBaseX, barrierBaseY + 2.0, 0.3);
+    outdoorGroup.add(signPost);
+    const signBoard = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 0.25), signMat);
+    signBoard.position.set(barrierBaseX, barrierBaseY + 2.0, 0.62);
+    outdoorGroup.add(signBoard);
+    // Sign text label
+    const signLabel = createLabelSprite('DANGER — RECLAIMED ZONE', '#ffffff', 'rgba(0,0,0,0.8)', '#dc2626', 380, 50);
+    signLabel.scale.set(2.2, 0.3, 1);
+    signLabel.position.set(barrierBaseX, barrierBaseY + 2.0, 0.76);
+    signLabel.renderOrder = 33;
+    outdoorGroup.add(signLabel);
+
+    // === RUINED CITY SKYLINE (east, former arena area, x=14 to 24) ===
+    const ruinMatLight = createToonMaterial(0x475569);
+    const ruinMatDark = createToonMaterial(0x334155);
+    const ruinMatScorch = createToonMaterial(0x1a1a2a);
+    const vineMat = createToonMaterial(0x1a3a1a);
+
+    // Building 1 — tallest, slightly tilted, at (16, -10)
+    const b1Group = new THREE.Group();
+    const b1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 1.8), ruinMatLight);
+    b1.position.set(0, 0, 0.9);
+    b1.castShadow = true;
+    b1Group.add(b1);
+    // Broken top — tilted piece
+    const b1Top = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.4), ruinMatDark);
+    b1Top.position.set(0.2, 0, 1.7);
+    b1Top.rotation.z = 0.15;
+    b1Group.add(b1Top);
+    // Scorch marks (dark patches)
+    const b1Scorch = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.3), ruinMatScorch);
+    b1Scorch.position.set(-0.1, 0, 1.45);
+    b1Group.add(b1Scorch);
+    // Vines
+    const b1Vine = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.5, 0.6), vineMat);
+    b1Vine.position.set(0.5, 0, 0.7);
+    b1Group.add(b1Vine);
+    b1Group.position.set(16, -10, 0);
+    b1Group.scale.set(0.9, 0.9, 1);
+    outdoorGroup.add(b1Group);
+
+    // Building 2 — medium, at (18, -12)
+    const b2Group = new THREE.Group();
+    const b2 = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 1.5), ruinMatDark);
+    b2.position.set(0, 0, 0.75);
+    b2.castShadow = true;
+    b2Group.add(b2);
+    // Jagged broken top
+    const b2Rubble = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.3), ruinMatScorch);
+    b2Rubble.position.set(-0.15, 0.25, 1.3);
+    b2Rubble.rotation.z = -0.2;
+    b2Group.add(b2Rubble);
+    // Window stripes (dark vertical lines)
+    for (let i = -2; i <= 2; i++) {
+      const win = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.02, 0.12), ruinMatScorch);
+      win.position.set(i * 0.12, 0, 0.4 + Math.random() * 0.8);
+      b2Group.add(win);
+    }
+    b2Group.position.set(18, -12, 0);
+    b2Group.scale.set(0.9, 0.9, 1);
+    outdoorGroup.add(b2Group);
+
+    // Building 3 — short wide, at (20, -9)
+    const b3Group = new THREE.Group();
+    const b3 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 1.0), ruinMatLight);
+    b3.position.set(0, 0, 0.5);
+    b3.castShadow = true;
+    b3Group.add(b3);
+    // Collapsed roof section
+    const b3Roof = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.08), ruinMatScorch);
+    b3Roof.position.set(0.2, 0, 1.0);
+    b3Roof.rotation.z = 0.25;
+    b3Group.add(b3Roof);
+    // Rubble at base
+    for (let i = 0; i < 3; i++) {
+      const r = new THREE.Mesh(new THREE.DodecahedronGeometry(0.05 + Math.random() * 0.03), ruinMatDark);
+      r.position.set(-0.4 + Math.random() * 0.8, -0.25 + Math.random() * 0.5, 0.05 + Math.random() * 0.08);
+      b3Group.add(r);
+    }
+    b3Group.position.set(20, -9, 0);
+    b3Group.scale.set(0.9, 0.9, 1);
+    outdoorGroup.add(b3Group);
+
+    // Building 4 — tall slender, tilted, at (22, -11)
+    const b4Group = new THREE.Group();
+    const b4 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 2.0), ruinMatDark);
+    b4.position.set(0, 0, 1.0);
+    b4.rotation.z = -0.06;
+    b4.castShadow = true;
+    b4Group.add(b4);
+    // Broken top spike
+    const b4Spike = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.08, 0.3, 6), ruinMatScorch);
+    b4Spike.rotation.x = Math.PI / 2;
+    b4Spike.rotation.z = 0.1;
+    b4Spike.position.set(0.15, 0, 1.95);
+    b4Group.add(b4Spike);
+    // Vines covering side
+    const b4Vine = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.5, 1.2), vineMat);
+    b4Vine.position.set(0.25, 0, 0.8);
+    b4Group.add(b4Vine);
+    b4Group.position.set(22, -11, 0);
+    b4Group.scale.set(0.9, 0.9, 1);
+    outdoorGroup.add(b4Group);
+
+    // Lower ruined structures in front of skyscrapers (foreground debris)
+    const debrisMat = createToonMaterial(0x5a5a6a);
+    const debrisPositions: [number, number, number][] = [
+      [14.5, -11.5, 0.3], [15.5, -13.0, 0.4], [17.5, -10.5, 0.2],
+      [19.5, -13.5, 0.35], [21.5, -10.0, 0.25], [23.0, -12.5, 0.3],
+    ];
+    debrisPositions.forEach(([dx, dy, ds]) => {
+      const d = new THREE.Mesh(new THREE.BoxGeometry(ds * 0.8, ds * 0.5, ds * 0.4), debrisMat);
+      d.position.set(dx, dy, ds * 0.2 + 0.15);
+      d.rotation.z = (Math.random() - 0.5) * 0.2;
+      d.castShadow = true;
+      outdoorGroup.add(d);
+    });
+
+    // Hazy semi-transparent layer in front of ruins (atmospheric depth)
+    const hazeMat = new THREE.MeshBasicMaterial({
+      color: 0x3a5a7a,
+      transparent: true,
+      opacity: 0.25,
+      depthWrite: false,
+    });
+    const haze = new THREE.Mesh(new THREE.BoxGeometry(8, 8, 0.5), hazeMat);
+    haze.position.set(18, -11, 0.8);
+    outdoorGroup.add(haze);
+
+    // === FOREST PERIMETER (around island edge) ===
+    const pineTrunkMat = createToonMaterial(0x5a3a1a);
+    const pineCrownMat = createToonMaterial(0x1a4a1a);
+    const deadTrunkMat = createToonMaterial(0x4a3a2a);
+
+    const createPine = (px: number, py: number) => {
+      const pTrunk = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.5), pineTrunkMat);
+      pTrunk.position.set(px, py, 0.25);
+      pTrunk.castShadow = true;
+      outdoorGroup.add(pTrunk);
+      const pCrown = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.4, 8), pineCrownMat);
+      pCrown.position.set(px, py, 0.6);
+      pCrown.castShadow = true;
+      outdoorGroup.add(pCrown);
+    };
+
+    const createDeadTree = (dx: number, dy: number) => {
+      const dTrunk = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.6), deadTrunkMat);
+      dTrunk.position.set(dx, dy, 0.3);
+      dTrunk.rotation.z = (Math.random() - 0.5) * 0.05;
+      dTrunk.castShadow = true;
+      outdoorGroup.add(dTrunk);
+      // Bare branches
+      for (let i = 0; i < 3; i++) {
+        const branch = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.15), deadTrunkMat);
+        branch.position.set(dx + Math.cos(i * 2) * 0.1, dy + Math.sin(i * 2) * 0.1, 0.5 + Math.random() * 0.1);
+        branch.rotation.z = (Math.random() - 0.5) * 0.5;
+        outdoorGroup.add(branch);
+      }
+    };
+
+    // Pine forest — north edge (y = 8 to 12)
+    for (let x = -25; x <= 25; x += 4) {
+      const jitter = (Math.random() - 0.5) * 1.5;
+      createPine(x + jitter, 9 + Math.random() * 2);
+    }
+
+    // Pine forest — south edge (y = -22 to -26)
+    for (let x = -25; x <= 25; x += 4) {
+      const jitter = (Math.random() - 0.5) * 1.5;
+      createPine(x + jitter, -23 - Math.random() * 2);
+    }
+
+    // Dead trees — near ruined city (east side, between barrier and ruins)
+    for (let x = 12; x <= 24; x += 3) {
+      const jitter = (Math.random() - 0.5) * 1.2;
+      createDeadTree(x + jitter, -7 + Math.random() * 2);
+    }
+    for (let x = 12; x <= 24; x += 3) {
+      const jitter = (Math.random() - 0.5) * 1.2;
+      createDeadTree(x + jitter, -15 - Math.random() * 2);
+    }
+
+    // Scattered pine trees on east side (beyond barrier, before ruins)
+    for (let i = 0; i < 8; i++) {
+      createPine(13 + Math.random() * 4, -8 + Math.random() * 5);
+    }
+    for (let i = 0; i < 6; i++) {
+      createPine(13 + Math.random() * 4, -16 + Math.random() * 4);
+    }
+
+    // Scattered trees on west side (near port and west edge)
+    for (let i = 0; i < 6; i++) {
+      const wAngle = Math.PI * 0.75 + Math.random() * 0.4;
+      createPine(-30 + Math.random() * 6, -5 + Math.random() * 6);
+    }
+    for (let i = 0; i < 4; i++) {
+      createDeadTree(-30 + Math.random() * 6, -18 + Math.random() * 4);
     }
 
     const createExitSignMesh = (x: number, y: number, z: number, parent: THREE.Group, bgColor = '#dc2626', textColor = '#ffffff', borderColor = '#fde68a') => {
@@ -3137,116 +3327,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       shopExitMarkerRef.current = shopExitMarker;
     }
 
-    // Multi-floor arena at (18.75, -12) — merged grass block x=[13.5,24]
-    const aCx = 18.75, aCy = -12;
-    const aW = 7, aD = 3.5, aFH = 2.0, aWT = 0.12;
-    const aFloors = [0x7c3aed, 0xdc2626, 0x2563eb];
-    const arenaBuilding = new THREE.Group();
-    // Base slab
-    const base = new THREE.Mesh(new THREE.BoxGeometry(aW, aD, 0.1), createToonMaterial(0x94a3b8));
-    base.position.set(aCx, aCy, 0.05);
-    arenaBuilding.add(base);
-    // 3 stacked floors (directly on each other, no gaps)
-    for (let f = 0; f < 3; f++) {
-      const zW = f * (aFH + 0.1) + 0.1; // wall bottom
-      const zS = zW + aFH; // slab bottom (top of wall)
-      const wMat = createTexturedToonMaterial('tile_25.png', 14, 7, aFloors[f]);
-      // South wall
-      const sw = new THREE.Mesh(new THREE.BoxGeometry(aW - aWT * 2, aWT, aFH), wMat);
-      sw.position.set(aCx, aCy - aD / 2 + aWT / 2, zW + aFH / 2);
-      arenaBuilding.add(sw);
-      // Side walls
-      for (let s = -1; s <= 1; s += 2) {
-        const side = new THREE.Mesh(new THREE.BoxGeometry(aWT, aD - aWT * 2, aFH), wMat);
-        side.position.set(aCx + s * (aW / 2 - aWT / 2), aCy, zW + aFH / 2);
-        arenaBuilding.add(side);
-      }
-      if (f === 0) {
-        // Ground: north wall with door opening
-        const dW = 1.8, nSeg = (aW - dW) / 2;
-        const n1 = new THREE.Mesh(new THREE.BoxGeometry(nSeg - aWT, aWT, aFH), wMat);
-        n1.position.set(aCx - dW / 2 - nSeg / 2 + aWT / 2, aCy + aD / 2 - aWT / 2, zW + aFH / 2);
-        arenaBuilding.add(n1);
-        const n2 = new THREE.Mesh(new THREE.BoxGeometry(nSeg - aWT, aWT, aFH), wMat);
-        n2.position.set(aCx + dW / 2 + nSeg / 2 - aWT / 2, aCy + aD / 2 - aWT / 2, zW + aFH / 2);
-        arenaBuilding.add(n2);
-        // Door fill (dark recess)
-        const df = new THREE.Mesh(new THREE.BoxGeometry(dW - 0.2, aWT + 0.01, aFH - 0.4), createToonMaterial(0x0f172a, 0.36, 0.35));
-        df.position.set(aCx, aCy + aD / 2 - aWT / 2 + 0.005, zW + aFH / 2);
-        arenaBuilding.add(df);
-        // Door glow
-        const glow = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.3), new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.5 }));
-        glow.position.set(aCx, aCy + aD / 2 + 0.04, zW + aFH - 0.3);
-        arenaBuilding.add(glow);
-        // ARENA sign above door
-        {
-          const sc = document.createElement('canvas');
-          sc.width = 400; sc.height = 96;
-          const sctx = sc.getContext('2d')!;
-          const rad = 12;
-          sctx.fillStyle = 'rgba(220,38,38,0.92)';
-          sctx.beginPath(); sctx.moveTo(rad, 0); sctx.lineTo(400 - rad, 0);
-          sctx.quadraticCurveTo(400, 0, 400, rad); sctx.lineTo(400, 96 - rad);
-          sctx.quadraticCurveTo(400, 96, 400 - rad, 96); sctx.lineTo(rad, 96);
-          sctx.quadraticCurveTo(0, 96, 0, 96 - rad); sctx.lineTo(0, rad);
-          sctx.quadraticCurveTo(0, 0, rad, 0); sctx.closePath(); sctx.fill();
-          sctx.fillStyle = '#f8fafc'; sctx.font = '700 52px system-ui'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
-          sctx.fillText('ARENA', 200, 52);
-          const st = new THREE.CanvasTexture(sc);
-          st.minFilter = THREE.LinearFilter;
-          st.flipY = false;
-          const sign = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.06, 0.45), new THREE.MeshBasicMaterial({ map: st }));
-          sign.position.set(aCx, aCy + aD / 2 + 0.01, zS + 0.1);
-          sign.scale.x = -1;
-          arenaBuilding.add(sign);
-        }
-      } else {
-        // Upper floors: solid north wall
-        const nw = new THREE.Mesh(new THREE.BoxGeometry(aW - aWT * 2, aWT, aFH), wMat);
-        nw.position.set(aCx, aCy + aD / 2 - aWT / 2, zW + aFH / 2);
-        arenaBuilding.add(nw);
-      }
-      // Floor/ceiling slab between floors
-      if (f < 2) {
-        const slab = new THREE.Mesh(new THREE.BoxGeometry(aW, aD, 0.1), createToonMaterial(0x94a3b8));
-        slab.position.set(aCx, aCy, zS + 0.05);
-        arenaBuilding.add(slab);
-      }
-    }
-    // Flat roof with parapet
-    const rZ = 3 * (aFH + 0.1) + 0.1;
-    const aRoof = new THREE.Mesh(new THREE.BoxGeometry(aW, aD, 0.15), createToonMaterial(0x1e293b));
-    aRoof.position.set(aCx, aCy, rZ + 0.075);
-    arenaBuilding.add(aRoof);
-    const pMat = createToonMaterial(0x334155);
-    for (let s = -1; s <= 1; s += 2) {
-      const p = new THREE.Mesh(new THREE.BoxGeometry(aW + 0.2, 0.08, 0.25), pMat);
-      p.position.set(aCx, aCy + s * aD / 2, rZ + 0.2);
-      arenaBuilding.add(p);
-      const ps = new THREE.Mesh(new THREE.BoxGeometry(0.08, aD + 0.2, 0.25), pMat);
-      ps.position.set(aCx + s * aW / 2, aCy, rZ + 0.2);
-      arenaBuilding.add(ps);
-    }
-    addOutline(base);
-    applyShadows(arenaBuilding, true, true);
-    outdoorGroup.add(arenaBuilding);
-    arenaBuildingRef.current = arenaBuilding;
-
-    obstacleHitboxesRef.current = buildObstacles({
-      arenaCenterX: aCx,
-      arenaCenterY: aCy,
-      arenaHalfW: aW / 2 + 0.2,
-      arenaHalfD: aD / 2 + 0.2,
-    });
+    obstacleHitboxesRef.current = buildObstacles();
     workshopDoorHitboxRef.current = {
       shape: 'circle',
       center: { x: -6, y: -10.3 },
-      radius: 0.5,
-    };
-
-    arenaDoorHitboxRef.current = {
-      shape: 'circle',
-      center: { x: aCx, y: aCy + aD / 2 },
       radius: 0.5,
     };
 
@@ -3726,43 +3810,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       aptExitMarkerRef.current = aptExitMarker;
     }
 
-    {
-      const arenaFloor = new THREE.Mesh(
-        new THREE.BoxGeometry(12, 12, 0.24),
-        createTexturedToonMaterial('tile_42.png', 24, 24, 0x1e293b)
-      );
-      arenaFloor.position.set(0, 0, 0.12);
-      arenaRoomGroup.add(arenaFloor);
-
-      const arenaGrid = createGrid(5.8, 1, 0x334155);
-      arenaGrid.position.z = 0.2;
-      arenaRoomGroup.add(arenaGrid);
-
-      const arenaWallPositions = [
-        new THREE.Vector3(0, 6.3, 1.2),
-        new THREE.Vector3(0, -6.3, 1.2),
-        new THREE.Vector3(-6.3, 0, 1.2),
-        new THREE.Vector3(6.3, 0, 1.2),
-      ];
-      arenaWallPositions.forEach((pos, i) => {
-        const horizontal = i < 2;
-        const wall = new THREE.Mesh(
-          new THREE.BoxGeometry(horizontal ? 12.6 : 0.3, horizontal ? 0.3 : 12.6, 2.4),
-          createTexturedToonMaterial('tile_26.png', horizontal ? 12 : 1, 5, 0x475569)
-        );
-        wall.position.copy(pos);
-        wall.material.side = THREE.DoubleSide;
-        arenaRoomGroup.add(wall);
-      });
-
-      const arenaCenterLight = new THREE.Mesh(
-        new THREE.CircleGeometry(0.6, 20),
-        createToonMaterial(0xfef08a, 0.2, 0.1)
-      );
-      arenaCenterLight.position.set(0, 0, 0.25);
-      arenaRoomGroup.add(arenaCenterLight);
-    }
-
     const handleResize = () => {
       if (!mountRef.current || !cameraRef.current || !rendererRef.current) return;
       cameraRef.current.aspect = mountElement.clientWidth / mountElement.clientHeight;
@@ -3878,7 +3925,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
         return;
       }
-      if (event.code === 'Space' && !inWorkshopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current) {
+      if (event.code === 'Space' && !inWorkshopRoomRef.current && !inApartmentRoomRef.current) {
         event.preventDefault();
         worldInteractionRequestedRef.current = true;
         return;
@@ -4259,11 +4306,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 moved = false;
               }
             }
-          } else if (inArenaRoomRef.current) {
-            candidate.x = Math.max(-5.8, Math.min(5.8, candidate.x));
-            candidate.y = Math.max(-5.8, Math.min(5.8, candidate.y));
-            localPositionRef.current.copy(candidate);
-            localRobot.root.position.set(candidate.x, candidate.y, 0.28);
           } else if (inApartmentRoomRef.current) {
             candidate.x = Math.max(-3.8, Math.min(3.8, candidate.x));
             candidate.y = Math.max(-4.3, Math.min(3.8, candidate.y));
@@ -4323,17 +4365,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               workshopDoorArmedRef.current = true;
             }
 
-            const arenaDoor = arenaDoorHitboxRef.current;
-            const atArenaDoor =
-              canEnterBuildings &&
-              arenaDoor !== null &&
-              arenaDoorArmedRef.current &&
-              isInsideHitbox(candidate, arenaDoor);
-
-            if (arenaDoor !== null && !isInsideHitbox(candidate, arenaDoor)) {
-              arenaDoorArmedRef.current = true;
-            }
-
             const apartmentDoor = apartmentDoorHitboxRef.current;
             const aptStage = sparkyQuestStageRef.current;
             const atApartmentDoor =
@@ -4390,26 +4421,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ position: { x: ROOM_SPAWN.x, y: ROOM_SPAWN.y, room: 'workshop', rotation: yawRef.current } }),
-                keepalive: true,
-              }).catch(() => {});
-            } else if (atArenaDoor) {
-              arenaDoorArmedRef.current = false;
-              setInArenaRoom(true);
-              inArenaRoomRef.current = true;
-              fetch('/api/arena', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'join' }),
-              }).catch(() => {});
-              triggerEvent('client-player-join', { x: ARENA_ROOM_SPAWN.x, y: ARENA_ROOM_SPAWN.y, room: 'arena' });
-              localPositionRef.current.copy(ARENA_ROOM_SPAWN);
-              localRobot.root.position.set(ARENA_ROOM_SPAWN.x, ARENA_ROOM_SPAWN.y, 0.28);
-              keyStateRef.current.clear();
-              moved = false;
-              fetch('/api/sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ position: { x: ARENA_ROOM_SPAWN.x, y: ARENA_ROOM_SPAWN.y, room: 'arena', rotation: yawRef.current } }),
                 keepalive: true,
               }).catch(() => {});
             } else if (atShopDoor) {
@@ -4597,15 +4608,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
 
       if (moved) {
-        const room = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : 'outside';
+        const room = inWorkshopRoomRef.current ? 'workshop' : 'outside';
         triggerEvent('client-player-move', { x: localPositionRef.current.x, y: localPositionRef.current.y, room });
       }
       // Periodic full sync (30s safety net for crash recovery)
       if (now - lastPositionSyncRef.current >= 30000) {
         lastPositionSyncRef.current = now;
-        const pRoom = inWorkshopRoomRef.current ? 'workshop' : inArenaRoomRef.current ? 'arena' : inApartmentRoomRef.current ? 'apartment' : inShopRoomRef.current ? 'shop' : 'outside';
+        const pRoom = inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apartment' : inShopRoomRef.current ? 'shop' : 'outside';
         const pos = pRoom !== 'outside'
-          ? ({ workshop: ROOM_SPAWN, arena: ARENA_ROOM_SPAWN, apartment: APARTMENT_SPAWN, shop: { x: 0, y: 1.2 } } as Record<string, { x: number; y: number }>)[pRoom]
+          ? ({ workshop: ROOM_SPAWN, apartment: APARTMENT_SPAWN, shop: { x: 0, y: 1.2 } } as Record<string, { x: number; y: number }>)[pRoom]
           : { x: localPositionRef.current.x, y: localPositionRef.current.y };
         fetch('/api/sync', {
           method: 'POST',
@@ -4629,7 +4640,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       const playerYaw = yawRef.current;
       localGroup.rotation.z = -playerYaw;
-      const baseZ = inApartmentRoomRef.current ? 0.28 : inArenaRoomRef.current ? 0.28 : inWorkshopRoomRef.current ? 0.26 : inShopRoomRef.current ? 0.08 : 0.24;
+      const baseZ = inApartmentRoomRef.current ? 0.28 : inWorkshopRoomRef.current ? 0.26 : inShopRoomRef.current ? 0.08 : 0.24;
       localGroup.position.z = baseZ + (moved ? Math.sin(worldTime * 10) * 0.02 : 0);
       // Walk animation for player legs
       const localVis = localRobotRef.current;
@@ -4705,7 +4716,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         });
       }
 
-      if (!inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current) {
+      if (!inWorkshopRoomRef.current && !inShopRoomRef.current && !inApartmentRoomRef.current) {
         const distanceToSparky = localPositionRef.current.distanceTo(NPC_POSITION);
         let outsidePrompt: string | null = null;
 
@@ -4729,11 +4740,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           distanceToSparky < SPARKY_INTERACTION_DISTANCE
         ) {
           outsidePrompt = 'Sparky';
-        } else if (
-          transportHitboxRef.current &&
-          isInsideHitbox(localPositionRef.current, transportHitboxRef.current)
-        ) {
-          outsidePrompt = 'Transporter';
         }
 
         if (worldInteractionRequestedRef.current) {
@@ -4754,12 +4760,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             } else if (stage === 'intro' && !sparkyGoHomeRef.current) {
               setSparkyIntroStep(0);
             } else if (stage === 'all-done') {
-              setSparkyDlgFull('Scrap is fully repaired! Arena mode is unlocked — go battle your friends!');
+              setSparkyDlgFull('Scrap is fully repaired! You can explore the island and help others.');
               setShowSparkyDlg(true);
             }
-          } else if (transportHitboxRef.current && isInsideHitbox(localPositionRef.current, transportHitboxRef.current)) {
-            setShowTransportModal(true);
-            setTransportMessage(null);
           }
         }
 
@@ -4871,7 +4874,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         animateSparkyWave(sparky, worldTime);
       }
       // Scrap follower AI
-      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
+      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
         const playerPos = localPositionRef.current;
         const scrapPosX = scrapFollowerRef.current.root.position.x;
         const scrapPosY = scrapFollowerRef.current.root.position.y;
@@ -6697,13 +6700,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       }
 
-      const currentRoom = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : inShopRoomRef.current ? 'shop' : inApartmentRoomRef.current ? 'apartment' : 'outside';
+      const currentRoom = inWorkshopRoomRef.current ? 'workshop' : inShopRoomRef.current ? 'shop' : inApartmentRoomRef.current ? 'apartment' : 'outside';
       for (const avatar of Object.values(remoteAvatarsRef.current)) {
         const showAvatar = currentRoom === avatar.room;
         avatar.root.visible = showAvatar;
         if (showAvatar) {
-          const targetGroup = currentRoom === 'arena' ? arenaRoomGroup :
-            currentRoom === 'workshop' ? (workshopRoomGroupRef.current || scene) :
+          const targetGroup = currentRoom === 'workshop' ? (workshopRoomGroupRef.current || scene) :
             currentRoom === 'apartment' ? (apartmentRoomGroupRef.current || scene) :
             (outdoorGroupRef.current || scene);
           if (avatar.root.parent !== targetGroup) {
@@ -6715,7 +6717,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const prevY = avatar.root.position.y;
         avatar.root.position.x += (avatar.target.x - avatar.root.position.x) * REMOTE_LERP;
         avatar.root.position.y += (avatar.target.y - avatar.root.position.y) * REMOTE_LERP;
-        const roomZ = avatar.room === 'workshop' ? 0.26 : avatar.room === 'apartment' || avatar.room === 'arena' || avatar.room === 'shop' ? 0.28 : 0.24;
+        const roomZ = avatar.room === 'workshop' ? 0.26 : avatar.room === 'apartment' || avatar.room === 'shop' ? 0.28 : 0.24;
         avatar.root.position.z = roomZ;
         const velocity = Math.hypot(avatar.root.position.x - prevX, avatar.root.position.y - prevY);
         avatar.walkTime += delta * (1 + velocity * 20);
@@ -6739,10 +6741,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         cloud.position.x += Math.sin(worldTime * (0.08 + i * 0.03) + i) * 0.0025;
       });
 
-      const roomBg = inWorkshopRoomRef.current ? 0x030712 : inShopRoomRef.current ? 0x1a1a2e : inArenaRoomRef.current ? 0x0f172a : inApartmentRoomRef.current ? 0x1a1a2e : 0x4a7a9a;
-        outdoorGroup.visible = !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current;
+      const roomBg = inWorkshopRoomRef.current ? 0x030712 : inShopRoomRef.current ? 0x1a1a2e : inApartmentRoomRef.current ? 0x1a1a2e : 0x4a7a9a;
+        outdoorGroup.visible = !inWorkshopRoomRef.current && !inShopRoomRef.current && !inApartmentRoomRef.current;
         workshopRoomGroup.visible = inWorkshopRoomRef.current;
-        arenaRoomGroup.visible = inArenaRoomRef.current;
         apartmentRoomGroup.visible = inApartmentRoomRef.current;
         if (shopRoomGroupRef.current) shopRoomGroupRef.current.visible = inShopRoomRef.current;
         sceneBgColorRef.current.set(sceneBgOverrideRef.current ?? roomBg);
@@ -6753,7 +6754,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const py = localPositionRef.current.y;
         const sinYaw = Math.sin(camYaw), cosYaw = Math.cos(camYaw);
         const sinPitch = Math.sin(camPitch), cosPitch = Math.cos(camPitch);
-        const inside = inWorkshopRoomRef.current || inShopRoomRef.current || inArenaRoomRef.current || inApartmentRoomRef.current;
+        const inside = inWorkshopRoomRef.current || inShopRoomRef.current || inApartmentRoomRef.current;
         const room = inside ? currentRoom : 'outside';
         if (cinemCamActiveRef.current) {
           const phase = aptCutscenePhaseRef.current;
@@ -6925,7 +6926,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         // Clamp camera inside room so it never sees past walls into the void
         if (inside) {
           const limits: Record<string, number> = {
-            workshop: 4.0, arena: 5.0, apartment: 3.0, shop: 2.5,
+            workshop: 4.0, apartment: 3.0, shop: 2.5,
           };
           const lim = limits[room] ?? 20;
           camera.position.x = Math.max(-lim, Math.min(lim, camera.position.x));
@@ -6951,7 +6952,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           sendAtRef.current = now + NETWORK_SYNC_MS;
           const sendPos = (() => {
             if (inWorkshopRoomRef.current) return { x: ROOM_SPAWN.x, y: ROOM_SPAWN.y, room: 'workshop' };
-            if (inArenaRoomRef.current) return { x: ARENA_ROOM_SPAWN.x, y: ARENA_ROOM_SPAWN.y, room: 'arena' };
             if (inApartmentRoomRef.current) return { x: APARTMENT_SPAWN.x, y: APARTMENT_SPAWN.y, room: 'apartment' };
             if (inShopRoomRef.current) return { x: 0, y: 1.2, room: 'shop' };
             return { x: localPositionRef.current.x, y: localPositionRef.current.y };
@@ -7093,13 +7093,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       roomOwnerVisualRef.current = null;
       outdoorGroupRef.current = null;
       workshopRoomGroupRef.current = null;
-      arenaRoomGroupRef.current = null;
       apartmentRoomGroupRef.current = null;
-      arenaBuildingRef.current = null;
       obstacleHitboxesRef.current = [];
       roomObstacleHitboxesRef.current = [];
       workshopDoorHitboxRef.current = null;
-      arenaDoorHitboxRef.current = null;
       apartmentDoorHitboxRef.current = null;
       apartmentDoorMarkerRef.current = null;
       aptExitMarkerRef.current = null;
@@ -7139,7 +7136,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (rafiqMarkerRef.current) rafiqMarkerRef.current.visible = false;
       return;
     }
-    const room: RoomType = inArenaRoomRef.current ? 'arena' : inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apartment' : inShopRoomRef.current ? 'shop' : 'outside';
+    const room: RoomType = inWorkshopRoomRef.current ? 'workshop' : inApartmentRoomRef.current ? 'apartment' : inShopRoomRef.current ? 'shop' : 'outside';
     const bp = gameStore.get('backpack') as ScrapPartId[];
     const vis = computeMarkerVisibility(
       room, sparkyQuestStageRef.current, bp,
@@ -7159,44 +7156,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   useEffect(() => {
     syncMarkers();
-  }, [sparkyQuestStage, inApartmentRoom, inWorkshopRoom, inShopRoom, inArenaRoom, workshopIntroSeen, backpack, money, cutsceneTick]);
+  }, [sparkyQuestStage, inApartmentRoom, inWorkshopRoom, inShopRoom, workshopIntroSeen, backpack, money, cutsceneTick]);
 
-  useEffect(() => {
-    if (!inArenaRoom) {
-      setArenaPlayers([]);
-      setArenaChallenge(null);
-      setArenaBattleActive(false);
-      setArenaOutput('');
-      return;
-    }
-    mp.onArenaEventRef.current = (event) => {
-      if (event.type === 'arena-join') {
-        setArenaPlayers((prev) => {
-          if (prev.find(p => p.id === event.fromId)) return prev;
-          return [...prev, { id: event.fromId, name: event.fromName }];
-        });
-      } else if (event.type === 'arena-leave') {
-        setArenaPlayers((prev) => prev.filter(p => p.id !== event.fromId));
-      } else if (event.type === 'arena-challenge') {
-        setArenaChallenge({ id: '', fromId: event.fromId, fromName: event.fromName, status: 'pending' });
-      } else if (event.type === 'arena-accept') {
-        setArenaBattleActive(true);
-        setArenaChallenge({ id: event.challengeId || '', status: 'active' });
-        setArenaOutput('Battle started! Write your code.');
-      } else if (event.type === 'arena-decline') {
-        setArenaChallenge(null);
-        setArenaOutput('Challenge declined.');
-      }
-    };
-    fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'join' }) }).catch(() => {});
-    triggerEvent('client-arena-join', { room: 'arena' });
-    fetch('/api/arena?action=players').then(r => r.json()).then(d => { if (d.players) setArenaPlayers(d.players.filter((p: any) => p.id !== userId)); }).catch(() => {});
-    return () => {
-      mp.onArenaEventRef.current = null;
-      fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'leave' }) }).catch(() => {});
-      triggerEvent('client-arena-leave', {});
-    };
-  }, [inArenaRoom]);
+
 
   useEffect(() => {
     if (!sceneRef.current) return;
@@ -7209,7 +7171,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (!remoteAvatarsRef.current[remoteUserId]) {
         const color = new THREE.Color(hashColor(remoteUserId)).getHex();
         const pv = buildPlayerVisual(color, name);
-        const roomZ = remoteRoom === 'workshop' ? 0.26 : remoteRoom === 'apartment' || remoteRoom === 'arena' || remoteRoom === 'shop' ? 0.28 : 0.24;
+        const roomZ = remoteRoom === 'workshop' ? 0.26 : remoteRoom === 'apartment' || remoteRoom === 'shop' ? 0.28 : 0.24;
         pv.root.position.set(data.x, data.y, roomZ);
         const initialRotation = (data as any).rotation ?? 0;
         pv.root.rotation.z = -initialRotation;
@@ -7355,25 +7317,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     apiSync({ position: { x: outsideDoor.x, y: outsideDoor.y, rotation: null, room: 'outside' } });
   };
 
-  const leaveArenaRoom = () => {
-    setInArenaRoom(false);
-    inArenaRoomRef.current = false;
-    arenaDoorArmedRef.current = false;
-    setArenaPlayers([]);
-    setArenaChallenge(null);
-    setArenaCode('');
-    setArenaOutput('');
-    setArenaBattleActive(false);
-    fetch('/api/arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'leave' }) }).catch(() => {});
-    const adp = new THREE.Vector2(18.75, -9.0);
-    triggerEvent('client-player-join', { x: adp.x, y: adp.y, room: 'outside' });
-    localPositionRef.current.copy(adp);
-    if (localRobotRef.current) {
-      localRobotRef.current.root.position.set(adp.x, adp.y, 0.24);
-    }
-    apiSync({ position: { x: adp.x, y: adp.y, rotation: null, room: 'outside' } });
-  };
-
   const leaveApartmentRoom = () => {
     setInApartmentRoom(false);
     inApartmentRoomRef.current = false;
@@ -7455,76 +7398,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       setShowSparkyDlg(true);
     }
   }, []);
-
-  const challengePlayer = async (targetId: string, targetName: string) => {
-    try {
-      const res = await fetch('/api/arena', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'challenge', opponentId: targetId }),
-      });
-      const data = await res.json();
-      if (data.error) { setArenaOutput(`❌ ${data.error}`); return; }
-      triggerEvent('client-arena-challenge', { targetId });
-      setArenaOutput(`Challenge sent to ${targetName}!`);
-    } catch {
-      setArenaOutput('❌ Failed to send challenge.');
-    }
-  };
-
-  const acceptChallenge = async (fromId: string) => {
-    try {
-      const res = await fetch('/api/arena', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'accept', opponentId: fromId }),
-      });
-      const data = await res.json();
-      if (data.error) { setArenaOutput(`❌ ${data.error}`); return; }
-      setArenaBattleActive(true);
-      setArenaChallenge(null);
-      setArenaOutput('Battle started! Write your code and submit.');
-      triggerEvent('client-arena-accept', { challengeId: data.challenge?.id });
-    } catch {
-      setArenaOutput('❌ Failed to accept challenge.');
-    }
-  };
-
-  const declineChallenge = () => {
-    fetch('/api/arena', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'decline' }),
-    }).catch(() => {});
-    setArenaChallenge(null);
-    setArenaOutput('Challenge declined.');
-  };
-
-  const submitArenaCode = async () => {
-    if (!arenaCode.trim()) {
-      setArenaOutput('Write some code first.');
-      return;
-    }
-    try {
-      const res = await fetch('/api/arena/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ challengeId: arenaChallenge?.id, code: arenaCode }),
-      });
-      const data = await res.json();
-      if (data.error) {
-        setArenaOutput(`❌ ${data.error}`);
-      } else {
-        setArenaOutput(data.output || 'Code submitted!');
-        if (data.winner) {
-          setArenaOutput(`🏆 ${data.winner} wins!`);
-          setArenaBattleActive(false);
-        }
-      }
-    } catch {
-      setArenaOutput('❌ Failed to submit code.');
-    }
-  };
 
   const spawnConfetti = (pos: THREE.Vector2) => {
     const scene = sceneRef.current;
@@ -7958,16 +7831,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
-      <ArenaOverlay inArenaRoom={inArenaRoom} arenaPlayers={arenaPlayers} arenaChallenge={arenaChallenge} arenaCode={arenaCode} setArenaCode={setArenaCode} arenaOutput={arenaOutput} arenaBattleActive={arenaBattleActive} challengePlayer={challengePlayer} acceptChallenge={acceptChallenge} declineChallenge={declineChallenge} submitArenaCode={submitArenaCode} leaveArenaRoom={leaveArenaRoom} currentUserId={userId} />
-
       {roomEntryFlash && <div className="pointer-events-none fixed inset-0 z-[70] animate-pulse bg-cyan-200/35 backdrop-blur-[1px]" />}
 
       <div className="w-full h-screen" ref={mountRef} />
 
       <div className="fixed top-4 right-4 z-50 flex gap-3">
-        <button onClick={() => setActiveModal('guilds')} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Guilds">⚔️</button>
-        <button onClick={() => setActiveModal('friends')} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Friends">👥</button>
-        <button onClick={() => setActiveModal('profile')} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Profile">👤</button>
         <button onClick={() => setActiveModal('settings')} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-lg hover:bg-black/70 transition-colors" title="Settings">⚙️</button>
       </div>
 
@@ -8119,38 +7987,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       </div>
 
-      {showTransportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => { setShowTransportModal(false); setTransportMessage(null); }}>
-          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold text-amber-300 mb-4">Transporter Store</h2>
-            {transportMessage ? (
-              <div className="text-center py-6">
-                <p className="text-lg text-slate-100">{transportMessage}</p>
-                <button className="mt-6 rounded-lg bg-amber-500 px-8 py-3 text-lg font-semibold text-slate-900 hover:bg-amber-400" onClick={() => { setShowTransportModal(false); setTransportMessage(null); }}>OK</button>
-              </div>
-            ) : (
-              <>
-                <p className="text-slate-300 mb-6">Browse our fine selection of transportation!</p>
-                <div className="flex gap-4">
-                  <div className="flex-1 rounded-xl border border-slate-600 bg-slate-800/50 p-4 text-center cursor-pointer hover:border-amber-400/50 transition-colors" onClick={() => setTransportMessage('Coming soon!')}>
-                    <div className="text-3xl mb-2">🚲</div>
-                    <div className="text-lg font-semibold text-white">Bicycle</div>
-                    <div className="text-amber-300 font-bold mt-1">$100</div>
-                    <div className="text-xs text-slate-400 mt-2">Reliable two-wheeler</div>
-                  </div>
-                  <div className="flex-1 rounded-xl border border-slate-600 bg-slate-800/50 p-4 text-center cursor-pointer hover:border-amber-400/50 transition-colors" onClick={() => setTransportMessage('Coming soon!')}>
-                    <div className="text-3xl mb-2">🚗</div>
-                    <div className="text-lg font-semibold text-white">Car</div>
-                    <div className="text-amber-300 font-bold mt-1">$1,000</div>
-                    <div className="text-xs text-slate-400 mt-2">*breaks down quickly</div>
-                  </div>
-                </div>
-                <button className="mt-6 w-full rounded-lg bg-slate-700 px-6 py-3 text-lg font-semibold text-white hover:bg-slate-600 transition-colors" onClick={() => { setShowTransportModal(false); setTransportMessage(null); }}>Leave</button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
       {shopkeeperGreeting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => setShopkeeperGreeting(null)}>
           <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6 text-center" onClick={(e) => e.stopPropagation()}>

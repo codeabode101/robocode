@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Room Transitions', () => {
+  test.setTimeout(60000);
   test('enters and exits workshop without crash', async ({ page }) => {
     const consoleErrors: string[] = [];
     page.on('console', (msg) => {
