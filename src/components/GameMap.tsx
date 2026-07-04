@@ -4832,26 +4832,27 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const scrapPosX = scrapFollowerRef.current.root.position.x;
         const scrapPosY = scrapFollowerRef.current.root.position.y;
         const followDist = Math.hypot(scrapPosX - playerPos.x, scrapPosY - playerPos.y);
-        if (followDist > 0.6) {
-          const targetX = playerPos.x;
-          const targetY = playerPos.y - 0.35;
-          const dx = targetX - scrapPosX;
-          const dy = targetY - scrapPosY;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          if (len > 0.001) {
-            const step = Math.min(followDist - 0.35, 3.0 * delta);
-            const candX = scrapPosX + (dx / len) * step;
-            const candY = scrapPosY + (dy / len) * step;
-            if (!collidesWithAny({ x: candX, y: candY }, obstacleHitboxesRef.current)) {
-              scrapFollowerRef.current.root.position.x = candX;
-              scrapFollowerRef.current.root.position.y = candY;
-            }
+        const targetBehind = 0.5;
+        const targetSide = 0.4;
+        const fwdX = Math.sin(yawRef.current);
+        const fwdY = Math.cos(yawRef.current);
+        const rightX = Math.cos(yawRef.current);
+        const rightY = -Math.sin(yawRef.current);
+        const targetX = playerPos.x - fwdX * targetBehind + rightX * targetSide;
+        const targetY = playerPos.y - fwdY * targetBehind + rightY * targetSide;
+        if (followDist > 0.5) {
+          const lerpFactor = 0.07;
+          const candX = scrapPosX + (targetX - scrapPosX) * lerpFactor;
+          const candY = scrapPosY + (targetY - scrapPosY) * lerpFactor;
+          if (!collidesWithAny({ x: candX, y: candY }, obstacleHitboxesRef.current)) {
+            scrapFollowerRef.current.root.position.x = candX;
+            scrapFollowerRef.current.root.position.y = candY;
           }
         }
-        const scrapSpeed = followDist > 0.6 ? 1 : 0;
+        const scrapSpeed = followDist > 0.5 ? 1 : 0;
         animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPosX, playerPos.y - scrapPosY);
         if (scrapFollowerBaseQuatRef.current) {
-          const facing = -Math.atan2(playerPos.x - scrapPosX, playerPos.y - scrapPosY);
+          const facing = -Math.atan2(scrapPosX - playerPos.x, scrapPosY - playerPos.y);
           const facingQ = scratchQuat.current.setFromAxisAngle(scratchVec3.current.set(0, 0, 1), facing);
           scrapFollowerRef.current.root.quaternion.copy(scrapFollowerBaseQuatRef.current).premultiply(facingQ);
         }
