@@ -399,6 +399,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const scrapFollowerRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
   const scrapFollowerEnabledRef = useRef(false);
   const scrapVisibleRef = useRef(false);
+  const batteryInstallDialogGuardRef = useRef(false);
   const miniRobotRefs = useRef<ReturnType<typeof createRobotVisual>[]>([]);
   const sceneBgOverrideRef = useRef<number | null>(null);
 
@@ -1615,12 +1616,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
+        if (batteryInstallDialogGuardRef.current) return;
         const nextStep = batteryInstallStep + 1;
         if (nextStep < BATTERY_INSTALL_DLG_STEPS.length) {
           setBatteryInstallStep(nextStep);
         } else {
+          batteryInstallDialogGuardRef.current = true;
           setShowBatteryInstallDlg(false);
-          const newBackpack: ScrapPartId[] = [...gameStore.get('backpack').filter(id => id !== 'battery'), 'scrap'];
+          const currentBackpack = gameStore.get('backpack') as ScrapPartId[];
+          const cleaned = currentBackpack.filter(id => id !== 'battery' && id !== 'scrap');
+          const newBackpack: ScrapPartId[] = [...cleaned, 'scrap'];
           updateBackpack(newBackpack);
           updateQuestStage('all-done');
           apiSync({ batteryInstalled: true, questStage: 'all-done', pendingBatteryCutscene: false });
