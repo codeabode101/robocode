@@ -5,7 +5,11 @@ const BASE = 'https://robocode.rahejaom.workers.dev';
 test.describe('Scrap Follower', () => {
   test('follower is created, activated, and positioned correctly', async ({ page }) => {
     const logs: string[] = [];
-    page.on('console', (msg) => logs.push(msg.text()));
+    const criticalErrors: string[] = [];
+    page.on('console', (msg) => {
+      logs.push(msg.text());
+      if (msg.type() === 'error') criticalErrors.push(msg.text());
+    });
 
     const email = `scrap-${Date.now()}@test.com`;
     const signupRes = await page.request.post(`${BASE}/api/auth/signup`, {
@@ -41,10 +45,10 @@ test.describe('Scrap Follower', () => {
     // No backpack duplicate (dedup on profile load)
     expect(logs.filter((l) => l.includes('backpack')).length).toBeLessThanOrEqual(3);
 
-    // No critical errors
-    const criticalErrors = logs.filter(
+    // No critical errors (3D/WebGL/404/fetch errors are non-critical)
+    const filtered = criticalErrors.filter(
       (e) => !e.includes('THREE') && !e.includes('WebGL') && !e.includes('404') && !e.includes('fetch')
     );
-    expect(criticalErrors).toEqual([]);
+    expect(filtered).toEqual([]);
   });
 });

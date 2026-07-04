@@ -3264,7 +3264,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // Scrap follower robot (outdoor, follows player after battery install)
     const scrapFollower = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
-    scrapFollower.root.scale.set(0.65, 0.65, 0.65);
+    scrapFollower.root.scale.set(0.45, 0.45, 0.45);
+    scrapFollower.nameSprite.visible = false;
     scrapFollower.root.position.set(-3.6, -7, 0.24);
     if (scrapFollower.leftPupil) scrapFollower.leftPupil.material.color.setHex(0x222222);
     if (scrapFollower.rightPupil) scrapFollower.rightPupil.material.color.setHex(0x222222);
@@ -4829,14 +4830,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const scrapPosX = scrapFollowerRef.current.root.position.x;
         const scrapPosY = scrapFollowerRef.current.root.position.y;
         const followDist = Math.hypot(scrapPosX - playerPos.x, scrapPosY - playerPos.y);
-        if (followDist > 1.2) {
+        if (followDist > 0.6) {
           const targetX = playerPos.x;
-          const targetY = playerPos.y - 0.8;
+          const targetY = playerPos.y - 0.35;
           const dx = targetX - scrapPosX;
           const dy = targetY - scrapPosY;
           const len = Math.sqrt(dx * dx + dy * dy);
           if (len > 0.001) {
-            const step = Math.min(followDist - 0.8, 3.0 * delta);
+            const step = Math.min(followDist - 0.35, 3.0 * delta);
             const candX = scrapPosX + (dx / len) * step;
             const candY = scrapPosY + (dy / len) * step;
             if (!collidesWithAny({ x: candX, y: candY }, obstacleHitboxesRef.current)) {
@@ -4845,7 +4846,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           }
         }
-        const scrapSpeed = followDist > 1.2 ? 1 : 0;
+        const scrapSpeed = followDist > 0.6 ? 1 : 0;
         animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPosX, playerPos.y - scrapPosY);
       }
       if (scrapFollowerEnabledRef.current && scrapFollowerRef.current) {
