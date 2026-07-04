@@ -4849,6 +4849,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const scrapSpeed = followDist > 1.2 ? 1 : 0;
         animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPosX, playerPos.y - scrapPosY);
       }
+      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current) {
+        (window as any).__scrapFollowerX = scrapFollowerRef.current.root.position.x;
+        (window as any).__scrapFollowerY = scrapFollowerRef.current.root.position.y;
+      }
       if (speechBubbleRef.current && sparkyIntroStepRef.current >= 0) {
         const headPos = scratchVec3.current;
         sparky.antennaTip.getWorldPosition(headPos);
