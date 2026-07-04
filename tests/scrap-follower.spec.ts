@@ -36,11 +36,13 @@ test.describe('Scrap Follower', () => {
     expect(logs.some((l) => l.includes('[scrap] FOLLOWER CREATED'))).toBeTruthy();
     expect(logs.some((l) => l.includes('[scrap] ACTIVATED'))).toBeTruthy();
 
-    // Follower moved from its spawn point (-3.6, -5) toward the player
+    // Follower moved from its spawn point toward the player
     const fx = await page.evaluate(() => (window as any).__scrapFollowerX);
     const fy = await page.evaluate(() => (window as any).__scrapFollowerY);
+    expect(typeof fx).toBe('number');
+    expect(typeof fy).toBe('number');
     expect(fx).not.toBeCloseTo(-3.6, 0);
-    expect(fy).not.toBeCloseTo(-5.0, 0);
+    expect(fy).not.toBeCloseTo(-7, 0);
 
     // No backpack duplicate (dedup on profile load)
     expect(logs.filter((l) => l.includes('backpack')).length).toBeLessThanOrEqual(3);

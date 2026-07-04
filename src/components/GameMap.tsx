@@ -248,12 +248,13 @@ function computeMarkerVisibility(
   };
 }
 
-function TFB({ show, step, steps, text, icon, onEnter, ttsOn, ttsCharIdx, onTtsToggle, hideEnter, codeBlocks }: {
+function TFB({ show, step, steps, text, icon, onEnter, ttsOn, ttsCharIdx, onTtsToggle, hideEnter, codeBlocks, subButton }: {
   show: boolean; step: number;
   steps: readonly { speaker: string; text: string }[] | { speaker: string; text: string }[];
   text: string; icon: 'robot' | 'person' | 'auto'; onEnter: () => void;
   ttsOn: boolean; ttsCharIdx: number | null; onTtsToggle: (t: string) => void;
   hideEnter?: boolean; codeBlocks?: boolean;
+  subButton?: { show: boolean; label: string; onClick: () => void };
 }) {
   if (!show) return null;
   const cur = steps[step] ?? steps[0];
@@ -308,6 +309,11 @@ function TFB({ show, step, steps, text, icon, onEnter, ttsOn, ttsCharIdx, onTtsT
           <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
             {body}<span className="animate-pulse text-amber-400/80">▌</span>
           </p>
+          {subButton?.show && (
+            <button className="mt-2 text-sm text-amber-400/80 underline underline-offset-2 hover:text-amber-300 transition-colors" onClick={subButton.onClick}>
+              ({subButton.label})
+            </button>
+          )}
           {(!hideEnter || isLast) && (
             <div className="flex justify-end mt-4">
               <button className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none" onClick={onEnter}>
@@ -431,10 +437,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyWaitTimerRef = useRef(0);
   const outdoorSparkyRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
   const scrapPartMeshRef = useRef<THREE.Mesh | null>(null);
-  const sparkyInstallPhaseRef = useRef<'walk-to-bench' | 'weld' | 'attach-part' | 'walk-back' | 'done' | null>(null);
-  const sparkyInstallTimerRef = useRef(0);
-  const sparkyInstallPartIdRef = useRef<ScrapPartId | null>(null);
-  const sparkyInstallNextStageRef = useRef<SparkyQuestStage | null>(null);
   const installBatteryPhaseRef = useRef<'approach' | 'hand-off' | 'sparky-walk' | 'open-chest' | 'place-battery' | 'close-chest' | 'power-on' | 'celebration' | 'done' | null>(null);
   const installBatteryTimerRef = useRef(0);
   const batteryInstalledRef = useRef(false);
@@ -784,6 +786,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     sparkyQuestStageRef.current = stage;
     fetch('/api/profile/quest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stage }), keepalive: true }).catch(() => {});
     lastConfirmedQuestRef.current = stage;
+  }, []);
+
+  const activateScrapFollower = useCallback(() => {
+    console.log('[scrap] ACTIVATED');
+    scrapFollowerEnabledRef.current = true;
+    scrapVisibleRef.current = true;
+    setScrapVisible(true);
+    setShowScrapToggle(true);
+    if (scrapFollowerRef.current) {
+      scrapFollowerRef.current.root.visible = true;
+      scrapFollowerRef.current.root.position.set(-3.6, -7, 0.24);
+    }
+    if (scrapRobotRef.current) scrapRobotRef.current.root.visible = false;
   }, []);
 
   const updateBackpack = useCallback((items: ScrapPartId[]) => {
@@ -1611,39 +1626,34 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return () => clearInterval(interval);
   }, [batteryInstallStep, showBatteryInstallDlg]);
 
+  const finishBatteryInstall = useCallback(() => {
+    if (batteryInstallDialogGuardRef.current) return;
+    batteryInstallDialogGuardRef.current = true;
+    setShowBatteryInstallDlg(false);
+    const currentBackpack = gameStore.get('backpack') as ScrapPartId[];
+    const cleaned = currentBackpack.filter(id => id !== 'battery' && id !== 'scrap');
+    const newBackpack: ScrapPartId[] = [...cleaned, 'scrap'];
+    updateBackpack(newBackpack);
+    updateQuestStage('all-done');
+    apiSync({ batteryInstalled: true, questStage: 'all-done', pendingBatteryCutscene: false });
+    if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
+      setHeldSlotIndex(null);
+      heldSlotIndexRef.current = null;
+    }
+    activateScrapFollower();
+  }, []);
+
   // Battery install dialog Enter key handler
   useEffect(() => {
     if (!showBatteryInstallDlg) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (batteryInstallDialogGuardRef.current) return;
         const nextStep = batteryInstallStep + 1;
         if (nextStep < BATTERY_INSTALL_DLG_STEPS.length) {
           setBatteryInstallStep(nextStep);
         } else {
-          batteryInstallDialogGuardRef.current = true;
-          setShowBatteryInstallDlg(false);
-          const currentBackpack = gameStore.get('backpack') as ScrapPartId[];
-          const cleaned = currentBackpack.filter(id => id !== 'battery' && id !== 'scrap');
-          const newBackpack: ScrapPartId[] = [...cleaned, 'scrap'];
-          updateBackpack(newBackpack);
-          updateQuestStage('all-done');
-          apiSync({ batteryInstalled: true, questStage: 'all-done', pendingBatteryCutscene: false });
-          if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
-            setHeldSlotIndex(null);
-            heldSlotIndexRef.current = null;
-          }
-          scrapFollowerEnabledRef.current = true;
-          scrapVisibleRef.current = true;
-          setScrapVisible(true);
-          setShowScrapToggle(true);
-          if (scrapFollowerRef.current) {
-            scrapFollowerRef.current.root.visible = true;
-            scrapFollowerRef.current.root.position.set(-3.6, -7, 0.24);
-            console.log('[scrap] FOLLOWER ACTIVATED');
-          } else console.warn('[scrap] scrapFollowerRef is NULL!');
-          if (scrapRobotRef.current) scrapRobotRef.current.root.visible = false;
+          finishBatteryInstall();
         }
       }
     };
@@ -1909,7 +1919,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         e.preventDefault();
         const steps = stringDlgIsHelpRef.current ? versionHelpSteps : versionDlgSteps;
         const nextStep = versionDlgStep + 1;
-        stopTts();
         if (nextStep < steps.length) {
           setVersionDlgStep(nextStep);
         } else {
@@ -2153,14 +2162,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   // Enable scrap follower when quest stage is all-done
   useEffect(() => {
-    if (sparkyQuestStage === 'all-done') {
-      scrapFollowerEnabledRef.current = true;
-      scrapVisibleRef.current = true;
-      setScrapVisible(true);
-      setShowScrapToggle(true);
-      if (scrapFollowerRef.current) { scrapFollowerRef.current.root.visible = true; scrapFollowerRef.current.root.position.set(-3.6, -7, 0.24); }
-      if (scrapRobotRef.current) scrapRobotRef.current.root.visible = false;
-    }
+    if (sparkyQuestStage === 'all-done') activateScrapFollower();
   }, [sparkyQuestStage]);
 
   // Periodic sync (30s safety net for crash recovery)
@@ -3276,14 +3278,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scrapFollowerBaseQuatRef.current = scrapFollower.root.quaternion.clone();
     scrapFollowerRef.current = scrapFollower;
     console.log('[scrap] FOLLOWER CREATED at', scrapFollower.root.position.x.toFixed(2), scrapFollower.root.position.y.toFixed(2), 'parent:', scrapFollower.root.parent?.type, 'stage:', sparkyQuestStageRef.current);
-    if (sparkyQuestStageRef.current === 'all-done') {
-      scrapFollowerEnabledRef.current = true;
-      scrapVisibleRef.current = true;
-      scrapFollower.root.visible = true;
-      setScrapVisible(true);
-      setShowScrapToggle(true);
-      if (scrapRobotRef.current) scrapRobotRef.current.root.visible = false;
-    }
+    if (sparkyQuestStageRef.current === 'all-done') activateScrapFollower();
 
     // Repair kiosk — proper kiosk at Snack Stop spot
     const kiosk = createRepairKiosk();
@@ -4652,7 +4647,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const showSparkyPrompt =
           sparkyOutsideVisible &&
           (stage === 'intro' ||
-           stage === 'intro-done' ||
            stage === 'unit1' ||
            stage === 'unit1-done' ||
            stage === 'unit2' ||
@@ -4808,18 +4802,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (sparky.root.visible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
         animateSparkyWave(sparky, worldTime);
       }
-      // Bulletproof: if all-done but follower not activated, activate it
-      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && !(window as any).__scrapLogged) {
-        (window as any).__scrapLogged = true;
-        console.log('[scrap] ACTIVATED pos:', scrapFollowerRef.current.root.position.x.toFixed(2), scrapFollowerRef.current.root.position.y.toFixed(2), 'vis:', scrapFollowerRef.current.root.visible, 'parent:', scrapFollowerRef.current.root.parent?.type, 'stage:', sparkyQuestStageRef.current);
-      }
-      if (sparkyQuestStageRef.current === 'all-done' && scrapFollowerRef.current && !scrapFollowerEnabledRef.current) {
-        console.log('[scrap] EMERGENCY ACTIVATION');
-        scrapFollowerEnabledRef.current = true;
-        scrapVisibleRef.current = true;
-        scrapFollowerRef.current.root.visible = true;
-        if (scrapRobotRef.current) scrapRobotRef.current.root.visible = false;
-      }
+
       if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
         // Antenna color: green when scrap is held, gray otherwise
         if (scrapFollowerRef.current.antennaTip) {
@@ -4857,10 +4840,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           scrapFollowerRef.current.root.quaternion.copy(scrapFollowerBaseQuatRef.current).premultiply(facingQ);
         }
       }
-      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current) {
-        (window as any).__scrapFollowerX = scrapFollowerRef.current.root.position.x;
-        (window as any).__scrapFollowerY = scrapFollowerRef.current.root.position.y;
-      }
+      if (scrapFollowerRef.current) { (window as any).__scrapFollowerX = scrapFollowerRef.current.root.position.x; (window as any).__scrapFollowerY = scrapFollowerRef.current.root.position.y; }
+
       if (speechBubbleRef.current && sparkyIntroStepRef.current >= 0) {
         const headPos = scratchVec3.current;
         sparky.antennaTip.getWorldPosition(headPos);
@@ -6048,88 +6029,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             aptPos.set(0.2, 2.2, 0.28);
             setShowBatteryInstallDlg(true);
             setBatteryInstallStep(0);
-          }
-        } else if (sparkyInstallPhaseRef.current && aptSparky) {
-          const phase = sparkyInstallPhaseRef.current;
-          if (phase === 'walk-to-bench') {
-            const target = new THREE.Vector2(2.9, 0.3);
-            const dist = aptSparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
-            if (dist > 0.15) {
-              const dir = new THREE.Vector2(target.x - aptSparky.root.position.x, target.y - aptSparky.root.position.y).normalize();
-              aptSparky.root.position.x += dir.x * MOVE_SPEED * 1.36 * delta;
-              aptSparky.root.position.y += dir.y * MOVE_SPEED * 1.36 * delta;
-              setSparkyDlgFull(`${PARTS_CATALOG.find(p => p.id === sparkyInstallPartIdRef.current)?.name} — Sparky walks to the workbench...`);
-              setShowSparkyDlg(true);
-            } else {
-              sparkyInstallPhaseRef.current = 'weld';
-              sparkyInstallTimerRef.current = 0;
-              setSparkleBurst(true);
-              setSparkyDlgFull('Welding! ⚡');
-              setShowSparkyDlg(true);
-            }
-          } else if (phase === 'weld') {
-            sparkyInstallTimerRef.current += delta;
-            aptSparky.root.position.z = 0.24 + Math.sin(sparkyInstallTimerRef.current * 16) * 0.1;
-            aptSparky.root.rotation.z = Math.sin(sparkyInstallTimerRef.current * 20) * 0.08;
-            if (sparkyInstallTimerRef.current > 1.8) {
-              sparkyInstallPhaseRef.current = 'attach-part';
-              sparkyInstallTimerRef.current = 0;
-            }
-          } else if (phase === 'attach-part') {
-            // Attach part mesh to Scrap's body (dead code — sensor/voice/nav removed)
-            sparkyInstallTimerRef.current += delta;
-            if (sparkyInstallTimerRef.current > 0.6) {
-              sparkyInstallPhaseRef.current = 'walk-back';
-              sparkyInstallTimerRef.current = 0;
-              setSparkyDlgFull('Part installed! Sparky steps back...');
-              setShowSparkyDlg(true);
-            }
-          } else if (phase === 'walk-back') {
-            const homePos = new THREE.Vector2(0.2, 2.2);
-            const dist = aptSparky.root.position.distanceTo(new THREE.Vector3(homePos.x, homePos.y, 0.14));
-            aptSparky.root.rotation.z *= 0.9;
-            if (dist > 0.15) {
-              const dir = new THREE.Vector2(homePos.x - aptSparky.root.position.x, homePos.y - aptSparky.root.position.y).normalize();
-              aptSparky.root.position.x += dir.x * MOVE_SPEED * 1.36 * delta;
-              aptSparky.root.position.y += dir.y * MOVE_SPEED * 1.36 * delta;
-            } else {
-              sparkyInstallPhaseRef.current = 'done';
-            }
-          } else if (phase === 'done') {
-            sparkyInstallPhaseRef.current = null;
-            setSparkleBurst(false);
-            aptSparky.root.rotation.z = 0;
-
-            const partId = sparkyInstallPartIdRef.current!;
-            const nextUnit = sparkyInstallNextStageRef.current!;
-            const part = PARTS_CATALOG.find(p => p.id === partId)!;
-            const unitLabel = nextUnit === 'unit2' ? 'Variables & Data Types' : nextUnit === 'unit3' ? 'String Methods' : 'Unit 4';
-
-            const newBackpack = gameStore.get('backpack').filter(id => id !== partId);
-            updateBackpack(newBackpack);
-            updateQuestStage(nextUnit);
-
-            setSparkyDlgFull(`⚡ ${part.name} installed! ${unitLabel} lessons unlocked!`);
-            setShowSparkyDlg(true);
-
-            setTimeout(() => {
-              setShowSparkyDlg(false);
-              if (nextUnit === 'unit2') {
-                setTutorialPhases(unit2Phases);
-                tutorialPhasesRef.current = unit2Phases;
-                showTutorialRef.current = true;
-                setShowTutorial(true);
-                setTutorialStep(0);
-                setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
-                setOutput('');
-                setSuccess(false);
-              }
-            }, 2000);
-
-            if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
-              setHeldSlotIndex(null);
-              heldSlotIndexRef.current = null;
-            }
           }
         }
       }
@@ -8137,11 +8036,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               <div className="h-full rounded-full bg-amber-400 transition-all duration-300" style={{ width: `${Math.min(100, ((gameStore.get('money') ?? 0) / 10) * 100)}%` }} />
             </div>
           )}
-          {(sparkyQuestStage === 'intro-done' && (gameStore.get('money') ?? 0) < 100) && (
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-700">
-              <div className="h-full rounded-full bg-amber-400 transition-all duration-300" style={{ width: `${Math.min(100, ((gameStore.get('money') ?? 0) / 100) * 100)}%` }} />
-            </div>
-          )}
           {sparkyQuestStage !== 'intro' && sparkyQuestStage !== 'all-done' && !backpack.includes('battery') && (gameStore.get('money') ?? 0) < 10 && (
             <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-700">
               <div className="h-full rounded-full bg-amber-400 transition-all duration-300" style={{ width: `${Math.min(100, ((gameStore.get('money') ?? 0) / 10) * 100)}%` }} />
@@ -8470,7 +8364,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         onTtsToggle={onTtsToggle} />
 
       <TFB show={showBatteryInstallDlg} step={batteryInstallStep} steps={BATTERY_INSTALL_DLG_STEPS} text={batteryInstallText}
-        icon="auto" onEnter={() => { stopTts(); const next = batteryInstallStep + 1; if (next < BATTERY_INSTALL_DLG_STEPS.length) { setBatteryInstallStep(next); } }} ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        icon="auto" onEnter={() => { stopTts(); const next = batteryInstallStep + 1; if (next < BATTERY_INSTALL_DLG_STEPS.length) { setBatteryInstallStep(next); } else { finishBatteryInstall(); } }} ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
         onTtsToggle={onTtsToggle} />
 
       <TFB show={showWhoDlg} step={whoStep} steps={RAFIQ_GREET_STEPS} text={whoText}
@@ -8540,97 +8434,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
         onTtsToggle={onTtsToggle} />
 
-      {showVersionDlg && (() => {
-        const steps = stringDlgIsHelpRef.current ? versionHelpSteps : versionDlgSteps;
-        const cur = steps[versionDlgStep] ?? steps[0];
-        const ttsOn = ttsUtteranceRef.current !== null;
-        const ttsBody = (() => {
-          if (!ttsOn || ttsCharIndexRef.current === null) return versionDlgText.split(/(`[^`]+`)/g).map((seg, i) =>
-            seg.startsWith('`') && seg.endsWith('`')
-              ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
-              : seg
-          );
-          const bounds: Array<{ start: number; end: number }> = [];
-          const re = /\S+/g; let m;
-          while ((m = re.exec(cur.text)) !== null) bounds.push({ start: m.index, end: m.index + m[0].length });
-          const w = bounds.find(b => ttsCharIndexRef.current! >= b.start && ttsCharIndexRef.current! < b.end);
-          const txt = versionDlgText;
-          const wrap = (s: string, cls?: string) => s.split(/(`[^`]+`)/g).map((seg, i) =>
-            seg.startsWith('`') && seg.endsWith('`')
-              ? <code key={i} className="font-mono text-amber-300 bg-slate-800 px-1.5 rounded">{seg.slice(1, -1)}</code>
-              : <span key={i} className={cls}>{seg}</span>
-          );
-          if (!w || w.start > txt.length) return wrap(txt);
-          return <>{wrap(txt.slice(0, w.start))}<span className="underline decoration-amber-400 decoration-2 underline-offset-4">{wrap(txt.slice(w.start, Math.min(w.end, txt.length)))}</span>{wrap(txt.slice(Math.min(w.end, txt.length)))}</>;
-        })();
-        return (
-          <div className="fixed inset-0 z-50 flex flex-col justify-end select-none">
-            <div className="flex-1 bg-black/40 backdrop-blur-[1px]" />
-            <div className="w-full bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900/95 border-t-2 border-amber-500/50 shadow-2xl flex flex-col justify-center"
-              style={{ height: '30vh' }}>
-              <div className="px-8 md:px-16 max-w-4xl mx-auto w-full">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
-                    <rect x="3" y="11" width="18" height="10" rx="2" />
-                    <circle cx="12" cy="5" r="2" />
-                    <path d="M12 7v4" />
-                    <line x1="8" y1="16" x2="8" y2="16" />
-                    <line x1="16" y1="16" x2="16" y2="16" />
-                  </svg>
-                  <span className="text-amber-300 font-bold text-xl tracking-wide">Sparky</span>
-                  <button onClick={() => onTtsToggle(cur.text)} className="ml-auto p-1.5 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={ttsOn ? 'Stop' : 'Read aloud'}>
-                    {ttsOn ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                    )}
-                  </button>
-                </div>
-                <p className="text-xl md:text-2xl text-slate-100 leading-relaxed font-medium min-h-[2rem]">
-                  {ttsBody}<span className="animate-pulse text-amber-400/80">▌</span>
-                </p>
-                {!stringDlgIsHelpRef.current && versionDlgStep === 1 && (
-                  <button
-                    className="mt-2 text-sm text-amber-400/80 underline underline-offset-2 hover:text-amber-300 transition-colors"
-                    onClick={() => setShowDecimalExplain(true)}
-                  >
-                    (What is a decimal?)
-                  </button>
-                )}
-                <div className="flex justify-end mt-4">
-                  <button
-                    className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-5 py-2 text-amber-300 hover:bg-amber-500/20 hover:border-amber-400/60 transition-colors focus:outline-none"
-                    onClick={() => {
-                      stopTts();
-                      const nextStep = versionDlgStep + 1;
-                      if (nextStep < steps.length) {
-                        setVersionDlgStep(nextStep);
-                      } else {
-                        setShowVersionDlg(false);
-                        if (stringDlgIsHelpRef.current) {
-                          stringDlgIsHelpRef.current = false;
-                          setShowLaptopUI(true);
-                        } else {
-                          versionCodingShownRef.current = false;
-                          aptCutscenePhaseRef.current = 'version-coding';
-                          aptCutsceneTimerRef.current = 0;
-                        }
-                      }
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="14 7 9 12 14 17" />
-                      <line x1="21" y1="12" x2="9" y2="12" />
-                      <line x1="3" y1="12" x2="5" y2="12" />
-                    </svg>
-                    <span className="text-sm font-semibold tracking-wide uppercase">Enter</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      <TFB show={showVersionDlg} step={versionDlgStep} steps={stringDlgIsHelpRef.current ? versionHelpSteps : versionDlgSteps} text={versionDlgText}
+        icon="auto" codeBlocks subButton={{ show: !stringDlgIsHelpRef.current && versionDlgStep === 1, label: 'What is a decimal?', onClick: () => setShowDecimalExplain(true) }}
+        onEnter={() => {
+          const steps = stringDlgIsHelpRef.current ? versionHelpSteps : versionDlgSteps;
+          stopTts(); const next = versionDlgStep + 1;
+          if (next < steps.length) { setVersionDlgStep(next); } else {
+            setShowVersionDlg(false);
+            if (stringDlgIsHelpRef.current) { stringDlgIsHelpRef.current = false; setShowLaptopUI(true); }
+            else { versionCodingShownRef.current = false; aptCutscenePhaseRef.current = 'version-coding'; aptCutsceneTimerRef.current = 0; }
+          }
+        }}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
 
       <TFB show={showBootDlg} step={bootDlgStep} steps={stringDlgIsHelpRef.current ? bootHelpSteps : bootDlgSteps} text={bootDlgText}
         icon="robot" codeBlocks onEnter={() => {

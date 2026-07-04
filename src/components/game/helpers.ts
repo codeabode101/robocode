@@ -648,7 +648,7 @@ export function getMissionText(goal: GameGoal, money: number, stage: SparkyQuest
     case 'talk-to-sparky': return 'Talk to Sparky.';
     case 'show-letter-to-rafiq': return 'Show Sparky\'s letter to Rafiq at his workshop.';
     case 'earn-money': {
-      if (stage === 'intro' || stage === 'intro-done') {
+      if (stage === 'intro') {
         return `Earn $10 at the workshop ($${Math.min(money, 10)}/$10 earned)`;
       }
       return `Earn $10 at Rafiq's workshop ($${Math.min(money, 10)}/$10 earned)`;
