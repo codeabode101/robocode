@@ -1637,6 +1637,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             scrapFollowerRef.current.root.position.set(-3.6, -5, 0.24);
             console.log('[scrap] FOLLOWER ACTIVATED');
           } else console.warn('[scrap] scrapFollowerRef is NULL!');
+          if (scrapRobotRef.current) scrapRobotRef.current.root.visible = false;
         }
       }
     };
@@ -2151,6 +2152,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       setScrapVisible(true);
       setShowScrapToggle(true);
       if (scrapFollowerRef.current) { scrapFollowerRef.current.root.visible = true; scrapFollowerRef.current.root.position.set(-3.6, -5, 0.24); }
+      if (scrapRobotRef.current) scrapRobotRef.current.root.visible = false;
     }
   }, [sparkyQuestStage]);
 
@@ -3272,6 +3274,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       scrapFollower.root.visible = true;
       setScrapVisible(true);
       setShowScrapToggle(true);
+      if (scrapRobotRef.current) scrapRobotRef.current.root.visible = false;
     }
 
     // Repair kiosk — proper kiosk at Snack Stop spot
@@ -4807,6 +4810,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         scrapFollowerEnabledRef.current = true;
         scrapVisibleRef.current = true;
         scrapFollowerRef.current.root.visible = true;
+        if (scrapRobotRef.current) scrapRobotRef.current.root.visible = false;
       }
       if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
         // Antenna color: green when scrap is held, gray otherwise
