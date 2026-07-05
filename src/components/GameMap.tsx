@@ -2102,6 +2102,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (data.batteryInstalled) {
         batteryInstalledRef.current = true;
         setBatteryInstalled(true);
+        scrapFollowerEnabledRef.current = true;
+        setScrapVisible(true);
+        setShowScrapToggle(true);
+        if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
         // Remove battery from backpack if still present (fallback for failed sync)
         const bp = gameStore.get('backpack') as ScrapPartId[];
         if (bp.includes('battery' as ScrapPartId)) {
