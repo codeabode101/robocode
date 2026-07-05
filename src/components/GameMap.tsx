@@ -4967,6 +4967,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const phase = aptCutscenePhaseRef.current;
 
           if (phase === 'walk-west') {
+            if ((window as any).__wfCount === undefined) (window as any).__wfCount = 0;
+            (window as any).__wfCount++;
+            if ((window as any).__wfCount % 60 === 0) console.log('[WW] phase walk-west aptSparkyCS:', !!aptSparkyCS, 'wpIdx:', aptSparkyWalkWpRef.current, 'spPos:', aptSparkyCS?.root?.position?.x?.toFixed(2), aptSparkyCS?.root?.position?.y?.toFixed(2), 'plPos:', localPositionRef.current.x.toFixed(2), localPositionRef.current.y.toFixed(2));
             const sparkyWps = [new THREE.Vector2(-3.2, 2.2), new THREE.Vector2(-3.2, 0.8)];
             const playerTarget = new THREE.Vector2(-2.3, 1.73);
             const wpIdx = aptSparkyWalkWpRef.current;
@@ -6992,7 +6995,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const renderMs = afterRender - beforeRender;
         const s = (window as any).__perfStats;
         s.frameCount++;
-        if (s.frameCount % 120 === 0 && aptCutscenePhaseRef.current !== 'idle') {
+        if (s.frameCount % 30 === 0 && aptCutscenePhaseRef.current !== 'idle') {
           console.log('[PHASE] apt cutscene phase:', aptCutscenePhaseRef.current, 'timer:', aptCutsceneTimerRef.current.toFixed(2));
         }
         s.totalLogicMs += logicMs;
