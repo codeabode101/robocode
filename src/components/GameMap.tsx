@@ -4232,6 +4232,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       animFrameCounterRef.current += 1;
       lastAnimFrameRef.current = performance.now();
+      if (animFrameCounterRef.current % 30 === 0) {
+        const asp = apartmentSparkyRef.current;
+        const sp = aptCutscenePhaseRef.current;
+        console.log('[FRAME' + animFrameCounterRef.current + '] phase:', sp, 'inApt:', inApartmentRoomRef.current, 'delta:', delta.toFixed(4), 'spPos:', asp?.root?.position?.x?.toFixed(2), asp?.root?.position?.y?.toFixed(2), 'spVis:', asp?.root?.visible, 'wp:', aptSparkyWalkWpRef.current);
+      }
       fpsFrameCountRef.current += 1;
       const fpsElapsed = now - fpsLastTimeRef.current;
       if (fpsElapsed >= 1000) {
@@ -4989,6 +4994,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 aptSparkyWalkWpRef.current = wpIdx + 1;
                 aptSparkyCS.root.position.set(spTgt.x, spTgt.y, 0.22);
               } else {
+                console.log('[TRANSITION] walk-west -> open-box');
                 aptCutscenePhaseRef.current = 'open-box';
                 aptCutsceneTimerRef.current = 0;
                 aptSparkyCS.root.position.set(sparkyWps[sparkyWps.length - 1].x, sparkyWps[sparkyWps.length - 1].y, 0.22);
