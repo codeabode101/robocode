@@ -4251,6 +4251,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
 
       if (profileLoadedRef.current) {
+        console.log('[DEBUG_CUT] profileLoaded=true', 'pendingApt:', pendingAptCutsceneRef.current, 'showCtrl:', showControlsModalRef.current, 'modalOpen:', modalOpenRef.current, 'inWorkshop:', inWorkshopRoomRef.current);
         if (pendingRafiqCutsceneRef.current && !showControlsModalRef.current) {
           pendingRafiqCutsceneRef.current = false;
           rafiqWalkPhaseRef.current = 'walking';
@@ -4259,6 +4260,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           deferCutsceneTick();
           yawRef.current = Math.atan2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
         } else if (pendingAptCutsceneRef.current && !showControlsModalRef.current) {
+          console.log('[DEBUG_CUT] STARTING APT CUTSCENE!');
           pendingAptCutsceneRef.current = false;
           aptCutscenePhaseRef.current = 'walk-west';
           aptCutsceneTimerRef.current = 0;
