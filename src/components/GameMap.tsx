@@ -6992,6 +6992,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const renderMs = afterRender - beforeRender;
         const s = (window as any).__perfStats;
         s.frameCount++;
+        if (s.frameCount % 120 === 0 && aptCutscenePhaseRef.current !== 'idle') {
+          console.log('[PHASE] apt cutscene phase:', aptCutscenePhaseRef.current, 'timer:', aptCutsceneTimerRef.current.toFixed(2));
+        }
         s.totalLogicMs += logicMs;
         s.totalRenderMs += renderMs;
         if (logicMs > s.maxLogic) s.maxLogic = logicMs;
