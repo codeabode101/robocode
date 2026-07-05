@@ -684,6 +684,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [batteryDlgText, setBatteryDlgText] = useState('');
 
   const [scrapVisible, setScrapVisible] = useState(false);
+  const scrapVisibleRef = useRef(false);
+  useEffect(() => { scrapVisibleRef.current = scrapVisible; }, [scrapVisible]);
   const [showScrapToggle, setShowScrapToggle] = useState(false);
   const [showRafiqLetterDlg, setShowRafiqLetterDlg] = useState(false);
   const [rafiqLetterStep, setRafiqLetterStep] = useState(0);
@@ -3432,6 +3434,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scrapFollower.root.visible = false;
     scene.add(scrapFollower.root);
     scrapFollowerRef.current = scrapFollower;
+    // If battery was already installed before scene loaded, make follower visible now
+    if (batteryInstalledRef.current) {
+      scrapFollower.root.visible = true;
+    }
 
     // Repair kiosk — proper kiosk at Snack Stop spot
     const kiosk = createRepairKiosk();
@@ -4878,7 +4884,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         animateSparkyWave(sparky, worldTime);
       }
       // Scrap follower AI
-      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
+      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
         const playerPos = localPositionRef.current;
         const scrapPosX = scrapFollowerRef.current.root.position.x;
         const scrapPosY = scrapFollowerRef.current.root.position.y;
