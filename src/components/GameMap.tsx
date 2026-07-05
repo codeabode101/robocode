@@ -4883,6 +4883,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (sparky.root.visible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
         animateSparkyWave(sparky, worldTime);
       }
+      // Scrap follower safety net — enable on any frame where battery is installed
+      if (batteryInstalledRef.current && !scrapFollowerEnabledRef.current) {
+        scrapFollowerEnabledRef.current = true;
+        scrapVisibleRef.current = true;
+        setScrapVisible(true);
+        setShowScrapToggle(true);
+        if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
+      }
       // Scrap follower AI
       if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
         const playerPos = localPositionRef.current;
