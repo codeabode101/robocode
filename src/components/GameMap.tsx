@@ -4908,6 +4908,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             scrapFollowerRef.current.root.position.y = cand.y;
           }
         }
+        // Face toward player
+        scrapFollowerRef.current.root.rotation.z = -Math.atan2(playerPos.x - scrapPosX, playerPos.y - scrapPosY);
         const scrapSpeed = followDist > 1.2 ? 1 : 0;
         animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPos.x, playerPos.y - scrapPos.y);
       }
