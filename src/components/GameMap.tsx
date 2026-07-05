@@ -436,6 +436,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const cameraLookTargetRef = useRef(new THREE.Vector3());
   const speechBubbleRef = useRef<HTMLDivElement>(null);
   const sparkyBaseQuatRef = useRef<THREE.Quaternion | null>(null);
+  const scrapFollowerBaseQuatRef = useRef<THREE.Quaternion | null>(null);
   const sparkyFacingRef = useRef(0);
 
   const aptCutscenePhaseRef = useRef<'idle' | 'walk-west' | 'open-box' | 'lift-rise' | 'lift-carry' | 'lift-lower' | 'fetch-laptop' | 'link-computer' | 'electrocute' | 'walk-to-laptop' | 'string-tutorial' | 'laptop-ui' | 'antenna-glow' | 'date-coding' | 'reboot' | 'version-coding' | 'pre-boot' | 'boot-coding' | 'boot' | 'battery-scene' | 'done'>('idle');
@@ -3435,6 +3436,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scrapFollower.root.visible = false;
     scene.add(scrapFollower.root);
     scrapFollowerRef.current = scrapFollower;
+    scrapFollowerBaseQuatRef.current = scrapFollower.root.quaternion.clone();
     // If battery was already installed before scene loaded, make follower visible now
     if (batteryInstalledRef.current) {
       scrapFollower.root.visible = true;
@@ -4916,7 +4918,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (!collidesWithAny(cy, obstacleHitboxesRef.current)) scrapFollowerRef.current.root.position.y = newY;
         }
         const distMoved = Math.abs(dx) + Math.abs(dy);
-        if (distMoved > 0.005) scrapFollowerRef.current.root.rotation.z = -Math.atan2(dx, dy);
+        if (distMoved > 0.005 && scrapFollowerBaseQuatRef.current) {
+          const fQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.atan2(dx, dy));
+          scrapFollowerRef.current.root.quaternion.copy(scrapFollowerBaseQuatRef.current).premultiply(fQ);
+        }
         animateRobotVisual(scrapFollowerRef.current, worldTime, distMoved > 0.001 ? 0.6 : 0, dx, dy);
       }
       if (speechBubbleRef.current && sparkyIntroStepRef.current >= 0) {
