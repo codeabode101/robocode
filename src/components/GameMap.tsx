@@ -460,6 +460,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sceneBgColorRef = useRef(new THREE.Color());
   const scratchVec2 = useRef(new THREE.Vector2());
   const scratchVec2b = useRef(new THREE.Vector2());
+  const scratchVec2c = useRef(new THREE.Vector2());
   const scratchVec3 = useRef(new THREE.Vector3());
   const scratchVec3b = useRef(new THREE.Vector3());
   const scratchVec3c = useRef(new THREE.Vector3());
@@ -3427,7 +3428,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const scrapFollower = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
     scrapFollower.root.scale.set(0.65, 0.65, 0.65);
     scrapFollower.root.position.set(0, -8, 0.24);
-    scrapFollower.nameSprite.visible = true;
+    scrapFollower.nameSprite.visible = false;
     if (scrapFollower.leftPupil) scrapFollower.leftPupil.material.color.setHex(0x222222);
     if (scrapFollower.rightPupil) scrapFollower.rightPupil.material.color.setHex(0x222222);
     if (scrapFollower.antennaTip) scrapFollower.antennaTip.material.color.setHex(0x555555);
@@ -4232,11 +4233,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       animFrameCounterRef.current += 1;
       lastAnimFrameRef.current = performance.now();
-      if (animFrameCounterRef.current % 30 === 0) {
-        const asp = apartmentSparkyRef.current;
-        const sp = aptCutscenePhaseRef.current;
-        console.log('[FRAME' + animFrameCounterRef.current + '] phase:', sp, 'inApt:', inApartmentRoomRef.current, 'delta:', delta.toFixed(4), 'spPos:', asp?.root?.position?.x?.toFixed(2), asp?.root?.position?.y?.toFixed(2), 'spVis:', asp?.root?.visible, 'wp:', aptSparkyWalkWpRef.current);
-      }
       fpsFrameCountRef.current += 1;
       const fpsElapsed = now - fpsLastTimeRef.current;
       if (fpsElapsed >= 1000) {
@@ -4256,7 +4252,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
 
       if (profileLoadedRef.current) {
-        console.log('[DEBUG_CUT] profileLoaded=true', 'pendingApt:', pendingAptCutsceneRef.current, 'showCtrl:', showControlsModalRef.current, 'modalOpen:', modalOpenRef.current, 'inWorkshop:', inWorkshopRoomRef.current);
         if (pendingRafiqCutsceneRef.current && !showControlsModalRef.current) {
           pendingRafiqCutsceneRef.current = false;
           rafiqWalkPhaseRef.current = 'walking';
@@ -4265,7 +4260,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           deferCutsceneTick();
           yawRef.current = Math.atan2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
         } else if (pendingAptCutsceneRef.current && !showControlsModalRef.current) {
-          console.log('[DEBUG_CUT] STARTING APT CUTSCENE!');
           pendingAptCutsceneRef.current = false;
           aptCutscenePhaseRef.current = 'walk-west';
           aptCutsceneTimerRef.current = 0;
@@ -4907,7 +4901,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const followDist = scrapPos.distanceTo(playerPos);
         if (followDist > 1.2) {
           const target = scratchVec2b.current.set(playerPos.x, playerPos.y - 0.8);
-          const dir = scratchVec2.current.copy(target).sub(scrapPos).normalize();
+          const dir = scratchVec2c.current.copy(target).sub(scrapPos).normalize();
           const step = Math.min(followDist - 0.8, 3.0 * delta);
           const cand = scratchVec2.current.set(scrapPosX + dir.x * step, scrapPosY + dir.y * step);
           if (!collidesWithAny(cand, obstacleHitboxesRef.current)) {
@@ -4915,8 +4909,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             scrapFollowerRef.current.root.position.y = cand.y;
           }
         }
-        // Face toward player
-        scrapFollowerRef.current.root.rotation.z = -Math.atan2(playerPos.x - scrapPosX, playerPos.y - scrapPosY);
         const scrapSpeed = followDist > 1.2 ? 1 : 0;
         animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPos.x, playerPos.y - scrapPos.y);
       }
@@ -4972,9 +4964,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const phase = aptCutscenePhaseRef.current;
 
           if (phase === 'walk-west') {
-            if ((window as any).__wfCount === undefined) (window as any).__wfCount = 0;
-            (window as any).__wfCount++;
-            if ((window as any).__wfCount % 60 === 0) console.log('[WW] phase walk-west aptSparkyCS:', !!aptSparkyCS, 'wpIdx:', aptSparkyWalkWpRef.current, 'spPos:', aptSparkyCS?.root?.position?.x?.toFixed(2), aptSparkyCS?.root?.position?.y?.toFixed(2), 'plPos:', localPositionRef.current.x.toFixed(2), localPositionRef.current.y.toFixed(2));
             const sparkyWps = [new THREE.Vector2(-3.2, 2.2), new THREE.Vector2(-3.2, 0.8)];
             const playerTarget = new THREE.Vector2(-2.3, 1.73);
             const wpIdx = aptSparkyWalkWpRef.current;
@@ -4994,7 +4983,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 aptSparkyWalkWpRef.current = wpIdx + 1;
                 aptSparkyCS.root.position.set(spTgt.x, spTgt.y, 0.22);
               } else {
-                console.log('[TRANSITION] walk-west -> open-box');
                 aptCutscenePhaseRef.current = 'open-box';
                 aptCutsceneTimerRef.current = 0;
                 aptSparkyCS.root.position.set(sparkyWps[sparkyWps.length - 1].x, sparkyWps[sparkyWps.length - 1].y, 0.22);
@@ -7001,9 +6989,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const renderMs = afterRender - beforeRender;
         const s = (window as any).__perfStats;
         s.frameCount++;
-        if (s.frameCount % 30 === 0 && aptCutscenePhaseRef.current !== 'idle') {
-          console.log('[PHASE] apt cutscene phase:', aptCutscenePhaseRef.current, 'timer:', aptCutsceneTimerRef.current.toFixed(2));
-        }
         s.totalLogicMs += logicMs;
         s.totalRenderMs += renderMs;
         if (logicMs > s.maxLogic) s.maxLogic = logicMs;
