@@ -3426,7 +3426,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // Scrap follower robot (outdoor, follows player after battery install)
     const scrapFollower = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
-    scrapFollower.root.scale.set(0.65, 0.65, 0.65);
+    scrapFollower.root.scale.set(0.42, 0.42, 0.42);
     scrapFollower.root.position.set(0, -8, 0.24);
     scrapFollower.nameSprite.visible = false;
     if (scrapFollower.leftPupil) scrapFollower.leftPupil.material.color.setHex(0x222222);
@@ -4892,25 +4892,32 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         setShowScrapToggle(true);
         if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
       }
-      // Scrap follower AI
+      // Scrap follower AI — smooth pet-like lerp
       if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
         const playerPos = localPositionRef.current;
         const scrapPosX = scrapFollowerRef.current.root.position.x;
         const scrapPosY = scrapFollowerRef.current.root.position.y;
-        const scrapPos = scratchVec2.current.set(scrapPosX, scrapPosY);
-        const followDist = scrapPos.distanceTo(playerPos);
-        if (followDist > 1.2) {
-          const target = scratchVec2b.current.set(playerPos.x, playerPos.y - 0.8);
-          const dir = scratchVec2c.current.copy(target).sub(scrapPos).normalize();
-          const step = Math.min(followDist - 0.8, 3.0 * delta);
-          const cand = scratchVec2.current.set(scrapPosX + dir.x * step, scrapPosY + dir.y * step);
-          if (!collidesWithAny(cand, obstacleHitboxesRef.current)) {
-            scrapFollowerRef.current.root.position.x = cand.x;
-            scrapFollowerRef.current.root.position.y = cand.y;
-          }
+        const targetX = playerPos.x + 0.15;
+        const targetY = playerPos.y - 0.7;
+        const lerpFactor = Math.min(1, 4.5 * delta);
+        const newX = scrapPosX + (targetX - scrapPosX) * lerpFactor;
+        const newY = scrapPosY + (targetY - scrapPosY) * lerpFactor;
+        const dx = newX - scrapPosX;
+        const dy = newY - scrapPosY;
+        const cand = scratchVec2.current.set(newX, newY);
+        if (!collidesWithAny(cand, obstacleHitboxesRef.current)) {
+          scrapFollowerRef.current.root.position.x = newX;
+          scrapFollowerRef.current.root.position.y = newY;
+        } else {
+          // Slide along walls
+          const cx = scratchVec2.current.set(newX, scrapPosY);
+          if (!collidesWithAny(cx, obstacleHitboxesRef.current)) scrapFollowerRef.current.root.position.x = newX;
+          const cy = scratchVec2.current.set(scrapPosX, newY);
+          if (!collidesWithAny(cy, obstacleHitboxesRef.current)) scrapFollowerRef.current.root.position.y = newY;
         }
-        const scrapSpeed = followDist > 1.2 ? 1 : 0;
-        animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPos.x, playerPos.y - scrapPos.y);
+        const distMoved = Math.abs(dx) + Math.abs(dy);
+        if (distMoved > 0.005) scrapFollowerRef.current.root.rotation.z = -Math.atan2(dx, dy);
+        animateRobotVisual(scrapFollowerRef.current, worldTime, distMoved > 0.001 ? 0.6 : 0, dx, dy);
       }
       if (speechBubbleRef.current && sparkyIntroStepRef.current >= 0) {
         const headPos = scratchVec3.current;
