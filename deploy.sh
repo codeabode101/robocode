@@ -2,9 +2,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# Load keys from .dev.vars so we never hardcode
+# Load NEXT_PUBLIC_APINATOR_APP_KEY from .dev.vars so we never hardcode the wrong key
 export "$(grep '^NEXT_PUBLIC_APINATOR_APP_KEY=' .dev.vars | head -1)"
-export "$(grep '^CLOUDFLARE_API_TOKEN=' .dev.vars | head -1)"
 
 # IMPORTANT: Before deploying, ensure these secrets are set on Cloudflare:
 #   npx wrangler secret put WORKOS_API_KEY

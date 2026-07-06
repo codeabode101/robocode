@@ -257,11 +257,13 @@ GameMap.tsx controls UI visibility during cinematic cutscenes through a centrali
 | Battery install cutscene | `startCinematicCutscene()` at ~3795, ~4040, ~6463 | `endCinematicCutscene()` at ~5465, ~7128 |
 
 ### Important
-- **Rafiq letter cutscene** (walk to Rafiq + hand letter) does NOT call `startCinematicCutscene()` — camera stays normal. Markers are hidden via `syncMarkers` guard: `rafiqWalkPhaseRef.current !== 'idle'`. Customer NPC `!` markers are guarded separately via the same ref. Game UI remains fully visible.
+- **Rafiq letter cutscene** (walk to Rafiq + hand letter) does NOT call `startCinematicCutscene()` — camera stays normal. However, `cinemCamActiveRef` is still checked: the workshop Space handler, Rafiq prompt display, and Rafiq interaction handler all guard against `cinemCamActiveRef.current === true` OR `rafiqWalkPhaseRef.current !== 'idle'` — preventing Space-triggered interactions during ANY cutscene.
+- **Interaction blocking**: ALL Space key handlers must check `!cinemCamActiveRef.current` AND (where applicable) cutscene-specific phase refs (`rafiqWalkPhaseRef.current === 'idle'`). This is enforced in the workshop Space handler at ~3821, the Rafiq prompt at ~6361, and the Rafiq interaction at ~6372.
 - **Rafiq / Sparky dialog-only interactions** never touch `hideGameUiRef`. All UI stays visible.
 - **`syncMarkers()` is called via a `useEffect`** (deps: quest stage, room, backpack, etc.). `startCinematicCutscene()`/`endCinematicCutscene()` increment a `cutsceneTick` state, which is added to the effect's dependency array — so `syncMarkers()` fires automatically when a cutscene starts or ends. **No per-frame work in the animation loop.**
 - **Customer NPC `!` markers** are guarded separately at ~5640 via `rafiqWalkPhaseRef.current === 'idle'` — they never show during any cutscene phase.
 - To add a new cinematic cutscene: call `startCinematicCutscene()` at entry and `endCinematicCutscene()` at completion. Do NOT set `cinemCamActiveRef.current` directly.
+- To add a new non-cinematic cutscene (camera stays normal): use a dedicated phase ref (e.g., `rafiqWalkPhaseRef`). Add `!cinemCamActiveRef.current && phaseRef.current === 'idle'` guards to the Space handler and interaction prompts.
 
 ### WorkshopPanel
 The "Workshop guide" button was deleted (line ~98). Rafiq is the workshop guide — talk to him for guidance.
@@ -438,3 +440,40 @@ Change robot from customer's arms to ground follower during workshop leaving pha
 
 ### Branch
 `customer-queue-system` (committed + pushed + deployed)
+
+---
+
+## Session History (Jul 6 2026)
+
+### Goal
+Fix scrap follower closure bug, scrap body donut issue, add per-line TTS to laptop code prompts, and standardize cutscene interaction blocking.
+
+### Changes Made
+
+1. **Scrap follower not showing fix** (`GameMap.tsx` ~4875, ~5967):
+   - `scrapVisible` React state was used in the animation loop closure (always `false`). Added `scrapVisibleRef` and used `scrapVisibleRef.current` in the animation loop instead.
+
+2. **Scrap torus body only during battery install** (`GameMap.tsx` ~3314-3335, ~5845-5930):
+   - Removed permanent body replacement at scene setup (cylinder → torus was done immediately, making Scrap a donut forever).
+   - Body is now replaced with a torus + chest panel only when the battery install `'open-chest'` phase starts.
+   - Body is restored to the original cylinder after `'done'` phase, preserving any glow children.
+   - Added `scrapOrigBodyRef` to store the original mesh for restoration.
+
+3. **Per-line TTS in laptop code prompts** (`GameMap.tsx` ~8488-8510):
+   - Replaced prose instruction text with numbered code template lines + TTS play buttons, matching the customer spec sheet pattern.
+   - Each mode shows its expected code lines: name (1 line), date (3 lines), version (2 lines), boot (1 line).
+   - Uses `playLineTts` + `renderFormattedSpecLine` + `ttsActiveTextRef` per-line play/stop toggle.
+
+4. **Cutscene interaction blocking** (`GameMap.tsx` ~3821, ~6361, ~6372):
+   - Workshop Space handler now guards against `!cinemCamActiveRef.current && rafiqWalkPhaseRef.current === 'idle'`.
+   - Rafiq prompt and interaction handler same guards.
+   - Prevents Space-triggered interactions during ANY cutscene (cinematic or Rafiq walk).
+
+5. **Deployment** (`scripts/deploy.sh`): Added `CLOUDFLARE_API_TOKEN` loading from `.dev.vars`. Stored token in `.dev.vars` + saved old token as comment. Added `account_id` to `wrangler.jsonc`. Set Cloudflare secrets (4 total). Migrations applied.
+
+### Key Decisions
+- All cutscene interaction guards consolidated to check `!cinemCamActiveRef.current` (for `startCinematicCutscene()`-managed) AND `rafiqWalkPhaseRef.current === 'idle'` (for Rafiq walk cutscene).
+- Laptop code prompts use the same numbered-line TTS pattern as customer spec sheets for consistency.
+
+### Branch
+`main` (committed + pushed + deployed)

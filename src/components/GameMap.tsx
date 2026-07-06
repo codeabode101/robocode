@@ -433,6 +433,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const batteryInstalledRef = useRef(false);
   const batteryGlowRef = useRef<THREE.Mesh | null>(null);
   const chestPanelRef = useRef<THREE.Mesh | null>(null);
+  const scrapOrigBodyRef = useRef<{ mesh: THREE.Mesh; parent: THREE.Object3D } | null>(null);
   const installBatteryPropRef = useRef<THREE.Group | null>(null);
   const batteryLerpStartPosRef = useRef(new THREE.Vector3());
   const batteryLerpEndPosRef = useRef(new THREE.Vector3());
@@ -709,6 +710,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [batteryDlgText, setBatteryDlgText] = useState('');
 
   const [scrapVisible, setScrapVisible] = useState(false);
+  const scrapVisibleRef = useRef(false);
   const [showScrapToggle, setShowScrapToggle] = useState(false);
   const [showRafiqLetterDlg, setShowRafiqLetterDlg] = useState(false);
   const [rafiqLetterStep, setRafiqLetterStep] = useState(0);
@@ -3310,29 +3312,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (scrapRobot.antennaTip) scrapRobot.antennaTip.material.color.setHex(0x555555);
     scrapRobotRef.current = scrapRobot;
 
-    // Replace Scrap's body with a torus (donut) for battery install cutscene
-    {
-      const bodyMat = (scrapRobot.body.material as THREE.Material).clone();
-      const torusBody = new THREE.Mesh(
-        new THREE.TorusGeometry(0.17, 0.08, 16, 24),
-        bodyMat
-      );
-      torusBody.position.copy(scrapRobot.body.position);
-      scrapRobot.root.remove(scrapRobot.body);
-      scrapRobot.body.geometry.dispose();
-      (scrapRobot.body.material as THREE.Material).dispose();
-      scrapRobot.body = torusBody as unknown as typeof scrapRobot.body;
-      scrapRobot.root.add(torusBody);
-
-      const chestPanel = new THREE.Mesh(
-        new THREE.CircleGeometry(0.09, 16),
-        createToonMaterial(0x2a1a0a)
-      );
-      chestPanel.position.set(0, 0, 0.08);
-      torusBody.add(chestPanel);
-      chestPanelRef.current = chestPanel;
-    }
-
     // Scrap follower robot (outdoor, follows player after battery install)
     const scrapFollower = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
     scrapFollower.root.scale.set(0.65, 0.65, 0.65);
@@ -3839,7 +3818,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       }
 
-      if (event.code === 'Space' && inWorkshopRoomRef.current) {
+      if (event.code === 'Space' && inWorkshopRoomRef.current && !cinemCamActiveRef.current && rafiqWalkPhaseRef.current === 'idle') {
         event.preventDefault();
         interactionRequestedRef.current = true;
         return;
@@ -4871,7 +4850,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         animateSparkyWave(sparky, worldTime);
       }
       // Scrap follower AI
-      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
+      if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current) {
         const playerPos = localPositionRef.current;
         const scrapPosX = scrapFollowerRef.current.root.position.x;
         const scrapPosY = scrapFollowerRef.current.root.position.y;
@@ -5864,6 +5843,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else if (ibPhase === 'open-chest') {
             installBatteryTimerRef.current += delta;
+            // First frame: replace cylinder body with torus for chest-open animation
+            if (installBatteryTimerRef.current < delta && scrapRobotRef.current && !scrapOrigBodyRef.current) {
+              const scrap = scrapRobotRef.current;
+              scrapOrigBodyRef.current = { mesh: scrap.body, parent: scrap.root };
+              const bodyMat = (scrap.body.material as THREE.Material).clone();
+              const torusBody = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.08, 16, 24), bodyMat);
+              torusBody.position.copy(scrap.body.position);
+              scrap.root.remove(scrap.body);
+              scrap.body.visible = false;
+              scrap.body = torusBody as unknown as typeof scrap.body;
+              scrap.root.add(torusBody);
+              const chestPanel = new THREE.Mesh(new THREE.CircleGeometry(0.09, 16), createToonMaterial(0x2a1a0a));
+              chestPanel.position.set(0, 0, 0.08);
+              torusBody.add(chestPanel);
+              chestPanelRef.current = chestPanel;
+            }
             if (installBatteryTimerRef.current < delta) playToolClank();
             if (chestPanelRef.current) {
               const openZ = 0.08 + Math.min(installBatteryTimerRef.current / 1.0, 1) * 0.15;
@@ -5935,6 +5930,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else if (ibPhase === 'done') {
             installBatteryPhaseRef.current = null;
+            // Restore original cylinder body
+            if (scrapOrigBodyRef.current && scrapRobotRef.current) {
+              const scrap = scrapRobotRef.current;
+              const orig = scrapOrigBodyRef.current;
+              chestPanelRef.current = null;
+              const glowChildren: THREE.Object3D[] = [];
+              scrap.body.children.forEach((c) => glowChildren.push(c));
+              scrap.root.remove(scrap.body);
+              (scrap.body as THREE.Mesh).geometry.dispose();
+              (scrap.body.material as THREE.Material).dispose();
+              orig.mesh.visible = true;
+              scrap.body = orig.mesh;
+              scrap.root.add(orig.mesh);
+              glowChildren.forEach((c) => orig.mesh.add(c));
+              scrapOrigBodyRef.current = null;
+            }
             batteryInstalledRef.current = true;
             setBatteryInstalled(true);
             if (scrapRobotRef.current) {
@@ -5963,6 +5974,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 heldSlotIndexRef.current = null;
               }
               scrapFollowerEnabledRef.current = true;
+              scrapVisibleRef.current = true;
               setScrapVisible(true);
               setShowScrapToggle(true);
               if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
@@ -6346,7 +6358,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
         // Rafiq interaction prompt override (takes priority over customer)
         const distToRafiq = Math.hypot(localPositionRef.current.x - ROOM_OWNER_POS.x, localPositionRef.current.y - ROOM_OWNER_POS.y);
-        if (!rafiqDlgOpenRef.current) {
+        if (!rafiqDlgOpenRef.current && rafiqWalkPhaseRef.current === 'idle' && !cinemCamActiveRef.current) {
           if (distToRafiq < 1.8) {
             if (interactionPromptName !== 'Rafiq') setInteractionPromptName('Rafiq');
             interactionCandidateIdRef.current = '__rafiq__';
@@ -6357,7 +6369,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
 
         // Rafiq interaction — "Who are you?", letter reception, or workshop intro
-        if (!rafiqDlgOpenRef.current && interactionRequestedRef.current && distToRafiq < 1.8) {
+        if (!rafiqDlgOpenRef.current && rafiqWalkPhaseRef.current === 'idle' && !cinemCamActiveRef.current && interactionRequestedRef.current && distToRafiq < 1.8) {
           interactionRequestedRef.current = false;
           const bp = gameStore.get('backpack');
           if (!cutsceneDoneRef.current) {
@@ -8475,12 +8487,30 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             </div>
             {/* Code editor */}
             <div className="p-4">
-              {laptopMode === 'version' && (
-                <p className="text-slate-300 text-sm mb-2">Declare a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">double</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">version</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">1.0</code>, then a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">String</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">mode</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">"normal"</code>.</p>
-              )}
-              {laptopMode === 'boot' && (
-                <p className="text-slate-300 text-sm mb-2">Declare a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">boolean</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">ready</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">true</code>.</p>
-              )}
+              {/* Per-line TTS prompts — spec sheet style */}
+              {(() => {
+                const lines: string[] = laptopMode === 'name' ? ['String name = "Scrap";'] :
+                  laptopMode === 'date' ? ['int year = 2026;', 'int month = 5;', 'int day = 6;'] :
+                  laptopMode === 'version' ? ['double version = 1.0;', 'String mode = "normal";'] :
+                  laptopMode === 'boot' ? ['boolean ready = true;'] : [];
+                return lines.map((text, i) => {
+                  const play = () => playLineTts(text);
+                  const isPlaying = ttsActiveTextRef.current === text;
+                  return (
+                    <div key={i} className="flex items-center gap-1 mb-1 text-sm">
+                      <span className="text-cyan-300 font-bold shrink-0 min-w-[1.2rem]">{i + 1})</span>
+                      <span className="text-slate-100">{renderFormattedSpecLine(text)}</span>
+                      <button onClick={play} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={isPlaying ? 'Stop' : 'Read aloud'}>
+                        {isPlaying ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                        )}
+                      </button>
+                    </div>
+                  );
+                });
+              })()}
               <CodeInput
                 value={laptopCode}
                 onChange={(v) => { setLaptopCode(v); setLaptopOutput(''); setLaptopSuccess(false); setShowSemicolonArrow(false); }}

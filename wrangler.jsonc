@@ -1,5 +1,6 @@
 {
   "name": "robocode",
+  "account_id": "0bfab51e8cc50b91033dc21005e8cabc",
   "compatibility_date": "2026-05-14",
   "compatibility_flags": ["nodejs_compat"],
   "main": ".open-next/worker.js",
