@@ -377,8 +377,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const rafiqMeetAutoTriggeredRef = useRef(false);
   const rafiqWalkPhaseRef = useRef<'idle' | 'walking' | 'arriving' | 'greeting' | 'handing-letter' | 'reached'>('idle');
   const rafiqCutsceneTimerRef = useRef(0);
-  const rafiqDlgOpenRef = useRef(false);
-  const rafiqGreetingDlgOpenRef = useRef(false);
   const rafiqBaseQuatRef = useRef(new THREE.Quaternion());
   const rafiqTargetFacingRef = useRef(0);
   const rafiqLetterSpriteRef = useRef<THREE.Group | null>(null);
@@ -482,6 +480,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const scratchQuatB = useRef(new THREE.Quaternion());
   const cinemCamActiveRef = useRef(false);
   const hideGameUiRef = useRef(false);
+  const cutsceneActiveRef = useRef(false);
   const cutsceneDoneRef = useRef(false);
   const sparkyGoHomeRef = useRef(false);
   const sparkyHomeArrivedRef = useRef(false);
@@ -1029,12 +1028,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const deferTtsTick = () => setTimeout(() => setTtsTick(t => t + 1), 0);
 
   const startCinematicCutscene = useCallback(() => {
+    cutsceneActiveRef.current = true;
     cinemCamActiveRef.current = true;
     hideGameUiRef.current = true;
+    document.exitPointerLock();
+    keyStateRef.current.clear();
     deferCutsceneTick();
   }, []);
 
   const endCinematicCutscene = useCallback(() => {
+    cutsceneActiveRef.current = false;
     cinemCamActiveRef.current = false;
     hideGameUiRef.current = false;
     deferCutsceneTick();
@@ -1625,10 +1628,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   }, [workshopIntroSeen]);
 
   useEffect(() => {
-    rafiqDlgOpenRef.current = showRafiqLetterDlg;
-  }, [showRafiqLetterDlg]);
-
-  useEffect(() => {
     setRafiqCutsceneActive(rafiqWalkPhaseRef.current !== 'idle');
   }); // runs after every render
 
@@ -1834,6 +1833,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         } else {
           setShowRafiqLetterDlg(false);
           rafiqWalkPhaseRef.current = 'idle';
+          cutsceneActiveRef.current = false;
+          const reLockEl = rendererRef.current?.domElement;
+          if (reLockEl && document.pointerLockElement !== reLockEl) {
+            try { reLockEl.requestPointerLock(); } catch {}
+          }
           workshopIntroSeenRef.current = true;
           setWorkshopIntroSeen(true);
           fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
@@ -1910,7 +1914,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (rafiqWalkPhaseRef.current === 'greeting') {
             rafiqWalkPhaseRef.current = 'handing-letter';
             rafiqCutsceneTimerRef.current = 0;
-            rafiqGreetingDlgOpenRef.current = false;
           }
         }
       }
@@ -3818,7 +3821,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       }
 
-      if (event.code === 'Space' && inWorkshopRoomRef.current && !cinemCamActiveRef.current && rafiqWalkPhaseRef.current === 'idle') {
+      if (event.code === 'Space' && inWorkshopRoomRef.current && !cutsceneActiveRef.current) {
         event.preventDefault();
         interactionRequestedRef.current = true;
         return;
@@ -3908,7 +3911,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Pointer Lock — capture mouse on click, orbit while locked
     const isLockedRef = { current: false };
     rendererEl.addEventListener('pointerdown', () => {
-      if (document.pointerLockElement !== rendererEl) {
+      if (!cutsceneActiveRef.current && document.pointerLockElement !== rendererEl) {
         rendererEl.requestPointerLock();
       }
     });
@@ -4177,6 +4180,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           pendingRafiqCutsceneRef.current = false;
           rafiqWalkPhaseRef.current = 'walking';
           rafiqCutsceneTimerRef.current = 0;
+          cutsceneActiveRef.current = true;
+          document.exitPointerLock();
           keyStateRef.current.clear();
           deferCutsceneTick();
           yawRef.current = Math.atan2(ROOM_OWNER_POS.x - localPositionRef.current.x, ROOM_OWNER_POS.y - localPositionRef.current.y);
@@ -4198,7 +4203,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       let moved = false;
       const moveDir2 = scratchVec2.current.set(0, 0);
-      if (aptCutscenePhaseRef.current !== 'idle' || registerCutscenePhaseRef.current !== 'idle' || rafiqWalkPhaseRef.current !== 'idle' || rafiqDlgOpenRef.current || installBatteryPhaseRef.current) {
+      if (cutsceneActiveRef.current) {
         // Cutscene or Rafiq dialog active — freeze player
         keyStateRef.current.clear();
       } else if (!showTutorialRef.current) {
@@ -4217,7 +4222,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             camCos * forward - camSin * strafe
           );
           const candidate = scratchVec2b.current.copy(localPositionRef.current).add(moveDir2.multiplyScalar(MOVE_SPEED * delta));
-      if (inWorkshopRoomRef.current && rafiqWalkPhaseRef.current === 'idle' && !rafiqDlgOpenRef.current) {
+      if (inWorkshopRoomRef.current && rafiqWalkPhaseRef.current === 'idle') {
             candidate.x = Math.max(-4.82, Math.min(4.82, candidate.x));
             candidate.y = Math.max(-5.3, Math.min(4.82, candidate.y));
             // Walk into south exit door → leave workshop
@@ -4347,6 +4352,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 rafiqMeetAutoTriggeredRef.current = true;
                 rafiqWalkPhaseRef.current = 'walking';
                 rafiqCutsceneTimerRef.current = 0;
+                cutsceneActiveRef.current = true;
+                document.exitPointerLock();
                 keyStateRef.current.clear();
                 yawRef.current = Math.atan2(ROOM_OWNER_POS.x - ROOM_SPAWN.x, ROOM_OWNER_POS.y - ROOM_SPAWN.y);
               } else {
@@ -4498,7 +4505,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
         if (rafiqCutsceneTimerRef.current >= 1.0) {
           rafiqWalkPhaseRef.current = 'greeting';
-          rafiqGreetingDlgOpenRef.current = true;
           setWhoStep(0);
           setShowWhoDlg(true);
         }
@@ -4567,7 +4573,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             rafiqLetterSpriteRef.current = null;
           }
           rafiqWalkPhaseRef.current = 'reached';
-          rafiqDlgOpenRef.current = true;
           setShowRafiqLetterDlg(true);
           setRafiqLetterStep(0);
           const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rafiqTargetFacingRef.current);
@@ -5941,7 +5946,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               (scrap.body as THREE.Mesh).geometry.dispose();
               (scrap.body.material as THREE.Material).dispose();
               orig.mesh.visible = true;
-              scrap.body = orig.mesh;
+              scrap.body = orig.mesh as any;
               scrap.root.add(orig.mesh);
               glowChildren.forEach((c) => orig.mesh.add(c));
               scrapOrigBodyRef.current = null;
@@ -6358,7 +6363,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
         // Rafiq interaction prompt override (takes priority over customer)
         const distToRafiq = Math.hypot(localPositionRef.current.x - ROOM_OWNER_POS.x, localPositionRef.current.y - ROOM_OWNER_POS.y);
-        if (!rafiqDlgOpenRef.current && rafiqWalkPhaseRef.current === 'idle' && !cinemCamActiveRef.current) {
+        if (!cutsceneActiveRef.current) {
           if (distToRafiq < 1.8) {
             if (interactionPromptName !== 'Rafiq') setInteractionPromptName('Rafiq');
             interactionCandidateIdRef.current = '__rafiq__';
@@ -6369,7 +6374,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
 
         // Rafiq interaction — "Who are you?", letter reception, or workshop intro
-        if (!rafiqDlgOpenRef.current && rafiqWalkPhaseRef.current === 'idle' && !cinemCamActiveRef.current && interactionRequestedRef.current && distToRafiq < 1.8) {
+        if (!cutsceneActiveRef.current && interactionRequestedRef.current && distToRafiq < 1.8) {
           interactionRequestedRef.current = false;
           const bp = gameStore.get('backpack');
           if (!cutsceneDoneRef.current) {
@@ -6378,6 +6383,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             setShowWhoDlg(true);
           } else if (bp.includes('letter' as ScrapPartId)) {
             // Rafiq meet dialog — "Who are you?" → letter consumption at step 0→1
+            cutsceneActiveRef.current = true;
+            document.exitPointerLock();
+            keyStateRef.current.clear();
             setShowRafiqLetterDlg(true);
             setRafiqLetterStep(0);
           } else {
@@ -6898,7 +6906,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               camera.lookAt(sp.x, sp.y, 0.3);
             }
           }
-        } else if ((rafiqWalkPhaseRef.current !== 'idle' || rafiqDlgOpenRef.current) && inside && room === 'workshop') {
+        } else if (cutsceneActiveRef.current && inside && room === 'workshop') {
           // Rafiq meet cutscene — camera phases
           if (rafiqWalkPhaseRef.current === 'walking') {
             // Player walks upward (+Y). Camera behind (lower Y), looks ahead toward Rafiq.
@@ -7140,7 +7148,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const syncMarkers = useCallback(() => {
     // Hide all markers during cutscenes/dialogs
-    if (cinemCamActiveRef.current || rafiqDlgOpenRef.current || rafiqGreetingDlgOpenRef.current || rafiqWalkPhaseRef.current !== 'idle') {
+    if (cutsceneActiveRef.current) {
       if (sparkyQuestMarkerRef.current) sparkyQuestMarkerRef.current.visible = false;
       if (workshopDoorMarkerRef.current) workshopDoorMarkerRef.current.visible = false;
       if (shopDoorMarkerRef.current) shopDoorMarkerRef.current.visible = false;
@@ -8306,7 +8314,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (next < RAFIQ_GREET_STEPS.length) { setWhoStep(next); } else {
             setShowWhoDlg(false);
             if (rafiqWalkPhaseRef.current === 'greeting') {
-              rafiqWalkPhaseRef.current = 'handing-letter'; rafiqCutsceneTimerRef.current = 0; rafiqGreetingDlgOpenRef.current = false;
+              rafiqWalkPhaseRef.current = 'handing-letter'; rafiqCutsceneTimerRef.current = 0;
             }
           }
         }}
@@ -8320,6 +8328,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (rafiqLetterStep === 0) consumeLetterInDialog(); setRafiqLetterStep(next);
           } else {
             setShowRafiqLetterDlg(false); rafiqWalkPhaseRef.current = 'idle';
+            cutsceneActiveRef.current = false;
+            const reLockEl2 = rendererRef.current?.domElement;
+            if (reLockEl2 && document.pointerLockElement !== reLockEl2) {
+              try { reLockEl2.requestPointerLock(); } catch {}
+            }
             workshopIntroSeenRef.current = true; setWorkshopIntroSeen(true);
             fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
             if (roomOwnerVisualRef.current) {
