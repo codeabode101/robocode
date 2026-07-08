@@ -1556,7 +1556,7 @@ export function createApartmentBuilding(x: number, y: number, bw = 4.0, bd = 4.0
 }
 
 // Abandoned building types
-export type AbandonedBuildingType = 'collapsed' | 'ruined' | 'cracked' | 'overgrown' | 'collapsed-store' | 'ruined-shack';
+export type AbandonedBuildingType = 'collapsed' | 'ruined' | 'cracked' | 'overgrown' | 'collapsed-store' | 'ruined-shack';'collapsed' | 'ruined' | 'cracked' | 'overgrown' | 'collapsed-store' | 'ruined-shack';
 
 export function createAbandonedBuilding(
   x: number,

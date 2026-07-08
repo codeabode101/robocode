@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
-import type { Object3DEventMap } from 'three';
 import { useMultiplayer } from '@/hooks/useMultiplayer';
 import type { SparkyQuestStage, CustomerRequest, TutorialPhase, RoomType, GameGoal, ScrapPartId, SpecSheetPrompt } from '@/components/game/types';
 import Editor from '@/components/game/Editor';
@@ -11,15 +10,13 @@ import ArenaOverlay from '@/components/game/ArenaOverlay';
 import ModalShell from './ModalShell';
 import WorkshopPanel from '@/components/game/WorkshopPanel';
 import CodeInput from '@/components/game/CodeInput';
-import {
+import type { RobotVisual, HumanVisual } from '@/components/game/scene';,
   createAbandonedBuilding,
   createDebris,
   createDebrisCluster,
   createRubblePile,
   createBrokenStreetFurniture,
   createPortTerminal
-} from '@/components/game/scene';
-import type { RobotVisual, HumanVisual, AbandonedBuildingType } from '@/components/game/scene';
 import {
   createLabelSprite, createNameSprite, createGradientTexture, getTileTexture,
   createToonMaterial, createTexturedToonMaterial,
@@ -6003,7 +6000,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               (scrap.body as THREE.Mesh).geometry.dispose();
               (scrap.body.material as THREE.Material).dispose();
               orig.mesh.visible = true;
-              scrap.body = orig.mesh as THREE.Mesh<THREE.BoxGeometry, THREE.MeshToonMaterial, Object3DEventMap>;
+              scrap.body = orig.mesh;
               scrap.root.add(orig.mesh);
               glowChildren.forEach((c) => orig.mesh.add(c));
               scrapOrigBodyRef.current = null;
