@@ -10,13 +10,7 @@ import ArenaOverlay from '@/components/game/ArenaOverlay';
 import ModalShell from './ModalShell';
 import WorkshopPanel from '@/components/game/WorkshopPanel';
 import CodeInput from '@/components/game/CodeInput';
-import type { RobotVisual, HumanVisual } from '@/components/game/scene';,
-  createAbandonedBuilding,
-  createDebris,
-  createDebrisCluster,
-  createRubblePile,
-  createBrokenStreetFurniture,
-  createPortTerminal
+import type { RobotVisual, HumanVisual } from '@/components/game/scene';
 import {
   createLabelSprite, createNameSprite, createGradientTexture, getTileTexture,
   createToonMaterial, createTexturedToonMaterial,
@@ -2505,59 +2499,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     });
 
     // No buildings yet — story hasn't progressed past the pet workshop job
-
-    // Abandoned buildings around the city (surrounding the functional buildings)
-    const abandonedTypes: AbandonedBuildingType[] = [
-      "collapsed", "ruined", "cracked", "overgrown", "collapsed-store", "ruined-shack"
-    ];
-    
-    // Add abandoned buildings in various locations
-    for (let i = 0; i < 12; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 10 + Math.random() * 15;
-      const ax = Math.cos(angle) * dist;
-      const ay = Math.sin(angle) * dist;
-      const type = abandonedTypes[Math.floor(Math.random() * abandonedTypes.length)];
-      const scale = 0.8 + Math.random() * 1.2;
-      const building = createAbandonedBuilding(ax, ay, type, scale);
-      outdoorGroup.add(building);
-    }
-    
-    // Debris everywhere - scattered around the scene
-    const debrisTypes: ("metal" | "concrete" | "wood" | "glass" | "scrap" | "rope")[] = [
-      "scrap", "metal", "concrete", "glass", "wood", "rope"
-    ];
-    for (let i = 0; i < 30; i++) {
-      const dx = (Math.random() - 0.5) * 40;
-      const dy = (Math.random() - 0.5) * 40;
-      const type = debrisTypes[Math.floor(Math.random() * debrisTypes.length)];
-      const debris = createDebris(dx, dy, type);
-      outdoorGroup.add(debris);
-    }
-    
-    // Piles of rubble in corners
-    const rubblePositions: [number, number, number][] = [
-      [-18, -18, 2], [18, -18, 2], [-18, 18, 2], [18, 18, 2],
-      [-20, 0, 1.5], [20, 0, 1.5], [0, -20, 1.5], [0, 20, 1.5]
-    ];
-    rubblePositions.forEach(([rx, ry, size]) => {
-      const rubble = createRubblePile(rx, ry, size);
-      outdoorGroup.add(rubble);
-    });
-    
-    // Broken street furniture scattered around
-    const furnitureTypes: ("bench" | "lamp" | "sign" | "pole")[] = ["bench", "lamp", "sign", "pole"];
-    for (let i = 0; i < 8; i++) {
-      const fx = (Math.random() - 0.5) * 35;
-      const fy = (Math.random() - 0.5) * 35;
-      const type = furnitureTypes[Math.floor(Math.random() * furnitureTypes.length)];
-      const furniture = createBrokenStreetFurniture(fx, fy, type);
-      outdoorGroup.add(furniture);
-    }
-    
-    // Port/terminal near the water (transporter location)
-    const port = createPortTerminal(-25, -4, 1.2);
-    outdoorGroup.add(port);
 
     const poleMat = createToonMaterial(0x6a6a7a);
     const lampMat = createToonMaterial(0xfef08a);
