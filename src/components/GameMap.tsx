@@ -6982,6 +6982,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Spatial QA phase capture (dev-only, triggered by Playwright)
       if ((window as any).__qaEnabled) {
+        (window as any).__threeCamera = camera;
+        (window as any).__playerPos = localPositionRef.current;
+        if (apartmentSparkyRef.current) (window as any).__sparkyPos = apartmentSparkyRef.current.root.position;
         const qa = (window as any).__qaState as {
           lastPhase: string | null;
           phases: Array<{

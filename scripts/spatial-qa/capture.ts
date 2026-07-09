@@ -211,13 +211,18 @@ async function main() {
           if (phase.name === 'done') {
             // Wait for endCinematicCutscene() to flip camera back to player-follow mode
             await page.waitForTimeout(2000);
-            // Capture post-cutscene state
-            const qaData2 = await page.evaluate(() => {
-              const s = (window as any).__qaState as any;
-              if (!s || !s.phases.length) return null;
-              return s.phases[s.phases.length - 1];
-            });
-            if (qaData2) {
+            // Read actual post-cutscene state from fresh evaluation
+            const postState = await page.evaluate(() => {
+              const c = (window as any).__threeCamera?.position;
+              const p = (window as any).__playerPos;
+              const s = (window as any).__sparkyPos;
+              return c && p ? {
+                camera: { x: c.x, y: c.y, z: c.z },
+                player: { x: p.x, y: p.y },
+                sparky: s ? { x: s.x, y: s.y, z: s.z } : undefined,
+              } : null;
+            }).catch(() => null);
+            if (postState) {
               const filename = `post-cutscene.png`;
               const screenshotPath = path.join(framesDir, filename);
               await page.screenshot({ path: screenshotPath, fullPage: false });
@@ -225,9 +230,19 @@ async function main() {
                 phaseIndex: capturedFrames.length,
                 phaseName: 'post-cutscene',
                 screenshotPath: filename,
-                metadata: qaData2,
+                metadata: {
+                  name: 'post-cutscene', frame: 0, timer: 0,
+                  camera: postState.camera,
+                  player: postState.player,
+                  sparky: postState.sparky,
+                },
               });
               console.log(`[capture] Post-cutscene state → ${filename}`);
+            } else {
+              // Fallback: just screenshot without metadata
+              const filename = `post-cutscene.png`;
+              await page.screenshot({ path: path.join(framesDir, filename), fullPage: false });
+              console.log(`[capture] Post-cutscene screenshot (no metadata)`);
             }
             cutsceneComplete = true;
             break;
