@@ -140,13 +140,11 @@ async function main() {
     // Wait for game initialization (Three.js scene setup, animation loop start)
     await page.waitForTimeout(8000);
 
-    // Dismiss controls modal by pressing Enter (handler listens on window)
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(500);
-    const modalVisible = await page.evaluate(() => {
-      return document.body.innerText.includes('How to play') ? 'yes' : 'no';
-    }).catch(() => 'err');
-    console.log(`[capture] Modal 'How to play' visible after Enter: ${modalVisible}`);
+    // Dismiss any overlay modals by pressing Enter multiple times
+    for (let i = 0; i < 5; i++) {
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(300);
+    }
 
     // Wait for cutscene to start
     await page.waitForTimeout(3000);
@@ -155,13 +153,13 @@ async function main() {
     const capturedFrames: CaptureFrame[] = [];
     let lastPhaseCount = 0;
     const startTime = Date.now();
-    const timeout = 45000; // 45 seconds max
+    const timeout = 90000; // 90 seconds max
     let cutsceneComplete = false;
 
     console.log('[capture] Polling for cutscene phases...');
 
     while (Date.now() - startTime < timeout && !cutsceneComplete) {
-      await page.waitForTimeout(250);
+      await page.waitForTimeout(500);
 
       const qaData = await page.evaluate(() => {
         const s = (window as any).__qaState as QaState | undefined;
@@ -173,7 +171,18 @@ async function main() {
         };
       });
 
-      if (!qaData) continue;
+      if (!qaData) { console.log('[capture] No qaData yet...'); continue; }
+
+      // Log status every 5 seconds
+      if (Math.floor((Date.now() - startTime) / 5000) > Math.floor(((Date.now() - startTime) - 500) / 5000)) {
+        console.log(`[capture] Polling... ${qaData.phaseCount} phases so far, last: ${qaData.phases[qaData.phaseCount-1]?.name || 'none'}, cutscene: ${qaData.cutsceneName}`);
+        // Debug: check page for any visible text clues
+        const pageState = await page.evaluate(() => {
+          const pre = document.querySelector('pre');
+          return pre ? pre.textContent?.slice(0, 200) : 'no <pre>';
+        }).catch(() => 'err');
+        console.log(`[capture] Page state text: ${pageState}`);
+      }
 
       // Check for new phases
       if (qaData.phaseCount > lastPhaseCount) {
