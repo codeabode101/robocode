@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTypewriterDialog } from '@/hooks/useTypewriterDialog';
+import { useDialogEnter } from '@/hooks/useDialogEnter';
 import * as THREE from 'three';
 import { useMultiplayer } from '@/hooks/useMultiplayer';
 import type { SparkyQuestStage, CustomerRequest, TutorialPhase, RoomType, GameGoal, ScrapPartId, SpecSheetPrompt } from '@/components/game/types';
@@ -1672,86 +1674,32 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setShowControlsModal(true);
   }, []);
 
-  // Electrocute dialog Enter key handler
-  useEffect(() => {
-    if (!showElectrocuteDlg) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const nextStep = electrocuteStep + 1;
-        if (nextStep < cutsceneDlgSteps.length) {
-          setElectrocuteStep(nextStep);
-        } else {
-          setShowElectrocuteDlg(false);
-          electrocuteDlgShownRef.current = false;
-          aptCutscenePhaseRef.current = 'walk-to-laptop';
-          aptCutsceneTimerRef.current = 0;
-        }
+  useTypewriterDialog(showElectrocuteDlg, electrocuteStep, cutsceneDlgSteps, setElectrocuteText);
+  useDialogEnter(showElectrocuteDlg, () => {
+    const nextStep = electrocuteStep + 1;
+    if (nextStep < cutsceneDlgSteps.length) { setElectrocuteStep(nextStep); }
+    else { setShowElectrocuteDlg(false); electrocuteDlgShownRef.current = false; aptCutscenePhaseRef.current = 'walk-to-laptop'; aptCutsceneTimerRef.current = 0; }
+  });
+
+  useTypewriterDialog(showBatteryDlg, batteryDlgStep, BATTERY_DLG_STEPS, setBatteryDlgText);
+  useDialogEnter(showBatteryDlg, () => {
+    const nextStep = batteryDlgStep + 1;
+    if (nextStep < BATTERY_DLG_STEPS.length) { setBatteryDlgStep(nextStep); }
+    else {
+      const bp = gameStore.get('backpack');
+      if (!bp.includes('letter' as ScrapPartId)) {
+        const newBackpack: ScrapPartId[] = [...bp, 'letter'];
+        gameStore.set('backpack', newBackpack);
+        fetch('/api/profile/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: newBackpack }), keepalive: true }).catch(() => {});
+        lastConfirmedBackpackRef.current = newBackpack;
       }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showElectrocuteDlg, electrocuteStep, cutsceneDlgSteps.length]);
+      setShowBatteryDlg(false);
+      aptCutscenePhaseRef.current = 'done';
+      aptCutsceneTimerRef.current = 0;
+    }
+  });
 
-  // Electrocute dialog typewriter effect
-  useEffect(() => {
-    if (!showElectrocuteDlg) return;
-    const step = cutsceneDlgSteps[electrocuteStep];
-    if (!step) return;
-    setElectrocuteText('');
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setElectrocuteText(step.text.slice(0, i));
-      if (i >= step.text.length) clearInterval(interval);
-    }, 35);
-    return () => clearInterval(interval);
-  }, [electrocuteStep, showElectrocuteDlg, cutsceneDlgSteps]);
-
-  // Battery dialog typewriter effect
-  useEffect(() => {
-    if (!showBatteryDlg) return;
-    const step = BATTERY_DLG_STEPS[batteryDlgStep];
-    if (!step) return;
-    setBatteryDlgText('');
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setBatteryDlgText(step.text.slice(0, i));
-      if (i >= step.text.length) clearInterval(interval);
-    }, 35);
-    return () => clearInterval(interval);
-  }, [batteryDlgStep, showBatteryDlg]);
-
-  // Battery dialog Enter key handler
-  useEffect(() => {
-    if (!showBatteryDlg) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const nextStep = batteryDlgStep + 1;
-        if (nextStep < BATTERY_DLG_STEPS.length) {
-          setBatteryDlgStep(nextStep);
-        } else {
-          // Give letter to player
-          const bp = gameStore.get('backpack');
-          if (!bp.includes('letter' as ScrapPartId)) {
-            const newBackpack: ScrapPartId[] = [...bp, 'letter'];
-            gameStore.set('backpack', newBackpack);
-            fetch('/api/profile/inventory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: newBackpack }), keepalive: true }).catch(() => {});
-            lastConfirmedBackpackRef.current = newBackpack;
-          }
-          setShowBatteryDlg(false);
-          aptCutscenePhaseRef.current = 'done';
-          aptCutsceneTimerRef.current = 0;
-        }
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showBatteryDlg, batteryDlgStep]);
-
-  // Sparky dialog typewriter effect
+  // Sparky dialog (single text, no steps)
   useEffect(() => {
     if (!showSparkyDlg || !sparkyDlgFull) return;
     setSparkyDlgText('');
@@ -1764,21 +1712,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }, 35);
     return () => clearInterval(interval);
   }, [showSparkyDlg, sparkyDlgFull]);
-
-  // Sparky dialog Enter key handler
-  useEffect(() => {
-    if (!showSparkyDlg) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (hideGameUiRef.current) return;
-        onSparkyDlgCloseRef.current?.();
-        setShowSparkyDlg(false);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showSparkyDlg]);
+  useDialogEnter(showSparkyDlg, () => {
+    if (hideGameUiRef.current) return;
+    onSparkyDlgCloseRef.current?.();
+    setShowSparkyDlg(false);
+  });
 
   // Money collection animation — hits increment timer
   useEffect(() => {
@@ -1796,22 +1734,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return () => clearTimeout(t);
   }, [moneyAnim]);
 
-  // Rafiq meet dialog typewriter effect
-  useEffect(() => {
-    if (!showRafiqLetterDlg) return;
-    const step = RAFIQ_MEET_STEPS[rafiqLetterStep];
-    if (!step) return;
-    setRafiqLetterText('');
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setRafiqLetterText(step.text.slice(0, i));
-      if (i >= step.text.length) clearInterval(interval);
-    }, 35);
-    return () => clearInterval(interval);
-  }, [rafiqLetterStep, showRafiqLetterDlg]);
-
-  // Rafiq meet dialog Enter key handler
+  useTypewriterDialog(showRafiqLetterDlg, rafiqLetterStep, RAFIQ_MEET_STEPS, setRafiqLetterText);
   const consumeLetterInDialog = () => {
     const bp = gameStore.get('backpack');
     if (bp.includes('letter' as ScrapPartId)) {
@@ -1821,233 +1744,86 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       lastConfirmedBackpackRef.current = newBackpack;
     }
   };
-  useEffect(() => {
-    if (!showRafiqLetterDlg) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const nextStep = rafiqLetterStep + 1;
-        if (nextStep < RAFIQ_MEET_STEPS.length) {
-          if (rafiqLetterStep === 0) consumeLetterInDialog();
-          setRafiqLetterStep(nextStep);
-        } else {
-          setShowRafiqLetterDlg(false);
-          rafiqWalkPhaseRef.current = 'idle';
-          cutsceneActiveRef.current = false;
-          const reLockEl = rendererRef.current?.domElement;
-          if (reLockEl && document.pointerLockElement !== reLockEl) {
-            try { reLockEl.requestPointerLock(); } catch {}
-          }
-          workshopIntroSeenRef.current = true;
-          setWorkshopIntroSeen(true);
-          fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
-          if (roomOwnerVisualRef.current) {
-            roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current);
-            if (roomOwnerVisualRef.current.rightArm) roomOwnerVisualRef.current.rightArm.rotation.z = -0.3;
-          }
-        }
+  useDialogEnter(showRafiqLetterDlg, () => {
+    const nextStep = rafiqLetterStep + 1;
+    if (nextStep < RAFIQ_MEET_STEPS.length) {
+      if (rafiqLetterStep === 0) consumeLetterInDialog();
+      setRafiqLetterStep(nextStep);
+    } else {
+      setShowRafiqLetterDlg(false);
+      rafiqWalkPhaseRef.current = 'idle';
+      cutsceneActiveRef.current = false;
+      const reLockEl = rendererRef.current?.domElement;
+      if (reLockEl && document.pointerLockElement !== reLockEl) {
+        try { reLockEl.requestPointerLock(); } catch {}
       }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showRafiqLetterDlg, rafiqLetterStep]);
-
-  // Workshop intro typewriter effect
-  useEffect(() => {
-    if (!inWorkshopRoom || workshopIntroSeen || !profileLoadedRef.current) return;
-    const step = WORKSHOP_INTRO_STEPS[workshopIntroStep];
-    if (!step) return;
-    setWorkshopIntroText('');
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setWorkshopIntroText(step.text.slice(0, i));
-      if (i >= step.text.length) clearInterval(interval);
-    }, 35);
-    return () => clearInterval(interval);
-  }, [workshopIntroStep, inWorkshopRoom, workshopIntroSeen]);
-
-  // Workshop intro Enter key handler
-  useEffect(() => {
-    if (!inWorkshopRoom || workshopIntroSeen || !profileLoadedRef.current) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const nextStep = workshopIntroStep + 1;
-        if (nextStep < WORKSHOP_INTRO_STEPS.length) {
-          setWorkshopIntroStep(nextStep);
-        } else {
-          finishWorkshopIntro();
-        }
+      workshopIntroSeenRef.current = true;
+      setWorkshopIntroSeen(true);
+      fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
+      if (roomOwnerVisualRef.current) {
+        roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current);
+        if (roomOwnerVisualRef.current.rightArm) roomOwnerVisualRef.current.rightArm.rotation.z = -0.3;
       }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [inWorkshopRoom, workshopIntroSeen, workshopIntroStep]);
+    }
+  });
 
-  // Greeting dialog typewriter effect (multi-step)
-  useEffect(() => {
-    if (!showWhoDlg) return;
-    const step = RAFIQ_GREET_STEPS[whoStep];
-    if (!step) return;
-    setWhoText('');
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setWhoText(step.text.slice(0, i));
-      if (i >= step.text.length) clearInterval(interval);
-    }, 35);
-    return () => clearInterval(interval);
-  }, [showWhoDlg, whoStep]);
+  // Workshop intro
+  useTypewriterDialog(inWorkshopRoom && !workshopIntroSeen && profileLoadedRef.current,
+    workshopIntroStep, WORKSHOP_INTRO_STEPS, setWorkshopIntroText);
+  useDialogEnter(inWorkshopRoom && !workshopIntroSeen && profileLoadedRef.current, () => {
+    const nextStep = workshopIntroStep + 1;
+    if (nextStep < WORKSHOP_INTRO_STEPS.length) { setWorkshopIntroStep(nextStep); }
+    else { finishWorkshopIntro(); }
+  });
 
-  // Greeting dialog Enter key handler
-  useEffect(() => {
-    if (!showWhoDlg) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const nextStep = whoStep + 1;
-        if (nextStep < RAFIQ_GREET_STEPS.length) {
-          setWhoStep(nextStep);
-        } else {
-          setShowWhoDlg(false);
-          if (rafiqWalkPhaseRef.current === 'greeting') {
-            rafiqWalkPhaseRef.current = 'handing-letter';
-            rafiqCutsceneTimerRef.current = 0;
-          }
-        }
+  useTypewriterDialog(showWhoDlg, whoStep, RAFIQ_GREET_STEPS, setWhoText);
+  useDialogEnter(showWhoDlg, () => {
+    const nextStep = whoStep + 1;
+    if (nextStep < RAFIQ_GREET_STEPS.length) { setWhoStep(nextStep); }
+    else {
+      setShowWhoDlg(false);
+      if (rafiqWalkPhaseRef.current === 'greeting') {
+        rafiqWalkPhaseRef.current = 'handing-letter';
+        rafiqCutsceneTimerRef.current = 0;
       }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showWhoDlg, whoStep]);
+    }
+  });
 
-  // String tutorial dialog Enter key handler
-  useEffect(() => {
-    if (!showStringDlg) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const nextStep = stringDlgStep + 1;
-        if (nextStep < stringDlgSteps.length) {
-          setStringDlgStep(nextStep);
-        } else {
-          setShowStringDlg(false);
-          if (stringDlgIsHelpRef.current) {
-            stringDlgIsHelpRef.current = false;
-            setShowLaptopUI(true);
-          } else {
-            aptCutscenePhaseRef.current = 'laptop-ui';
-            aptCutsceneTimerRef.current = 0;
-          }
-        }
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showStringDlg, stringDlgStep, stringDlgSteps.length]);
+  useTypewriterDialog(showStringDlg, stringDlgStep, stringDlgSteps, setStringDlgText);
+  useDialogEnter(showStringDlg, () => {
+    const nextStep = stringDlgStep + 1;
+    if (nextStep < stringDlgSteps.length) { setStringDlgStep(nextStep); }
+    else {
+      setShowStringDlg(false);
+      if (stringDlgIsHelpRef.current) { stringDlgIsHelpRef.current = false; setShowLaptopUI(true); }
+      else { aptCutscenePhaseRef.current = 'laptop-ui'; aptCutsceneTimerRef.current = 0; }
+    }
+  });
 
-  // Date dialog Enter key handler
-  useEffect(() => {
-    if (!showDateDlg) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const steps = stringDlgIsHelpRef.current ? dateHelpSteps : dateDlgSteps;
-        const nextStep = dateDlgStep + 1;
-        if (nextStep < steps.length) {
-          setDateDlgStep(nextStep);
-        } else {
-          setShowDateDlg(false);
-          if (stringDlgIsHelpRef.current) {
-            stringDlgIsHelpRef.current = false;
-            setShowLaptopUI(true);
-          } else {
-            dateCodingShownRef.current = false;
-            aptCutscenePhaseRef.current = 'date-coding';
-            aptCutsceneTimerRef.current = 0;
-          }
-        }
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showDateDlg, dateDlgStep, stringDlgIsHelpRef.current, dateHelpSteps.length, dateDlgSteps.length]);
-
-  // Date dialog typewriter effect
-  useEffect(() => {
-    if (!showDateDlg) return;
+  useTypewriterDialog(showDateDlg, dateDlgStep, stringDlgIsHelpRef.current ? dateHelpSteps : dateDlgSteps, setDateDlgText);
+  useDialogEnter(showDateDlg, () => {
     const steps = stringDlgIsHelpRef.current ? dateHelpSteps : dateDlgSteps;
-    const step = steps[dateDlgStep];
-    if (!step) return;
-    setDateDlgText('');
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setDateDlgText(step.text.slice(0, i));
-      if (i >= step.text.length) clearInterval(interval);
-    }, 35);
-    return () => clearInterval(interval);
-  }, [dateDlgStep, showDateDlg, stringDlgIsHelpRef.current]);
+    const nextStep = dateDlgStep + 1;
+    if (nextStep < steps.length) { setDateDlgStep(nextStep); }
+    else {
+      setShowDateDlg(false);
+      if (stringDlgIsHelpRef.current) { stringDlgIsHelpRef.current = false; setShowLaptopUI(true); }
+      else { dateCodingShownRef.current = false; aptCutscenePhaseRef.current = 'date-coding'; aptCutsceneTimerRef.current = 0; }
+    }
+  });
 
-  // String tutorial dialog typewriter effect
-  useEffect(() => {
-    if (!showStringDlg) return;
-    const step = stringDlgSteps[stringDlgStep];
-    if (!step) return;
-    setStringDlgText('');
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setStringDlgText(step.text.slice(0, i));
-      if (i >= step.text.length) clearInterval(interval);
-    }, 35);
-    return () => clearInterval(interval);
-  }, [stringDlgStep, showStringDlg, stringDlgSteps]);
-
-  // Version dialog Enter key handler
-  useEffect(() => {
-    if (!showVersionDlg) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const steps = stringDlgIsHelpRef.current ? versionHelpSteps : versionDlgSteps;
-        const nextStep = versionDlgStep + 1;
-        stopTts();
-        if (nextStep < steps.length) {
-          setVersionDlgStep(nextStep);
-        } else {
-          setShowVersionDlg(false);
-          if (stringDlgIsHelpRef.current) {
-            stringDlgIsHelpRef.current = false;
-            setShowLaptopUI(true);
-          } else {
-            versionCodingShownRef.current = false;
-            aptCutscenePhaseRef.current = 'version-coding';
-            aptCutsceneTimerRef.current = 0;
-          }
-        }
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showVersionDlg, versionDlgStep, stringDlgIsHelpRef.current, versionHelpSteps.length, versionDlgSteps.length]);
-
-  // Version dialog typewriter effect
-  useEffect(() => {
-    if (!showVersionDlg) return;
+  useTypewriterDialog(showVersionDlg, versionDlgStep, stringDlgIsHelpRef.current ? versionHelpSteps : versionDlgSteps, setVersionDlgText);
+  useDialogEnter(showVersionDlg, () => {
     const steps = stringDlgIsHelpRef.current ? versionHelpSteps : versionDlgSteps;
-    const step = steps[versionDlgStep];
-    if (!step) return;
-    setVersionDlgText('');
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setVersionDlgText(step.text.slice(0, i));
-      if (i >= step.text.length) clearInterval(interval);
-    }, 35);
-    return () => clearInterval(interval);
-  }, [versionDlgStep, showVersionDlg, stringDlgIsHelpRef.current]);
+    const nextStep = versionDlgStep + 1;
+    stopTts();
+    if (nextStep < steps.length) { setVersionDlgStep(nextStep); }
+    else {
+      setShowVersionDlg(false);
+      if (stringDlgIsHelpRef.current) { stringDlgIsHelpRef.current = false; setShowLaptopUI(true); }
+      else { versionCodingShownRef.current = false; aptCutscenePhaseRef.current = 'version-coding'; aptCutsceneTimerRef.current = 0; }
+    }
+  });
 
   // Decimal explainer keyboard handler (Escape to close)
   useEffect(() => {
@@ -2062,48 +1838,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     return () => window.removeEventListener('keydown', onKey);
   }, [showDecimalExplain]);
 
-  // Boot dialog Enter key handler
-  useEffect(() => {
-    if (!showBootDlg) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const steps = stringDlgIsHelpRef.current ? bootHelpSteps : bootDlgSteps;
-        const nextStep = bootDlgStep + 1;
-        if (nextStep < steps.length) {
-          setBootDlgStep(nextStep);
-        } else {
-          setShowBootDlg(false);
-          if (stringDlgIsHelpRef.current) {
-            stringDlgIsHelpRef.current = false;
-            setShowLaptopUI(true);
-          } else {
-            bootCodingShownRef.current = false;
-            aptCutscenePhaseRef.current = 'boot-coding';
-            aptCutsceneTimerRef.current = 0;
-          }
-        }
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showBootDlg, bootDlgStep, stringDlgIsHelpRef.current, bootHelpSteps.length, bootDlgSteps.length]);
-
-  // Boot dialog typewriter effect
-  useEffect(() => {
-    if (!showBootDlg) return;
+  useTypewriterDialog(showBootDlg, bootDlgStep, stringDlgIsHelpRef.current ? bootHelpSteps : bootDlgSteps, setBootDlgText);
+  useDialogEnter(showBootDlg, () => {
     const steps = stringDlgIsHelpRef.current ? bootHelpSteps : bootDlgSteps;
-    const step = steps[bootDlgStep];
-    if (!step) return;
-    setBootDlgText('');
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      setBootDlgText(step.text.slice(0, i));
-      if (i >= step.text.length) clearInterval(interval);
-    }, 35);
-    return () => clearInterval(interval);
-  }, [bootDlgStep, showBootDlg, stringDlgIsHelpRef.current]);
+    const nextStep = bootDlgStep + 1;
+    if (nextStep < steps.length) { setBootDlgStep(nextStep); }
+    else {
+      setShowBootDlg(false);
+      if (stringDlgIsHelpRef.current) { stringDlgIsHelpRef.current = false; setShowLaptopUI(true); }
+      else { bootCodingShownRef.current = false; aptCutscenePhaseRef.current = 'boot-coding'; aptCutsceneTimerRef.current = 0; }
+    }
+  });
 
   // Load profile data — prevents tutorial re-trigger
   useEffect(() => {
@@ -4295,51 +4040,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               (!canEnterBuildings && apartmentDoorHitboxRef.current && isInsideHitbox(candidate, apartmentDoorHitboxRef.current)) ||
               Object.values(remoteAvatarsRef.current).some(a => a.room === 'outside' &&
                 candidate.distanceTo(a.target) < 0.3);
-            const workshopDoor = workshopDoorHitboxRef.current;
-            const atWorkshopDoor =
-              Boolean(shopUnlockedRef.current) &&
-              canEnterBuildings &&
-              workshopDoor !== null &&
-              workshopDoorArmedRef.current &&
-              isInsideHitbox(candidate, workshopDoor);
+            const checkDoor = (hitbox: Hitbox | null, armedRef: React.MutableRefObject<boolean>, extra?: boolean) => {
+              if (hitbox === null) return false;
+              const at = canEnterBuildings && (extra ?? true) && armedRef.current && isInsideHitbox(candidate, hitbox);
+              if (!isInsideHitbox(candidate, hitbox)) armedRef.current = true;
+              return at;
+            };
 
-            if (workshopDoor !== null && !isInsideHitbox(candidate, workshopDoor)) {
-              workshopDoorArmedRef.current = true;
-            }
-
-            const arenaDoor = arenaDoorHitboxRef.current;
-            const atArenaDoor =
-              canEnterBuildings &&
-              arenaDoor !== null &&
-              arenaDoorArmedRef.current &&
-              isInsideHitbox(candidate, arenaDoor);
-
-            if (arenaDoor !== null && !isInsideHitbox(candidate, arenaDoor)) {
-              arenaDoorArmedRef.current = true;
-            }
-
-            const apartmentDoor = apartmentDoorHitboxRef.current;
+            const atWorkshopDoor = checkDoor(workshopDoorHitboxRef.current, workshopDoorArmedRef, Boolean(shopUnlockedRef.current));
+            const atArenaDoor = checkDoor(arenaDoorHitboxRef.current, arenaDoorArmedRef);
             const aptStage = sparkyQuestStageRef.current;
-            const atApartmentDoor =
-              canEnterBuildings &&
-              apartmentDoor !== null &&
-              apartmentDoorArmedRef.current &&
-              isInsideHitbox(candidate, apartmentDoor);
-
-            if (apartmentDoor !== null && !isInsideHitbox(candidate, apartmentDoor)) {
-              apartmentDoorArmedRef.current = true;
-            }
-
-            const shopDoor = shopDoorHitboxRef.current;
-            const atShopDoor =
-              canEnterBuildings &&
-              shopDoor !== null &&
-              shopDoorArmedRef.current &&
-              isInsideHitbox(candidate, shopDoor);
-
-            if (shopDoor !== null && !isInsideHitbox(candidate, shopDoor)) {
-              shopDoorArmedRef.current = true;
-            }
+            const atApartmentDoor = checkDoor(apartmentDoorHitboxRef.current, apartmentDoorArmedRef);
+            const atShopDoor = checkDoor(shopDoorHitboxRef.current, shopDoorArmedRef);
 
             if (atWorkshopDoor) {
               workshopDoorArmedRef.current = false;
