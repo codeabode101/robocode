@@ -146,8 +146,8 @@ async function main() {
       await page.waitForTimeout(300);
     }
 
-    // Wait for cutscene to start
-    await page.waitForTimeout(3000);
+    // Wait for cutscene to start — need time for profile load, scene setup, pending cutscene detection
+    await page.waitForTimeout(5000);
 
     // Poll for phase changes and capture screenshots
     const capturedFrames: CaptureFrame[] = [];
@@ -204,9 +204,13 @@ async function main() {
 
           console.log(`[capture] Phase ${phase.name} (frame ${phase.frame}) → ${filename}`);
 
+          // Wait for scene to fully render with this phase
+          await page.waitForTimeout(500);
+
           // Check if cutscene is done (phase === 'done' or null after 'done')
           if (phase.name === 'done') {
-            await page.waitForTimeout(2000); // Wait for done cleanup
+            // Take an extra frame after the done cleanup to capture the post-cutscene state
+            await page.waitForTimeout(2000);
             cutsceneComplete = true;
             break;
           }

@@ -83,11 +83,17 @@ RELEVANT CODE (${phaseData.code.file}:${phaseData.code.cameraLine}):
 ${phaseData.code.cameraSnippet}
 \`\`\`
 
-TASK: Compare ACTUAL vs EXPECTED values above. If they differ meaningfully (more than 0.1 units), the screenshot CONFIRMS a spatial bug. See if:
-- Camera position/angle looks wrong in the screenshot
-- Sparky (yellow) or player (blue) are at wrong locations
-- Scrap is wrong shape/position
-- Objects clip through walls or float
+TASK: Critically evaluate the spatial polish and composition quality:
+- Camera position/angle — is the framing good? Does it clip through the floor (camera Z < 0)?
+- Sparky (yellow) or player (blue) at wrong locations or facing wrong direction
+- Scrap wrong shape/position (should be cylinder normally, torus during open-chest/place-battery/chest-glow)
+- Objects clipping through walls, floor, or each other
+- Floating objects or objects embedded in the floor
+- Camera movement — is the lerp noticeable? Does the camera ever reach the target?
+- Lighting/shading issues — are characters properly lit?
+- Battery prop visibility during place-battery phase — can you see the battery entering Scrap's chest?
+- Sparky's walk direction in sparky-walk phase — is Sparky walking toward Scrap or away?
+- Overall composition — does the shot look well-framed for a cutscene?
 
 Respond ONLY with a JSON object (no markdown, no other text). Two allowed formats:
 
@@ -98,6 +104,7 @@ BUG: {"v":"bug","edits":[{"file":"src/components/GameMap.tsx","line":NUM,"desc":
 
 async function main() {
   const cutsceneName = process.argv[2] || 'battery-install';
+  const modelName = (process.argv[3] || 'gemini-2.5-flash-lite').replace('--model=', '');
   const outDir = path.join(OUTPUT_DIR, cutsceneName);
   const framesDir = path.join(outDir, 'frames');
 
@@ -124,9 +131,10 @@ async function main() {
   console.log(`[analyze] Analyzing ${metadata.frames.length} frames for "${cutsceneName}"`);
   console.log(`[analyze] Using Gemini 1.5 Flash`);
 
+  console.log(`[analyze] Using model: ${modelName}`);
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: modelName,
     generationConfig: {
       temperature: 0.1,
       maxOutputTokens: 8192,
@@ -149,13 +157,13 @@ async function main() {
 
     console.log(`[analyze] Sending phase "${phaseName}" to Gemini...`);
 
-    async function sendWithRetry(retries = 5): Promise<typeof model.generateContent extends (...args: unknown[]) => infer R ? R : never> {
+    async function sendWithRetry(retries = 20) {
       for (let attempt = 0; attempt < retries; attempt++) {
         try {
           return await model.generateContent([
             { inlineData: { mimeType: 'image/png', data: imageBase64 } },
             { text: prompt },
-          ]) as any;
+          ]);
         } catch (err: any) {
           // Extract retry delay from error details if available
           let wait = Math.pow(2, attempt) * 5000;
@@ -174,8 +182,9 @@ async function main() {
             }
           }
           if (err?.status === 503 && attempt < retries - 1) {
-            console.log(`[analyze] Model busy (503), waiting ${Math.round(wait/1000)}s...`);
-            await new Promise(r => setTimeout(r, wait));
+            const wait503 = 3000 + Math.random() * 4000;
+            console.log(`[analyze] Model busy (503), retry ${attempt+1}/${retries-1}, waiting ${Math.round(wait503/1000)}s...`);
+            await new Promise(r => setTimeout(r, wait503));
             continue;
           }
           throw err;
@@ -229,7 +238,7 @@ async function main() {
     }
 
     // Small delay to avoid rate limiting
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 12000));
   }
 
   // Save analysis results

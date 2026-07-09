@@ -6994,14 +6994,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             scrap?: { x: number; y: number; z: number };
           }>;
           cutsceneName: string;
+          framesSinceLastCapture: number;
         };
+        qa.framesSinceLastCapture = (qa.framesSinceLastCapture || 0) + 1;
         const p: string | null = (installBatteryPhaseRef.current as string | null)
           ?? (aptCutscenePhaseRef.current as string)
           ?? (rafiqWalkPhaseRef.current as string)
           ?? (repairCutscenePhaseRef.current as string)
           ?? (registerCutscenePhaseRef.current as string);
-        if (p && p !== qa.lastPhase && p !== 'idle' && p !== null) {
+        const shouldCapture = p && p !== 'idle' && p !== null && (p !== qa.lastPhase || qa.framesSinceLastCapture >= 120);
+        if (p && p !== 'idle' && p !== null && p !== qa.lastPhase) {
           qa.lastPhase = p;
+        }
+        if (shouldCapture) {
+          qa.framesSinceLastCapture = 0;
           const aptSparky = apartmentSparkyRef.current;
           const scrap = scrapRobotRef.current;
           if (installBatteryPhaseRef.current) qa.cutsceneName = 'battery-install';
@@ -7010,7 +7016,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           else if (repairCutscenePhaseRef.current !== 'idle') qa.cutsceneName = 'repair';
           else if (registerCutscenePhaseRef.current !== 'idle') qa.cutsceneName = 'register';
           qa.phases.push({
-            name: p,
+            name: p!,
             frame: animFrameCounterRef.current,
             timer: installBatteryTimerRef.current ?? aptCutsceneTimerRef.current ?? 0,
             camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
