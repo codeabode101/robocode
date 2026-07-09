@@ -83,29 +83,17 @@ RELEVANT CODE (${phaseData.code.file}:${phaseData.code.cameraLine}):
 ${phaseData.code.cameraSnippet}
 \`\`\`
 
-TASK: Look at the screenshot CAREFULLY. Does the spatial layout match what's expected?
-- Is the camera at the right angle/distance/elevation?
-- Are the characters (Sparky in yellow, player in blue, Scrap in white) at their expected positions?
-- Is anything clipping through walls or other objects?
-- Are objects in the correct relative positions?
-- Are there any objects floating in the air or embedded in the floor?
-- Does the apartment room look correct (walls, bed, bookshelf, workbench, cardboard box)?
+TASK: Compare ACTUAL vs EXPECTED values above. If they differ meaningfully (more than 0.1 units), the screenshot CONFIRMS a spatial bug. See if:
+- Camera position/angle looks wrong in the screenshot
+- Sparky (yellow) or player (blue) are at wrong locations
+- Scrap is wrong shape/position
+- Objects clip through walls or float
 
-If everything looks correct spatially, respond with:
-{"verdict":"correct","edits":[],"reasoning":"brief explanation of why correct"}
+Respond ONLY with a JSON object (no markdown, no other text). Two allowed formats:
 
-If something is wrong, respond with EXACT edit instructions in this format:
-{"verdict":"needs_fix","edits":[{"file":"src/components/GameMap.tsx","line":NUMBER,"description":"what's wrong and why","oldString":"EXACT current code","newString":"EXACT corrected code"}],"reasoning":"what you saw in the screenshot"}
+CORRECT: {"v":"ok"}
 
-IMPORTANT:
-- The "oldString" must be the EXACT code text at that line, character-for-character
-- The "newString" must be the EXACT replacement code text
-- Only suggest edits that directly fix spatial issues visible in the screenshot
-- If the camera angle is wrong, suggest adjusting the camera position values
-- If a character is misplaced, suggest adjusting their position
-- Base your analysis on the ACTUAL camera/player/Sparky/Scrap values reported above vs the EXPECTED values, BUT verify visually from the screenshot
-
-Respond ONLY with a valid JSON object. No markdown, no other text.`;
+BUG: {"v":"bug","edits":[{"file":"src/components/GameMap.tsx","line":NUM,"desc":"brief description of spatial bug","old":"EXACT code string to replace","new":"EXACT replacement code string"}]}`;
 }
 
 async function main() {
@@ -138,10 +126,10 @@ async function main() {
 
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 8192,
     },
   });
 
@@ -161,24 +149,66 @@ async function main() {
 
     console.log(`[analyze] Sending phase "${phaseName}" to Gemini...`);
 
+    async function sendWithRetry(retries = 5): Promise<typeof model.generateContent extends (...args: unknown[]) => infer R ? R : never> {
+      for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+          return await model.generateContent([
+            { inlineData: { mimeType: 'image/png', data: imageBase64 } },
+            { text: prompt },
+          ]) as any;
+        } catch (err: any) {
+          // Extract retry delay from error details if available
+          let wait = Math.pow(2, attempt) * 5000;
+          if (err?.status === 429) {
+            const details = err.errorDetails || [];
+            for (const d of details) {
+              if (d.retryDelay) {
+                const seconds = parseFloat(d.retryDelay.replace('s', ''));
+                if (!isNaN(seconds)) wait = Math.ceil(seconds * 1000) + 1000;
+              }
+            }
+            if (attempt < retries - 1) {
+              console.log(`[analyze] Rate limited, waiting ${Math.round(wait/1000)}s...`);
+              await new Promise(r => setTimeout(r, wait));
+              continue;
+            }
+          }
+          if (err?.status === 503 && attempt < retries - 1) {
+            console.log(`[analyze] Model busy (503), waiting ${Math.round(wait/1000)}s...`);
+            await new Promise(r => setTimeout(r, wait));
+            continue;
+          }
+          throw err;
+        }
+      }
+      throw new Error('All retries exhausted');
+    }
+
     try {
-      const result = await model.generateContent([
-        { inlineData: { mimeType: 'image/png', data: imageBase64 } },
-        { text: prompt },
-      ]);
+      const result = await sendWithRetry(3);
 
       const response = result.response.text();
-      console.log(`[analyze] Response for ${phaseName}:`, response.slice(0, 200) + '...');
+      console.log(`[analyze] Response for ${phaseName}:`, response.slice(0, 400) + '...');
 
       // Parse JSON from response
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]) as GeminiResult;
-        results.push({ phase: phaseName, result: parsed });
-        if (parsed.verdict === 'needs_fix') {
-          console.log(`[analyze] ⚠ Issues found in "${phaseName}":`);
-          for (const edit of parsed.edits) {
+        const parsed = JSON.parse(jsonMatch[0]) as any;
+        const edits: GeminiEdit[] = parsed.v === 'bug' ? (parsed.edits || []).map((e: any) => ({
+          file: e.file || 'src/components/GameMap.tsx',
+          line: e.line || 0,
+          description: e.desc || e.description || '',
+          oldString: e.old || e.oldString || '',
+          newString: e.new || e.newString || '',
+        })) : [];
+        const result: GeminiResult = { verdict: parsed.v === 'bug' ? 'needs_fix' : 'correct', edits, reasoning: '' };
+        results.push({ phase: phaseName, result });
+        if (result.verdict === 'needs_fix') {
+          console.log(`[analyze] ⚠ "${phaseName}" has issues:`);
+          for (const edit of result.edits) {
             console.log(`   ${edit.file}:${edit.line} — ${edit.description}`);
+            if (edit.oldString) console.log(`      OLD: ${edit.oldString.slice(0, 80)}`);
+            if (edit.newString) console.log(`      NEW: ${edit.newString.slice(0, 80)}`);
           }
         } else {
           console.log(`[analyze] ✓ "${phaseName}" looks correct`);
@@ -187,7 +217,7 @@ async function main() {
         console.warn(`[analyze] Could not parse JSON from response: ${response.slice(0, 300)}`);
         results.push({
           phase: phaseName,
-          result: { verdict: 'correct', edits: [], reasoning: 'Parse failed, treating as correct' },
+          result: { verdict: 'correct', edits: [], reasoning: 'Parse failed' },
         });
       }
     } catch (err) {
