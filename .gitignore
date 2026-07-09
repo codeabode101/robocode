@@ -49,5 +49,8 @@ next-env.d.ts
 !.dev.vars.example
 .aider*
 
+# Spatial QA output
+scripts/spatial-qa/output/
+
 .venv/
 export.json

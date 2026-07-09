@@ -6980,6 +6980,47 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       }
 
+      // Spatial QA phase capture (dev-only, triggered by Playwright)
+      if ((window as any).__qaEnabled) {
+        const qa = (window as any).__qaState as {
+          lastPhase: string | null;
+          phases: Array<{
+            name: string;
+            frame: number;
+            timer: number;
+            camera: { x: number; y: number; z: number };
+            player: { x: number; y: number };
+            sparky?: { x: number; y: number; z: number };
+            scrap?: { x: number; y: number; z: number };
+          }>;
+          cutsceneName: string;
+        };
+        const p: string | null = (installBatteryPhaseRef.current as string | null)
+          ?? (aptCutscenePhaseRef.current as string)
+          ?? (rafiqWalkPhaseRef.current as string)
+          ?? (repairCutscenePhaseRef.current as string)
+          ?? (registerCutscenePhaseRef.current as string);
+        if (p && p !== qa.lastPhase && p !== 'idle' && p !== null) {
+          qa.lastPhase = p;
+          const aptSparky = apartmentSparkyRef.current;
+          const scrap = scrapRobotRef.current;
+          if (installBatteryPhaseRef.current) qa.cutsceneName = 'battery-install';
+          else if (aptCutscenePhaseRef.current !== 'idle') qa.cutsceneName = 'apartment-intro';
+          else if (rafiqWalkPhaseRef.current !== 'idle') qa.cutsceneName = 'rafiq-letter';
+          else if (repairCutscenePhaseRef.current !== 'idle') qa.cutsceneName = 'repair';
+          else if (registerCutscenePhaseRef.current !== 'idle') qa.cutsceneName = 'register';
+          qa.phases.push({
+            name: p,
+            frame: animFrameCounterRef.current,
+            timer: installBatteryTimerRef.current ?? aptCutsceneTimerRef.current ?? 0,
+            camera: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+            player: { x: localPositionRef.current.x, y: localPositionRef.current.y },
+            sparky: aptSparky ? { x: aptSparky.root.position.x, y: aptSparky.root.position.y, z: aptSparky.root.position.z } : undefined,
+            scrap: scrap ? { x: scrap.root.position.x, y: scrap.root.position.y, z: scrap.root.position.z } : undefined,
+          });
+        }
+      }
+
       const beforeRender = performance.now();
       renderer.render(scene, camera);
       const afterRender = performance.now();

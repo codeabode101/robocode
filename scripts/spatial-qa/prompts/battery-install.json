@@ -1,0 +1,106 @@
+{
+  "cutscene": "battery-install",
+  "room": "apartment",
+  "roomBounds": { "xMin": -4.15, "xMax": 4.15, "yMin": -4.15, "yMax": 4.15 },
+  "coordinateSystem": "Z-axis points up (vertical). XY plane is the ground. Camera is perspective looking down.",
+  "phases": {
+    "approach": {
+      "description": "Player walks toward Sparky at (-1.8, -0.55). Sparky is at (0.2, 2.2) facing north. Scrap is in a cardboard box at (-2.8, 1.9).",
+      "expected": {
+        "camera": { "position": "follows player (player.x, player.y - 1.0, 2.0)", "lookAt": "(player.x, player.y + 1.5, 0.3)" },
+        "player": { "position": "walks from spawn (0, -1.5) toward target (-1.8, -0.55)", "z": 0.28 },
+        "sparky": { "position": "(0.2, 2.2, 0.28)", "facing": "north" },
+        "scrap": { "position": "(-2.6, 1.2, 0.24)", "inBox": true }
+      },
+      "code": {
+        "file": "src/components/GameMap.tsx",
+        "cameraLine": 6822,
+        "cameraSnippet": "scratchVec3.set(localPositionRef.current.x, localPositionRef.current.y - 1.0, 2.0);\ncamera.position.lerp(scratchVec3, 0.04);\ncamera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 1.5, 0.3);"
+      }
+    },
+    "hand-off": {
+      "description": "Player gives battery to Sparky. Battery removed from backpack. Both stand still. Camera behind player.",
+      "expected": {
+        "camera": { "position": "follows player (player.x, player.y - 1.0, 2.0)", "lookAt": "(player.x, player.y + 1.5, 0.3)" },
+        "player": { "position": "(-1.8, -0.55, 0.28)", "facing": "north" },
+        "sparky": { "position": "(0.2, 2.2, 0.28)", "facing": "north", "arms": "outward (leftArm.x = -PI/2, rightArm.x = -PI/2)" },
+        "scrap": { "position": "(-2.6, 1.2, 0.24)", "inBox": true }
+      },
+      "code": {
+        "file": "src/components/GameMap.tsx",
+        "cameraLine": 6822,
+        "cameraSnippet": "scratchVec3.set(localPositionRef.current.x, localPositionRef.current.y - 1.0, 2.0);\ncamera.position.lerp(scratchVec3, 0.04);\ncamera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 1.5, 0.3);"
+      }
+    },
+    "sparky-walk": {
+      "description": "Sparky walks from (0.2, 2.2) toward scrap at (-2.6, 0.2). Camera moves to a fixed position to show Sparky walking.",
+      "expected": {
+        "camera": { "position": "(-2.6, -0.2, 1.8)", "lookAt": "(-2.6, 0.6, 0.3)" },
+        "player": { "position": "(-1.8, -0.55, 0.28)" },
+        "sparky": { "position": "walking from (0.2, 2.2) toward (-2.6, 0.2, 0.28)" },
+        "scrap": { "position": "(-2.6, 1.2, 0.24)", "inBox": true }
+      },
+      "code": {
+        "file": "src/components/GameMap.tsx",
+        "cameraLine": 6826,
+        "cameraSnippet": "scratchVec3.set(-2.6, -0.2, 1.8);\ncamera.position.lerp(scratchVec3, 0.06);\ncamera.lookAt(-2.6, 0.6, 0.3);"
+      }
+    },
+    "open-chest": {
+      "description": "Sparky opens Scrap's chest. Scrap's cylindrical body is replaced with a torus (donut shape). A chest panel slides open. Camera zoomed in on Scrap.",
+      "expected": {
+        "camera": { "position": "(-3.5, 0.7, 1.8)", "lookAt": "(-2.6, 0.7, 0.3)" },
+        "player": { "position": "(-1.8, -0.55, 0.28)" },
+        "sparky": { "position": "(-2.6, 0.2, 0.28)", "facing": "north" },
+        "scrap": { "position": "(-2.6, 1.2, 0.24)", "body": "torus (donut shape instead of cylinder)", "chestPanel": "sliding outward (z: 0.08 → 0.23)" }
+      },
+      "code": {
+        "file": "src/components/GameMap.tsx",
+        "cameraLine": 6830,
+        "cameraSnippet": "scratchVec3.set(-3.5, 0.7, 1.8);\ncamera.position.lerp(scratchVec3, 0.08);\ncamera.lookAt(-2.6, 0.7, 0.3);"
+      }
+    },
+    "place-battery": {
+      "description": "A battery prop (small rectangular box) lerps from above into Scrap's open chest. Green glow starts. Camera stays zoomed on Scrap.",
+      "expected": {
+        "camera": { "position": "(-3.5, 0.7, 1.8)", "lookAt": "(-2.6, 0.7, 0.3)" },
+        "player": { "position": "(-1.8, -0.55, 0.28)" },
+        "sparky": { "position": "(-2.6, 0.2, 0.28)" },
+        "scrap": { "position": "(-2.6, 1.2, 0.24)", "body": "torus", "battery": "visible above chest, descending" }
+      },
+      "code": {
+        "file": "src/components/GameMap.tsx",
+        "cameraLine": 6830,
+        "cameraSnippet": "scratchVec3.set(-3.5, 0.7, 1.8);\ncamera.position.lerp(scratchVec3, 0.08);\ncamera.lookAt(-2.6, 0.7, 0.3);"
+      }
+    },
+    "chest-glow": {
+      "description": "Battery placed inside Scrap. Green glow pulses inside the chest. Chest panel slides closed. Scrap's eyes turn cyan. Camera stays zoomed on Scrap.",
+      "expected": {
+        "camera": { "position": "(-3.5, 0.7, 1.8)", "lookAt": "(-2.6, 0.7, 0.3)" },
+        "player": { "position": "(-1.8, -0.55, 0.28)" },
+        "sparky": { "position": "(-2.6, 0.2, 0.28)" },
+        "scrap": { "position": "(-2.6, 1.2, 0.24)", "eyes": "cyan (0x22d3ee)", "chestGlow": "green pulsing (opacity 0.3-0.45 at 6Hz)", "chestPanel": "closing (z: 0.23 → 0.08)" }
+      },
+      "code": {
+        "file": "src/components/GameMap.tsx",
+        "cameraLine": 6830,
+        "cameraSnippet": "scratchVec3.set(-3.5, 0.7, 1.8);\ncamera.position.lerp(scratchVec3, 0.08);\ncamera.lookAt(-2.6, 0.7, 0.3);"
+      }
+    },
+    "done": {
+      "description": "Cutscene ends. Scrap's body restored to cylinder. Sparky returns to apartment corner. Battery installed. Camera returns to normal player-follow.",
+      "expected": {
+        "camera": { "position": "normal player-follow mode", "lookAt": "player" },
+        "player": { "position": "(-1.8, -0.55, 0.28)" },
+        "sparky": { "position": "(0.2, 2.2, 0.28)" },
+        "scrap": { "position": "(-2.6, 1.2, 0.24)", "body": "cylinder (normal)" }
+      },
+      "code": {
+        "file": "src/components/GameMap.tsx",
+        "cameraLine": 6935,
+        "cameraSnippet": "cameraTargetPosRef.current.set(\n  px - sinYaw * cosPitch * cd,\n  py - cosYaw * cosPitch * cd,\n  Math.max(0.05, camZ)\n);\ncamera.position.copy(cameraTargetPosRef.current);\ncamera.lookAt(px, py, 0.5);"
+      }
+    }
+  }
+}
