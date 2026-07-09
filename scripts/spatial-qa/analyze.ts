@@ -104,7 +104,7 @@ BUG: {"v":"bug","edits":[{"file":"src/components/GameMap.tsx","line":NUM,"desc":
 
 async function main() {
   const cutsceneName = process.argv[2] || 'battery-install';
-  const modelName = (process.argv[3] || 'gemini-2.5-flash-lite').replace('--model=', '');
+  const modelName = (process.argv[3] || 'gemini-2.0-flash').replace('--model=', '');
   const outDir = path.join(OUTPUT_DIR, cutsceneName);
   const framesDir = path.join(outDir, 'frames');
 

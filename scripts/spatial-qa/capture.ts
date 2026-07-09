@@ -209,8 +209,6 @@ async function main() {
 
           // Check if cutscene is done (phase === 'done' or null after 'done')
           if (phase.name === 'done') {
-            // Wait for endCinematicCutscene() to flip camera back to player-follow mode
-            await page.waitForTimeout(2000);
             // Read actual post-cutscene state from fresh evaluation
             const postState = await page.evaluate(() => {
               const c = (window as any).__threeCamera?.position;
