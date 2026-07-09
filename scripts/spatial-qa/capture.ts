@@ -209,8 +209,26 @@ async function main() {
 
           // Check if cutscene is done (phase === 'done' or null after 'done')
           if (phase.name === 'done') {
-            // Take an extra frame after the done cleanup to capture the post-cutscene state
+            // Wait for endCinematicCutscene() to flip camera back to player-follow mode
             await page.waitForTimeout(2000);
+            // Capture post-cutscene state
+            const qaData2 = await page.evaluate(() => {
+              const s = (window as any).__qaState as any;
+              if (!s || !s.phases.length) return null;
+              return s.phases[s.phases.length - 1];
+            });
+            if (qaData2) {
+              const filename = `post-cutscene.png`;
+              const screenshotPath = path.join(framesDir, filename);
+              await page.screenshot({ path: screenshotPath, fullPage: false });
+              capturedFrames.push({
+                phaseIndex: capturedFrames.length,
+                phaseName: 'post-cutscene',
+                screenshotPath: filename,
+                metadata: qaData2,
+              });
+              console.log(`[capture] Post-cutscene state → ${filename}`);
+            }
             cutsceneComplete = true;
             break;
           }
