@@ -100,8 +100,17 @@ async function main() {
       cutsceneDone: profile.cutsceneDone, position: profile.position?.room,
     }));
 
-    // Inject QA state hooks before any page scripts run
     const page = await context.newPage();
+
+    // Set up QA state before any page script executes
+    await page.addInitScript(() => {
+      (window as any).__qaEnabled = true;
+      (window as any).__qaState = {
+        lastPhase: null,
+        phases: [],
+        cutsceneName: '',
+      };
+    });
 
     // Collect console errors
     const consoleErrors: string[] = [];
@@ -113,33 +122,31 @@ async function main() {
     console.log('[capture] Loading game...');
     await page.goto(`${BASE_URL}/game`, { waitUntil: 'load', timeout: 30000 });
 
+    // Debug: check what page loaded
+    const pageTitle = await page.title();
+    const pageUrl = page.url();
+    const hasCanvas = await page.evaluate(() => !!document.querySelector('canvas'));
+    const bodyLen = await page.evaluate(() => document.body?.innerHTML?.length || 0);
+    console.log(`[capture] Page title: "${pageTitle}", URL: ${pageUrl}, canvas: ${hasCanvas}, bodyLen: ${bodyLen}`);
+    // Dismiss any overlay modal by pressing Enter on window
+    await page.evaluate(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    });
+
     // Wait for canvas
     await page.waitForSelector('canvas', { timeout: 20000 });
     console.log('[capture] Canvas visible');
 
-    // Initialize QA state on the page
-    await page.evaluate(() => {
-      (window as any).__qaEnabled = true;
-      (window as any).__qaState = {
-        lastPhase: null,
-        phases: [],
-        cutsceneName: '',
-      };
-    });
+    // Wait for game initialization (Three.js scene setup, animation loop start)
+    await page.waitForTimeout(8000);
 
-    // Wait for game initialization
-    await page.waitForTimeout(5000);
-
-    // Dismiss controls modal if present
-    const modalDismissed = await page.evaluate(() => {
-      const modal = document.querySelector('[class*="fixed"]');
-      if (modal && modal.textContent?.includes('How to play')) {
-        modal.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-        return true;
-      }
-      return false;
-    });
-    console.log(`[capture] Controls modal dismissed: ${modalDismissed}`);
+    // Dismiss controls modal by pressing Enter (handler listens on window)
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(500);
+    const modalVisible = await page.evaluate(() => {
+      return document.body.innerText.includes('How to play') ? 'yes' : 'no';
+    }).catch(() => 'err');
+    console.log(`[capture] Modal 'How to play' visible after Enter: ${modalVisible}`);
 
     // Wait for cutscene to start
     await page.waitForTimeout(3000);
