@@ -2715,33 +2715,33 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
     };
     // Top-left grass block (-10.4 to -1.5, y=1.5 to 6.5)
-    outdoorGroup.add(createAbandoned(-8, 4, 3.5, 2.5, 6, 0, 0.06));
-    outdoorGroup.add(createAbandoned(-3.5, 2.5, 2.5, 2.0, 4, 1, -0.05));
-    outdoorGroup.add(createAbandoned(-4, 5.8, 2.0, 1.5, 3, 2, 0, false, true));
-    scatterDebris(-8, 4, 2.0, 10);
-    scatterDebris(-3.5, 2.5, 1.5, 8);
-    scatterDebris(-4, 5.8, 1.0, 6);
+    outdoorGroup.add(createAbandoned(-7, 4, 3.5, 2.5, 6, 0, 0.06));
+    outdoorGroup.add(createAbandoned(-4, 3.5, 2.5, 2.0, 4, 1, -0.05));
+    outdoorGroup.add(createAbandoned(-3.5, 5.5, 2.0, 1.5, 3, 2, 0, false, true));
+    scatterDebris(-7, 4, 2.0, 10);
+    scatterDebris(-4, 3.5, 1.5, 8);
+    scatterDebris(-3.5, 5.5, 1.0, 6);
     // Top-center grass block (1.5 to 10.5, y=1.5 to 6.5)
-    outdoorGroup.add(createAbandoned(4, 3.5, 3.0, 2.5, 7, 3));
-    outdoorGroup.add(createAbandoned(8.5, 5, 2.5, 2.0, 5, 0, 0, true));
-    outdoorGroup.add(createAbandoned(8, 2, 2.0, 1.5, 4, 1, 0.08));
-    scatterDebris(4, 3.5, 1.8, 10);
-    scatterDebris(8.5, 5, 1.5, 12);
-    scatterDebris(8, 2, 1.0, 7);
+    outdoorGroup.add(createAbandoned(4.5, 4, 3.0, 2.5, 7, 3));
+    outdoorGroup.add(createAbandoned(8.5, 4.5, 2.5, 2.0, 5, 0, 0, true));
+    outdoorGroup.add(createAbandoned(3.5, 2.5, 2.0, 1.5, 4, 1, 0.08));
+    scatterDebris(4.5, 4, 1.8, 10);
+    scatterDebris(8.5, 4.5, 1.5, 12);
+    scatterDebris(3.5, 2.5, 1.0, 7);
     // Top-right grass block (13.5 to 24, y=1.5 to 6.5)
-    outdoorGroup.add(createAbandoned(16, 4, 3.5, 2.5, 6, 0));
-    outdoorGroup.add(createAbandoned(20, 2.5, 3.0, 2.0, 5, 2, 0.04));
-    outdoorGroup.add(createAbandoned(22, 5.5, 2.5, 2.0, 4, 3, 0, false, true));
-    scatterDebris(16, 4, 2.0, 10);
-    scatterDebris(20, 2.5, 1.8, 9);
-    scatterDebris(22, 5.5, 1.5, 8);
+    outdoorGroup.add(createAbandoned(16.5, 4, 3.5, 2.5, 6, 0));
+    outdoorGroup.add(createAbandoned(19.5, 3.5, 3.0, 2.0, 5, 2, 0.04));
+    outdoorGroup.add(createAbandoned(22, 5, 2.5, 2.0, 4, 3, 0, false, true));
+    scatterDebris(16.5, 4, 2.0, 10);
+    scatterDebris(19.5, 3.5, 1.8, 9);
+    scatterDebris(22, 5, 1.5, 8);
     // Mid-right grass block (13.5 to 24, y=-6.5 to -1.5)
-    outdoorGroup.add(createAbandoned(16, -4, 3.5, 2.5, 7, 0, 0.1));
+    outdoorGroup.add(createAbandoned(16.5, -4, 3.5, 2.5, 7, 0, 0.1));
     outdoorGroup.add(createAbandoned(20, -3, 3.0, 2.0, 5, 1));
-    outdoorGroup.add(createAbandoned(22.5, -5.5, 2.5, 1.5, 4, 2, 0, true));
-    scatterDebris(16, -4, 2.0, 10);
+    outdoorGroup.add(createAbandoned(22, -5, 2.5, 1.5, 4, 2, 0, true));
+    scatterDebris(16.5, -4, 2.0, 10);
     scatterDebris(20, -3, 1.8, 9);
-    scatterDebris(22.5, -5.5, 1.2, 8);
+    scatterDebris(22, -5, 1.2, 8);
     // Extra scattered debris in empty corners
     scatterDebris(-9, 2, 0.6, 5);
     scatterDebris(-9, 6, 0.6, 5);
