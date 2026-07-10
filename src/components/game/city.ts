@@ -22,7 +22,7 @@ export function buildObstacles(params: ObstacleParams): Hitbox[] {
     { shape: 'circle', center: { x: -2.87, y: -5.3 }, radius: 0.4 },
 
     // Rafiq's Robots (pet workshop) — cover wall outer edges (bw=7.4, bd=2.4, walls 0.08 thick)
-    { shape: 'box', center: { x: -6, y: -11.8 }, halfWidth: 3.70, halfHeight: 1.20 },
+    { shape: 'box', center: { x: -6, y: -11.8 }, halfWidth: 3.70, halfHeight: 2.20 },
 
     // Arena footprint
     { shape: 'box', center: { x: arenaCenterX, y: arenaCenterY }, halfWidth: arenaHalfW, halfHeight: arenaHalfD },

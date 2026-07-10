@@ -2305,7 +2305,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       blending: THREE.AdditiveBlending, depthWrite: false,
     });
     const doorEntries: [number, number][] = [
-      [-6, -10.3],    // workshop
+      [-6, -9.6],    // workshop
       [18.75, -10.25], // arena
       [-9.6, -4.9],   // apartment
       [6.0, -10.2],   // shop
@@ -2376,7 +2376,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const psG = new THREE.MeshBasicMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
     const psFloor = new THREE.MeshToonMaterial({ color: 0x94a3b8, gradientMap: createGradientTexture(3) });
     const psAp = new THREE.MeshToonMaterial({ color: 0xf5e6d0, gradientMap: createGradientTexture(3) });
-    const cx = -6, cy = -11.8, bw = 7.4, bd = 2.4, bh = 1.7;
+    const cx = -6, cy = -11.8, bw = 7.4, bd = 4.4, bh = 1.7;
 
     // Ground floor slab
     const gSlab = new THREE.Mesh(new THREE.BoxGeometry(bw, bd, 0.04), psFloor);
@@ -2496,7 +2496,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // Exclamation mark above the workshop door, visible when player should enter
     const doorAnchor = new THREE.Group();
-    doorAnchor.position.set(-6, -10.0, 1.0);
+    doorAnchor.position.set(-6, -9.6, 1.0);
     outdoorGroup.add(doorAnchor);
     const doorMarker = addExclamationMarker(doorAnchor);
     workshopDoorMarkerRef.current = doorMarker;
@@ -2612,7 +2612,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const INSET = 0.02;
     const buildingFootprints: { x1: number; y1: number; x2: number; y2: number; cx: number; cy: number; bw: number; bd: number }[] = [
       { x1: -10.08, y1: -4.98, x2: -1.92, y2: -2.02, cx: -6, cy: -3.5, bw: 8.0, bd: 2.8 },
-      { x1: -9.7, y1: -13.0, x2: -2.3, y2: -10.6, cx: -6, cy: -11.8, bw: 7.4, bd: 2.4 },
+      { x1: -9.7, y1: -14.0, x2: -2.3, y2: -9.6, cx: -6, cy: -11.8, bw: 7.4, bd: 4.4 },
       { x1: -23.4, y1: -13.95, x2: -14.2, y2: -10.05, cx: -18.75, cy: -12, bw: 9.3, bd: 3.9 },
       { x1: 2.0, y1: -14.0, x2: 10.0, y2: -10.0, cx: 6, cy: -12, bw: 8.0, bd: 4.0 },
     ];
@@ -2932,7 +2932,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     });
     workshopDoorHitboxRef.current = {
       shape: 'circle',
-      center: { x: -6, y: -10.3 },
+      center: { x: -6, y: -9.6 },
       radius: 0.5,
     };
 
