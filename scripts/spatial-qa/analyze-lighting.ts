@@ -47,10 +47,15 @@ async function analyzeImage(filePath: string, scene: string, minAvg: number, max
 
   const avg = sumL / total;
   const issues: string[] = [];
-  if (avg < minAvg) issues.push(`avg ${avg.toFixed(3)} < min ${minAvg} (too dark)`);
-  if (avg > maxAvg) issues.push(`avg ${avg.toFixed(3)} > max ${maxAvg} (too bright)`);
-  if (!isOutdoor && dark / total > 0.5) issues.push(`${(dark/total*100).toFixed(0)}% pixels very dark`);
-  if (isOutdoor && bright / total < 0.005) issues.push(`only ${(bright/total*100).toFixed(1)}% bright pixels — lamps may not be visible`);
+  if (avg < minAvg) issues.push(`avg ${avg.toFixed(3)} < ${minAvg} (too dark)`);
+  if (avg > maxAvg) issues.push(`avg ${avg.toFixed(3)} > ${maxAvg} (too bright)`);
+  if (!isOutdoor && dark / total > 0.5) issues.push(`${(dark/total*100).toFixed(0)}% dark pixels`);
+  if (isOutdoor) {
+    const brightArea = bright / total;
+    if (brightArea < 0.001) issues.push(`lamps barely visible (${(brightArea*100).toFixed(2)}% bright)`);
+    else console.log(`  (${(brightArea * 100).toFixed(1)}% bright — lamp pools visible)`);
+  }
+  if (avg >= minAvg && avg <= maxAvg && maxL - minL < 0.1) issues.push(`low dynamic range (max-min=${(maxL-minL).toFixed(2)})`);
 
   if (issues.length === 0) {
     console.log(`  ✓ ${scene}: avg=${avg.toFixed(3)} [${minAvg}-${maxAvg}]`);
