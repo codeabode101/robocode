@@ -2129,7 +2129,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // SINGLE continuous road rectangle covering ALL road areas (y:-22 to y:9.5, h:31.5)
     const roadColor = 0x5a6a7a;
     const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(34, 32, 0.04), createToonMaterial(roadColor));
-    roadMesh.position.set(10, -6.25, 0.14);
+    roadMesh.position.set(6.6, -6.25, 0.14);
     roadMesh.receiveShadow = true;
     outdoorGroup.add(roadMesh);
     // Grass blocks ABOVE the road to carve out city blocks between roads
@@ -2187,8 +2187,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
     // Crosswalks removed — intersections are filled with road
     // Dashed yellow center lines for all roads
-    makeDashedLine(10, 0, 34, true); makeDashedLine(10, -8, 34, true);
-    makeDashedLine(10, 8, 34, true); makeDashedLine(10, -16, 34, true);
+    makeDashedLine(6.6, 0, 34, true); makeDashedLine(6.6, -8, 34, true);
+    makeDashedLine(6.6, 8, 34, true); makeDashedLine(6.6, -16, 34, true);
     makeDashedLine(0, -8, 28, false); makeDashedLine(12, -8, 28, false);
 
     // Small lake with 6 palm trees and fountain centerpiece
