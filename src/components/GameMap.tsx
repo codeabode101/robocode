@@ -2935,7 +2935,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // x=[-10.4,-1.0], y=[1.0,7.0] → center (-5.7, 4), max ~8.8×5.4
     outdoorGroup.add(createBigBuilding(-5.7, 4, 8.2, 5.0, 8,
       { wall: 0x4a4a54, trim: 0x33333d, accent: 0x5a5a64 },
-      { leanX: -0.12, brokenCorner: { x: -3.2, y: 2.0, size: 1.5 } }
+      { leanX: -0.07, brokenCorner: { x: -3.2, y: 2.0, size: 1.5 } }
     ));
     scatterDebris(-5.7, 4, 4.0, 16);
 
@@ -2943,7 +2943,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // x=[1.0,11.0], y=[1.0,7.0] → center (6, 4), max ~9.5×5.4
     outdoorGroup.add(createBigBuilding(6, 4, 8.8, 5.0, 7,
       { wall: 0x7a4a32, trim: 0x5c3520, accent: 0x8b5a3a },
-      { caveinFrac: 0.45, caveinOff: { x: 0.5, y: -0.3 } }
+      { caveinFrac: 0.5, caveinOff: { x: 0.5, y: -0.3 } }
     ));
     scatterDebris(6, 4, 4.0, 16);
 
@@ -2959,7 +2959,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // x=[13.0,24], y=[-7.0,-1.0] → center (18.5, -4), max ~10.5×5.4
     outdoorGroup.add(createBigBuilding(18.5, -4, 9.5, 5.0, 9,
       { wall: 0x3a3a4a, trim: 0x2a2a3a, accent: 0x4a4a5a },
-      { leanY: 0.06, brokenCorner: { x: 3.5, y: 1.5, size: 1.8 } }
+      { leanY: 0.04, brokenCorner: { x: 3.5, y: 1.5, size: 1.8 } }
     ));
     scatterDebris(18.5, -4, 4.5, 18);
 
