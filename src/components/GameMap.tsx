@@ -2103,11 +2103,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // D-shaped island: flat left edge at x=-11, circular elsewhere
     const flatX = -10.4;
-    const chordY = Math.sqrt(ISLAND_RADIUS * ISLAND_RADIUS - flatX * flatX);
+    const flatY = 14;
+    const chordTopY = Math.sqrt(ISLAND_RADIUS * ISLAND_RADIUS - flatX * flatX);
+    const chordRightX = Math.sqrt(ISLAND_RADIUS * ISLAND_RADIUS - flatY * flatY);
     const islandShape = new THREE.Shape();
-    islandShape.moveTo(flatX, -chordY);
-    islandShape.lineTo(flatX, chordY);
-    islandShape.absarc(0, 0, ISLAND_RADIUS, Math.atan2(chordY, flatX), Math.atan2(-chordY, flatX), true);
+    islandShape.moveTo(flatX, -flatY);
+    islandShape.lineTo(chordRightX, -flatY);
+    islandShape.absarc(0, 0, ISLAND_RADIUS, Math.atan2(-flatY, chordRightX), Math.atan2(chordTopY, flatX), false);
+    islandShape.lineTo(flatX, -flatY);
     const grassTex = getTileTexture('tile_01.png');
     grassTex.wrapS = THREE.RepeatWrapping;
     grassTex.wrapT = THREE.RepeatWrapping;
@@ -2128,8 +2131,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // SINGLE continuous road rectangle covering ALL road areas (y:-22 to y:9.5, h:31.5)
     const roadColor = 0x5a6a7a;
-    const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(34, 32, 0.04), createToonMaterial(roadColor));
-    roadMesh.position.set(6.6, -6.25, 0.14);
+    const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(34, 24, 0.04), createToonMaterial(roadColor));
+    roadMesh.position.set(6.6, -2, 0.14);
     roadMesh.receiveShadow = true;
     outdoorGroup.add(roadMesh);
     // Grass blocks ABOVE the road to carve out city blocks between roads
@@ -2143,7 +2146,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const yGaps: [number, number, number][] = [
       [1.5, 6.5, 4],     // between h-y0 (1.5) and h-y8p (6.5)
       [-6.5, -1.5, -4],   // between h-y8 (-6.5) and h-y0 (-1.5)
-      [-14.5, -9.5, -12], // between h-y16 (-14.5) and h-y8 (-9.5)
+      [-14, -9.5, -11.75], // between h-y16 (-14) and h-y8 (-9.5)
     ];
     const xGaps: [number, number, number][] = [
       [-10.4, -1.5, -5.95], [1.5, 10.5, 6], [13.5, 24, 18.75],
@@ -2166,11 +2169,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
     // Vertical sidewalks: split at each horizontal road
     const vSW = (x: number) => {
-      [[-14.5,-9.5],[-6.5,-1.5],[1.5,6.5]].forEach(([y1,y2]) => {
+      [[-14,-9.5],[-6.5,-1.5],[1.5,6.5]].forEach(([y1,y2]) => {
         makeSW(x, (y1+y2)/2, sw, y2-y1);
       });
     };
-    hSW(1.75); hSW(-1.75); hSW(-6.25); hSW(-9.75); hSW(6.25); hSW(9.75); hSW(-14.25); hSW(-17.75);
+    hSW(1.75); hSW(-1.75); hSW(-6.25); hSW(-9.75); hSW(6.25); hSW(9.75);
     vSW(-1.75); vSW(1.75); vSW(-10.25); vSW(10.25); vSW(13.75);
 
     // Street markings - dashed yellow center lines
@@ -2188,7 +2191,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Crosswalks removed — intersections are filled with road
     // Dashed yellow center lines for all roads
     makeDashedLine(6.6, 0, 34, true); makeDashedLine(6.6, -8, 34, true);
-    makeDashedLine(6.6, 8, 34, true); makeDashedLine(6.6, -16, 34, true);
+    makeDashedLine(6.6, 8, 34, true);
     makeDashedLine(0, -8, 28, false); makeDashedLine(12, -8, 28, false);
 
     // Small lake with 6 palm trees and fountain centerpiece
@@ -2281,8 +2284,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       [-1.75, -1.75], [1.75, -1.75], [-1.75, 1.75], [1.75, 1.75],
       [-1.75, -6.25], [1.75, -6.25], [-10.25, -1.75],
       [10.25, -1.75], [13.75, -1.75], [-10.25, -9.75],
-      [10.25, -9.75], [13.75, -9.75], [-1.75, -14.25], [1.75, -14.25],
-      [18.25, -14.25], [21.75, -14.25],
+      [10.25, -9.75], [13.75, -9.75],
     ];
     lightPositions.forEach(([lx, ly]) => {
       const pole = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 1), poleMat);
@@ -3960,6 +3962,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (candidate.x < (onDock ? DOCK_WEST_X : FLAT_EDGE_X)) candidate.x = onDock ? DOCK_WEST_X : FLAT_EDGE_X;
             const maxRadius = ISLAND_RADIUS - PLAYER_RADIUS;
             if (candidate.length() > maxRadius) candidate.setLength(maxRadius);
+            const FLAT_BOTTOM_Y = -14 + PLAYER_RADIUS;
+            if (candidate.y < FLAT_BOTTOM_Y) candidate.y = FLAT_BOTTOM_Y;
             const canEnterBuildings = sparkyQuestStageRef.current !== 'intro' || sparkyHomeArrivedRef.current;
             const hitsObstacle = collidesWithAny(candidate, obstacleHitboxesRef.current) ||
               (!canEnterBuildings && apartmentDoorHitboxRef.current && isInsideHitbox(candidate, apartmentDoorHitboxRef.current)) ||
