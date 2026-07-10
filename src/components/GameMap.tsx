@@ -2193,6 +2193,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     makeDashedLine(6.6, 0, 34, true); makeDashedLine(6.6, -8, 34, true);
     makeDashedLine(6.6, 8, 34, true);
     makeDashedLine(12, -2, 24, false);
+    makeDashedLine(0, 0.25, 19.5, false);  // vertical from parking lot (y=-9.5) to road top (y=10)
 
     // Parking lot at (0, -11) — 3 spaces in the 3-unit gap between bottom grass columns
     const pkMat = createToonMaterial(0x3a3a4a);
