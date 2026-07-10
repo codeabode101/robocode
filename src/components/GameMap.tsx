@@ -2011,8 +2011,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const mountElement = mountRef.current;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a1a);
-    scene.fog = new THREE.FogExp2(0x0a0a1a, 0.035);
+    scene.background = new THREE.Color(0x4a4a5a);
+    scene.fog = new THREE.FogExp2(0x4a4a5a, 0.006);
     sceneRef.current = scene;
 
     const outdoorGroup = new THREE.Group();
@@ -2072,11 +2072,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     mountElement.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.28);
+    const ambientLight = new THREE.AmbientLight(0xeeeeee, 0.5);
     scene.add(ambientLight);
     ambientLightRef.current = ambientLight;
 
-    const sunLight = new THREE.DirectionalLight(0x884422, 0.15);
+    const sunLight = new THREE.DirectionalLight(0xffeedd, 0.55);
     sunLight.position.set(-10, -8, 5);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(512, 512);
@@ -2091,14 +2091,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const sun = new THREE.Mesh(
       new THREE.CircleGeometry(1.1, 30),
-      createToonMaterial(0xcc4422, 0.15, 0.03)
+      createToonMaterial(0xffdd99, 0.4, 0.03)
     );
     sun.position.set(8.5, 6.8, 5.2);
     outdoorGroup.add(sun);
 
     const water = new THREE.Mesh(
       new THREE.PlaneGeometry(2000, 2000),
-      createToonMaterial(0x080818)
+      createToonMaterial(0x2a3a4a)
     );
     water.position.z = 0.02;
     water.receiveShadow = true;
@@ -6521,7 +6521,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         cloud.position.x += Math.sin(worldTime * (0.08 + i * 0.03) + i) * 0.0025;
       });
 
-      const roomBg = inWorkshopRoomRef.current ? 0x3a2a18 : inShopRoomRef.current ? 0x3a3a1a : inArenaRoomRef.current ? 0x2a3850 : inApartmentRoomRef.current ? 0x3a2a2a : 0x0a0a1a;
+      const roomBg = inWorkshopRoomRef.current ? 0x3a2a18 : inShopRoomRef.current ? 0x3a3a1a : inArenaRoomRef.current ? 0x2a3850 : inApartmentRoomRef.current ? 0x3a2a2a : 0x4a4a5a;
         outdoorGroup.visible = !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current;
         workshopRoomGroup.visible = inWorkshopRoomRef.current;
         arenaRoomGroup.visible = inArenaRoomRef.current;
@@ -6541,11 +6541,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (ambientLightRef.current) {
           const al = ambientLightRef.current;
           if (inside) {
-            al.color.setHex(0x332211);
-            al.intensity += (0.55 - al.intensity) * 0.03;
+            al.color.setHex(0x554433);
+            al.intensity += (0.75 - al.intensity) * 0.03;
           } else {
-            al.color.setHex(0x1a1a2e);
-            al.intensity += (0.28 - al.intensity) * 0.03;
+            al.color.setHex(0xeeeeee);
+            al.intensity += (0.5 - al.intensity) * 0.03;
           }
         }
         if (cinemCamActiveRef.current) {
