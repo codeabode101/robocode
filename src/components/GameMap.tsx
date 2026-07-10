@@ -2192,7 +2192,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Dashed yellow center lines for all roads
     makeDashedLine(6.6, 0, 34, true); makeDashedLine(6.6, -8, 34, true);
     makeDashedLine(6.6, 8, 34, true);
-    makeDashedLine(0, -8, 28, false); makeDashedLine(12, -8, 28, false);
+    makeDashedLine(0, -2, 24, false); makeDashedLine(12, -2, 24, false);
 
     // Small lake with 6 palm trees and fountain centerpiece
     const lx = 6, ly = -4, lr = 1.8;
