@@ -2102,7 +2102,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(water);
 
     // D-shaped island: flat left edge at x=-11, circular elsewhere
-    const flatX = -11;
+    const flatX = -10.4;
     const chordY = Math.sqrt(ISLAND_RADIUS * ISLAND_RADIUS - flatX * flatX);
     const islandShape = new THREE.Shape();
     islandShape.moveTo(flatX, -chordY);
@@ -2129,7 +2129,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // SINGLE continuous road rectangle covering ALL road areas (y:-22 to y:9.5, h:31.5)
     const roadColor = 0x5a6a7a;
     const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(35, 32, 0.04), createToonMaterial(roadColor));
-    roadMesh.position.set(6.5, -6.25, 0.14);
+    roadMesh.position.set(6.6, -6.25, 0.14);
     roadMesh.receiveShadow = true;
     outdoorGroup.add(roadMesh);
     // Grass blocks ABOVE the road to carve out city blocks between roads
@@ -2146,7 +2146,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       [-14.5, -9.5, -12], // between h-y16 (-14.5) and h-y8 (-9.5)
     ];
     const xGaps: [number, number, number][] = [
-      [-11, -1.5, -6.25], [1.5, 10.5, 6], [13.5, 24, 18.75],
+      [-10.4, -1.5, -5.95], [1.5, 10.5, 6], [13.5, 24, 18.75],
     ];
     yGaps.forEach(([y1, y2, yc]) => {
       xGaps.forEach(([x1, x2, xc]) => { addG(xc, yc, x2 - x1, y2 - y1); });
@@ -2187,8 +2187,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
     // Crosswalks removed — intersections are filled with road
     // Dashed yellow center lines for all roads
-    makeDashedLine(6.5, 0, 35, true); makeDashedLine(6.5, -8, 35, true);
-    makeDashedLine(6.5, 8, 35, true); makeDashedLine(6.5, -16, 35, true);
+    makeDashedLine(6.6, 0, 34, true); makeDashedLine(6.6, -8, 34, true);
+    makeDashedLine(6.6, 8, 34, true); makeDashedLine(6.6, -16, 34, true);
     makeDashedLine(0, -8, 28, false); makeDashedLine(12, -8, 28, false);
 
     // Small lake with 6 palm trees and fountain centerpiece
@@ -2514,24 +2514,24 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const shopDoorMarker = addExclamationMarker(shopDoorAnchor);
     shopDoorMarkerRef.current = shopDoorMarker;
 
-    // Dock at island's flat edge — replaces the transporter store
+    // Dock at island's flat edge — extends west from the cut
     {
       const woodMat = createToonMaterial(0x6b4226);
       const darkWoodMat = createToonMaterial(0x4a2e15);
       const metalMat = createToonMaterial(0x555555);
-      // Main deck platform — extends 5 units west from island edge
+      // Main deck platform — extends 5 units west from island edge (-10.4)
       const deck = new THREE.Mesh(new THREE.BoxGeometry(5, 3.5, 0.08), woodMat);
-      deck.position.set(-13.5, -8, 0.12);
+      deck.position.set(-12.9, -8, 0.12);
       deck.receiveShadow = true;
       outdoorGroup.add(deck);
       // Plank grooves
       for (let i = -1.4; i <= 1.4; i += 0.75) {
         const groove = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.02, 0.02), darkWoodMat);
-        groove.position.set(-13.5, -8 + i, 0.17);
+        groove.position.set(-12.9, -8 + i, 0.17);
         outdoorGroup.add(groove);
       }
       // Corner support posts
-      const postPositions: [number, number][] = [[-15.9, -9.6], [-15.9, -6.4], [-11.1, -9.6], [-11.1, -6.4]];
+      const postPositions: [number, number][] = [[-15.3, -9.6], [-15.3, -6.4], [-10.5, -9.6], [-10.5, -6.4]];
       postPositions.forEach(([px, py]) => {
         const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.6, 8), darkWoodMat);
         post.rotation.x = Math.PI / 2;
@@ -2541,11 +2541,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Edge planks (N+S rim)
       for (const side of [-1, 1]) {
         const rim = new THREE.Mesh(new THREE.BoxGeometry(5, 0.08, 0.04), woodMat);
-        rim.position.set(-13.5, -8 + side * 1.7, 0.14);
+        rim.position.set(-12.9, -8 + side * 1.7, 0.14);
         outdoorGroup.add(rim);
       }
       // Mooring bollards
-      const bollardPositions: [number, number][] = [[-15.7, -8.5], [-15.7, -7.5], [-11.2, -8]];
+      const bollardPositions: [number, number][] = [[-15.1, -8.5], [-15.1, -7.5], [-10.6, -8]];
       bollardPositions.forEach(([bx, by]) => {
         const bollard = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.12, 8), metalMat);
         bollard.rotation.x = Math.PI / 2;
@@ -2553,7 +2553,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         outdoorGroup.add(bollard);
       });
       // Rope coils on the deck
-      const ropePositions: [number, number][] = [[-14.3, -8.2], [-12.6, -7.2]];
+      const ropePositions: [number, number][] = [[-13.7, -8.2], [-12.0, -7.2]];
       ropePositions.forEach(([rx, ry]) => {
         for (let j = 0; j < 3; j++) {
           const coil = new THREE.Mesh(new THREE.TorusGeometry(0.05 + j * 0.02, 0.012, 6, 10), createToonMaterial(0xc4a56a));
@@ -2564,13 +2564,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       });
       // Lantern on a post
       const lampPost = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.5), createToonMaterial(0x333333));
-      lampPost.position.set(-11.5, -6.8, 0.35);
+      lampPost.position.set(-10.9, -6.8, 0.35);
       outdoorGroup.add(lampPost);
       const lampSphere = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-      lampSphere.position.set(-11.5, -6.8, 0.6);
+      lampSphere.position.set(-10.9, -6.8, 0.6);
       outdoorGroup.add(lampSphere);
       const lampGlow = new THREE.PointLight(0xfef08a, 0.4, 3);
-      lampGlow.position.set(-11.5, -6.8, 0.6);
+      lampGlow.position.set(-10.9, -6.8, 0.6);
       outdoorGroup.add(lampGlow);
       // Small rowboat tied alongside
       {
@@ -2584,7 +2584,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const seat = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.18, 0.02), createToonMaterial(0x3a2a1a));
         seat.position.set(0, 0, 0.14);
         boat.add(seat);
-        boat.position.set(-15.8, -7, 0.04);
+        boat.position.set(-15.2, -7, 0.04);
         boat.rotation.z = 0.15;
         outdoorGroup.add(boat);
       }
@@ -3954,8 +3954,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
             }
           } else {
-            const FLAT_EDGE_X = -11 + PLAYER_RADIUS;
-            const DOCK_WEST_X = -16 + PLAYER_RADIUS;
+            const FLAT_EDGE_X = -10.4 + PLAYER_RADIUS;
+            const DOCK_WEST_X = -15.4 + PLAYER_RADIUS;
             const onDock = candidate.y >= -9.75 && candidate.y <= -6.25;
             if (candidate.x < (onDock ? DOCK_WEST_X : FLAT_EDGE_X)) candidate.x = onDock ? DOCK_WEST_X : FLAT_EDGE_X;
             const maxRadius = ISLAND_RADIUS - PLAYER_RADIUS;

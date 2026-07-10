@@ -31,9 +31,9 @@ export function buildObstacles(params: ObstacleParams): Hitbox[] {
     { shape: 'circle', center: { x: 6, y: -4 }, radius: 0.6 },
 
     // Dock edge obstacles (prevent falling off N/S/W sides)
-    { shape: 'box', center: { x: -13.5, y: -9.6 }, halfWidth: 2.5, halfHeight: 0.1 },
-    { shape: 'box', center: { x: -13.5, y: -6.4 }, halfWidth: 2.5, halfHeight: 0.1 },
-    { shape: 'box', center: { x: -15.9, y: -8 }, halfWidth: 0.1, halfHeight: 1.6 },
+    { shape: 'box', center: { x: -12.9, y: -9.6 }, halfWidth: 2.5, halfHeight: 0.1 },
+    { shape: 'box', center: { x: -12.9, y: -6.4 }, halfWidth: 2.5, halfHeight: 0.1 },
+    { shape: 'box', center: { x: -15.4, y: -8 }, halfWidth: 0.1, halfHeight: 1.6 },
 
     // Parts shop building
     { shape: 'box', center: { x: 6.0, y: -12.0 }, halfWidth: 4.0, halfHeight: 2.0 },
