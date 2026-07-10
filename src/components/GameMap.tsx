@@ -2951,25 +2951,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { shape: 'box', center: { x: 3.4, y: -2.4 }, halfWidth: 0.625, halfHeight: 0.41 },
     ];
 
-    const clouds: THREE.Group[] = [];
-    for (let i = 0; i < 7; i += 1) {
-      const cloud = new THREE.Group();
-      const cloudColor = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 });
-      const puffs = [
-        { x: -0.45, y: 0, r: 0.45 },
-        { x: 0, y: 0.1, r: 0.5 },
-        { x: 0.48, y: 0, r: 0.38 },
-      ];
-      puffs.forEach((puff) => {
-        const mesh = new THREE.Mesh(new THREE.CircleGeometry(puff.r, 18), cloudColor);
-        mesh.position.set(puff.x, puff.y, 0.13);
-        cloud.add(mesh);
-      });
-      cloud.position.set(-26 + i * 8.5, 12 - i * 1.1, 0.13);
-      clouds.push(cloud);
-      outdoorGroup.add(cloud);
-    }
-
     const playerVis = buildPlayerVisual(0x3b82f6, '');
     const localGroup = playerVis.root;
     leftLegPivotRef.current = playerVis.leftLegPivot;
@@ -6403,10 +6384,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       }
 
-      clouds.forEach((cloud, i) => {
-        cloud.position.x += Math.sin(worldTime * (0.08 + i * 0.03) + i) * 0.0025;
-      });
-
       const roomBg = inWorkshopRoomRef.current ? 0x3a2a18 : inShopRoomRef.current ? 0x3a3a1a : inArenaRoomRef.current ? 0x2a3850 : inApartmentRoomRef.current ? 0x3a2a2a : 0x4a4a5a;
         outdoorGroup.visible = !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current;
         workshopRoomGroup.visible = inWorkshopRoomRef.current;
@@ -6796,7 +6773,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       rightLegPivotRef.current = null;
       rightArmPivotRef.current = null;
       disposeObject(sparky.root);
-      clouds.forEach((cloud) => disposeObject(cloud));
       shops.forEach((shop) => disposeObject(shop));
       disposeObject(ps);
       if (shopRoomGroupRef.current) {
