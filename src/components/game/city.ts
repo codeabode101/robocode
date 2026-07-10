@@ -39,21 +39,20 @@ export function buildObstacles(params: ObstacleParams): Hitbox[] {
     { shape: 'box', center: { x: 6.0, y: -12.0 }, halfWidth: 4.0, halfHeight: 2.0 },
 
     // Abandoned buildings — Top-left block
-    { shape: 'box', center: { x: -8, y: 3.5 }, halfWidth: 0.5, halfHeight: 0.33 },
-    { shape: 'box', center: { x: -5, y: 5.3 }, halfWidth: 0.55, halfHeight: 0.28 },
-    { shape: 'box', center: { x: -3, y: 2.5 }, halfWidth: 0.43, halfHeight: 0.30 },
+    { shape: 'box', center: { x: -8, y: 4 }, halfWidth: 1.75, halfHeight: 1.25 },
+    { shape: 'box', center: { x: -3.5, y: 2.5 }, halfWidth: 1.25, halfHeight: 1.0 },
+    { shape: 'box', center: { x: -4, y: 5.8 }, halfWidth: 1.0, halfHeight: 0.75 },
     // Top-center block
-    { shape: 'box', center: { x: 3.5, y: 3 }, halfWidth: 0.40, halfHeight: 0.28 },
-    { shape: 'box', center: { x: 7, y: 5.3 }, halfWidth: 0.45, halfHeight: 0.30 },
-    { shape: 'box', center: { x: 9.2, y: 2.5 }, halfWidth: 0.50, halfHeight: 0.30 },
+    { shape: 'box', center: { x: 4, y: 3.5 }, halfWidth: 1.5, halfHeight: 1.25 },
+    { shape: 'box', center: { x: 8.5, y: 5 }, halfWidth: 1.25, halfHeight: 1.0 },
+    { shape: 'box', center: { x: 8, y: 2 }, halfWidth: 1.0, halfHeight: 0.75 },
     // Top-right block
-    { shape: 'box', center: { x: 16, y: 5 }, halfWidth: 0.45, halfHeight: 0.30 },
-    { shape: 'box', center: { x: 19.5, y: 2.5 }, halfWidth: 0.43, halfHeight: 0.28 },
-    { shape: 'box', center: { x: 22.5, y: 4 }, halfWidth: 0.50, halfHeight: 0.33 },
-    { shape: 'box', center: { x: 21, y: 5.5 }, halfWidth: 0.40, halfHeight: 0.25 },
+    { shape: 'box', center: { x: 16, y: 4 }, halfWidth: 1.75, halfHeight: 1.25 },
+    { shape: 'box', center: { x: 20, y: 2.5 }, halfWidth: 1.5, halfHeight: 1.0 },
+    { shape: 'box', center: { x: 22, y: 5.5 }, halfWidth: 1.25, halfHeight: 1.0 },
     // Mid-right block
-    { shape: 'box', center: { x: 16, y: -5 }, halfWidth: 0.50, halfHeight: 0.30 },
-    { shape: 'box', center: { x: 20, y: -2.5 }, halfWidth: 0.55, halfHeight: 0.33 },
-    { shape: 'box', center: { x: 22.5, y: -4.5 }, halfWidth: 0.45, halfHeight: 0.30 },
+    { shape: 'box', center: { x: 16, y: -4 }, halfWidth: 1.75, halfHeight: 1.25 },
+    { shape: 'box', center: { x: 20, y: -3 }, halfWidth: 1.5, halfHeight: 1.0 },
+    { shape: 'box', center: { x: 22.5, y: -5.5 }, halfWidth: 1.25, halfHeight: 0.75 },
   ];
 }

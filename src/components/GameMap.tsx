@@ -2619,61 +2619,72 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const abWindow = abMat(0x0a0a1a);
     const abTrimMats = [abMat(0x2a2a3a), abMat(0x4a2a1a), abMat(0x5a2a1a), abMat(0x1a2a3a)];
     const abDebrisMat = abMat(0x5a4a3a);
-    const fh = 0.65;
+    const fh = 1.0;
     const createAbandoned = (bx: number, by: number, bw: number, bd: number, stories: number, style: number, tilt = 0, fallen = false, crushed = false) => {
       const g = new THREE.Group();
       const colors = [0x3a3a4a, 0x5a3a2a, 0x6a3a2a, 0x2a3a4a];
       const wMat = abMat(colors[style % colors.length]);
       const tMat = abTrimMats[style % abTrimMats.length];
       if (fallen) {
+        const totalLen = stories * 0.8;
         const segs = Math.ceil(stories * 0.5) + 1;
         for (let i = 0; i < segs; i++) {
-          const seg = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.35, bd, 0.1), abMat(i % 2 === 0 ? colors[style % colors.length] : 0x5a4a3a));
-          seg.position.set(i * bw * 0.3 - bw * 0.15, (Math.random() - 0.5) * 0.1, 0.06);
-          seg.rotation.z = (Math.random() - 0.5) * 0.4;
+          const seg = new THREE.Mesh(new THREE.BoxGeometry(totalLen / segs, bd, 0.18), abMat(i % 2 === 0 ? colors[style % colors.length] : 0x5a4a3a));
+          seg.position.set(i * (totalLen / segs) - totalLen * 0.35, (Math.random() - 0.5) * 0.2, 0.1);
+          seg.rotation.z = (Math.random() - 0.5) * 0.3;
           g.add(seg);
         }
-        for (let i = 0; i < 8; i++) {
-          const d = new THREE.Mesh(new THREE.DodecahedronGeometry(0.03 + Math.random() * 0.06), abDebrisMat);
-          d.position.set((Math.random() - 0.5) * bw, (Math.random() - 0.5) * bd, 0.03);
+        for (let i = 0; i < 12; i++) {
+          const d = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08 + Math.random() * 0.15), abDebrisMat);
+          d.position.set((Math.random() - 0.5) * bw, (Math.random() - 0.5) * bd, 0.06);
           g.add(d);
         }
       } else {
         for (let f = 0; f < stories; f++) {
           const zOff = f * fh;
-          const shrink = crushed && f === stories - 1 ? 0.6 : 1 - f * 0.01;
-          const body = new THREE.Mesh(new THREE.BoxGeometry(bw * shrink, bd, fh - 0.02), f === 0 ? tMat : wMat);
+          const shrink = crushed && f === stories - 1 ? 0.6 : 1 - f * 0.005;
+          const body = new THREE.Mesh(new THREE.BoxGeometry(bw * shrink, bd, fh - 0.03), f === 0 ? tMat : wMat);
           body.position.set(0, 0, zOff + fh / 2);
           g.add(body);
           if (f > 0 && f < stories - 1) {
-            for (let w = -1; w <= 1; w += 2) {
-              const win = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.02, 0.16), abWindow);
-              win.position.set(w * bw * 0.25, bd / 2 + 0.01, zOff + fh * 0.45);
+            const winCount = Math.floor(bw * 1.5);
+            for (let w = 0; w < winCount; w++) {
+              const wx = -bw / 2 + (w + 0.5) * (bw / winCount);
+              const win = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.03, 0.4), abWindow);
+              win.position.set(wx, bd / 2 + 0.015, zOff + fh * 0.45);
               g.add(win);
-              const beam = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.02, 0.18), tMat);
-              beam.position.set(w * bw * 0.25, bd / 2 + 0.01, zOff + fh * 0.45);
+              const beam = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.03, 0.02), tMat);
+              beam.position.set(wx, bd / 2 + 0.015, zOff + fh * 0.45);
               g.add(beam);
+              const beamV = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, 0.42), tMat);
+              beamV.position.set(wx, bd / 2 + 0.015, zOff + fh * 0.45);
+              g.add(beamV);
             }
           }
           if (crushed && f === stories - 1) {
-            const crack = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.3, 0.02, 0.04), abMat(0x0a0a0a));
-            crack.position.set(bw * 0.15, bd / 2 + 0.01, zOff + fh - 0.04);
-            crack.rotation.z = 0.5;
-            g.add(crack);
+            for (let c = 0; c < 3; c++) {
+              const crack = new THREE.Mesh(new THREE.BoxGeometry(0.4 + Math.random() * 0.5, 0.02, 0.04), abMat(0x0a0a0a));
+              crack.position.set((Math.random() - 0.5) * bw * 0.5, bd / 2 + 0.015, zOff + fh - 0.03);
+              crack.rotation.z = Math.random() * 0.8;
+              g.add(crack);
+            }
           }
         }
-        if (stories >= 3 && style === 2) {
-          const top = stories * fh;
-          const rubble = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.3, bd * 0.25, 0.08), abDebrisMat);
-          rubble.position.set(bw * 0.25, -bd * 0.25, top - 0.04);
-          rubble.rotation.z = 0.3;
-          g.add(rubble);
-        }
         if (stories >= 3) {
-          const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.12, 8), abMat(0x6a6a7a));
+          const top = stories * fh;
+          if (style === 2) {
+            const rubble = new THREE.Mesh(new THREE.BoxGeometry(bw * 0.4, bd * 0.35, 0.12), abDebrisMat);
+            rubble.position.set(bw * 0.2, -bd * 0.2, top - 0.06);
+            rubble.rotation.z = 0.3;
+            g.add(rubble);
+          }
+          const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.3, 8), abMat(0x6a6a7a));
           tank.rotation.x = Math.PI / 2;
-          tank.position.set(bw * 0.2, bd * 0.2, stories * fh + 0.06);
+          tank.position.set(bw * 0.25, bd * 0.25, top + 0.15);
           g.add(tank);
+          const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 6), abMat(0x555555));
+          pipe.position.set(-bw * 0.35, bd * 0.35, top * 0.7);
+          g.add(pipe);
         }
         if (tilt !== 0) g.rotation.z = tilt;
       }
@@ -2688,56 +2699,54 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const y = cy + Math.sin(a) * d;
         const t = Math.random();
         if (t < 0.35) {
-          const m = new THREE.Mesh(new THREE.DodecahedronGeometry(0.03 + Math.random() * 0.05), abDebrisMat);
-          m.position.set(x, y, 0.02 + Math.random() * 0.04);
+          const m = new THREE.Mesh(new THREE.DodecahedronGeometry(0.06 + Math.random() * 0.12), abDebrisMat);
+          m.position.set(x, y, 0.04 + Math.random() * 0.08);
           outdoorGroup.add(m);
         } else if (t < 0.65) {
-          const m = new THREE.Mesh(new THREE.BoxGeometry(0.06 + Math.random() * 0.1, 0.02 + Math.random() * 0.03, 0.015), abMat(0x5a3a2a));
-          m.position.set(x, y, 0.02);
+          const m = new THREE.Mesh(new THREE.BoxGeometry(0.15 + Math.random() * 0.3, 0.04 + Math.random() * 0.08, 0.03), abMat(0x5a3a2a));
+          m.position.set(x, y, 0.04);
           m.rotation.z = Math.random() * Math.PI * 2;
           outdoorGroup.add(m);
         } else {
-          const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.02 + Math.random() * 0.04), abMat(0x6b635e));
-          m.position.set(x, y, 0.015);
+          const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.05 + Math.random() * 0.1), abMat(0x6b635e));
+          m.position.set(x, y, 0.03);
           outdoorGroup.add(m);
         }
       }
     };
     // Top-left grass block (-10.4 to -1.5, y=1.5 to 6.5)
-    outdoorGroup.add(createAbandoned(-8, 3.5, 1.0, 0.65, 4, 0, 0.08));
-    outdoorGroup.add(createAbandoned(-5, 5.3, 1.1, 0.55, 3, 1));
-    outdoorGroup.add(createAbandoned(-3, 2.5, 0.85, 0.6, 2, 2, 0, false, true));
-    scatterDebris(-8, 3.5, 0.6, 6);
-    scatterDebris(-5, 5.3, 0.7, 8);
-    scatterDebris(-3, 2.5, 0.5, 5);
+    outdoorGroup.add(createAbandoned(-8, 4, 3.5, 2.5, 6, 0, 0.06));
+    outdoorGroup.add(createAbandoned(-3.5, 2.5, 2.5, 2.0, 4, 1, -0.05));
+    outdoorGroup.add(createAbandoned(-4, 5.8, 2.0, 1.5, 3, 2, 0, false, true));
+    scatterDebris(-8, 4, 2.0, 10);
+    scatterDebris(-3.5, 2.5, 1.5, 8);
+    scatterDebris(-4, 5.8, 1.0, 6);
     // Top-center grass block (1.5 to 10.5, y=1.5 to 6.5)
-    outdoorGroup.add(createAbandoned(3.5, 3, 0.8, 0.55, 5, 3));
-    outdoorGroup.add(createAbandoned(7, 5.3, 0.9, 0.6, 3, 0, 0, true));
-    outdoorGroup.add(createAbandoned(9.2, 2.5, 1.0, 0.6, 3, 1, -0.12));
-    scatterDebris(3.5, 3, 0.5, 7);
-    scatterDebris(7, 5.3, 0.8, 10);
-    scatterDebris(9.2, 2.5, 0.6, 6);
+    outdoorGroup.add(createAbandoned(4, 3.5, 3.0, 2.5, 7, 3));
+    outdoorGroup.add(createAbandoned(8.5, 5, 2.5, 2.0, 5, 0, 0, true));
+    outdoorGroup.add(createAbandoned(8, 2, 2.0, 1.5, 4, 1, 0.08));
+    scatterDebris(4, 3.5, 1.8, 10);
+    scatterDebris(8.5, 5, 1.5, 12);
+    scatterDebris(8, 2, 1.0, 7);
     // Top-right grass block (13.5 to 24, y=1.5 to 6.5)
-    outdoorGroup.add(createAbandoned(16, 5, 0.9, 0.6, 4, 0));
-    outdoorGroup.add(createAbandoned(19.5, 2.5, 0.85, 0.55, 3, 2));
-    outdoorGroup.add(createAbandoned(22.5, 4, 1.0, 0.65, 3, 3, 0, true));
-    outdoorGroup.add(createAbandoned(21, 5.5, 0.8, 0.5, 2, 1, 0, false, true));
-    scatterDebris(16, 5, 0.6, 7);
-    scatterDebris(19.5, 2.5, 0.5, 6);
-    scatterDebris(22.5, 4, 0.7, 9);
-    scatterDebris(21, 5.5, 0.5, 5);
+    outdoorGroup.add(createAbandoned(16, 4, 3.5, 2.5, 6, 0));
+    outdoorGroup.add(createAbandoned(20, 2.5, 3.0, 2.0, 5, 2, 0.04));
+    outdoorGroup.add(createAbandoned(22, 5.5, 2.5, 2.0, 4, 3, 0, false, true));
+    scatterDebris(16, 4, 2.0, 10);
+    scatterDebris(20, 2.5, 1.8, 9);
+    scatterDebris(22, 5.5, 1.5, 8);
     // Mid-right grass block (13.5 to 24, y=-6.5 to -1.5)
-    outdoorGroup.add(createAbandoned(16, -5, 1.0, 0.6, 5, 0, 0.15));
-    outdoorGroup.add(createAbandoned(20, -2.5, 1.1, 0.65, 3, 1));
-    outdoorGroup.add(createAbandoned(22.5, -4.5, 0.9, 0.6, 3, 2, 0, true));
-    scatterDebris(16, -5, 0.6, 8);
-    scatterDebris(20, -2.5, 0.7, 7);
-    scatterDebris(22.5, -4.5, 0.7, 8);
+    outdoorGroup.add(createAbandoned(16, -4, 3.5, 2.5, 7, 0, 0.1));
+    outdoorGroup.add(createAbandoned(20, -3, 3.0, 2.0, 5, 1));
+    outdoorGroup.add(createAbandoned(22.5, -5.5, 2.5, 1.5, 4, 2, 0, true));
+    scatterDebris(16, -4, 2.0, 10);
+    scatterDebris(20, -3, 1.8, 9);
+    scatterDebris(22.5, -5.5, 1.2, 8);
     // Extra scattered debris in empty corners
-    scatterDebris(-9, 2, 0.4, 4);
-    scatterDebris(-9, 6, 0.4, 4);
-    scatterDebris(2.5, 5.5, 0.5, 5);
-    scatterDebris(10, 5, 0.4, 4);
+    scatterDebris(-9, 2, 0.6, 5);
+    scatterDebris(-9, 6, 0.6, 5);
+    scatterDebris(2.5, 5.5, 0.6, 5);
+    scatterDebris(10, 5, 0.6, 5);
 
     // Parts shop at (6.0, -12.0) — fills the entire grass patch east of Rafiq's
     {
