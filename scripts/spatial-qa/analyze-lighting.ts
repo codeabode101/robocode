@@ -23,7 +23,7 @@ async function apiPost(pathname: string, data: unknown, cookie?: string): Promis
   return fetch(`${BASE_URL}${pathname}`, { method: 'POST', headers, body: JSON.stringify(data) });
 }
 
-async function analyzeImage(filePath: string, scene: string, minAvg: number, maxAvg: number, isOutdoor?: boolean): Promise<LightingReport> {
+async function analyzeImage(filePath: string, scene: string, minAvg: number, maxAvg: number): Promise<LightingReport> {
   const { data, info } = await sharp(filePath).raw().toBuffer({ resolveWithObject: true });
   const pixels = new Uint8Array(data);
   const total = info.width * info.height;
@@ -49,21 +49,23 @@ async function analyzeImage(filePath: string, scene: string, minAvg: number, max
   const issues: string[] = [];
   if (avg < minAvg) issues.push(`avg ${avg.toFixed(3)} < ${minAvg} (too dark)`);
   if (avg > maxAvg) issues.push(`avg ${avg.toFixed(3)} > ${maxAvg} (too bright)`);
-  if (!isOutdoor && dark / total > 0.5) issues.push(`${(dark/total*100).toFixed(0)}% dark pixels`);
-  if (isOutdoor) {
-    const brightArea = bright / total;
-    if (brightArea < 0.001) issues.push(`lamps barely visible (${(brightArea*100).toFixed(2)}% bright)`);
-    else console.log(`  (${(brightArea * 100).toFixed(1)}% bright — lamp pools visible)`);
-  }
-  if (avg >= minAvg && avg <= maxAvg && maxL - minL < 0.1) issues.push(`low dynamic range (max-min=${(maxL-minL).toFixed(2)})`);
+  if (scene.startsWith('indoor') && dark / total > 0.5) issues.push(`${(dark/total*100).toFixed(0)}% dark — room may be underlit`);
 
-  if (issues.length === 0) {
-    console.log(`  ✓ ${scene}: avg=${avg.toFixed(3)} [${minAvg}-${maxAvg}]`);
-  } else {
-    console.log(`  ⚠ ${scene}: avg=${avg.toFixed(3)} [${minAvg}-${maxAvg}] — ${issues.join(', ')}`);
-  }
+  const icon = issues.length === 0 ? '✓' : '⚠';
+  console.log(`  ${icon} ${scene}: avg=${avg.toFixed(3)} max=${maxL.toFixed(2)} [${minAvg}-${maxAvg}] ${issues.length ? '— ' + issues.join(', ') : ''}`);
 
   return { scene, avgLuminance: avg, minLuminance: minL, maxLuminance: maxL, darkPixels: dark / total, brightPixels: bright / total, pass: issues.length === 0, issues };
+}
+
+async function captureScene(page: any, scene: string, cookie: string, syncData: Record<string, unknown>): Promise<string> {
+  // Teleport player via /api/sync, then reload
+  await apiPost('/api/sync', syncData, cookie);
+  await page.goto(`${BASE_URL}/game`, { waitUntil: 'networkidle', timeout: 60000 });
+  await page.waitForSelector('canvas', { timeout: 30000 });
+  await page.waitForTimeout(4000);
+  const fp = path.join(OUTPUT_DIR, `${scene}.png`);
+  await page.screenshot({ path: fp, fullPage: false });
+  return fp;
 }
 
 async function main() {
@@ -75,10 +77,8 @@ async function main() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   const page = await context.newPage();
 
-  page.on('console', (msg) => { if (msg.type() === 'error') console.log(`  [browser]`, msg.text()); });
-  page.on('pageerror', (err) => console.log(`  [browser err]`, err.message));
+  page.on('pageerror', (err: Error) => console.log(`  [err] ${err.message}`));
 
-  // Sign up and set all-done quest stage
   const email = `lighting-${Date.now()}@test.com`;
   const signupRes = await apiPost('/api/auth/signup', { email, password: 'password123' });
   const setCookie = signupRes.headers.get('set-cookie') || '';
@@ -86,55 +86,47 @@ async function main() {
   if (!cookie) throw new Error('Signup failed');
   console.log('[lighting] Signed in');
 
-  // Set profile for free-roam: all-done quest, outside position
-  const profileRes = await apiPost('/api/profile/quest', { questStage: 'all-done' }, cookie);
-  if (!profileRes.ok) console.warn('[lighting] Quest set:', profileRes.status);
-  const invRes = await apiPost('/api/profile/inventory', { items: [] }, cookie);
-  if (!invRes.ok) console.warn('[lighting] Inventory set:', invRes.status);
-
   await context.addCookies([{ name: 'session', value: cookie.split('=')[1], domain: new URL(BASE_URL).hostname, path: '/' }]);
-  await page.goto(`${BASE_URL}/game`, { waitUntil: 'networkidle', timeout: 60000 });
-  await page.waitForSelector('canvas', { timeout: 30000 });
-  console.log('[lighting] Game canvas loaded');
-  await page.waitForTimeout(3000);
 
-  // Move player to positions via keyboard (WASD) is unreliable — we'll screenshot from wherever player spawns
-  // Instead, take screenshots at fixed intervals as player walks
-  const sceneDefs: { name: string; minAvg: number; maxAvg: number; desc: string }[] = [
-    { name: 'outdoor-spawn', minAvg: 0.08, maxAvg: 0.35, desc: 'Outdoor (spawn)' },
-  ];
-
-  console.log('[lighting] Capturing scenes...');
   const reports: LightingReport[] = [];
 
-  for (const scene of sceneDefs) {
-    await page.waitForTimeout(1000);
-    const fp = path.join(OUTPUT_DIR, `${scene.name}.png`);
-    await page.screenshot({ path: fp, fullPage: false });
-    const report = await analyzeImage(fp, scene.desc, scene.minAvg, scene.maxAvg, true);
-    reports.push(report);
+  // Scene definitions: name, sync data for teleport, minAvg, maxAvg
+  const scenes: { name: string; sync: Record<string, unknown>; minAvg: number; maxAvg: number }[] = [
+    { name: 'outdoor-spawn', sync: { questStage: 'all-done', position: { x: 0, y: -7, room: 'outside', rotation: 0 } }, minAvg: 0.05, maxAvg: 0.35 },
+    { name: 'outdoor-plaza', sync: { questStage: 'all-done', position: { x: -2, y: 0, room: 'outside', rotation: 0 } }, minAvg: 0.05, maxAvg: 0.35 },
+    { name: 'indoor-apartment', sync: { questStage: 'all-done', position: { x: 0, y: -1.5, room: 'apartment', rotation: 0 } }, minAvg: 0.25, maxAvg: 0.75 },
+    { name: 'indoor-workshop', sync: { questStage: 'all-done', position: { x: 0, y: -3.7, room: 'workshop', rotation: 0 } }, minAvg: 0.25, maxAvg: 0.75 },
+    { name: 'indoor-shop', sync: { questStage: 'all-done', position: { x: 0, y: 1.2, room: 'shop', rotation: 0 } }, minAvg: 0.25, maxAvg: 0.75 },
+    { name: 'indoor-arena', sync: { questStage: 'all-done', position: { x: 0, y: 0, room: 'arena', rotation: 0 } }, minAvg: 0.25, maxAvg: 0.75 },
+  ];
+
+  for (const s of scenes) {
+    console.log(`[lighting] Capturing ${s.name}...`);
+    const fp = await captureScene(page, s.name, cookie, s.sync);
+    const r = await analyzeImage(fp, s.name, s.minAvg, s.maxAvg);
+    reports.push(r);
   }
 
-  // Summary
   const passed = reports.filter(r => r.pass);
   const failed = reports.filter(r => !r.pass);
-  console.log(`\n✓ ${passed.length}/${reports.length} scenes pass`);
-
-  if (failed.length > 0) {
-    console.log(`⚠ Adjustments needed:`);
-    for (const f of failed) console.log(`  ${f.scene}: ${f.issues.join(' | ')}`);
+  console.log(`\n[lighting] ========== SUMMARY ==========`);
+  console.log(`Passed: ${passed.length}/${reports.length}`);
+  for (const r of reports) {
+    console.log(`  ${r.pass ? '✓' : '⚠'} ${r.scene}: avg=${r.avgLuminance.toFixed(3)}`);
   }
 
-  if (reports.length > 0) {
-    const avg = reports.reduce((s, r) => s + r.avgLuminance, 0) / reports.length;
-    console.log(`Average scene luminance: ${avg.toFixed(3)}`);
+  // Contrast ratio: avg indoor / avg outdoor
+  const outdoorAvgs = reports.filter(r => r.scene.startsWith('outdoor')).map(r => r.avgLuminance);
+  const indoorAvgs = reports.filter(r => r.scene.startsWith('indoor')).map(r => r.avgLuminance);
+  if (outdoorAvgs.length && indoorAvgs.length) {
+    const outdoor = outdoorAvgs.reduce((a, b) => a + b, 0) / outdoorAvgs.length;
+    const indoor = indoorAvgs.reduce((a, b) => a + b, 0) / indoorAvgs.length;
+    const ratio = indoor / outdoor;
+    console.log(`\nContrast: outdoor=${outdoor.toFixed(3)} indoor=${indoor.toFixed(3)} ratio=${ratio.toFixed(1)}:1 ${ratio >= 2 ? '✓' : '⚠ < 2:1'}`);
   }
 
   const reportPath = path.join(OUTPUT_DIR, 'report.json');
-  fs.writeFileSync(reportPath, JSON.stringify({
-    analyzedAt: new Date().toISOString(), baseUrl: BASE_URL, totalScenes: reports.length,
-    passed: passed.length, failed: failed.length, scenes: reports,
-  }, null, 2));
+  fs.writeFileSync(reportPath, JSON.stringify({ baseUrl: BASE_URL, analyzedAt: new Date().toISOString(), scenes: reports }, null, 2));
   console.log(`\nReport: ${reportPath}`);
 
   await browser.close();

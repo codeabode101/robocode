@@ -2023,9 +2023,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.add(workshopRoomGroup);
     workshopRoomGroupRef.current = workshopRoomGroup;
     {
-      const wl = new THREE.PointLight(0xfbbf24, 0.7, 6);
-      wl.position.set(2.35, 1.95, 1.2);
+      const wl = new THREE.PointLight(0xfbbf24, 1.8, 8);
+      wl.position.set(2.35, 1.95, 1.4);
       workshopRoomGroup.add(wl);
+      const wl2 = new THREE.PointLight(0xfbbf24, 0.8, 5);
+      wl2.position.set(-2.5, -2.0, 1.2);
+      workshopRoomGroup.add(wl2);
     }
 
     const arenaRoomGroup = new THREE.Group();
@@ -2033,7 +2036,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.add(arenaRoomGroup);
     arenaRoomGroupRef.current = arenaRoomGroup;
     {
-      const al = new THREE.PointLight(0xffffff, 0.6, 6);
+      const al = new THREE.PointLight(0xffffff, 2.0, 6);
       al.position.set(0, 0, 1.8);
       arenaRoomGroup.add(al);
     }
@@ -2043,9 +2046,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.add(apartmentRoomGroup);
     apartmentRoomGroupRef.current = apartmentRoomGroup;
     {
-      const al = new THREE.PointLight(0xfef08a, 0.5, 5);
+      const al = new THREE.PointLight(0xfef08a, 2.0, 6);
       al.position.set(0, 0, 1.5);
       apartmentRoomGroup.add(al);
+      const al2 = new THREE.PointLight(0xfef08a, 0.8, 4);
+      al2.position.set(-2.2, -2.5, 0.9);
+      apartmentRoomGroup.add(al2);
     }
 
     const aspect = mountElement.clientWidth / mountElement.clientHeight;
@@ -2782,8 +2788,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       scene.add(shopRoomGroup);
       shopRoomGroupRef.current = shopRoomGroup;
       {
-        const sl = new THREE.PointLight(0xfef08a, 0.5, 5);
-        sl.position.set(0, 0, 1.2);
+        const sl = new THREE.PointLight(0xfef08a, 2.0, 6);
+        sl.position.set(0, 0, 1.3);
         shopRoomGroup.add(sl);
       }
 
