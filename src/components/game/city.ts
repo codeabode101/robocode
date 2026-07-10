@@ -37,5 +37,23 @@ export function buildObstacles(params: ObstacleParams): Hitbox[] {
 
     // Parts shop building
     { shape: 'box', center: { x: 6.0, y: -12.0 }, halfWidth: 4.0, halfHeight: 2.0 },
+
+    // Abandoned buildings — Top-left block
+    { shape: 'box', center: { x: -8, y: 3.5 }, halfWidth: 0.5, halfHeight: 0.33 },
+    { shape: 'box', center: { x: -5, y: 5.3 }, halfWidth: 0.55, halfHeight: 0.28 },
+    { shape: 'box', center: { x: -3, y: 2.5 }, halfWidth: 0.43, halfHeight: 0.30 },
+    // Top-center block
+    { shape: 'box', center: { x: 3.5, y: 3 }, halfWidth: 0.40, halfHeight: 0.28 },
+    { shape: 'box', center: { x: 7, y: 5.3 }, halfWidth: 0.45, halfHeight: 0.30 },
+    { shape: 'box', center: { x: 9.2, y: 2.5 }, halfWidth: 0.50, halfHeight: 0.30 },
+    // Top-right block
+    { shape: 'box', center: { x: 16, y: 5 }, halfWidth: 0.45, halfHeight: 0.30 },
+    { shape: 'box', center: { x: 19.5, y: 2.5 }, halfWidth: 0.43, halfHeight: 0.28 },
+    { shape: 'box', center: { x: 22.5, y: 4 }, halfWidth: 0.50, halfHeight: 0.33 },
+    { shape: 'box', center: { x: 21, y: 5.5 }, halfWidth: 0.40, halfHeight: 0.25 },
+    // Mid-right block
+    { shape: 'box', center: { x: 16, y: -5 }, halfWidth: 0.50, halfHeight: 0.30 },
+    { shape: 'box', center: { x: 20, y: -2.5 }, halfWidth: 0.55, halfHeight: 0.33 },
+    { shape: 'box', center: { x: 22.5, y: -4.5 }, halfWidth: 0.45, halfHeight: 0.30 },
   ];
 }
