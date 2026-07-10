@@ -30,10 +30,10 @@ export function buildObstacles(params: ObstacleParams): Hitbox[] {
     // Fountain in lake
     { shape: 'circle', center: { x: 6, y: -4 }, radius: 0.6 },
 
-    // Transport store walls (open east side) — match wall geometry extents
-    { shape: 'box', center: { x: -18.75, y: -13.85 }, halfWidth: 4.55, halfHeight: 0.1 },
-    { shape: 'box', center: { x: -18.75, y: -10.15 }, halfWidth: 4.55, halfHeight: 0.1 },
-    { shape: 'box', center: { x: -23.3, y: -12 }, halfWidth: 0.1, halfHeight: 1.85 },
+    // Dock edge obstacles (prevent falling off N/S/W sides)
+    { shape: 'box', center: { x: -12.25, y: -9.6 }, halfWidth: 1.25, halfHeight: 0.1 },
+    { shape: 'box', center: { x: -12.25, y: -6.4 }, halfWidth: 1.25, halfHeight: 0.1 },
+    { shape: 'box', center: { x: -13.3, y: -8 }, halfWidth: 0.1, halfHeight: 1.6 },
 
     // Parts shop building
     { shape: 'box', center: { x: 6.0, y: -12.0 }, halfWidth: 4.0, halfHeight: 2.0 },

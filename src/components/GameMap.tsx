@@ -420,7 +420,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const shopDoorArmedRef = useRef(true);
   const shopRoomGroupRef = useRef<THREE.Group | null>(null);
   const shopNpcRef = useRef<{ root: THREE.Group } | null>(null);
-  const transportHitboxRef = useRef<CircleHitbox | null>(null);
   const sparkyPathIndexRef = useRef(0);
   const sparkyWaitTimerRef = useRef(0);
   const outdoorSparkyRef = useRef<ReturnType<typeof createRobotVisual> | null>(null);
@@ -805,8 +804,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [showBootDlg, setShowBootDlg] = useState(false);
   const [bootDlgStep, setBootDlgStep] = useState(0);
   const [bootDlgText, setBootDlgText] = useState('');
-  const [showTransportModal, setShowTransportModal] = useState(false);
-  const [transportMessage, setTransportMessage] = useState<string | null>(null);
   const [showFirstSaleModal, setShowFirstSaleModal] = useState(false);
   const backpack = useGameStoreKey('backpack');
   const [heldSlotIndex, setHeldSlotIndex] = useState<number | null>(null);
@@ -1644,10 +1641,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   // Universal cursor release — exit pointer lock when any clickable modal opens
   useEffect(() => {
-    if (showControlsModal || showBatteryDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showLaptopUI || showFirstSaleModal || showTransportModal || showShopModal || shopkeeperGreeting !== null) {
+    if (showControlsModal || showBatteryDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showLaptopUI || showFirstSaleModal || showShopModal || shopkeeperGreeting !== null) {
       if (document.pointerLockElement) document.exitPointerLock();
     }
-  }, [showControlsModal, showBatteryDlg, showRafiqLetterDlg, showWhoDlg, showSparkyDlg, showElectrocuteDlg, showStringDlg, showDateDlg, showVersionDlg, showBootDlg, showLaptopUI, showFirstSaleModal, showTransportModal, showShopModal, shopkeeperGreeting]);
+  }, [showControlsModal, showBatteryDlg, showRafiqLetterDlg, showWhoDlg, showSparkyDlg, showElectrocuteDlg, showStringDlg, showDateDlg, showVersionDlg, showBootDlg, showLaptopUI, showFirstSaleModal, showShopModal, shopkeeperGreeting]);
 
   // Controls modal Enter key handler
   useEffect(() => {
@@ -2104,12 +2101,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     water.receiveShadow = true;
     outdoorGroup.add(water);
 
+    // D-shaped island: flat left edge at x=-11, circular elsewhere
+    const flatX = -11;
+    const chordY = Math.sqrt(ISLAND_RADIUS * ISLAND_RADIUS - flatX * flatX);
+    const islandShape = new THREE.Shape();
+    islandShape.moveTo(flatX, -chordY);
+    islandShape.lineTo(flatX, chordY);
+    islandShape.absarc(0, 0, ISLAND_RADIUS, Math.atan2(chordY, flatX), Math.atan2(-chordY, flatX), true);
     const grassTex = getTileTexture('tile_01.png');
     grassTex.wrapS = THREE.RepeatWrapping;
     grassTex.wrapT = THREE.RepeatWrapping;
     grassTex.repeat.set(80, 80);
     const cityGround = new THREE.Mesh(
-      new THREE.CircleGeometry(ISLAND_RADIUS, 120),
+      new THREE.ShapeGeometry(islandShape, 120),
       new THREE.MeshToonMaterial({
         map: grassTex,
         gradientMap: createGradientTexture(3),
@@ -2124,8 +2128,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // SINGLE continuous road rectangle covering ALL road areas (y:-22 to y:9.5, h:31.5)
     const roadColor = 0x5a6a7a;
-    const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(48, 32, 0.04), createToonMaterial(roadColor));
-    roadMesh.position.set(0, -6.25, 0.14);
+    const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(35, 32, 0.04), createToonMaterial(roadColor));
+    roadMesh.position.set(6.5, -6.25, 0.14);
     roadMesh.receiveShadow = true;
     outdoorGroup.add(roadMesh);
     // Grass blocks ABOVE the road to carve out city blocks between roads
@@ -2142,7 +2146,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       [-14.5, -9.5, -12], // between h-y16 (-14.5) and h-y8 (-9.5)
     ];
     const xGaps: [number, number, number][] = [
-      [-24, -13.5, -18.75], [-10.5, -1.5, -6], [1.5, 10.5, 6], [13.5, 24, 18.75],
+      [-10.5, -1.5, -6], [1.5, 10.5, 6], [13.5, 24, 18.75],
     ];
     yGaps.forEach(([y1, y2, yc]) => {
       xGaps.forEach(([x1, x2, xc]) => { addG(xc, yc, x2 - x1, y2 - y1); });
@@ -2167,7 +2171,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       });
     };
     hSW(1.75); hSW(-1.75); hSW(-6.25); hSW(-9.75); hSW(6.25); hSW(9.75); hSW(-14.25); hSW(-17.75);
-    vSW(-1.75); vSW(1.75); vSW(-13.75); vSW(-10.25); vSW(10.25); vSW(13.75);
+    vSW(-1.75); vSW(1.75); vSW(-10.25); vSW(10.25); vSW(13.75);
 
     // Street markings - dashed yellow center lines
     // Dashed yellow center lines
@@ -2185,8 +2189,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Dashed yellow center lines for all roads (excl. stray x=20 vertical)
     makeDashedLine(0, 0, 48, true); makeDashedLine(0, -8, 48, true);
     makeDashedLine(0, 8, 48, true); makeDashedLine(0, -16, 48, true);
-    makeDashedLine(0, -8, 28, false); makeDashedLine(-12, -8, 28, false);
-    makeDashedLine(12, -8, 28, false);
+    makeDashedLine(0, -8, 28, false); makeDashedLine(12, -8, 28, false);
 
     // Small lake with 6 palm trees and fountain centerpiece
     const lx = 6, ly = -4, lr = 1.8;
@@ -2511,193 +2514,102 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const shopDoorMarker = addExclamationMarker(shopDoorAnchor);
     shopDoorMarkerRef.current = shopDoorMarker;
 
-    // Transport store at (-18.75, -12) — within left grass block, clears sidewalks
-    const bCx = -18.75, bCy = -12;
-    const bHw = 4.65, bHh = 1.95;
-    // Bounds check: east edge -14.1 clears vSW(-13.75) at x[-14.0,-13.5],
-    // north edge -10.05 clears hSW(-9.75) at y[-10.0,-9.5],
-    // south edge -13.95 clears hSW(-14.25) at y[-14.5,-14.0].
+    // Dock at island's flat edge — replaces the transporter store
     {
-      // Concrete floor slab
-      const floor = new THREE.Mesh(new THREE.BoxGeometry(bHw * 2, bHh * 2, 0.08), createToonMaterial(0x94a3b8));
-      floor.position.set(bCx, bCy, 0.04);
-      floor.receiveShadow = true;
-      outdoorGroup.add(floor);
-
-      // South wall (y-)
-      const sWall = new THREE.Mesh(new THREE.BoxGeometry(bHw * 2 - 0.2, 0.2, 2.4), createToonMaterial(0x64748b));
-      sWall.position.set(bCx, bCy - bHh + 0.1, 1.2);
-      sWall.castShadow = true;
-      outdoorGroup.add(sWall);
-
-      // North wall (y+)
-      const nWall = new THREE.Mesh(new THREE.BoxGeometry(bHw * 2 - 0.2, 0.2, 2.4), createToonMaterial(0x64748b));
-      nWall.position.set(bCx, bCy + bHh - 0.1, 1.2);
-      nWall.castShadow = true;
-      outdoorGroup.add(nWall);
-
-      // West wall (x-)
-      const wWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, bHh * 2 - 0.2, 2.4), createToonMaterial(0x64748b));
-      wWall.position.set(bCx - bHw + 0.1, bCy, 1.2);
-      wWall.castShadow = true;
-      outdoorGroup.add(wWall);
-
-      // East entrance pillars (x+ side, open)
-      for (let s = -1; s <= 1; s += 2) {
-        const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 2.4), createToonMaterial(0x475569));
-        pillar.position.set(bCx + bHw - 0.1, bCy + s * 1.5, 1.2);
-        pillar.castShadow = true;
-        outdoorGroup.add(pillar);
+      const woodMat = createToonMaterial(0x6b4226);
+      const darkWoodMat = createToonMaterial(0x4a2e15);
+      const metalMat = createToonMaterial(0x555555);
+      // Main deck platform
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.5, 0.08), woodMat);
+      deck.position.set(-12.25, -8, 0.12);
+      deck.receiveShadow = true;
+      outdoorGroup.add(deck);
+      // Plank grooves (parallel lines along E-W axis)
+      for (let i = -1.4; i <= 1.4; i += 0.75) {
+        const groove = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.02, 0.02), darkWoodMat);
+        groove.position.set(-12.25, -8 + i, 0.17);
+        outdoorGroup.add(groove);
       }
-
-      // Roof
-      const roof = new THREE.Mesh(new THREE.BoxGeometry(bHw * 2 + 0.4, bHh * 2 + 0.4, 0.08), createToonMaterial(0xdc2626));
-      roof.position.set(bCx, bCy, 2.44);
-      roof.castShadow = true;
-      outdoorGroup.add(roof);
-
-      // 3D sign above entrance — BoxGeometry(thin (faces east), wide, tall)
+      // Corner support posts
+      const postPositions: [number, number][] = [[-13.4, -9.6], [-13.4, -6.4], [-11.1, -9.6], [-11.1, -6.4]];
+      postPositions.forEach(([px, py]) => {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.6, 8), darkWoodMat);
+        post.rotation.x = Math.PI / 2;
+        post.position.set(px, py, 0.15);
+        outdoorGroup.add(post);
+      });
+      // Edge planks (N+S rim)
+      for (const side of [-1, 1]) {
+        const rim = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.08, 0.04), woodMat);
+        rim.position.set(-12.25, -8 + side * 1.7, 0.14);
+        outdoorGroup.add(rim);
+      }
+      // Mooring bollards
+      const bollardPositions: [number, number][] = [[-13.2, -8.5], [-13.2, -7.5], [-11.2, -8]];
+      bollardPositions.forEach(([bx, by]) => {
+        const bollard = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.12, 8), metalMat);
+        bollard.rotation.x = Math.PI / 2;
+        bollard.position.set(bx, by, 0.2);
+        outdoorGroup.add(bollard);
+      });
+      // Rope coils on the deck
+      const ropePositions: [number, number][] = [[-12.8, -8.2], [-11.6, -7.2]];
+      ropePositions.forEach(([rx, ry]) => {
+        for (let j = 0; j < 3; j++) {
+          const coil = new THREE.Mesh(new THREE.TorusGeometry(0.05 + j * 0.02, 0.012, 6, 10), createToonMaterial(0xc4a56a));
+          coil.rotation.x = Math.PI / 2;
+          coil.position.set(rx, ry, 0.14 + j * 0.02);
+          outdoorGroup.add(coil);
+        }
+      });
+      // Lantern on a post
+      const lampPost = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.5), createToonMaterial(0x333333));
+      lampPost.position.set(-11.3, -6.8, 0.35);
+      outdoorGroup.add(lampPost);
+      const lampSphere = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
+      lampSphere.position.set(-11.3, -6.8, 0.6);
+      outdoorGroup.add(lampSphere);
+      const lampGlow = new THREE.PointLight(0xfef08a, 0.4, 3);
+      lampGlow.position.set(-11.3, -6.8, 0.6);
+      outdoorGroup.add(lampGlow);
+      // Small rowboat tied alongside
+      {
+        const boat = new THREE.Group();
+        const boatHull = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.25, 0.12), createToonMaterial(0x4a3a2a));
+        boatHull.position.set(0, 0, 0.06);
+        boat.add(boatHull);
+        const prow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08), createToonMaterial(0x4a3a2a));
+        prow.position.set(0.35, 0, 0.1);
+        boat.add(prow);
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.18, 0.02), createToonMaterial(0x3a2a1a));
+        seat.position.set(0, 0, 0.14);
+        boat.add(seat);
+        boat.position.set(-13.3, -7, 0.04);
+        boat.rotation.z = 0.15;
+        outdoorGroup.add(boat);
+      }
+      // "DOCK" signpost
       {
         const sc = document.createElement('canvas');
-        sc.width = 512; sc.height = 96;
+        sc.width = 128; sc.height = 64;
         const sctx = sc.getContext('2d')!;
-        const rad = 12;
-        sctx.fillStyle = 'rgba(220,38,38,0.92)';
-        sctx.beginPath(); sctx.moveTo(rad, 0); sctx.lineTo(512 - rad, 0);
-        sctx.quadraticCurveTo(512, 0, 512, rad); sctx.lineTo(512, 96 - rad);
-        sctx.quadraticCurveTo(512, 96, 512 - rad, 96); sctx.lineTo(rad, 96);
-        sctx.quadraticCurveTo(0, 96, 0, 96 - rad); sctx.lineTo(0, rad);
-        sctx.quadraticCurveTo(0, 0, rad, 0); sctx.closePath(); sctx.fill();
-        sctx.fillStyle = '#f8fafc'; sctx.font = '700 48px system-ui'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
-        sctx.fillText('TRANSPORTER', 256, 50);
+        sctx.fillStyle = '#6b4226';
+        sctx.fillRect(0, 0, 128, 64);
+        sctx.fillStyle = '#f8fafc';
+        sctx.font = '700 28px system-ui';
+        sctx.textAlign = 'center';
+        sctx.textBaseline = 'middle';
+        sctx.fillText('DOCK', 64, 34);
         const st = new THREE.CanvasTexture(sc);
         st.minFilter = THREE.LinearFilter;
         st.flipY = false;
-        const tSign = new THREE.Mesh(new THREE.BoxGeometry(4, 0.06, 0.7), new THREE.MeshBasicMaterial({ map: st }));
-        tSign.position.set(bCx + bHw + 0.3, bCy, 2.1);
-        tSign.scale.x = -1;
-        tSign.rotation.z = -Math.PI / 2;
-        outdoorGroup.add(tSign);
+        const signBoard = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.25), new THREE.MeshBasicMaterial({ map: st }));
+        signBoard.position.set(-11.6, -9.4, 0.3);
+        outdoorGroup.add(signBoard);
+        const signPost = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.5), createToonMaterial(0x3a2214));
+        signPost.position.set(-11.6, -9.4, 0.15);
+        outdoorGroup.add(signPost);
       }
-
-      // Bicycle display (left side, human-scale)
-      {
-        const bg = new THREE.Group();
-        const wheelMat = new THREE.MeshToonMaterial({ color: 0x1a1a1a, gradientMap: createGradientTexture(3) });
-        const frameMat = createToonMaterial(0xf59e0b);
-        const spokeMat = new THREE.MeshToonMaterial({ color: 0x94a3b8, gradientMap: createGradientTexture(3) });
-        const seatMat = createToonMaterial(0x1f2937);
-
-        const rw = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 10, 16), wheelMat);
-        rw.rotation.x = Math.PI / 2;
-        rw.position.set(-0.45, 0, 0);
-        bg.add(rw);
-        const fw = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 10, 16), wheelMat);
-        fw.rotation.x = Math.PI / 2;
-        fw.position.set(0.45, 0, 0);
-        bg.add(fw);
-        for (let i = 0; i < 6; i++) {
-          const a = (Math.PI * 2 * i) / 6;
-          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.2, 4), spokeMat);
-          spoke.rotation.x = Math.PI / 2;
-          spoke.rotation.z = a;
-          spoke.position.set(-0.45, 0, 0);
-          bg.add(spoke);
-        }
-        for (let i = 0; i < 6; i++) {
-          const a = (Math.PI * 2 * i) / 6;
-          const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.2, 4), spokeMat);
-          spoke.rotation.x = Math.PI / 2;
-          spoke.rotation.z = a;
-          spoke.position.set(0.45, 0, 0);
-          bg.add(spoke);
-        }
-
-        const hb = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.35, 6), frameMat);
-        hb.rotation.x = Math.PI / 2;
-        hb.position.set(0.45, 0, 0.2);
-        bg.add(hb);
-        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.03), seatMat);
-        seat.position.set(-0.1, 0, 0.27);
-        bg.add(seat);
-
-        bg.position.set(bCx - 3, bCy + 0.5, 0.1);
-        outdoorGroup.add(bg);
-
-        const bp = createLabelSprite('$100', '#f8fafc', 'rgba(0,0,0,0.8)', '#f59e0b', 140, 55);
-        bp.scale.set(1.6, 0.6, 1);
-        bp.position.set(bCx - 3, bCy - 0.4, 0.7);
-        bp.renderOrder = 33;
-        outdoorGroup.add(bp);
-      }
-
-      // Broken car display (right side, human-scale)
-      {
-        const cg = new THREE.Group();
-        const cBody = new THREE.Mesh(
-          new THREE.BoxGeometry(1.2, 0.55, 0.45),
-          createToonMaterial(0xdc2626)
-        );
-        cBody.position.set(0, 0, 0.25);
-        cBody.rotation.z = 0.08;
-        cg.add(cBody);
-
-        const cCab = new THREE.Mesh(
-          new THREE.BoxGeometry(0.6, 0.35, 0.22),
-          createToonMaterial(0xdc2626)
-        );
-        cCab.position.set(-0.05, 0, 0.53);
-        cCab.rotation.z = 0.05;
-        cg.add(cCab);
-
-        const ws = new THREE.Mesh(
-          new THREE.BoxGeometry(0.5, 0.04, 0.2),
-          new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.25 })
-        );
-        ws.position.set(0.2, 0, 0.48);
-        ws.rotation.z = 0.25;
-        cg.add(ws);
-
-        const wheelMatCar = createToonMaterial(0x1a1a1a);
-        const wPoses: [number, number, number, number][] = [
-          [-0.4, -0.32, 0.04, 0], [0.4, -0.32, 0.04, 0.2],
-          [-0.4, 0.32, 0.04, 0], [0.4, 0.32, 0.02, 0.6],
-        ];
-        wPoses.forEach(([wx, wy, wz, rot]) => {
-          const w = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 8, 12), wheelMatCar);
-          w.rotation.x = Math.PI / 2;
-          w.rotation.y = rot;
-          w.position.set(wx, wy, wz);
-          cg.add(w);
-        });
-
-        for (let i = 0; i < 3; i++) {
-          const sm = new THREE.Mesh(
-            new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 8, 8),
-            new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.3 })
-          );
-          sm.position.set(-0.4 + Math.random() * 0.2, -0.2 + Math.random() * 0.2, 0.6 + Math.random() * 0.15);
-          cg.add(sm);
-        }
-
-        cg.position.set(bCx + 3, bCy + 0.3, 0.1);
-        outdoorGroup.add(cg);
-
-        const cp = createLabelSprite('$1,000', '#f8fafc', 'rgba(0,0,0,0.8)', '#f59e0b', 170, 55);
-        cp.scale.set(1.8, 0.6, 1);
-        cp.position.set(bCx + 3, bCy - 0.4, 0.85);
-        cp.renderOrder = 33;
-        outdoorGroup.add(cp);
-      }
-
-      // Vendor (mechanic) at back center
-      {
-        const vPerson = buildPlayerVisual(0x1e293b, 'Mechanic');
-        vPerson.root.position.set(bCx, bCy - bHh + 0.6, 0.24);
-        outdoorGroup.add(vPerson.root);
-      }
-
-      transportHitboxRef.current = { shape: 'circle', center: { x: bCx + bHw + 0.5, y: bCy }, radius: 3.0 };
     }
 
     // Parts shop at (6.0, -12.0) — fills the entire grass patch east of Rafiq's
@@ -4083,6 +3995,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
             }
           } else {
+            const FLAT_EDGE_X = -11 + PLAYER_RADIUS + 0.35;
+            const DOCK_WEST_X = -13.5 + PLAYER_RADIUS + 0.35;
+            const onDock = candidate.y >= -9.75 && candidate.y <= -6.25;
+            if (candidate.x < (onDock ? DOCK_WEST_X : FLAT_EDGE_X)) candidate.x = onDock ? DOCK_WEST_X : FLAT_EDGE_X;
             const maxRadius = ISLAND_RADIUS - PLAYER_RADIUS - 0.35;
             if (candidate.length() > maxRadius) candidate.setLength(maxRadius);
             const canEnterBuildings = sparkyQuestStageRef.current !== 'intro' || sparkyHomeArrivedRef.current;
@@ -4475,11 +4391,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           distanceToSparky < SPARKY_INTERACTION_DISTANCE
         ) {
           outsidePrompt = 'Sparky';
-        } else if (
-          transportHitboxRef.current &&
-          isInsideHitbox(localPositionRef.current, transportHitboxRef.current)
-        ) {
-          outsidePrompt = 'Transporter';
         }
 
         if (worldInteractionRequestedRef.current) {
@@ -4503,9 +4414,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               setSparkyDlgFull('Scrap is fully repaired! Arena mode is unlocked — go battle your friends!');
               setShowSparkyDlg(true);
             }
-          } else if (transportHitboxRef.current && isInsideHitbox(localPositionRef.current, transportHitboxRef.current)) {
-            setShowTransportModal(true);
-            setTransportMessage(null);
           }
         }
 
@@ -7962,38 +7870,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       </div>
 
-      {showTransportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => { setShowTransportModal(false); setTransportMessage(null); }}>
-          <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-2xl font-bold text-amber-300 mb-4">Transporter Store</h2>
-            {transportMessage ? (
-              <div className="text-center py-6">
-                <p className="text-lg text-slate-100">{transportMessage}</p>
-                <button className="mt-6 rounded-lg bg-amber-500 px-8 py-3 text-lg font-semibold text-slate-900 hover:bg-amber-400" onClick={() => { setShowTransportModal(false); setTransportMessage(null); }}>OK</button>
-              </div>
-            ) : (
-              <>
-                <p className="text-slate-300 mb-6">Browse our fine selection of transportation!</p>
-                <div className="flex gap-4">
-                  <div className="flex-1 rounded-xl border border-slate-600 bg-slate-800/50 p-4 text-center cursor-pointer hover:border-amber-400/50 transition-colors" onClick={() => setTransportMessage('Coming soon!')}>
-                    <div className="text-3xl mb-2">🚲</div>
-                    <div className="text-lg font-semibold text-white">Bicycle</div>
-                    <div className="text-amber-300 font-bold mt-1">$100</div>
-                    <div className="text-xs text-slate-400 mt-2">Reliable two-wheeler</div>
-                  </div>
-                  <div className="flex-1 rounded-xl border border-slate-600 bg-slate-800/50 p-4 text-center cursor-pointer hover:border-amber-400/50 transition-colors" onClick={() => setTransportMessage('Coming soon!')}>
-                    <div className="text-3xl mb-2">🚗</div>
-                    <div className="text-lg font-semibold text-white">Car</div>
-                    <div className="text-amber-300 font-bold mt-1">$1,000</div>
-                    <div className="text-xs text-slate-400 mt-2">*breaks down quickly</div>
-                  </div>
-                </div>
-                <button className="mt-6 w-full rounded-lg bg-slate-700 px-6 py-3 text-lg font-semibold text-white hover:bg-slate-600 transition-colors" onClick={() => { setShowTransportModal(false); setTransportMessage(null); }}>Leave</button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
       {shopkeeperGreeting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => setShopkeeperGreeting(null)}>
           <div className="w-full max-w-md rounded-2xl bg-slate-900 border border-amber-200/50 shadow-2xl p-6 text-center" onClick={(e) => e.stopPropagation()}>
