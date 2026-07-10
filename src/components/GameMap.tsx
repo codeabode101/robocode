@@ -2065,7 +2065,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     mountElement.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.22);
+    const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.28);
     scene.add(ambientLight);
 
     const sunLight = new THREE.DirectionalLight(0x884422, 0.15);
@@ -2281,7 +2281,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), lampMat);
       lamp.position.set(lx, ly, 1.1);
       outdoorGroup.add(lamp);
-      const lampLight = new THREE.PointLight(0xfef08a, 0.4, 5);
+      const lampLight = new THREE.PointLight(0xfef08a, 0.55, 5);
       lampLight.position.set(lx, ly, 1.1);
       outdoorGroup.add(lampLight);
     });

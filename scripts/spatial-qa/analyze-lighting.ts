@@ -23,7 +23,7 @@ async function apiPost(pathname: string, data: unknown, cookie?: string): Promis
   return fetch(`${BASE_URL}${pathname}`, { method: 'POST', headers, body: JSON.stringify(data) });
 }
 
-async function analyzeImage(filePath: string, scene: string, minAvg: number, maxAvg: number): Promise<LightingReport> {
+async function analyzeImage(filePath: string, scene: string, minAvg: number, maxAvg: number, isOutdoor?: boolean): Promise<LightingReport> {
   const { data, info } = await sharp(filePath).raw().toBuffer({ resolveWithObject: true });
   const pixels = new Uint8Array(data);
   const total = info.width * info.height;
@@ -49,7 +49,8 @@ async function analyzeImage(filePath: string, scene: string, minAvg: number, max
   const issues: string[] = [];
   if (avg < minAvg) issues.push(`avg ${avg.toFixed(3)} < min ${minAvg} (too dark)`);
   if (avg > maxAvg) issues.push(`avg ${avg.toFixed(3)} > max ${maxAvg} (too bright)`);
-  if (dark / total > 0.5) issues.push(`${(dark/total*100).toFixed(0)}% pixels very dark`);
+  if (!isOutdoor && dark / total > 0.5) issues.push(`${(dark/total*100).toFixed(0)}% pixels very dark`);
+  if (isOutdoor && bright / total < 0.005) issues.push(`only ${(bright/total*100).toFixed(1)}% bright pixels — lamps may not be visible`);
 
   if (issues.length === 0) {
     console.log(`  ✓ ${scene}: avg=${avg.toFixed(3)} [${minAvg}-${maxAvg}]`);
@@ -105,7 +106,7 @@ async function main() {
     await page.waitForTimeout(1000);
     const fp = path.join(OUTPUT_DIR, `${scene.name}.png`);
     await page.screenshot({ path: fp, fullPage: false });
-    const report = await analyzeImage(fp, scene.desc, scene.minAvg, scene.maxAvg);
+    const report = await analyzeImage(fp, scene.desc, scene.minAvg, scene.maxAvg, true);
     reports.push(report);
   }
 
