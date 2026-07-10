@@ -43,5 +43,9 @@ export function buildObstacles(params: ObstacleParams): Hitbox[] {
     { shape: 'box', center: { x: 6, y: 4 }, halfWidth: 4.4, halfHeight: 2.5 },
     { shape: 'box', center: { x: 18.5, y: 4 }, halfWidth: 4.75, halfHeight: 2.5 },
     { shape: 'box', center: { x: 18.5, y: -4 }, halfWidth: 4.75, halfHeight: 2.5 },
+    // Mid-center collapsed warehouse
+    { shape: 'box', center: { x: 6, y: -4 }, halfWidth: 4.25, halfHeight: 2.4 },
+    // Bottom-right industrial tower
+    { shape: 'box', center: { x: 18.5, y: -11.75 }, halfWidth: 4.5, halfHeight: 1.75 },
   ];
 }

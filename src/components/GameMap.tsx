@@ -2963,6 +2963,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     ));
     scatterDebris(18.5, -4, 4.5, 18);
 
+    // Mid-center block: COLLAPSED warehouse — cave-in + leaning walls
+    // x=[1.0,11.0], y=[-7.0,-1.0] → center (6, -4), max ~9.5×5.4
+    outdoorGroup.add(createBigBuilding(6, -4, 8.5, 4.8, 6,
+      { wall: 0x5a4a3a, trim: 0x3a3028, accent: 0x6a5a42 },
+      { leanX: 0.05, caveinFrac: 0.6, caveinOff: { x: -0.8, y: 0.4 } }
+    ));
+    scatterDebris(6, -4, 4.2, 16);
+
+    // Bottom-right block: TALL industrial tower — broken corner + lean
+    // x=[13.0,24], y=[-14,-9.5] → center (18.5, -11.75), max ~10.5×3.9
+    outdoorGroup.add(createBigBuilding(18.5, -11.75, 9.0, 3.5, 10,
+      { wall: 0x4a4248, trim: 0x35303a, accent: 0x5a5258 },
+      { leanY: -0.06, brokenCorner: { x: -3.0, y: 1.0, size: 1.4 } }
+    ));
+    scatterDebris(18.5, -11.75, 4.0, 14);
+
     // Parts shop at (6.0, -12.0) — fills the entire grass patch east of Rafiq's
     {
       const partsShop = createPartsShop(6.0, -12.0, 8.0, 4.0);
