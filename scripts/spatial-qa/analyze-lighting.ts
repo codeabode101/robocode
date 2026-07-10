@@ -24,7 +24,9 @@ async function apiPost(pathname: string, data: unknown, cookie?: string): Promis
 }
 
 async function analyzeImage(filePath: string, scene: string, minAvg: number, maxAvg: number): Promise<LightingReport> {
-  const { data, info } = await sharp(filePath).raw().toBuffer({ resolveWithObject: true });
+  // Crop to center 25% to focus on immediate game geometry
+  const w = 1280, h = 720;
+  const { data, info } = await sharp(filePath).extract({ left: Math.round(w*0.375), top: Math.round(h*0.375), width: Math.round(w*0.25), height: Math.round(h*0.25) }).raw().toBuffer({ resolveWithObject: true });
   const pixels = new Uint8Array(data);
   const total = info.width * info.height;
   let sumL = 0;

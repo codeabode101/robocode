@@ -6521,7 +6521,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         cloud.position.x += Math.sin(worldTime * (0.08 + i * 0.03) + i) * 0.0025;
       });
 
-      const roomBg = inWorkshopRoomRef.current ? 0x1a1208 : inShopRoomRef.current ? 0x1a1408 : inArenaRoomRef.current ? 0x121824 : inApartmentRoomRef.current ? 0x1a0e0e : 0x0a0a1a;
+      const roomBg = inWorkshopRoomRef.current ? 0x3a2a18 : inShopRoomRef.current ? 0x3a3a1a : inArenaRoomRef.current ? 0x2a3850 : inApartmentRoomRef.current ? 0x3a2a2a : 0x0a0a1a;
         outdoorGroup.visible = !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current;
         workshopRoomGroup.visible = inWorkshopRoomRef.current;
         arenaRoomGroup.visible = inArenaRoomRef.current;
