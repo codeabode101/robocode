@@ -2962,10 +2962,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       ];
       puffs.forEach((puff) => {
         const mesh = new THREE.Mesh(new THREE.CircleGeometry(puff.r, 18), cloudColor);
-        mesh.position.set(puff.x, puff.y, 0.02);
+        mesh.position.set(puff.x, puff.y, 0.13);
         cloud.add(mesh);
       });
-      cloud.position.set(-26 + i * 8.5, 12 - i * 1.1, 0.02);
+      cloud.position.set(-26 + i * 8.5, 12 - i * 1.1, 0.13);
       clouds.push(cloud);
       outdoorGroup.add(cloud);
     }
