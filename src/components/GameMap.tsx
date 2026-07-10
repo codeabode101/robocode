@@ -396,6 +396,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const scrapFollowerEnabledRef = useRef(false);
   const miniRobotRefs = useRef<ReturnType<typeof createRobotVisual>[]>([]);
   const sceneBgOverrideRef = useRef<number | null>(null);
+  const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
 
   const outdoorGroupRef = useRef<THREE.Group | null>(null);
   const workshopRoomGroupRef = useRef<THREE.Group | null>(null);
@@ -2073,6 +2074,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.28);
     scene.add(ambientLight);
+    ambientLightRef.current = ambientLight;
 
     const sunLight = new THREE.DirectionalLight(0x884422, 0.15);
     sunLight.position.set(-10, -8, 5);
@@ -6535,6 +6537,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const sinPitch = Math.sin(camPitch), cosPitch = Math.cos(camPitch);
         const inside = inWorkshopRoomRef.current || inShopRoomRef.current || inArenaRoomRef.current || inApartmentRoomRef.current;
         const room = inside ? currentRoom : 'outside';
+        // Smooth ambient transition for indoor/outdoor contrast
+        if (ambientLightRef.current) {
+          const al = ambientLightRef.current;
+          if (inside) {
+            al.color.setHex(0x332211);
+            al.intensity += (0.55 - al.intensity) * 0.03;
+          } else {
+            al.color.setHex(0x1a1a2e);
+            al.intensity += (0.28 - al.intensity) * 0.03;
+          }
+        }
         if (cinemCamActiveRef.current) {
           const phase = aptCutscenePhaseRef.current;
           const csSparky = apartmentSparkyRef.current;
