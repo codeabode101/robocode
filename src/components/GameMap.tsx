@@ -3973,11 +3973,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
             }
           } else {
-            const FLAT_EDGE_X = -11 + PLAYER_RADIUS + 0.35;
-            const DOCK_WEST_X = -16 + PLAYER_RADIUS + 0.35;
+            const FLAT_EDGE_X = -11 + PLAYER_RADIUS;
+            const DOCK_WEST_X = -16 + PLAYER_RADIUS;
             const onDock = candidate.y >= -9.75 && candidate.y <= -6.25;
             if (candidate.x < (onDock ? DOCK_WEST_X : FLAT_EDGE_X)) candidate.x = onDock ? DOCK_WEST_X : FLAT_EDGE_X;
-            const maxRadius = ISLAND_RADIUS - PLAYER_RADIUS - 0.35;
+            const maxRadius = ISLAND_RADIUS - PLAYER_RADIUS;
             if (candidate.length() > maxRadius) candidate.setLength(maxRadius);
             const canEnterBuildings = sparkyQuestStageRef.current !== 'intro' || sparkyHomeArrivedRef.current;
             const hitsObstacle = collidesWithAny(candidate, obstacleHitboxesRef.current) ||
