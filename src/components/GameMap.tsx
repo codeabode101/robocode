@@ -2024,10 +2024,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.add(workshopRoomGroup);
     workshopRoomGroupRef.current = workshopRoomGroup;
     {
-      const wl = new THREE.PointLight(0xfbbf24, 1.8, 8);
+      const wl = new THREE.PointLight(0xfbbf24, 10, 6);
       wl.position.set(2.35, 1.95, 1.4);
       workshopRoomGroup.add(wl);
-      const wl2 = new THREE.PointLight(0xfbbf24, 0.8, 5);
+      const wl2 = new THREE.PointLight(0xfbbf24, 4, 5);
       wl2.position.set(-2.5, -2.0, 1.2);
       workshopRoomGroup.add(wl2);
     }
@@ -2037,7 +2037,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.add(arenaRoomGroup);
     arenaRoomGroupRef.current = arenaRoomGroup;
     {
-      const al = new THREE.PointLight(0xffffff, 2.0, 6);
+      const al = new THREE.PointLight(0xffffff, 10, 6);
       al.position.set(0, 0, 1.8);
       arenaRoomGroup.add(al);
     }
@@ -2047,10 +2047,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scene.add(apartmentRoomGroup);
     apartmentRoomGroupRef.current = apartmentRoomGroup;
     {
-      const al = new THREE.PointLight(0xfef08a, 2.0, 6);
+      const al = new THREE.PointLight(0xfef08a, 10, 6);
       al.position.set(0, 0, 1.5);
       apartmentRoomGroup.add(al);
-      const al2 = new THREE.PointLight(0xfef08a, 0.8, 4);
+      const al2 = new THREE.PointLight(0xfef08a, 4, 4);
       al2.position.set(-2.2, -2.5, 0.9);
       apartmentRoomGroup.add(al2);
     }
@@ -2790,7 +2790,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       scene.add(shopRoomGroup);
       shopRoomGroupRef.current = shopRoomGroup;
       {
-        const sl = new THREE.PointLight(0xfef08a, 2.0, 6);
+        const sl = new THREE.PointLight(0xfef08a, 10, 6);
         sl.position.set(0, 0, 1.3);
         shopRoomGroup.add(sl);
       }
@@ -6521,7 +6521,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         cloud.position.x += Math.sin(worldTime * (0.08 + i * 0.03) + i) * 0.0025;
       });
 
-      const roomBg = inWorkshopRoomRef.current ? 0x0a0710 : inShopRoomRef.current ? 0x1a1a0a : inArenaRoomRef.current ? 0x0f172a : inApartmentRoomRef.current ? 0x1a0808 : 0x0a0a1a;
+      const roomBg = inWorkshopRoomRef.current ? 0x1a1208 : inShopRoomRef.current ? 0x1a1408 : inArenaRoomRef.current ? 0x121824 : inApartmentRoomRef.current ? 0x1a0e0e : 0x0a0a1a;
         outdoorGroup.visible = !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current;
         workshopRoomGroup.visible = inWorkshopRoomRef.current;
         arenaRoomGroup.visible = inArenaRoomRef.current;
