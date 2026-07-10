@@ -642,8 +642,8 @@ export function addWindows(building: THREE.Group, bx: number, by: number, bw: nu
   const group = new THREE.Group();
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const lit = Math.random() < 0.65;
-      const opacity = lit ? 0.35 + Math.random() * 0.5 : 0.08 + Math.random() * 0.1;
+      const lit = Math.random() < 0.75;
+      const opacity = lit ? 0.6 + Math.random() * 0.4 : 0.05 + Math.random() * 0.08;
       const winColor = lit ? 0xfef08a : 0x1a1a2e;
       const win = new THREE.Mesh(
         new THREE.PlaneGeometry(winW, winH),

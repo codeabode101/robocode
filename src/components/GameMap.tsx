@@ -2010,7 +2010,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const mountElement = mountRef.current;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x4a7a9a);
+    scene.background = new THREE.Color(0x0a0a1a);
+    scene.fog = new THREE.FogExp2(0x0a0a1a, 0.035);
     sceneRef.current = scene;
 
     const outdoorGroup = new THREE.Group();
@@ -2021,16 +2022,31 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     workshopRoomGroup.visible = false;
     scene.add(workshopRoomGroup);
     workshopRoomGroupRef.current = workshopRoomGroup;
+    {
+      const wl = new THREE.PointLight(0xfbbf24, 0.7, 6);
+      wl.position.set(2.35, 1.95, 1.2);
+      workshopRoomGroup.add(wl);
+    }
 
     const arenaRoomGroup = new THREE.Group();
     arenaRoomGroup.visible = false;
     scene.add(arenaRoomGroup);
     arenaRoomGroupRef.current = arenaRoomGroup;
+    {
+      const al = new THREE.PointLight(0xffffff, 0.6, 6);
+      al.position.set(0, 0, 1.8);
+      arenaRoomGroup.add(al);
+    }
 
     const apartmentRoomGroup = new THREE.Group();
     apartmentRoomGroup.visible = false;
     scene.add(apartmentRoomGroup);
     apartmentRoomGroupRef.current = apartmentRoomGroup;
+    {
+      const al = new THREE.PointLight(0xfef08a, 0.5, 5);
+      al.position.set(0, 0, 1.5);
+      apartmentRoomGroup.add(al);
+    }
 
     const aspect = mountElement.clientWidth / mountElement.clientHeight;
     const camera = new THREE.PerspectiveCamera(65, aspect, 0.1, 100);
@@ -2049,11 +2065,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     mountElement.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
-    const ambientLight = new THREE.AmbientLight(0xffeedd, 0.6);
+    const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.22);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    sunLight.position.set(-10, -8, 20);
+    const sunLight = new THREE.DirectionalLight(0x884422, 0.15);
+    sunLight.position.set(-10, -8, 5);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(512, 512);
     sunLight.shadow.camera.left = -18;
@@ -2067,14 +2083,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const sun = new THREE.Mesh(
       new THREE.CircleGeometry(1.1, 30),
-      createToonMaterial(0xffe066, 0.2, 0.05)
+      createToonMaterial(0xcc4422, 0.15, 0.03)
     );
     sun.position.set(8.5, 6.8, 5.2);
     outdoorGroup.add(sun);
 
     const water = new THREE.Mesh(
       new THREE.PlaneGeometry(2000, 2000),
-      createToonMaterial(0x4a7a9a)
+      createToonMaterial(0x080818)
     );
     water.position.z = 0.02;
     water.receiveShadow = true;
@@ -2249,7 +2265,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // No buildings yet — story hasn't progressed past the pet workshop job
 
     const poleMat = createToonMaterial(0x6a6a7a);
-    const lampMat = createToonMaterial(0xfef08a);
+    const lampMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
     const lightPositions: [number, number][] = [
       [-1.75, -1.75], [1.75, -1.75], [-1.75, 1.75], [1.75, 1.75],
       [-1.75, -6.25], [1.75, -6.25], [-13.75, -1.75], [-10.25, -1.75],
@@ -2265,6 +2281,27 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), lampMat);
       lamp.position.set(lx, ly, 1.1);
       outdoorGroup.add(lamp);
+      const lampLight = new THREE.PointLight(0xfef08a, 0.4, 5);
+      lampLight.position.set(lx, ly, 1.1);
+      outdoorGroup.add(lampLight);
+    });
+
+    // Door entry light pools
+    const poolMat = new THREE.MeshBasicMaterial({
+      color: 0xfef08a, transparent: true, opacity: 0.12,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const doorEntries: [number, number][] = [
+      [-6, -10.3],    // workshop
+      [18.75, -10.25], // arena
+      [-9.6, -4.9],   // apartment
+      [6.0, -10.2],   // shop
+    ];
+    doorEntries.forEach(([dx, dy]) => {
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(0.8, 16), poolMat);
+      pool.position.set(dx, dy, 0.03);
+      pool.rotation.x = -Math.PI / 2;
+      outdoorGroup.add(pool);
     });
 
     const treeTrunkMat = createToonMaterial(0x8b5a2b);
@@ -2744,6 +2781,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       shopRoomGroup.visible = false;
       scene.add(shopRoomGroup);
       shopRoomGroupRef.current = shopRoomGroup;
+      {
+        const sl = new THREE.PointLight(0xfef08a, 0.5, 5);
+        sl.position.set(0, 0, 1.2);
+        shopRoomGroup.add(sl);
+      }
 
       const sW = 7.6, sD = 3.6, sH = 1.3;
 
@@ -6471,7 +6513,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         cloud.position.x += Math.sin(worldTime * (0.08 + i * 0.03) + i) * 0.0025;
       });
 
-      const roomBg = inWorkshopRoomRef.current ? 0x030712 : inShopRoomRef.current ? 0x1a1a2e : inArenaRoomRef.current ? 0x0f172a : inApartmentRoomRef.current ? 0x1a1a2e : 0x4a7a9a;
+      const roomBg = inWorkshopRoomRef.current ? 0x0a0710 : inShopRoomRef.current ? 0x1a1a0a : inArenaRoomRef.current ? 0x0f172a : inApartmentRoomRef.current ? 0x1a0808 : 0x0a0a1a;
         outdoorGroup.visible = !inWorkshopRoomRef.current && !inShopRoomRef.current && !inArenaRoomRef.current && !inApartmentRoomRef.current;
         workshopRoomGroup.visible = inWorkshopRoomRef.current;
         arenaRoomGroup.visible = inArenaRoomRef.current;
