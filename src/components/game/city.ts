@@ -38,14 +38,25 @@ export function buildObstacles(params: ObstacleParams): Hitbox[] {
     // Parts shop building
     { shape: 'box', center: { x: 6.0, y: -12.0 }, halfWidth: 4.0, halfHeight: 2.0 },
 
-    // Abandoned buildings — one per grass block (expanded plots)
-    { shape: 'box', center: { x: -5.7, y: 4 }, halfWidth: 4.1, halfHeight: 2.5 },
-    { shape: 'box', center: { x: 6, y: 4 }, halfWidth: 4.4, halfHeight: 2.5 },
-    { shape: 'box', center: { x: 18.5, y: 4 }, halfWidth: 4.75, halfHeight: 2.5 },
-    { shape: 'box', center: { x: 18.5, y: -4 }, halfWidth: 4.75, halfHeight: 2.5 },
-    // Mid-center collapsed warehouse
-    { shape: 'box', center: { x: 6, y: -4 }, halfWidth: 4.25, halfHeight: 2.4 },
-    // Bottom-right industrial tower
-    { shape: 'box', center: { x: 18.5, y: -11.75 }, halfWidth: 4.5, halfHeight: 1.75 },
+    // Abandoned buildings — individual hitboxes per building
+    // Top-left block
+    { shape: 'box', center: { x: -7, y: 4 }, halfWidth: 2.5, halfHeight: 1.75 },
+    { shape: 'box', center: { x: -3.5, y: 3.2 }, halfWidth: 2.0, halfHeight: 1.4 },
+    { shape: 'box', center: { x: -7.5, y: 5.5 }, halfWidth: 1.75, halfHeight: 1.0 },
+    // Top-center block
+    { shape: 'box', center: { x: 4, y: 4 }, halfWidth: 2.5, halfHeight: 1.75 },
+    { shape: 'box', center: { x: 8, y: 5 }, halfWidth: 2.25, halfHeight: 1.25 },
+    { shape: 'box', center: { x: 4, y: 2.8 }, halfWidth: 1.75, halfHeight: 1.0 },
+    // Top-right block
+    { shape: 'box', center: { x: 16, y: 4 }, halfWidth: 2.5, halfHeight: 1.75 },
+    { shape: 'box', center: { x: 20, y: 3.5 }, halfWidth: 2.25, halfHeight: 1.5 },
+    { shape: 'box', center: { x: 22, y: 5.5 }, halfWidth: 1.75, halfHeight: 1.25 },
+    // Mid-right block
+    { shape: 'box', center: { x: 16, y: -4 }, halfWidth: 2.5, halfHeight: 1.75 },
+    { shape: 'box', center: { x: 20, y: -3.5 }, halfWidth: 2.25, halfHeight: 1.25 },
+    { shape: 'box', center: { x: 22, y: -5.5 }, halfWidth: 1.75, halfHeight: 1.0 },
+    // Bottom-right block
+    { shape: 'box', center: { x: 16, y: -11.75 }, halfWidth: 2.5, halfHeight: 1.5 },
+    { shape: 'box', center: { x: 21, y: -11 }, halfWidth: 2.0, halfHeight: 1.25 },
   ];
 }
