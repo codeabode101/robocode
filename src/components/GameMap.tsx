@@ -2211,12 +2211,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     pLine(0, -14, 3, 0.02);     // south (water edge curb)
     pLine(-1.5, -11.75, 0.02, 4.5); // west
     pLine(1.5, -11.75, 0.02, 4.5);  // east
-    // 3 parking spaces (1.0w × 1.5d each)
-    pLine(0, -12.25, 0.02, 1.5);     // cross line (head of spaces)
-    for (let i = 1; i <= 2; i++) {
-      const dx = -1.5 + i * 1.0;      // dividers at x=-0.5 and x=0.5
-      pLine(dx, -12.25, 0.02, 1.5);
-    }
+    // 2 parking spaces (1.5w × 1.5d each) — far apart for proper cars
+    pLine(0, -12.5, 3, 0.02);        // cross line, full width at y=-12.5 → reaches y=-14
+    pLine(0, -12.5, 0.02, 1.5);      // single divider at x=0 between 2 spaces
 
     // Small lake with 6 palm trees and fountain centerpiece
     const lx = 6, ly = -4, lr = 1.8;
