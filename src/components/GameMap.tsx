@@ -2146,7 +2146,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       [-14.5, -9.5, -12], // between h-y16 (-14.5) and h-y8 (-9.5)
     ];
     const xGaps: [number, number, number][] = [
-      [-10.5, -1.5, -6], [1.5, 10.5, 6], [13.5, 24, 18.75],
+      [-10.5, -1.5, -6], [1.5, 10.5, 6], [13.5, 23.5, 18.5],
     ];
     yGaps.forEach(([y1, y2, yc]) => {
       xGaps.forEach(([x1, x2, xc]) => { addG(xc, yc, x2 - x1, y2 - y1); });
