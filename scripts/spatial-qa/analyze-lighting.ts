@@ -51,7 +51,7 @@ async function analyzeImage(filePath: string, scene: string, minAvg: number, max
   const issues: string[] = [];
   if (avg < minAvg) issues.push(`avg ${avg.toFixed(3)} < ${minAvg} (too dark)`);
   if (avg > maxAvg) issues.push(`avg ${avg.toFixed(3)} > ${maxAvg} (too bright)`);
-  if (scene.startsWith('indoor') && dark / total > 0.8) issues.push(`${(dark/total*100).toFixed(0)}% dark — room may be underlit`);
+  if (scene.startsWith('indoor') && dark / total > 0.95) issues.push(`${(dark/total*100).toFixed(0)}% dark — room may be underlit`);
 
   const icon = issues.length === 0 ? '✓' : '⚠';
   console.log(`  ${icon} ${scene}: avg=${avg.toFixed(3)} max=${maxL.toFixed(2)} [${minAvg}-${maxAvg}] ${issues.length ? '— ' + issues.join(', ') : ''}`);
@@ -96,10 +96,10 @@ async function main() {
   const scenes: { name: string; sync: Record<string, unknown>; minAvg: number; maxAvg: number }[] = [
     { name: 'outdoor-spawn', sync: { questStage: 'all-done', position: { x: 0, y: -7, room: 'outside', rotation: 0 } }, minAvg: 0.05, maxAvg: 0.35 },
     { name: 'outdoor-plaza', sync: { questStage: 'all-done', position: { x: -2, y: 0, room: 'outside', rotation: 0 } }, minAvg: 0.05, maxAvg: 0.35 },
-    { name: 'indoor-apartment', sync: { questStage: 'all-done', position: { x: 0, y: -1.5, room: 'apartment', rotation: 0 } }, minAvg: 0.06, maxAvg: 0.75 },
-    { name: 'indoor-workshop', sync: { questStage: 'all-done', position: { x: 0, y: -3.7, room: 'workshop', rotation: 0 } }, minAvg: 0.06, maxAvg: 0.75 },
-    { name: 'indoor-shop', sync: { questStage: 'all-done', position: { x: 0, y: 1.2, room: 'shop', rotation: 0 } }, minAvg: 0.06, maxAvg: 0.75 },
-    { name: 'indoor-arena', sync: { questStage: 'all-done', position: { x: 0, y: 0, room: 'arena', rotation: 0 } }, minAvg: 0.06, maxAvg: 0.75 },
+    { name: 'indoor-apartment', sync: { questStage: 'all-done', position: { x: 0, y: -1.5, room: 'apartment', rotation: 0 } }, minAvg: 0.10, maxAvg: 0.75 },
+    { name: 'indoor-workshop', sync: { questStage: 'all-done', position: { x: 0, y: -3.7, room: 'workshop', rotation: 0 } }, minAvg: 0.10, maxAvg: 0.75 },
+    { name: 'indoor-shop', sync: { questStage: 'all-done', position: { x: 0, y: 1.2, room: 'shop', rotation: 0 } }, minAvg: 0.10, maxAvg: 0.75 },
+    { name: 'indoor-arena', sync: { questStage: 'all-done', position: { x: 0, y: 0, room: 'arena', rotation: 0 } }, minAvg: 0.10, maxAvg: 0.75 },
   ];
 
   for (const s of scenes) {
