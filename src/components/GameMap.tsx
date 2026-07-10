@@ -2128,7 +2128,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // SINGLE continuous road rectangle covering ALL road areas (y:-22 to y:9.5, h:31.5)
     const roadColor = 0x5a6a7a;
-    const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(34, 32, 0.04), createToonMaterial(roadColor));
+    const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(35, 32, 0.04), createToonMaterial(roadColor));
     roadMesh.position.set(6.5, -6.25, 0.14);
     roadMesh.receiveShadow = true;
     outdoorGroup.add(roadMesh);
@@ -2146,7 +2146,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       [-14.5, -9.5, -12], // between h-y16 (-14.5) and h-y8 (-9.5)
     ];
     const xGaps: [number, number, number][] = [
-      [-10.5, -1.5, -6], [1.5, 10.5, 6], [13.5, 23.5, 18.5],
+      [-11, -1.5, -6.25], [1.5, 10.5, 6], [13.5, 24, 18.75],
     ];
     yGaps.forEach(([y1, y2, yc]) => {
       xGaps.forEach(([x1, x2, xc]) => { addG(xc, yc, x2 - x1, y2 - y1); });
@@ -2187,8 +2187,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
     // Crosswalks removed — intersections are filled with road
     // Dashed yellow center lines for all roads
-    makeDashedLine(6.5, 0, 34, true); makeDashedLine(6.5, -8, 34, true);
-    makeDashedLine(6.5, 8, 34, true); makeDashedLine(6.5, -16, 34, true);
+    makeDashedLine(6.5, 0, 35, true); makeDashedLine(6.5, -8, 35, true);
+    makeDashedLine(6.5, 8, 35, true); makeDashedLine(6.5, -16, 35, true);
     makeDashedLine(0, -8, 28, false); makeDashedLine(12, -8, 28, false);
 
     // Small lake with 6 palm trees and fountain centerpiece
