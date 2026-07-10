@@ -2211,10 +2211,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     pLine(0, -14, 3, 0.02);     // south (water edge curb)
     pLine(-1.5, -11.75, 0.02, 4.5); // west
     pLine(1.5, -11.75, 0.02, 4.5);  // east
-    // 3 lines going down — longer and further apart
-    pLine(-0.75, -13.25, 0.02, 1.5); // left divider, reaches y=-14
-    pLine(0, -13.25, 0.02, 1.5);     // center divider
-    pLine(0.75, -13.25, 0.02, 1.5);  // right divider, reaches y=-14
+    // 2 lines going down — equally spread
+    pLine(-0.5, -13.25, 0.02, 1.5);
+    pLine(0.5, -13.25, 0.02, 1.5);
 
     // Small lake with 6 palm trees and fountain centerpiece
     const lx = 6, ly = -4, lr = 1.8;
