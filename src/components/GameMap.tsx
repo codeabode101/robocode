@@ -2192,7 +2192,31 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Dashed yellow center lines for all roads
     makeDashedLine(6.6, 0, 34, true); makeDashedLine(6.6, -8, 34, true);
     makeDashedLine(6.6, 8, 34, true);
-    makeDashedLine(0, -2, 24, false); makeDashedLine(12, -2, 24, false);
+    makeDashedLine(12, -2, 24, false);
+
+    // Parking lot at (0, -11) — 3 spaces in the 3-unit gap between bottom grass columns
+    const pkMat = createToonMaterial(0x3a3a4a);
+    const asphalt = new THREE.Mesh(new THREE.BoxGeometry(3, 4.5, 0.02), pkMat);
+    asphalt.position.set(0, -11.75, 0.22);
+    asphalt.receiveShadow = true;
+    outdoorGroup.add(asphalt);
+    const wMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const pLine = (x: number, y: number, w: number, h: number) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.008), wMat);
+      m.position.set(x, y, 0.24);
+      outdoorGroup.add(m);
+    };
+    // Perimeter
+    pLine(0, -9.5, 3, 0.02);    // north
+    pLine(0, -14, 3, 0.02);     // south (water edge curb)
+    pLine(-1.5, -11.75, 0.02, 4.5); // west
+    pLine(1.5, -11.75, 0.02, 4.5);  // east
+    // 3 parking spaces (1.0w × 1.5d each)
+    pLine(0, -12.25, 0.02, 1.5);     // cross line (head of spaces)
+    for (let i = 1; i <= 2; i++) {
+      const dx = -1.5 + i * 1.0;      // dividers at x=-0.5 and x=0.5
+      pLine(dx, -12.25, 0.02, 1.5);
+    }
 
     // Small lake with 6 palm trees and fountain centerpiece
     const lx = 6, ly = -4, lr = 1.8;
