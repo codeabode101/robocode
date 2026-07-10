@@ -2142,14 +2142,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       m.position.set(x, y, 0.20); m.receiveShadow = true;
       outdoorGroup.add(m);
     };
-    // All 4 grass rows between the 4 horizontals, split by the 4 verticals
+    // All grass rows — expanded by 0.5 on each side for bigger building plots
     const yGaps: [number, number, number][] = [
-      [1.5, 6.5, 4],     // between h-y0 (1.5) and h-y8p (6.5)
-      [-6.5, -1.5, -4],   // between h-y8 (-6.5) and h-y0 (-1.5)
-      [-14, -9.5, -11.75], // between h-y16 (-14) and h-y8 (-9.5)
+      [1.0, 7.0, 4],       // top row
+      [-7.0, -1.0, -4],    // mid row
+      [-14, -9.5, -11.75], // bottom row (unchanged)
     ];
     const xGaps: [number, number, number][] = [
-      [-10.4, -1.5, -5.95], [1.5, 10.5, 6], [13.5, 24, 18.75],
+      [-10.4, -1.0, -5.7], [1.0, 11.0, 6], [13.0, 24, 18.5],
     ];
     yGaps.forEach(([y1, y2, yc]) => {
       xGaps.forEach(([x1, x2, xc]) => { addG(xc, yc, x2 - x1, y2 - y1); });
@@ -2169,12 +2169,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
     // Vertical sidewalks: split at each horizontal road
     const vSW = (x: number) => {
-      [[-14,-9.5],[-6.5,-1.5],[1.5,6.5]].forEach(([y1,y2]) => {
+      [[-14,-9.5],[-7.0,-1.0],[1.0,7.0]].forEach(([y1,y2]) => {
         makeSW(x, (y1+y2)/2, sw, y2-y1);
       });
     };
-    hSW(1.75); hSW(-1.75); hSW(-6.25); hSW(-9.75); hSW(6.25); hSW(9.75);
-    vSW(-1.75); vSW(1.75); vSW(-10.25); vSW(10.25); vSW(13.75);
+    hSW(1.25); hSW(-1.25); hSW(-6.75); hSW(-9.75); hSW(6.75); hSW(9.75);
+    vSW(-1.25); vSW(1.25); vSW(-10.25); vSW(10.75); vSW(13.25);
 
     // Street markings - dashed yellow center lines
     // Dashed yellow center lines
@@ -2303,10 +2303,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const poleMat = createToonMaterial(0x6a6a7a);
     const lampMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
     const lightPositions: [number, number][] = [
-      [-1.75, -1.75], [1.75, -1.75], [-1.75, 1.75], [1.75, 1.75],
-      [-1.75, -6.25], [1.75, -6.25], [-10.25, -1.75],
-      [10.25, -1.75], [13.75, -1.75], [-10.25, -9.75],
-      [10.25, -9.75], [13.75, -9.75],
+      [-1.25, -1.25], [1.25, -1.25], [-1.25, 1.25], [1.25, 1.25],
+      [-1.25, -6.75], [1.25, -6.75], [-10.25, -1.25],
+      [10.75, -1.25], [13.25, -1.25], [-10.25, -9.75],
+      [10.75, -9.75], [13.25, -9.75],
     ];
     lightPositions.forEach(([lx, ly]) => {
       const pole = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 1), poleMat);
@@ -2614,170 +2614,290 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
     }
 
-    // === Abandoned buildings — one massive building per grass block ===
+    // === Abandoned buildings — dramatic, top-down visible ===
     const abMat = (c: number) => createToonMaterial(c);
     const abDark = abMat(0x0a0a1a);
     const abDebrisMat = abMat(0x5a4a3a);
-    const abGraffitiMats = [abMat(0xdc2626), abMat(0x2563eb), abMat(0x16a34a), abMat(0xf59e0b), abMat(0xf43f5e)];
     const fh = 1.0;
-    const createBigBuilding = (bx: number, by: number, bw: number, bd: number, stories: number, palette: { wall: number; trim: number; accent: number }, tilt = 0, collapseMode: 'none' | 'topCrush' | 'halfCollapse' = 'none') => {
+
+    // Main building builder — creates roof-centric detail visible from top-down ortho camera
+    const createBigBuilding = (
+      bx: number, by: number, bw: number, bd: number, stories: number,
+      palette: { wall: number; trim: number; accent: number },
+      opts: {
+        leanX?: number; leanY?: number;
+        type?: 'solid' | 'cavein' | 'skeleton';
+        caveinFrac?: number; caveinOff?: { x: number; y: number };
+        brokenCorner?: { x: number; y: number; size: number };
+      } = {}
+    ) => {
       const g = new THREE.Group();
       const wMat = abMat(palette.wall);
       const tMat = abMat(palette.trim);
       const aMat = abMat(palette.accent);
-      const collapseStart = collapseMode === 'halfCollapse' ? Math.floor(stories * 0.5) : stories - 1;
-      for (let f = 0; f < stories; f++) {
-        const zOff = f * fh;
-        let shrink = 1 - f * 0.002;
-        let floorW = bw * shrink;
-        if (collapseMode === 'topCrush' && f === stories - 1) {
-          floorW *= 0.5;
-        } else if (collapseMode === 'halfCollapse' && f >= collapseStart) {
-          const progress = (f - collapseStart) / (stories - collapseStart);
-          floorW *= 1 - progress * 0.5;
+      const type = opts.type ?? 'solid';
+      const top = stories * fh;
+
+      if (type === 'skeleton') {
+        // === SKELETAL FRAME: just outer walls + floor beam grid ===
+        // Dark ground inside
+        const floor = new THREE.Mesh(new THREE.BoxGeometry(bw, bd, 0.05), abDark);
+        floor.position.set(0, 0, 0.03);
+        g.add(floor);
+        // Outer walls — thin perimeter visible from above as lines
+        const wallT = 0.12;
+        for (const [wx, ww, wd] of [
+          [0, bw, wallT] as const,         // south wall
+          [0, bw, wallT] as const,         // north wall
+          [0, wallT, bd] as const,         // east wall
+          [0, wallT, bd] as const,         // west wall
+        ] as const) {
+          const isHoriz = wd < ww;
+          const wy = isHoriz ? -bd / 2 : 0;
+          const wxp = !isHoriz ? bw / 2 : 0;
         }
-        const body = new THREE.Mesh(new THREE.BoxGeometry(floorW, bd, fh - 0.04), f === 0 ? tMat : wMat);
-        body.position.set(0, 0, zOff + fh / 2);
-        g.add(body);
-        // Floor ledge
-        if (f > 0) {
-          const ledge = new THREE.Mesh(new THREE.BoxGeometry(floorW + 0.1, bd + 0.08, 0.05), aMat);
-          ledge.position.set(0, 0, zOff + 0.025);
-          g.add(ledge);
+        // Build perimeter walls explicitly
+        const walls = [
+          { px: 0, py: -bd / 2, sx: bw, sy: wallT },
+          { px: 0, py: bd / 2, sx: bw, sy: wallT },
+          { px: -bw / 2, py: 0, sx: wallT, sy: bd },
+          { px: bw / 2, py: 0, sx: wallT, sy: bd },
+        ];
+        for (const w of walls) {
+          const wall = new THREE.Mesh(new THREE.BoxGeometry(w.sx, w.sy, top), wMat);
+          wall.position.set(w.px, w.py, top / 2);
+          g.add(wall);
         }
-        // Windows — both long sides
-        if (f > 0 && (collapseMode === 'none' || f < collapseStart)) {
-          const winCount = Math.max(3, Math.floor(floorW * 1.0));
-          for (let wi = 0; wi < winCount; wi++) {
-            const wx = -floorW / 2 + (wi + 0.5) * (floorW / winCount);
-            for (const side of [-1, 1]) {
-              const sy = side * (bd / 2 + 0.025);
-              const ws = Math.random();
-              if (ws < 0.25) {
-                // Boarded
-                const board = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.03, 0.4), abMat(0x5a3a2a));
-                board.position.set(wx, sy, zOff + fh * 0.5);
-                g.add(board);
-                const cr1 = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.03, 0.03), tMat);
-                cr1.position.set(wx, sy, zOff + fh * 0.5);
-                g.add(cr1);
-                const cr2 = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.42), tMat);
-                cr2.position.set(wx, sy, zOff + fh * 0.5);
-                g.add(cr2);
-              } else if (ws < 0.5) {
-                // Broken
-                const hole = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.03, 0.36), abDark);
-                hole.position.set(wx, sy, zOff + fh * 0.5);
-                g.add(hole);
-              } else {
-                // Dark glass with frame
-                const glass = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.03, 0.34), abDark);
-                glass.position.set(wx, sy, zOff + fh * 0.5);
-                g.add(glass);
-                const fr1 = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.03, 0.025), aMat);
-                fr1.position.set(wx, sy, zOff + fh * 0.33);
-                g.add(fr1);
-                const fr2 = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.03, 0.025), aMat);
-                fr2.position.set(wx, sy, zOff + fh * 0.67);
-                g.add(fr2);
-                const fr3 = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.03, 0.36), aMat);
-                fr3.position.set(wx, sy, zOff + fh * 0.5);
-                g.add(fr3);
-              }
-            }
+        // Floor beams — horizontal grid visible from above
+        const beamCount = Math.max(3, Math.floor(bd / 0.8));
+        for (let i = 0; i <= beamCount; i++) {
+          const by2 = -bd / 2 + (i / beamCount) * bd;
+          const beam = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.2, 0.08, 0.12), aMat);
+          beam.position.set(0, by2, top * 0.4);
+          g.add(beam);
+        }
+        // Cross beams
+        const crossCount = Math.max(3, Math.floor(bw / 0.8));
+        for (let i = 0; i <= crossCount; i++) {
+          const bx2 = -bw / 2 + (i / crossCount) * bw;
+          const beam = new THREE.Mesh(new THREE.BoxGeometry(0.08, bd - 0.2, 0.12), aMat);
+          beam.position.set(bx2, 0, top * 0.6);
+          g.add(beam);
+        }
+        // Vertical support columns at corners and midpoints
+        const colPositions = [
+          [-bw / 2, -bd / 2], [bw / 2, -bd / 2],
+          [-bw / 2, bd / 2], [bw / 2, bd / 2],
+          [0, -bd / 2], [0, bd / 2],
+          [-bw / 2, 0], [bw / 2, 0],
+        ];
+        for (const [cx, cy] of colPositions) {
+          const col = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, top), tMat);
+          col.position.set(cx, cy, top / 2);
+          g.add(col);
+        }
+        // Broken edge chunks — sections of wall missing
+        for (let ci = 0; ci < 4; ci++) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = Math.random() * 0.3;
+          const chunk = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3 + Math.random() * 0.5, 0.15, 0.2 + Math.random() * 0.3),
+            ci % 2 === 0 ? wMat : tMat
+          );
+          chunk.position.set(
+            Math.cos(angle) * bw * 0.4,
+            Math.sin(angle) * bd * 0.4,
+            top * (0.3 + Math.random() * 0.5)
+          );
+          chunk.rotation.z = Math.random() * 0.5;
+          g.add(chunk);
+        }
+      } else {
+        // === SOLID or CAVE-IN: full floors with roof detail ===
+        const caveinFrac = opts.caveinFrac ?? 0;
+        const caveinOff = opts.caveinOff ?? { x: 0, y: 0 };
+        const brokenCorner = opts.brokenCorner;
+
+        for (let f = 0; f < stories; f++) {
+          const zOff = f * fh;
+          const body = new THREE.Mesh(new THREE.BoxGeometry(bw, bd, fh - 0.04), f === 0 ? tMat : wMat);
+          body.position.set(0, 0, zOff + fh / 2);
+          g.add(body);
+          // Floor ledge
+          if (f > 0) {
+            const ledge = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.1, bd + 0.08, 0.05), aMat);
+            ledge.position.set(0, 0, zOff + 0.025);
+            g.add(ledge);
           }
         }
-        // Collapse damage on affected floors
-        if ((collapseMode === 'topCrush' && f === stories - 1) ||
-            (collapseMode === 'halfCollapse' && f >= collapseStart)) {
-          for (let c = 0; c < 5; c++) {
-            const crack = new THREE.Mesh(new THREE.BoxGeometry(0.3 + Math.random() * 0.8, 0.03, 0.04), abMat(0x0a0a0a));
-            crack.position.set((Math.random() - 0.5) * floorW * 0.6, bd / 2 + 0.025, zOff + fh - 0.03);
-            crack.rotation.z = Math.random() * 0.8;
+
+        // === ROOF SURFACE (visible from above) ===
+        // Main roof slab
+        const roofSlab = new THREE.Mesh(new THREE.BoxGeometry(bw, bd, 0.15), wMat);
+        roofSlab.position.set(0, 0, top + 0.075);
+        g.add(roofSlab);
+
+        // === CAVE-IN HOLE ===
+        if (caveinFrac > 0) {
+          const hw = bw * caveinFrac * 0.5;
+          const hd = bd * caveinFrac * 0.5;
+          // Dark hole in roof
+          const hole = new THREE.Mesh(new THREE.BoxGeometry(hw * 2, hd * 2, 0.06), abDark);
+          hole.position.set(caveinOff.x, caveinOff.y, top + 0.01);
+          g.add(hole);
+          // Exposed floor beams inside the hole (visible from above)
+          const beamStep = 0.6;
+          for (let bx2 = -hw + 0.1; bx2 < hw; bx2 += beamStep) {
+            const beam = new THREE.Mesh(new THREE.BoxGeometry(0.08, hd * 2 - 0.1, 0.1), aMat);
+            beam.position.set(caveinOff.x + bx2, caveinOff.y, top - 0.3);
+            g.add(beam);
+          }
+          for (let by2 = -hd + 0.1; by2 < hd; by2 += beamStep) {
+            const beam = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 - 0.1, 0.08, 0.1), aMat);
+            beam.position.set(caveinOff.x, caveinOff.y + by2, top - 0.5);
+            g.add(beam);
+          }
+          // Rubble ring around hole edge
+          for (let ri = 0; ri < 10; ri++) {
+            const angle = Math.random() * Math.PI * 2;
+            const rDist = hw + Math.random() * 0.4;
+            const rb = new THREE.Mesh(
+              new THREE.DodecahedronGeometry(0.06 + Math.random() * 0.1),
+              ri % 2 === 0 ? tMat : abDebrisMat
+            );
+            rb.position.set(
+              caveinOff.x + Math.cos(angle) * rDist * (bw / bd),
+              caveinOff.y + Math.sin(angle) * rDist,
+              top + 0.1
+            );
+            g.add(rb);
+          }
+          // Cracks radiating from hole
+          for (let ci = 0; ci < 6; ci++) {
+            const angle = (ci / 6) * Math.PI * 2 + Math.random() * 0.3;
+            const crack = new THREE.Mesh(
+              new THREE.BoxGeometry(0.04, 0.8 + Math.random() * 1.2, 0.02),
+              abMat(0x1a1a1a)
+            );
+            crack.position.set(
+              caveinOff.x + Math.cos(angle) * (hw + 0.5),
+              caveinOff.y + Math.sin(angle) * (hd + 0.5),
+              top + 0.16
+            );
+            crack.rotation.z = angle;
             g.add(crack);
           }
-          // Exposed rebar
-          for (let r = 0; r < 3; r++) {
-            const rebar = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.3 + Math.random() * 0.4, 4), abMat(0x8a6a4a));
-            rebar.position.set((Math.random() - 0.5) * floorW * 0.4, bd / 2 + 0.1, zOff + fh * (0.3 + Math.random() * 0.4));
+        }
+
+        // === BROKEN CORNER ===
+        if (brokenCorner) {
+          const s = brokenCorner.size;
+          // Dark missing section on roof
+          const missing = new THREE.Mesh(new THREE.BoxGeometry(s, s, 0.06), abDark);
+          missing.position.set(brokenCorner.x, brokenCorner.y, top + 0.01);
+          g.add(missing);
+          // Exposed rebar sticking out
+          for (let ri = 0; ri < 4; ri++) {
+            const rebar = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.015, 0.015, 0.3 + Math.random() * 0.4, 4),
+              abMat(0x8a6a4a)
+            );
+            rebar.position.set(
+              brokenCorner.x + (Math.random() - 0.5) * s * 0.6,
+              brokenCorner.y + (Math.random() - 0.5) * s * 0.6,
+              top + 0.2
+            );
             rebar.rotation.z = Math.random() * 0.5;
             g.add(rebar);
           }
+          // Debris chunks near broken corner
+          for (let di = 0; di < 5; di++) {
+            const d = new THREE.Mesh(
+              new THREE.DodecahedronGeometry(0.05 + Math.random() * 0.1),
+              di % 2 === 0 ? wMat : abDebrisMat
+            );
+            d.position.set(
+              brokenCorner.x + (Math.random() - 0.5) * s,
+              brokenCorner.y + (Math.random() - 0.5) * s,
+              top + 0.12
+            );
+            g.add(d);
+          }
+        }
+
+        // === ROOF DETAILS (visible from above) ===
+        // Water tank
+        const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.5, 8), abMat(0x6a6a7a));
+        tank.position.set(bw * 0.25, -bd * 0.2, top + 0.25);
+        g.add(tank);
+        const tankCap = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 0.1, 8), abMat(0x555555));
+        tankCap.position.set(bw * 0.25, -bd * 0.2, top + 0.55);
+        g.add(tankCap);
+        for (const tx of [-0.12, 0.12]) {
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.25, 4), abMat(0x444444));
+          leg.position.set(bw * 0.25 + tx, -bd * 0.2, top + 0.1);
+          g.add(leg);
+        }
+        // Satellite dish
+        const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.05, 8, 1, true), abMat(0xaaaaaa));
+        dish.rotation.x = -0.3;
+        dish.position.set(-bw * 0.2, bd * 0.15, top + 0.2);
+        g.add(dish);
+        // Rooftop vegetation patches (green moss/weeds)
+        for (let vi = 0; vi < 4; vi++) {
+          const vw = 0.3 + Math.random() * 0.6;
+          const vd = 0.2 + Math.random() * 0.4;
+          const veg = new THREE.Mesh(new THREE.BoxGeometry(vw, vd, 0.03), abMat(0x3a7a3a));
+          veg.position.set(
+            (Math.random() - 0.5) * bw * 0.7,
+            (Math.random() - 0.5) * bd * 0.7,
+            top + 0.17
+          );
+          g.add(veg);
+        }
+        // Water puddle on roof
+        const puddle = new THREE.Mesh(
+          new THREE.CircleGeometry(0.4 + Math.random() * 0.3, 12),
+          abMat(0x2a4a6a)
+        );
+        puddle.position.set(-bw * 0.15, bd * 0.1, top + 0.17);
+        g.add(puddle);
+        // Antenna / broken pole
+        const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 4), abMat(0x888888));
+        antenna.position.set(bw * 0.35, bd * 0.3, top + 0.4);
+        antenna.rotation.z = 0.15;
+        g.add(antenna);
+        // Rubble on roof
+        for (let ri = 0; ri < 8; ri++) {
+          const rb = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(0.05 + Math.random() * 0.08),
+            ri % 3 === 0 ? wMat : ri % 3 === 1 ? tMat : abDebrisMat
+          );
+          rb.position.set(
+            (Math.random() - 0.5) * bw * 0.8,
+            (Math.random() - 0.5) * bd * 0.8,
+            top + 0.18
+          );
+          g.add(rb);
+        }
+        // AC units on roof
+        for (let ac = 0; ac < 2; ac++) {
+          const acx = -bw * 0.25 + ac * bw * 0.5;
+          const acUnit = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.2), abMat(0x8a8a8a));
+          acUnit.position.set(acx, -bd * 0.35, top + 0.1);
+          g.add(acUnit);
         }
       }
-      // Roof — water tanks, pipes, debris
-      const top = stories * fh;
-      // Large water tank
-      const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.5, 8), abMat(0x6a6a7a));
-      tank.position.set(bw * 0.2, -bd * 0.15, top + 0.25);
-      g.add(tank);
-      const tankCap = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, 0.1, 8), abMat(0x555555));
-      tankCap.position.set(bw * 0.2, -bd * 0.15, top + 0.55);
-      g.add(tankCap);
-      for (const tx of [-0.12, 0.12]) {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.25, 4), abMat(0x444444));
-        leg.position.set(bw * 0.2 + tx, -bd * 0.15, top + 0.1);
-        g.add(leg);
-      }
-      // Second smaller tank
-      const tank2 = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.35, 8), abMat(0x7a7a8a));
-      tank2.position.set(-bw * 0.25, bd * 0.2, top + 0.18);
-      g.add(tank2);
-      // Pipes running down facade
-      for (const px of [-bw * 0.35, bw * 0.35]) {
-        const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, top * 0.7, 6), abMat(0x555555));
-        pipe.position.set(px, bd / 2 + 0.05, top * 0.4);
-        g.add(pipe);
-        // Pipe brackets
-        for (let pb = 0; pb < Math.floor(stories * 0.6); pb++) {
-          const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.03, 0.03), abMat(0x444444));
-          bracket.position.set(px, bd / 2 + 0.06, pb * fh * 1.5 + 0.5);
-          g.add(bracket);
-        }
-      }
-      // AC units on lower floors
-      for (let ac = 0; ac < 3; ac++) {
-        const acx = -bw * 0.3 + ac * bw * 0.3;
-        const acUnit = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.25), abMat(0x8a8a8a));
-        acUnit.position.set(acx, -bd / 2 - 0.1, fh * 1.5);
-        g.add(acUnit);
-        const fan = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.03, 8), abMat(0x333333));
-        fan.rotation.x = Math.PI / 2;
-        fan.position.set(acx, -bd / 2 - 0.2, fh * 1.5);
-        g.add(fan);
-      }
-      // Satellite dish on roof
-      const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.05, 8, 1, true), abMat(0xaaaaaa));
-      dish.rotation.x = -0.3;
-      dish.position.set(-bw * 0.15, 0, top + 0.2);
-      g.add(dish);
-      // Graffiti splashes
-      for (let gi = 0; gi < 3; gi++) {
-        const gMat = abGraffitiMats[Math.floor(Math.random() * abGraffitiMats.length)];
-        const gw = 0.5 + Math.random() * 1.0;
-        const gh = 0.4 + Math.random() * 0.6;
-        const gz = 0.8 + Math.random() * (top - 2);
-        const graffiti = new THREE.Mesh(new THREE.BoxGeometry(gw, 0.025, gh), gMat);
-        graffiti.position.set((Math.random() - 0.5) * bw * 0.6, bd / 2 + 0.03, gz);
-        g.add(graffiti);
-      }
-      // Rubble at base
-      for (let ri = 0; ri < 12; ri++) {
-        const rb = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(0.06 + Math.random() * 0.14),
-          ri % 3 === 0 ? wMat : ri % 3 === 1 ? tMat : abDebrisMat
-        );
-        rb.position.set(
-          (Math.random() - 0.5) * bw * 0.8,
-          bd / 2 + 0.15 + Math.random() * 0.4,
-          0.05 + Math.random() * 0.05
-        );
-        g.add(rb);
-      }
-      if (tilt !== 0) g.rotation.z = tilt;
+
+      // === LEAN (rotation.x or rotation.y for realistic 3D tilt) ===
+      if (opts.leanX) g.rotation.x = opts.leanX;
+      if (opts.leanY) g.rotation.y = opts.leanY;
+
       g.position.set(bx, by, 0);
       return g;
     };
+
+    // Ground debris scatter
     const scatterDebris = (cx: number, cy: number, r: number, n: number) => {
       for (let i = 0; i < n; i++) {
         const a = Math.random() * Math.PI * 2;
@@ -2806,19 +2926,42 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
       }
     };
-    // Grass blocks (from xGaps/yGaps): each block has 0.5 sidewalks at edges, usable area starts at sidewalk edge+0.25
-    // Top-left block: x=[-10.0, -2.0], y=[2.0, 6.0] → 8 wide, 4 tall
-    outdoorGroup.add(createBigBuilding(-6, 4, 7.2, 3.4, 8, { wall: 0x4a4a54, trim: 0x33333d, accent: 0x5a5a64 }, 0.04, 'halfCollapse'));
-    scatterDebris(-6, 4, 3.5, 14);
-    // Top-center block: x=[2.0, 10.0], y=[2.0, 6.0] → 8 wide, 4 tall
-    outdoorGroup.add(createBigBuilding(6, 4, 7.2, 3.4, 7, { wall: 0x7a4a32, trim: 0x5c3520, accent: 0x8b5a3a }, -0.03, 'topCrush'));
-    scatterDebris(6, 4, 3.5, 14);
-    // Top-right block: x=[14.0, 24], y=[2.0, 6.0] → 10 wide, 4 tall
-    outdoorGroup.add(createBigBuilding(19, 4, 9.2, 3.4, 9, { wall: 0x2a3a4a, trim: 0x1a2a3a, accent: 0x3a4a5a }, 0.02, 'none'));
-    scatterDebris(19, 4, 4.0, 16);
-    // Mid-right block: x=[14.0, 24], y=[-6.0, -2.0] → 10 wide, 4 tall
-    outdoorGroup.add(createBigBuilding(19, -4, 9.2, 3.4, 8, { wall: 0x6b4226, trim: 0x4a2e15, accent: 0x8b5a3a }, -0.05, 'halfCollapse'));
-    scatterDebris(19, -4, 4.0, 16);
+
+    // === PLACEMENT: one massive building per grass block ===
+    // Expanded grass blocks: top=[1.0,7.0], mid=[-7.0,-1.0], bottom=[-14,-9.5]
+    //                       left=[-10.4,-1.0], center=[1.0,11.0], right=[13.0,24]
+
+    // Top-left block: LEANING concrete tower — leans north, broken corner
+    // x=[-10.4,-1.0], y=[1.0,7.0] → center (-5.7, 4), max ~8.8×5.4
+    outdoorGroup.add(createBigBuilding(-5.7, 4, 8.2, 5.0, 8,
+      { wall: 0x4a4a54, trim: 0x33333d, accent: 0x5a5a64 },
+      { leanX: -0.12, brokenCorner: { x: -3.2, y: 2.0, size: 1.5 } }
+    ));
+    scatterDebris(-5.7, 4, 4.0, 16);
+
+    // Top-center block: BRICK building with cave-in
+    // x=[1.0,11.0], y=[1.0,7.0] → center (6, 4), max ~9.5×5.4
+    outdoorGroup.add(createBigBuilding(6, 4, 8.8, 5.0, 7,
+      { wall: 0x7a4a32, trim: 0x5c3520, accent: 0x8b5a3a },
+      { caveinFrac: 0.45, caveinOff: { x: 0.5, y: -0.3 } }
+    ));
+    scatterDebris(6, 4, 4.0, 16);
+
+    // Top-right block: SKELETAL FRAME — gutted building, just walls + beams
+    // x=[13.0,24], y=[1.0,7.0] → center (18.5, 4), max ~10.5×5.4
+    outdoorGroup.add(createBigBuilding(18.5, 4, 9.5, 5.0, 8,
+      { wall: 0x2a3a4a, trim: 0x1a2a3a, accent: 0x3a4a5a },
+      { type: 'skeleton' }
+    ));
+    scatterDebris(18.5, 4, 4.5, 18);
+
+    // Mid-right block: STANDING slate building with broken corner, slight lean east
+    // x=[13.0,24], y=[-7.0,-1.0] → center (18.5, -4), max ~10.5×5.4
+    outdoorGroup.add(createBigBuilding(18.5, -4, 9.5, 5.0, 9,
+      { wall: 0x3a3a4a, trim: 0x2a2a3a, accent: 0x4a4a5a },
+      { leanY: 0.06, brokenCorner: { x: 3.5, y: 1.5, size: 1.8 } }
+    ));
+    scatterDebris(18.5, -4, 4.5, 18);
 
     // Parts shop at (6.0, -12.0) — fills the entire grass patch east of Rafiq's
     {
