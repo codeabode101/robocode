@@ -3126,7 +3126,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // === PLACEMENT: one building per grass block, filling the entire plot ===
     // Top-left: x=[-10.4,-1.0], y=[1.0,7.0] → center (-5.7, 4), size 9.4×6.0
-    outdoorGroup.add(createAbandoned(-5.7, 4, 8.8, 5.4, 8, 0, 0.05, false, false, { wallHoles: true, fireEscape: true, balcony: true }));
+    outdoorGroup.add(createAbandoned(-5.7, 4, 8.8, 5.4, 8, 0, 0, false, false, { wallHoles: true, fireEscape: true, balcony: true }));
     scatterDebris(-5.7, 4, 4.5, 16);
 
     // Top-center: x=[1.0,11.0], y=[1.0,7.0] → center (6, 4), size 10×6
@@ -3138,11 +3138,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scatterDebris(18.5, 4, 5.0, 18);
 
     // Mid-right: x=[13.0,24], y=[-7.0,-1.0] → center (18.5, -4), size 11×6
-    outdoorGroup.add(createAbandoned(18.5, -4, 10.4, 5.4, 9, 0, -0.04, false, false, { wallHoles: true, fireEscape: true, balcony: true }));
+    outdoorGroup.add(createAbandoned(18.5, -4, 10.4, 5.4, 9, 0, 0, false, false, { wallHoles: true, fireEscape: true, balcony: true }));
     scatterDebris(18.5, -4, 5.0, 18);
 
     // Bottom-right (expanded): x=[13.0,24], y=[-14,-8] → center (18.5, -11), size 11×6
-    outdoorGroup.add(createAbandoned(18.5, -11, 10.4, 5.4, 7, 1, 0.06, false, false, { wallHoles: true, fireEscape: true, balcony: true }));
+    outdoorGroup.add(createAbandoned(18.5, -11, 10.4, 5.4, 7, 1, 0, false, false, { wallHoles: true, fireEscape: true, balcony: true }));
     scatterDebris(18.5, -11, 5.0, 16);
 
     // Extra scattered debris in empty corners
