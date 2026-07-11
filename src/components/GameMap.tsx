@@ -2154,6 +2154,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     yGaps.forEach(([y1, y2, yc]) => {
       xGaps.forEach(([x1, x2, xc]) => { addG(xc, yc, x2 - x1, y2 - y1); });
     });
+    // Extend bottom-right grass plot upward: y=[-14,-9.5] → y=[-14,-8]
+    addG(18.5, -8.75, 11, 1.5);
 
     // Sidewalks along road edges, split to avoid covering intersections
     const sMat = new THREE.MeshBasicMaterial({ color: 0xc8c0b0 });
@@ -2175,6 +2177,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
     hSW(1.25); hSW(-1.25); hSW(-6.75); hSW(-9.75); hSW(6.75); hSW(9.75);
     vSW(-1.25); vSW(1.25); vSW(-10.25); vSW(10.75); vSW(13.25);
+    // Extend right-side vertical sidewalk for expanded bottom-right grass
+    makeSW(13.25, -8.75, sw, 1.5);
 
     // Street markings - dashed yellow center lines
     // Dashed yellow center lines
@@ -3112,48 +3116,26 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
     };
 
-    // === PLACEMENT: detailed abandoned buildings in each grass block ===
-    // Expanded grass blocks: top=[1.0,7.0], mid=[-7.0,-1.0], bottom=[-14,-9.5]
-    //                       left=[-10.4,-1.0], center=[1.0,11.0], right=[13.0,24]
-    // NOTE: mid-center is the PARK (lake+palms) — no buildings there
+    // === PLACEMENT: one building per grass block, filling the entire plot ===
+    // Top-left: x=[-10.4,-1.0], y=[1.0,7.0] → center (-5.7, 4), size 9.4×6.0
+    outdoorGroup.add(createAbandoned(-5.7, 4, 8.8, 5.4, 8, 0, 0.05, false, false, { wallHoles: true, fireEscape: true, balcony: true }));
+    scatterDebris(-5.7, 4, 4.5, 16);
 
-    // Top-left block: concrete + wood buildings, one leaning, wall holes
-    outdoorGroup.add(createAbandoned(-7, 4, 5.0, 3.5, 7, 0, 0.05, false, false, { wallHoles: true, fireEscape: true }));
-    outdoorGroup.add(createAbandoned(-3.5, 3.2, 4.0, 2.8, 5, 1, -0.04, false, false, { balcony: true }));
-    outdoorGroup.add(createAbandoned(-7.5, 5.5, 3.5, 2.0, 4, 2, 0, false, true));
-    scatterDebris(-7, 4, 3.0, 14);
-    scatterDebris(-3.5, 3.2, 2.0, 10);
-    scatterDebris(-7.5, 5.5, 1.5, 8);
+    // Top-center: x=[1.0,11.0], y=[1.0,7.0] → center (6, 4), size 10×6
+    outdoorGroup.add(createAbandoned(6, 4, 9.4, 5.4, 9, 3, 0, false, false, { wallHoles: true, fireEscape: true, balcony: true }));
+    scatterDebris(6, 4, 4.8, 16);
 
-    // Top-center block: brick + concrete buildings, one fallen, gutted
-    outdoorGroup.add(createAbandoned(4, 4, 5.0, 3.5, 8, 3, 0, false, false, { wallHoles: true, fireEscape: true, balcony: true }));
-    outdoorGroup.add(createAbandoned(8, 5, 4.5, 2.5, 6, 0, 0, true));
-    outdoorGroup.add(createAbandoned(4, 2.8, 3.5, 2.0, 5, 1, 0.06, false, false, { gutted: true }));
-    scatterDebris(4, 4, 3.0, 14);
-    scatterDebris(8, 5, 2.5, 12);
-    scatterDebris(4, 2.8, 1.5, 8);
+    // Top-right: x=[13.0,24], y=[1.0,7.0] → center (18.5, 4), size 11×6
+    outdoorGroup.add(createAbandoned(18.5, 4, 10.4, 5.4, 8, 2, 0, false, false, { wallHoles: true, fireEscape: true, balcony: true }));
+    scatterDebris(18.5, 4, 5.0, 18);
 
-    // Top-right block: slate + brick buildings, one crushed, wall holes
-    outdoorGroup.add(createAbandoned(16, 4, 5.0, 3.5, 7, 0, 0, false, false, { wallHoles: true, balcony: true }));
-    outdoorGroup.add(createAbandoned(20, 3.5, 4.5, 3.0, 6, 2, 0.03, false, false, { fireEscape: true }));
-    outdoorGroup.add(createAbandoned(22, 5.5, 3.5, 2.5, 5, 3, 0, false, true, { wallHoles: true }));
-    scatterDebris(16, 4, 3.0, 14);
-    scatterDebris(20, 3.5, 2.5, 10);
-    scatterDebris(22, 5.5, 1.5, 8);
+    // Mid-right: x=[13.0,24], y=[-7.0,-1.0] → center (18.5, -4), size 11×6
+    outdoorGroup.add(createAbandoned(18.5, -4, 10.4, 5.4, 9, 0, -0.04, false, false, { wallHoles: true, fireEscape: true, balcony: true }));
+    scatterDebris(18.5, -4, 5.0, 18);
 
-    // Mid-right block: concrete + slate buildings, one leaning, one fallen
-    outdoorGroup.add(createAbandoned(16, -4, 5.0, 3.5, 8, 0, 0.08, false, false, { fireEscape: true, wallHoles: true }));
-    outdoorGroup.add(createAbandoned(20, -3.5, 4.5, 2.5, 6, 1, 0, false, false, { balcony: true, gutted: true }));
-    outdoorGroup.add(createAbandoned(22, -5.5, 3.5, 2.0, 5, 2, 0, true));
-    scatterDebris(16, -4, 3.0, 14);
-    scatterDebris(20, -3.5, 2.5, 10);
-    scatterDebris(22, -5.5, 1.5, 8);
-
-    // Bottom-right block: mixed buildings near dock
-    outdoorGroup.add(createAbandoned(16, -11.75, 5.0, 3.0, 6, 3, 0, false, false, { wallHoles: true, fireEscape: true }));
-    outdoorGroup.add(createAbandoned(21, -11, 4.0, 2.5, 5, 0, -0.03, false, false, { balcony: true }));
-    scatterDebris(16, -11.75, 2.5, 10);
-    scatterDebris(21, -11, 2.0, 8);
+    // Bottom-right (expanded): x=[13.0,24], y=[-14,-8] → center (18.5, -11), size 11×6
+    outdoorGroup.add(createAbandoned(18.5, -11, 10.4, 5.4, 7, 1, 0.06, false, false, { wallHoles: true, fireEscape: true, balcony: true }));
+    scatterDebris(18.5, -11, 5.0, 16);
 
     // Extra scattered debris in empty corners
     scatterDebris(-9, 2, 0.6, 5);
