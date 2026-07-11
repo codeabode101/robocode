@@ -44,10 +44,10 @@ export function buildObstacles(params: ObstacleParams): Hitbox[] {
     // Top-center
     { shape: 'box', center: { x: 6, y: 4 }, halfWidth: 4.7, halfHeight: 2.7 },
     // Top-right
-    { shape: 'box', center: { x: 18.5, y: 4 }, halfWidth: 5.2, halfHeight: 2.7 },
+    { shape: 'box', center: { x: 18.5, y: 4 }, halfWidth: 5.0, halfHeight: 2.7 },
     // Mid-right
-    { shape: 'box', center: { x: 18.5, y: -4 }, halfWidth: 5.2, halfHeight: 2.7 },
-    // Bottom-right (expanded)
-    { shape: 'box', center: { x: 18.5, y: -11 }, halfWidth: 5.2, halfHeight: 3.0 },
+    { shape: 'box', center: { x: 18.5, y: -4 }, halfWidth: 5.0, halfHeight: 2.7 },
+    // Bottom-right
+    { shape: 'box', center: { x: 18.5, y: -11.75 }, halfWidth: 5.0, halfHeight: 2.0 },
   ];
 }
