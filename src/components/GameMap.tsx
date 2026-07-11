@@ -2101,6 +2101,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     water.receiveShadow = true;
     outdoorGroup.add(water);
 
+    // Solid dark plane deep below to prevent seeing through when camera rotates
+    const deepFloor = new THREE.Mesh(
+      new THREE.PlaneGeometry(2000, 2000),
+      new THREE.MeshBasicMaterial({ color: 0x0a0a14 })
+    );
+    deepFloor.position.z = -5;
+    outdoorGroup.add(deepFloor);
+
     // D-shaped island: flat left edge at x=-11, circular elsewhere
     const flatX = -10.4;
     const flatY = 14;
