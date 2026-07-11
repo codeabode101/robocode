@@ -2629,19 +2629,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       new Promise((resolve) => {
         glbLoader.load(path, (gltf) => {
           const group = gltf.scene;
-          // Convert all materials to toon-shaded for visual consistency
+          // Keep original PBR materials from Blender — they have proper colors,
+          // roughness, and metallic values. Just enable shadows.
           group.traverse((child) => {
             if (child instanceof THREE.Mesh) {
-              child.material = createToonMaterial(
-                (child.material as THREE.MeshStandardMaterial).color?.getHex() ?? 0x666666
-              );
               child.castShadow = true;
               child.receiveShadow = true;
             }
           });
           resolve(group);
         }, undefined, () => {
-          // Fallback: empty group on error
           resolve(new THREE.Group());
         });
       });
