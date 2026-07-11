@@ -2629,10 +2629,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       new Promise((resolve) => {
         glbLoader.load(path, (gltf) => {
           const group = gltf.scene;
-          // Keep original PBR materials from Blender — they have proper colors,
-          // roughness, and metallic values. Just enable shadows.
+          // Convert Blender PBR materials to toon-shaded to match the game's visual style.
+          // Extract the base color from each MeshStandardMaterial, then replace with toon.
           group.traverse((child) => {
             if (child instanceof THREE.Mesh) {
+              const src = child.material as THREE.MeshStandardMaterial;
+              const hex = src.color?.getHex() ?? 0x666666;
+              child.material = createToonMaterial(hex);
               child.castShadow = true;
               child.receiveShadow = true;
             }
