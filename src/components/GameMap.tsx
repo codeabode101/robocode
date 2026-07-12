@@ -2637,7 +2637,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const applyToMat = (m: THREE.Material) => {
                 const src = m as THREE.MeshStandardMaterial;
                 const hex = src.color?.getHex() ?? 0x666666;
-                const mat = new THREE.MeshBasicMaterial({ color: hex });
+                const mat = new THREE.MeshBasicMaterial({ color: hex, toneMapped: false });
                 mat.side = THREE.DoubleSide;
                 return mat;
               };
