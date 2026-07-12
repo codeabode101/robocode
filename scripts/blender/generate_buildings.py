@@ -350,12 +350,30 @@ def build_building(bw, bd, stories, palette_fn, hole_chance=0.25, include_fire_e
     return g
 
 
+def merge_building_mesh(collection):
+    """Select all mesh objects in the collection and join them into one."""
+    bpy.ops.object.select_all(action='DESELECT')
+    meshes = [o for o in collection.objects if o.type == 'MESH']
+    if not meshes:
+        return
+    # Set first mesh as active
+    bpy.context.view_layer.objects.active = meshes[0]
+    meshes[0].select_set(True)
+    for m in meshes[1:]:
+        m.select_set(True)
+    bpy.ops.object.join()
+    # Rename the result
+    bpy.context.active_object.name = "BuildingMesh"
+
+
 def export_building(name, bw, bd, stories, palette_fn, hole_chance=0.25,
                     include_fire_escape=True, include_balconies=True):
     """Build and export a single building."""
     print(f"\n=== Generating {name} ({bw}x{bd}, {stories} stories) ===")
     g = build_building(bw, bd, stories, palette_fn, hole_chance,
                        include_fire_escape, include_balconies)
+    # Merge all meshes into one to reduce draw calls in Three.js
+    merge_building_mesh(g)
     path = os.path.join(OUTPUT_DIR, f"{name}.glb")
     export_glb(path)
     print(f"Exported: {path}")

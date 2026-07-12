@@ -2629,13 +2629,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       new Promise((resolve) => {
         glbLoader.load(path, (gltf) => {
           const group = gltf.scene;
-          // Convert Blender PBR materials to toon-shaded to match the game's visual style.
-          // Extract the base color from each MeshStandardMaterial, then replace with toon.
+          // After Blender mesh join, each mesh may have a Material[] array.
+          // Convert each to MeshBasicMaterial (flat, no lighting artifacts)
+          // so colors match exactly what Blender authored.
           group.traverse((child) => {
             if (child instanceof THREE.Mesh) {
-              const src = child.material as THREE.MeshStandardMaterial;
-              const hex = src.color?.getHex() ?? 0x666666;
-              child.material = createToonMaterial(hex);
+              const applyToMat = (m: THREE.Material) => {
+                const src = m as THREE.MeshStandardMaterial;
+                const hex = src.color?.getHex() ?? 0x666666;
+                const mat = new THREE.MeshBasicMaterial({ color: hex });
+                mat.side = THREE.DoubleSide;
+                return mat;
+              };
+              if (Array.isArray(child.material)) {
+                child.material = child.material.map(applyToMat);
+              } else {
+                child.material = applyToMat(child.material);
+              }
               child.castShadow = true;
               child.receiveShadow = true;
             }
