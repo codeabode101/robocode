@@ -2629,11 +2629,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       new Promise((resolve) => {
         glbLoader.load(path, (gltf) => {
           const group = gltf.scene;
-          // After Blender mesh join, each mesh may have a Material[] array.
-          // Convert each to MeshBasicMaterial (flat, no lighting artifacts)
-          // so colors match exactly what Blender authored.
+          let matCount = 0;
           group.traverse((child) => {
             if (child instanceof THREE.Mesh) {
+              const mats = Array.isArray(child.material) ? child.material : [child.material];
+              mats.forEach((m, i) => {
+                const src = m as THREE.MeshStandardMaterial;
+                const c = src.color;
+                if (c && matCount < 5) {
+                  console.log(`[GLB] ${path} mesh=${child.name} mat${i} color=#${c.getHexString()} r=${c.r.toFixed(3)} g=${c.g.toFixed(3)} b=${c.b.toFixed(3)}`);
+                  matCount++;
+                }
+              });
               const applyToMat = (m: THREE.Material) => {
                 const src = m as THREE.MeshStandardMaterial;
                 const hex = src.color?.getHex() ?? 0x666666;
