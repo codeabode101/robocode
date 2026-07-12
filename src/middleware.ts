@@ -5,6 +5,8 @@ import { jwtVerify } from 'jose';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  if (process.env.NODE_ENV === 'development') return NextResponse.next();
+
   if (
     pathname.startsWith('/api') ||
     pathname === '/login' ||
