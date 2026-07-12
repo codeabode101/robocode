@@ -2631,18 +2631,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const group = gltf.scene;
           group.traverse((child) => {
             if (child instanceof THREE.Mesh) {
-              const applyToMat = (m: THREE.Material) => {
-                const src = m as THREE.MeshStandardMaterial;
-                const hex = src.color?.getHex() ?? 0x666666;
-                const mat = new THREE.MeshBasicMaterial({ color: hex, toneMapped: false });
-                mat.side = THREE.DoubleSide;
-                return mat;
-              };
-              if (Array.isArray(child.material)) {
-                child.material = child.material.map(applyToMat);
-              } else {
-                child.material = applyToMat(child.material);
-              }
               child.castShadow = true;
               child.receiveShadow = true;
             }
