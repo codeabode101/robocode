@@ -1554,3 +1554,292 @@ export function createApartmentBuilding(x: number, y: number, bw = 4.0, bd = 4.0
   building.position.set(x, y, 0);
   return building;
 }
+
+export function createAbandonedBuilding(x: number, y: number, bw: number, bd: number, palette: 'concrete' | 'brick' | 'slate' | 'wood') {
+  const bldg = new THREE.Group();
+  const bh = 1.8;
+
+  const palettes = {
+    concrete: { wall: 0x8a8a92, trim: 0x6b6b73, accent: 0x55555d, roof: 0x4a4a52 },
+    brick:    { wall: 0x9c6b4c, trim: 0x7a4a2e, accent: 0xb07850, roof: 0x6b3a1e },
+    slate:    { wall: 0x6a7a8a, trim: 0x4a5a6a, accent: 0x5a6a7a, roof: 0x3a4a5a },
+    wood:     { wall: 0x8a6a4a, trim: 0x6a4a2a, accent: 0x9a7a5a, roof: 0x5a3a1a },
+  };
+  const p = palettes[palette];
+  const wallMat = createToonMaterial(p.wall);
+  const trimMat = createToonMaterial(p.trim);
+  const accentMat = createToonMaterial(p.accent);
+  const roofMat = createToonMaterial(p.roof);
+  const darkMat = createToonMaterial(0x1a1a22);
+  const glassMat = createToonMaterial(0x2a3a4a);
+  const boardMat = createToonMaterial(0x8b6b4a);
+  const vegMat = createToonMaterial(0x3a6a2a);
+  const rustMat = createToonMaterial(0x8b4513);
+  const steelMat = createToonMaterial(0x5a5a6a);
+
+  // Foundation slab
+  const foundation = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.3, bd + 0.3, 0.1), trimMat);
+  foundation.position.set(0, 0, 0.05);
+  bldg.add(foundation);
+
+  // Solid walls
+  const wallH = bh - 0.15;
+  for (const [side, sy, sz] of [
+    ['south', -bd / 2, 0],
+    ['north', bd / 2, 0],
+  ] as const) {
+    const wall = new THREE.Mesh(
+      new THREE.BoxGeometry(bw, 0.12, wallH),
+      wallMat
+    );
+    wall.position.set(0, sy, 0.1 + wallH / 2);
+    bldg.add(wall);
+  }
+  for (const sx of [-1, 1]) {
+    const wall = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, bd, wallH),
+      wallMat
+    );
+    wall.position.set(sx * bw / 2, 0, 0.1 + wallH / 2);
+    bldg.add(wall);
+  }
+
+  // Windows on south wall — varied states
+  const winCount = Math.max(2, Math.floor(bw / 0.9));
+  const winSpacing = bw / winCount;
+  const winW = 0.32, winH = 0.4;
+  for (let i = 0; i < winCount; i++) {
+    const wx = -bw / 2 + winSpacing * (i + 0.5);
+    const state = Math.random();
+    const wy = -bd / 2;
+    const wz = 0.1 + wallH * 0.55;
+
+    if (state < 0.25) {
+      // Boarded window
+      const board = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.06, 0.04, winH + 0.06), boardMat);
+      board.position.set(wx, wy - 0.03, wz);
+      bldg.add(board);
+      // Cross planks
+      for (const [pw, ph] of [[winW + 0.1, 0.03], [0.03, winH + 0.1]] as const) {
+        const plank = new THREE.Mesh(new THREE.BoxGeometry(pw, 0.03, ph), trimMat);
+        plank.position.set(wx, wy - 0.04, wz);
+        bldg.add(plank);
+      }
+    } else if (state < 0.5) {
+      // Dark window with frame
+      const glass = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.03, winH), darkMat);
+      glass.position.set(wx, wy - 0.02, wz);
+      bldg.add(glass);
+      // Frame top/bottom
+      for (const [fh, fz] of [[0.03, winH / 2], [-0.03, -winH / 2]] as const) {
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.06, 0.03, 0.03), trimMat);
+        frame.position.set(wx, wy - 0.03, wz + fz);
+        bldg.add(frame);
+      }
+    } else if (state < 0.7) {
+      // Broken glass shard
+      const shard = new THREE.Mesh(new THREE.BoxGeometry(winW * 0.6, 0.03, winH * 0.5), glassMat);
+      shard.position.set(wx, wy - 0.02, wz - 0.05);
+      shard.rotation.z = 0.3 * (Math.random() > 0.5 ? 1 : -1);
+      bldg.add(shard);
+    } else if (state < 0.85) {
+      // Dark open hole
+      const hole = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.08, winH), darkMat);
+      hole.position.set(wx, wy - 0.01, wz);
+      bldg.add(hole);
+    }
+  }
+
+  // Windows on north wall
+  for (let i = 0; i < winCount; i++) {
+    const wx = -bw / 2 + winSpacing * (i + 0.5);
+    if (Math.random() > 0.6) continue;
+    const wy = bd / 2;
+    const wz = 0.1 + wallH * 0.55;
+    const glass = new THREE.Mesh(new THREE.BoxGeometry(winW * 0.8, 0.03, winH * 0.7), darkMat);
+    glass.position.set(wx, wy + 0.02, wz);
+    bldg.add(glass);
+  }
+
+  // East/west windows (fewer)
+  for (const sx of [-1, 1]) {
+    const ewCount = Math.max(1, Math.floor(bd / 1.2));
+    const ewSpacing = bd / ewCount;
+    for (let i = 0; i < ewCount; i++) {
+      if (Math.random() > 0.5) continue;
+      const ey = -bd / 2 + ewSpacing * (i + 0.5);
+      const ex = sx * bw / 2;
+      const ez = 0.1 + wallH * 0.55;
+      if (Math.random() < 0.4) {
+        const board = new THREE.Mesh(new THREE.BoxGeometry(0.04, winW * 0.8, winH * 0.8), boardMat);
+        board.position.set(ex + sx * 0.03, ey, ez);
+        bldg.add(board);
+      } else {
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(0.08, winW * 0.7, winH * 0.7), darkMat);
+        glass.position.set(ex + sx * 0.01, ey, ez);
+        bldg.add(glass);
+      }
+    }
+  }
+
+  // Door on south wall
+  const doorW = 0.4, doorH = 0.6;
+  const doorX = bw * 0.2 * (Math.random() > 0.5 ? 1 : -1);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(doorW, 0.08, doorH), darkMat);
+  door.position.set(doorX, -bd / 2 - 0.01, 0.1 + doorH / 2);
+  bldg.add(door);
+  // Door frame
+  const df = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.08, 0.08, doorH + 0.04), trimMat);
+  df.position.set(doorX, -bd / 2 - 0.02, 0.1 + doorH / 2);
+  bldg.add(df);
+  // Step
+  const step = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.3, 0.12, 0.06), trimMat);
+  step.position.set(doorX, -bd / 2 - 0.1, 0.03);
+  bldg.add(step);
+
+  // Flat roof slab
+  const roofSlab = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.08, bd + 0.08, 0.1), roofMat);
+  roofSlab.position.set(0, 0, 0.1 + bh);
+  bldg.add(roofSlab);
+
+  // Parapet walls
+  for (const [side, sy] of [['south', -bd / 2], ['north', bd / 2]] as const) {
+    const para = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.08, 0.06, 0.14), accentMat);
+    para.position.set(0, sy, 0.1 + bh + 0.07 + 0.07);
+    bldg.add(para);
+  }
+  for (const sx of [-1, 1]) {
+    const para = new THREE.Mesh(new THREE.BoxGeometry(0.06, bd + 0.08, 0.14), accentMat);
+    para.position.set(sx * bw / 2, 0, 0.1 + bh + 0.14);
+    bldg.add(para);
+  }
+
+  // Horizontal cornice band
+  const cornice = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.1, bd + 0.1, 0.05), accentMat);
+  cornice.position.set(0, 0, 0.1 + bh - 0.12);
+  bldg.add(cornice);
+
+  // Roof details — vents, tank, antenna
+  if (Math.random() > 0.3) {
+    const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.25, 8), steelMat);
+    tank.position.set(bw * 0.25 * (Math.random() > 0.5 ? 1 : -1), bd * 0.2 * (Math.random() > 0.5 ? 1 : -1), 0.1 + bh + 0.12 + 0.06);
+    bldg.add(tank);
+  }
+  // Vent boxes
+  for (let vi = 0; vi < 2; vi++) {
+    if (Math.random() > 0.5) continue;
+    const vent = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.08), steelMat);
+    vent.position.set(-bw * 0.3 + vi * bw * 0.3, -bd * 0.3, 0.1 + bh + 0.04 + 0.04);
+    bldg.add(vent);
+  }
+  // Antenna
+  if (Math.random() > 0.4) {
+    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.35, 4), steelMat);
+    ant.position.set(bw * 0.35 * (Math.random() > 0.5 ? 1 : -1), bd * 0.3, 0.1 + bh + 0.12 + 0.17);
+    bldg.add(ant);
+    // Red tip
+    const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.03, 6), createToonMaterial(0xdd3333));
+    tip.position.set(ant.position.x, ant.position.y, ant.position.y + 0.19);
+    bldg.add(tip);
+  }
+
+  // Vegetation on roof
+  for (let vi = 0; vi < 3; vi++) {
+    if (Math.random() > 0.5) continue;
+    const vw = 0.2 + Math.random() * 0.3;
+    const veg = new THREE.Mesh(new THREE.BoxGeometry(vw, vw * 0.7, 0.02), vegMat);
+    veg.position.set((Math.random() - 0.5) * bw * 0.6, (Math.random() - 0.5) * bd * 0.6, 0.1 + bh + 0.13);
+    bldg.add(veg);
+  }
+
+  // Exposed rebar along edges
+  for (let ri = 0; ri < 3; ri++) {
+    if (Math.random() > 0.5) continue;
+    const rx = (Math.random() - 0.5) * bw * 0.4;
+    const ry = bd / 2 * (Math.random() > 0.5 ? 1 : -1);
+    const rh = 0.1 + Math.random() * 0.15;
+    const rebar = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, rh, 4), rustMat);
+    rebar.position.set(rx, ry, 0.1 + bh + 0.12 + rh / 2);
+    rebar.rotation.x = (Math.random() - 0.5) * 0.4;
+    rebar.rotation.z = (Math.random() - 0.5) * 0.4;
+    bldg.add(rebar);
+  }
+
+  // Fire escape on one side
+  if (Math.random() > 0.3) {
+    const feSide = Math.random() > 0.5 ? 1 : -1;
+    const feX = bw * 0.35 * (Math.random() > 0.5 ? 1 : -1);
+    for (let fi = 0; fi < 2; fi++) {
+      const fz = 0.1 + wallH * (0.35 + fi * 0.4);
+      const plat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.03), steelMat);
+      plat.position.set(feX, feSide * (bd / 2 + 0.18), fz);
+      bldg.add(plat);
+      // Railing
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.15), steelMat);
+      rail.position.set(feX, feSide * (bd / 2 + 0.34), fz + 0.075);
+      bldg.add(rail);
+      for (const rx of [-0.2, 0.2]) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.15), steelMat);
+        post.position.set(feX + rx, feSide * (bd / 2 + 0.34), fz + 0.075);
+        bldg.add(post);
+      }
+    }
+  }
+
+  // Graffiti tags on walls
+  const graffitiColors = [0xdd3333, 0x3366dd, 0x33aa55, 0xddaa33];
+  for (let gi = 0; gi < 2; gi++) {
+    if (Math.random() > 0.5) continue;
+    const gw = 0.2 + Math.random() * 0.3;
+    const gh = 0.15 + Math.random() * 0.2;
+    const gs = Math.random() > 0.5 ? 1 : -1;
+    const gx = (Math.random() - 0.5) * bw * 0.5;
+    const gy = gs * (bd / 2 + 0.012);
+    const gz = 0.3 + Math.random() * (wallH * 0.4);
+    const tag = new THREE.Mesh(
+      new THREE.BoxGeometry(gw, 0.01, gh),
+      createToonMaterial(graffitiColors[Math.floor(Math.random() * graffitiColors.length)])
+    );
+    tag.position.set(gx, gy, gz);
+    bldg.add(tag);
+  }
+
+  // Water stain streaks
+  for (let si = 0; si < 3; si++) {
+    if (Math.random() > 0.5) continue;
+    const sh = 0.2 + Math.random() * 0.3;
+    const sx = (Math.random() - 0.5) * bw * 0.5;
+    const ss = Math.random() > 0.5 ? 1 : -1;
+    const stain = new THREE.Mesh(
+      new THREE.BoxGeometry(0.04, 0.01, sh),
+      createToonMaterial(0x2a2a2a)
+    );
+    stain.position.set(sx, ss * (bd / 2 + 0.01), 0.2 + Math.random() * (wallH * 0.5));
+    bldg.add(stain);
+  }
+
+  // Rubble at base
+  for (let ri = 0; ri < 8; ri++) {
+    const side = Math.random() > 0.5 ? 1 : -1;
+    const rx = (Math.random() - 0.5) * bw * 0.4;
+    const ry = side * (bd / 2 + 0.05 + Math.random() * 0.25);
+    const rt = Math.random();
+    let rubble: THREE.Mesh;
+    if (rt < 0.4) {
+      rubble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.04 + Math.random() * 0.06), trimMat);
+    } else if (rt < 0.7) {
+      rubble = new THREE.Mesh(new THREE.BoxGeometry(0.1 + Math.random() * 0.15, 0.02, 0.015), boardMat);
+      rubble.rotation.z = Math.random() * Math.PI;
+    } else {
+      rubble = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.08 + Math.random() * 0.1, 4), rustMat);
+      rubble.rotation.x = (Math.random() - 0.5) * 0.5;
+      rubble.rotation.z = (Math.random() - 0.5) * 0.5;
+    }
+    rubble.position.set(rx, ry, 0.02);
+    bldg.add(rubble);
+  }
+
+  bldg.position.set(x, y, 0);
+  applyShadows(bldg, true, true);
+  return bldg;
+}

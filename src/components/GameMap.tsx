@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTypewriterDialog } from '@/hooks/useTypewriterDialog';
 import { useDialogEnter } from '@/hooks/useDialogEnter';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useMultiplayer } from '@/hooks/useMultiplayer';
 import type { SparkyQuestStage, CustomerRequest, TutorialPhase, RoomType, GameGoal, ScrapPartId, SpecSheetPrompt } from '@/components/game/types';
 import Editor from '@/components/game/Editor';
@@ -20,6 +19,7 @@ import {
   createGrid, createPalmTree, createBazaarShop, createRangoli, addWindows, addOutline, applyShadows, disposeObject,
   createRobotVisual, buildPlayerVisual, createHumanVisual, createPartsShop, createPartModel, createApartmentBuilding, animateRobotVisual, LABEL_BUILD_TAG, WALK_BOB_SPEED,
   addExclamationMarker, createRepairKiosk, animateRepairKiosk, animateRepairSparky, animateSparkyWave,
+  createAbandonedBuilding,
 } from '@/components/game/scene';
 import { pickRandom, hashColor, getWorkshopRequestSignature, validateWorkshopCode, createPartIcon, createDataRequest, computeCameraZoom, createCardboardBox, createLaptop, createWire, createWireCoil, animateWirePulse, openBoxLid, isInsideHitbox, collidesWithAny, escapeHtml, highlightJava, computeGoal, getMissionText, walkPlayer } from '@/components/game/helpers';
 import type { BuildingFootprint } from '@/components/game/helpers';
@@ -2623,24 +2623,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
     }
 
-    // === Abandoned buildings — GLB models from Blender ===
-    const glbLoader = new GLTFLoader();
-    const loadGlbBuilding = (path: string): Promise<THREE.Group> =>
-      new Promise((resolve) => {
-        glbLoader.load(path, (gltf) => {
-          const group = gltf.scene;
-          group.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              child.castShadow = true;
-              child.receiveShadow = true;
-            }
-          });
-          resolve(group);
-        }, undefined, () => {
-          resolve(new THREE.Group());
-        });
-      });
-
+    // === Abandoned buildings — procedural toon-shaded ===
     const abMat = (c: number) => createToonMaterial(c);
     const abDebrisMat = abMat(0x5a4a3a);
 
@@ -2673,21 +2656,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
     };
 
-    // === PLACEMENT: one building per grass block — GLB models ===
-    const GLB_BUILDINGS: { path: string; x: number; y: number; debrisR: number; debrisN: number }[] = [
-      { path: '/models/building_top_left.glb', x: -5.7, y: 4, debrisR: 4.5, debrisN: 16 },
-      { path: '/models/building_top_center.glb', x: 6, y: 4, debrisR: 4.8, debrisN: 16 },
-      { path: '/models/building_top_right.glb', x: 18.5, y: 4, debrisR: 4.8, debrisN: 18 },
-      { path: '/models/building_mid_right.glb', x: 18.5, y: -4, debrisR: 4.8, debrisN: 18 },
-      { path: '/models/building_bottom_right.glb', x: 18.5, y: -11.75, debrisR: 4.5, debrisN: 16 },
+    // === PLACEMENT: one building per grass block ===
+    const BUILDINGS: { x: number; y: number; w: number; d: number; palette: 'concrete' | 'brick' | 'slate' | 'wood'; debrisR: number; debrisN: number }[] = [
+      { x: -5.7, y: 4, w: 8.0, d: 4.5, palette: 'concrete', debrisR: 4.5, debrisN: 16 },
+      { x: 6, y: 4, w: 8.5, d: 4.5, palette: 'brick', debrisR: 4.8, debrisN: 16 },
+      { x: 18.5, y: 4, w: 9.0, d: 4.5, palette: 'slate', debrisR: 4.8, debrisN: 18 },
+      { x: 18.5, y: -4, w: 9.0, d: 4.5, palette: 'slate', debrisR: 4.8, debrisN: 18 },
+      { x: 18.5, y: -11.75, w: 9.0, d: 3.5, palette: 'wood', debrisR: 4.5, debrisN: 16 },
     ];
-    const buildingPromises = GLB_BUILDINGS.map(({ path, x, y, debrisR, debrisN }) =>
-      loadGlbBuilding(path).then((group) => {
-        group.position.set(x, y, 0);
-        outdoorGroup.add(group);
-        scatterDebris(x, y, debrisR, debrisN);
-      })
-    );
+    for (const { x, y, w, d, palette, debrisR, debrisN } of BUILDINGS) {
+      outdoorGroup.add(createAbandonedBuilding(x, y, w, d, palette));
+      scatterDebris(x, y, debrisR, debrisN);
+    }
 
     // Extra scattered debris in empty corners
     scatterDebris(-9, 2, 0.6, 5);
