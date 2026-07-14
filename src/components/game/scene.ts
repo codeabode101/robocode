@@ -1587,28 +1587,85 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   foundation.position.set(0, 0, 0.06);
   bldg.add(foundation);
 
-  // === SOUTH WALL — two-tone ===
+  // === COLLAPSE ZONE (computed early so walls can skip it) ===
+  const doCollapse = Math.random() > 0.35;
+  let collapseX = 0, collapseY = 0, gapW = 0, gapD = 0;
+  let csx = 1, csy = 1;
+  if (doCollapse) {
+    csx = Math.random() > 0.5 ? -1 : 1;
+    csy = Math.random() > 0.5 ? -1 : 1;
+    collapseX = csx * bw * 0.35;
+    collapseY = csy * bd * 0.35;
+    gapW = 0.8 + Math.random() * 0.6;
+    gapD = 0.7 + Math.random() * 0.5;
+  }
+
+  // Helper: build a wall segment, splitting around collapse gap if needed
   const halfH = wallH / 2;
-  const sLower = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.18, halfH), wallDarkMat);
-  sLower.position.set(0, southY, 0.1 + halfH / 2);
-  bldg.add(sLower);
-  const sUpper = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.18, halfH), wallMat);
-  sUpper.position.set(0, southY, 0.1 + halfH + halfH / 2);
-  bldg.add(sUpper);
+  function buildWallSegs(
+    axis: 'x' | 'y', wallPos: number, wallLen: number, isLower: boolean,
+    mat: THREE.Material, hasGap = false, thick = 0.18,
+  ) {
+    const segH = halfH;
+    const zBase = isLower ? 0.1 + halfH / 2 : 0.1 + halfH + halfH / 2;
+
+    // Determine if this wall overlaps the collapse gap
+    const gapMin = axis === 'x' ? collapseX - gapW / 2 : collapseY - gapD / 2;
+    const gapMax = axis === 'x' ? collapseX + gapW / 2 : collapseY + gapD / 2;
+    const wallMin = -wallLen / 2;
+    const wallMax = wallLen / 2;
+
+    if (!hasGap || !doCollapse || gapMin >= wallMax || gapMax <= wallMin) {
+      // No overlap — full wall
+      const w = axis === 'x' ? new THREE.BoxGeometry(wallLen, thick, segH) : new THREE.BoxGeometry(thick, wallLen, segH);
+      const mesh = new THREE.Mesh(w, mat);
+      if (axis === 'x') mesh.position.set(0, wallPos, zBase);
+      else mesh.position.set(wallPos, 0, zBase);
+      bldg.add(mesh);
+    } else {
+      // Overlap — split into up to 2 segments, skip the gap
+      const clampedMin = Math.max(gapMin, wallMin);
+      const clampedMax = Math.min(gapMax, wallMax);
+      const segments: [number, number][] = [];
+      if (clampedMin > wallMin + 0.1) segments.push([wallMin, clampedMin]);
+      if (clampedMax < wallMax - 0.1) segments.push([clampedMax, wallMax]);
+      for (const [s, e] of segments) {
+        const segLen = e - s;
+        const segCenter = (s + e) / 2;
+        const w = axis === 'x' ? new THREE.BoxGeometry(segLen, thick, segH) : new THREE.BoxGeometry(thick, segLen, segH);
+        const mesh = new THREE.Mesh(w, mat);
+        if (axis === 'x') mesh.position.set(segCenter, wallPos, zBase);
+        else mesh.position.set(wallPos, segCenter, zBase);
+        bldg.add(mesh);
+      }
+      // Jagged broken edges at gap boundaries
+      for (const edge of [clampedMin, clampedMax]) {
+        if (edge <= wallMin + 0.05 || edge >= wallMax - 0.05) continue;
+        for (let ji = 0; ji < 3; ji++) {
+          const jH = 0.15 + Math.random() * 0.35;
+          const jW = 0.06 + Math.random() * 0.1;
+          const jm = new THREE.Mesh(new THREE.BoxGeometry(jW, 0.08, jH), wallDarkMat);
+          const jitter = (Math.random() - 0.5) * 0.08;
+          if (axis === 'x') jm.position.set(edge + jitter, wallPos, 0.1 + jH / 2);
+          else jm.position.set(wallPos, edge + jitter, 0.1 + jH / 2);
+          jm.rotation.z = (Math.random() - 0.5) * 0.3;
+          bldg.add(jm);
+        }
+      }
+    }
+  }
+
+  // === SOUTH WALL ===
+  buildWallSegs('x', southY, bw, true, wallDarkMat, doCollapse && csy === -1);
+  buildWallSegs('x', southY, bw, false, wallMat, doCollapse && csy === -1);
 
   // === NORTH WALL ===
-  const nLower = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.18, halfH), wallDarkMat);
-  nLower.position.set(0, bd / 2, 0.1 + halfH / 2);
-  bldg.add(nLower);
-  const nUpper = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.18, halfH), wallMat);
-  nUpper.position.set(0, bd / 2, 0.1 + halfH + halfH / 2);
-  bldg.add(nUpper);
+  buildWallSegs('x', bd / 2, bw, true, wallDarkMat, doCollapse && csy === 1);
+  buildWallSegs('x', bd / 2, bw, false, wallMat, doCollapse && csy === 1);
 
   // === EAST/WEST WALLS ===
   for (const sx of [-1, 1]) {
-    const wl = new THREE.Mesh(new THREE.BoxGeometry(0.18, bd, wallH), wallMat);
-    wl.position.set(sx * bw / 2, 0, 0.1 + wallH / 2);
-    bldg.add(wl);
+    buildWallSegs('y', sx * bw / 2, bd, false, wallMat, doCollapse && csx === sx);
   }
 
   // Mid-band trim + second band for tall buildings
@@ -1642,18 +1699,18 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
 
       if (state < 0.22) {
         const board = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.08, 0.06, winH + 0.08), boardMat);
-        board.position.set(wx, southY - 0.06, rowZ);
+        board.position.set(wx, southY - 0.10, rowZ);
         bldg.add(board);
         const dPlank = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.14, 0.04, 0.04), trimMat);
-        dPlank.position.set(wx, southY - 0.08, rowZ);
+        dPlank.position.set(wx, southY - 0.13, rowZ);
         dPlank.rotation.z = 0.7;
         bldg.add(dPlank);
         const cPlank = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, winH + 0.14), trimMat);
-        cPlank.position.set(wx, southY - 0.08, rowZ);
+        cPlank.position.set(wx, southY - 0.13, rowZ);
         bldg.add(cPlank);
       } else if (state < 0.45) {
         const glass = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.04, winH), darkMat);
-        glass.position.set(wx, southY - 0.03, rowZ);
+        glass.position.set(wx, southY - 0.10, rowZ);
         bldg.add(glass);
         for (const [fw, fh, fp] of [
           [winW + 0.1, 0.04, [0, winH / 2]],
@@ -1662,17 +1719,17 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           [0.04, winH + 0.1, [winW / 2, 0]],
         ] as const) {
           const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.06, fh), trimMat);
-          frame.position.set(wx + fp[0], southY - 0.06, rowZ + fp[1]);
+          frame.position.set(wx + fp[0], southY - 0.13, rowZ + fp[1]);
           bldg.add(frame);
         }
       } else if (state < 0.62) {
         const shard = new THREE.Mesh(new THREE.BoxGeometry(winW * 0.5, 0.04, winH * 0.6), glassMat);
-        shard.position.set(wx, southY - 0.03, rowZ - 0.06);
+        shard.position.set(wx, southY - 0.10, rowZ - 0.06);
         shard.rotation.z = 0.4 * (Math.random() > 0.5 ? 1 : -1);
         bldg.add(shard);
       } else if (state < 0.8) {
         const hole = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.12, winH), darkMat);
-        hole.position.set(wx, southY - 0.02, rowZ);
+        hole.position.set(wx, southY - 0.10, rowZ);
         bldg.add(hole);
       }
     }
@@ -1690,18 +1747,18 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
         const ez = 0.1 + wallH * (0.2 + row * (0.6 / winRows));
         if (Math.random() < 0.4) {
           const board = new THREE.Mesh(new THREE.BoxGeometry(0.08, winW * 0.9, winH * 0.9), boardMat);
-          board.position.set(ex + sx * 0.06, ey, ez);
+          board.position.set(ex + sx * 0.10, ey, ez);
           bldg.add(board);
         } else {
           const glass = new THREE.Mesh(new THREE.BoxGeometry(0.14, winW * 0.8, winH * 0.8), darkMat);
-          glass.position.set(ex + sx * 0.04, ey, ez);
+          glass.position.set(ex + sx * 0.10, ey, ez);
           bldg.add(glass);
           for (const [fw, fh, fp] of [
             [0.06, winW + 0.06, [0, winH * 0.4]],
             [0.06, winW + 0.06, [0, -winH * 0.4]],
           ] as const) {
             const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, 0.05), trimMat);
-            frame.position.set(ex + sx * 0.06, ey, ez + fp[1]);
+            frame.position.set(ex + sx * 0.12, ey, ez + fp[1]);
             bldg.add(frame);
           }
         }
@@ -1824,25 +1881,17 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     bldg.add(rail);
   }
 
-  // === COLLAPSED CORNER ===
-  const collapseCorner = Math.random() > 0.35;
-  let collapseX = 0, collapseY = 0;
-  if (collapseCorner) {
-    const csx = Math.random() > 0.5 ? -1 : 1;
-    const csy = Math.random() > 0.5 ? -1 : 1;
-    collapseX = csx * bw * 0.35;
-    collapseY = csy * bd * 0.35;
-    const gapW = 0.8 + Math.random() * 0.6;
-    const gapD = 0.7 + Math.random() * 0.5;
+  // === COLLAPSED CORNER (walls already split — add debris) ===
+  if (doCollapse) {
     const gapFloor = new THREE.Mesh(new THREE.BoxGeometry(gapW, gapD, 0.02), darkMat);
     gapFloor.position.set(collapseX, collapseY, 0.1 + bh - 0.07 - 0.07);
     bldg.add(gapFloor);
-    for (let ri = 0; ri < 6; ri++) {
+    for (let ri = 0; ri < 8; ri++) {
       const rr = new THREE.Mesh(
-        new THREE.BoxGeometry(0.12 + Math.random() * 0.2, 0.1 + Math.random() * 0.15, 0.06 + Math.random() * 0.08),
+        new THREE.BoxGeometry(0.12 + Math.random() * 0.25, 0.1 + Math.random() * 0.2, 0.06 + Math.random() * 0.1),
         trimMat
       );
-      rr.rotation.z = Math.random() * 0.4;
+      rr.rotation.z = Math.random() * 0.5;
       rr.position.set(
         collapseX + (Math.random() - 0.5) * gapW * 1.5,
         collapseY + (Math.random() - 0.5) * gapD * 1.5,
@@ -1850,8 +1899,8 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
       );
       bldg.add(rr);
     }
-    for (let ri = 0; ri < 3; ri++) {
-      const rb = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.2 + Math.random() * 0.25, 4), rustMat);
+    for (let ri = 0; ri < 4; ri++) {
+      const rb = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.2 + Math.random() * 0.3, 4), rustMat);
       rb.position.set(
         collapseX + (Math.random() - 0.5) * gapW * 0.8,
         collapseY + csy * gapD * 0.55,
