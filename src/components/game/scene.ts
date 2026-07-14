@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export const LABEL_BUILD_TAG = 'label-build-20260510-0342';
 
@@ -1578,6 +1579,11 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   const rustMat = createToonMaterial(0x8b4513);
   const steelMat = createToonMaterial(0x5a5a6a);
   const brickMat = createToonMaterial(0x7a4030);
+  const crackMat = createToonMaterial(0x2a2a2a);
+  const redMat = createToonMaterial(0xdd3333);
+  const dumpsterBodyMat = createToonMaterial(0x2d5a27);
+  const dumpsterLidMat = createToonMaterial(0x3a7a33);
+  const graffitiMats = [0xdd3333, 0x3366dd, 0x33aa55, 0xddaa33, 0xff66aa].map(c => createToonMaterial(c));
 
   const wallH = bh - 0.15;
   const southY = -bd / 2;
@@ -1665,6 +1671,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
 
   // === EAST/WEST WALLS ===
   for (const sx of [-1, 1]) {
+    buildWallSegs('y', sx * bw / 2, bd, true, wallDarkMat, doCollapse && csx === sx);
     buildWallSegs('y', sx * bw / 2, bd, false, wallMat, doCollapse && csx === sx);
   }
 
@@ -1699,18 +1706,18 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
 
       if (state < 0.22) {
         const board = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.08, 0.06, winH + 0.08), boardMat);
-        board.position.set(wx, southY - 0.10, rowZ);
+        board.position.set(wx, southY - 0.18, rowZ);
         bldg.add(board);
         const dPlank = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.14, 0.04, 0.04), trimMat);
-        dPlank.position.set(wx, southY - 0.13, rowZ);
+        dPlank.position.set(wx, southY - 0.21, rowZ);
         dPlank.rotation.z = 0.7;
         bldg.add(dPlank);
         const cPlank = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, winH + 0.14), trimMat);
-        cPlank.position.set(wx, southY - 0.13, rowZ);
+        cPlank.position.set(wx, southY - 0.21, rowZ);
         bldg.add(cPlank);
       } else if (state < 0.45) {
         const glass = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.04, winH), darkMat);
-        glass.position.set(wx, southY - 0.10, rowZ);
+        glass.position.set(wx, southY - 0.18, rowZ);
         bldg.add(glass);
         for (const [fw, fh, fp] of [
           [winW + 0.1, 0.04, [0, winH / 2]],
@@ -1719,17 +1726,17 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           [0.04, winH + 0.1, [winW / 2, 0]],
         ] as const) {
           const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.06, fh), trimMat);
-          frame.position.set(wx + fp[0], southY - 0.13, rowZ + fp[1]);
+          frame.position.set(wx + fp[0], southY - 0.21, rowZ + fp[1]);
           bldg.add(frame);
         }
       } else if (state < 0.62) {
         const shard = new THREE.Mesh(new THREE.BoxGeometry(winW * 0.5, 0.04, winH * 0.6), glassMat);
-        shard.position.set(wx, southY - 0.10, rowZ - 0.06);
+        shard.position.set(wx, southY - 0.18, rowZ - 0.06);
         shard.rotation.z = 0.4 * (Math.random() > 0.5 ? 1 : -1);
         bldg.add(shard);
       } else if (state < 0.8) {
         const hole = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.12, winH), darkMat);
-        hole.position.set(wx, southY - 0.10, rowZ);
+        hole.position.set(wx, southY - 0.18, rowZ);
         bldg.add(hole);
       }
     }
@@ -1747,18 +1754,18 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
         const ez = 0.1 + wallH * (0.2 + row * (0.6 / winRows));
         if (Math.random() < 0.4) {
           const board = new THREE.Mesh(new THREE.BoxGeometry(0.08, winW * 0.9, winH * 0.9), boardMat);
-          board.position.set(ex + sx * 0.10, ey, ez);
+          board.position.set(ex + sx * 0.18, ey, ez);
           bldg.add(board);
         } else {
           const glass = new THREE.Mesh(new THREE.BoxGeometry(0.14, winW * 0.8, winH * 0.8), darkMat);
-          glass.position.set(ex + sx * 0.10, ey, ez);
+          glass.position.set(ex + sx * 0.18, ey, ez);
           bldg.add(glass);
           for (const [fw, fh, fp] of [
             [0.06, winW + 0.06, [0, winH * 0.4]],
             [0.06, winW + 0.06, [0, -winH * 0.4]],
           ] as const) {
             const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, 0.05), trimMat);
-            frame.position.set(ex + sx * 0.12, ey, ez + fp[1]);
+            frame.position.set(ex + sx * 0.20, ey, ez + fp[1]);
             bldg.add(frame);
           }
         }
@@ -1770,7 +1777,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   const doorW = 0.6, doorH = 1.0;
   const doorX = bw * 0.2 * (Math.random() > 0.5 ? 1 : -1);
   const door = new THREE.Mesh(new THREE.BoxGeometry(doorW, 0.14, doorH), darkMat);
-  door.position.set(doorX, southY - 0.02, 0.1 + doorH / 2);
+  door.position.set(doorX, southY - 0.15, 0.1 + doorH / 2);
   bldg.add(door);
   for (const [fw, fh, fp] of [
     [doorW + 0.14, 0.08, [0, doorH / 2]],
@@ -1779,11 +1786,11 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     [0.08, doorH + 0.14, [doorW / 2 + 0.04, 0]],
   ] as const) {
     const df = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.09, fh), trimMat);
-    df.position.set(doorX + fp[0], southY - 0.08, 0.1 + doorH / 2 + fp[1]);
+    df.position.set(doorX + fp[0], southY - 0.21, 0.1 + doorH / 2 + fp[1]);
     bldg.add(df);
   }
   const step = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.5, 0.18, 0.1), trimMat);
-  step.position.set(doorX, southY - 0.16, 0.05);
+  step.position.set(doorX, southY - 0.22, 0.05);
   bldg.add(step);
 
   // === ENTRANCE CANOPY (50%) or simple awning ===
@@ -2008,7 +2015,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.012, antH, 4), steelMat);
     ant.position.set(ax, ay, 0.1 + bh + 0.07 + antH / 2 + 0.15);
     bldg.add(ant);
-    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), createToonMaterial(0xdd3333));
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), redMat);
     tip.position.set(ax, ay, 0.1 + bh + 0.07 + antH + 0.18);
     bldg.add(tip);
     for (let ci = 0; ci < 2; ci++) {
@@ -2099,7 +2106,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const gz = 0.3 + Math.random() * (wallH * 0.5);
     const tag = new THREE.Mesh(
       new THREE.BoxGeometry(gw, 0.015, gh),
-      createToonMaterial(graffitiColors[Math.floor(Math.random() * graffitiColors.length)])
+      graffitiMats[gi % graffitiMats.length]
     );
     tag.position.set(gx, gy, gz);
     bldg.add(tag);
@@ -2113,7 +2120,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const cs = Math.random() > 0.5 ? 1 : -1;
     const crack = new THREE.Mesh(
       new THREE.BoxGeometry(0.02, 0.015, ch),
-      createToonMaterial(0x2a2a2a)
+      crackMat
     );
     crack.position.set(cx, cs * (bd / 2 + 0.015), 0.3 + Math.random() * (wallH * 0.5));
     crack.rotation.z = (Math.random() - 0.5) * 0.3;
@@ -2177,11 +2184,11 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const dumpSide = Math.random() > 0.5 ? 1 : -1;
     const dumpX = dumpSide * (bw / 2 + 0.4);
     const dumpY = (Math.random() - 0.5) * bd * 0.4;
-    const dumpster = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.25), createToonMaterial(0x2d5a27));
+    const dumpster = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.25), dumpsterBodyMat);
     dumpster.position.set(dumpX, dumpY, 0.125);
     bldg.add(dumpster);
     // Lid slightly open
-    const lid = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.02, 0.3), createToonMaterial(0x3a7a33));
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.02, 0.3), dumpsterLidMat);
     lid.position.set(dumpX, dumpY - 0.08, 0.27);
     lid.rotation.x = 0.3;
     bldg.add(lid);
@@ -2241,6 +2248,33 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     }
     rubble.position.set(rx, ry, 0.025);
     bldg.add(rubble);
+  }
+
+  // === MERGE ALL GEOMETRIES BY MATERIAL (reduces draw calls from ~150 to ~15) ===
+  bldg.updateMatrixWorld(true);
+  const geoBins = new Map<string, { mat: THREE.Material; geos: THREE.BufferGeometry[] }>();
+  const toRemove: THREE.Object3D[] = [];
+  bldg.traverse((child) => {
+    if (child instanceof THREE.Mesh && child.geometry) {
+      const geo = child.geometry.clone();
+      child.updateWorldMatrix(true, false);
+      geo.applyMatrix4(child.matrixWorld);
+      const key = child.material.uuid;
+      if (!geoBins.has(key)) geoBins.set(key, { mat: child.material, geos: [] });
+      geoBins.get(key)!.geos.push(geo);
+      toRemove.push(child);
+    }
+  });
+  for (const obj of toRemove) obj.parent?.remove(obj);
+  for (const { mat, geos } of geoBins.values()) {
+    if (geos.length === 0) continue;
+    const merged = mergeGeometries(geos, false);
+    if (merged) {
+      const mesh = new THREE.Mesh(merged, mat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      bldg.add(mesh);
+    }
   }
 
   bldg.position.set(x, y, 0);
