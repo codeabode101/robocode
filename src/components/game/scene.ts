@@ -1611,16 +1611,16 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   bldg.add(foundation);
 
   // === COLLAPSE ZONE (computed early so walls can skip it) ===
-  const doCollapse = Math.random() > 0.35;
+  const doCollapse = Math.random() > 0.55;
   let collapseX = 0, collapseY = 0, gapW = 0, gapD = 0;
   let csx = 1, csy = 1;
   if (doCollapse) {
     csx = Math.random() > 0.5 ? -1 : 1;
     csy = Math.random() > 0.5 ? -1 : 1;
-    collapseX = csx * bw * 0.35;
-    collapseY = csy * bd * 0.35;
-    gapW = 0.8 + Math.random() * 0.6;
-    gapD = 0.7 + Math.random() * 0.5;
+    collapseX = csx * (bw / 2 - 0.3);
+    collapseY = csy * (bd / 2 - 0.3);
+    gapW = 0.6 + Math.random() * 0.5;
+    gapD = 0.5 + Math.random() * 0.4;
   }
 
   // Helper: build a wall segment, splitting around collapse gap if needed
