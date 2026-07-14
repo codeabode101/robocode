@@ -477,3 +477,51 @@ Fix scrap follower closure bug, scrap body donut issue, add per-line TTS to lapt
 
 ### Branch
 `main` (committed + pushed + deployed)
+
+---
+
+## Automated Screenshot Testing
+
+### Script: `screenshot_test.js`
+
+Playwright-based test that simulates a real player exploring the game world. Takes labeled screenshots at various positions and camera angles.
+
+**Usage:**
+```bash
+node screenshot_test.js
+```
+Outputs `test_*.png` files to `/tmp/`.
+
+### How it works
+
+1. **Auth**: Reads `WORKOS_API_KEY` from `.dev.vars`, creates a JWT cookie
+2. **Modal dismissal**: Clicks "Got it!" button via JS, presses Escape, closes X buttons
+3. **Camera rotation**: Acquires pointer lock on the canvas, then dispatches `PointerEvent('pointermove')` with `movementX`/`movementY` — the game's camera handler processes these when `isLockedRef.current === true`
+4. **Movement**: WASD keyboard events via Playwright
+5. **Screenshots**: Labeled and saved to `/tmp/test_*.png`
+
+### Key helpers in the script
+
+| Helper | What it does |
+|--------|-------------|
+| `dismissModals()` | Clicks "Got it!", Escape, close X buttons |
+| `acquirePointerLock()` | Calls `canvas.requestPointerLock()` via JS |
+| `rotateCamera(movementX, movementY, steps)` | Dispatches `pointermove` events with `movementX`/`movementY` properties over N steps |
+| `walk(keys, ms)` | Holds WASD keys for `ms` milliseconds |
+| `screenshot(label)` | Saves labeled PNG to `/tmp/test_<label>.png` |
+
+### Camera rotation note
+
+The game uses `PointerEvent.movementX/movementY` for camera orbit when pointer lock is active. In headless Chromium, `requestPointerLock()` + dispatched events work — the game's `onPointerMove` handler processes them and updates `yawRef`/`cameraPitchRef`. Each `movementX` unit rotates ~0.012 rad, each `movementY` unit tilts ~0.005 rad.
+
+### Building locations for testing
+
+| Building | Position | Height |
+|----------|----------|--------|
+| Top-left (concrete) | (-5.7, 4) | 3.5 |
+| Top-center (brick) | (6, 4) | 2.5 |
+| Top-right (slate) | (18.5, 4) | 3.0 |
+| Mid-right (slate) | (18.5, -4) | 2.0 |
+| Bottom-right (wood) | (18.5, -11.75) | 2.5 |
+
+To get a good building screenshot: walk the player within 3–5 units of a building, then `rotateCamera()` to face it from the side (negative movementX = look left, positive = look right, negative movementY = look up).

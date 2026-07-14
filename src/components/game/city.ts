@@ -38,16 +38,16 @@ export function buildObstacles(params: ObstacleParams): Hitbox[] {
     // Parts shop building
     { shape: 'box', center: { x: 6.0, y: -12.0 }, halfWidth: 4.0, halfHeight: 2.0 },
 
-    // Abandoned buildings — one per grass block, filling the plot
+    // Abandoned buildings — one per grass block
     // Top-left
-    { shape: 'box', center: { x: -5.7, y: 4 }, halfWidth: 4.4, halfHeight: 2.7 },
+    { shape: 'box', center: { x: -5.7, y: 4 }, halfWidth: 4.2, halfHeight: 2.5 },
     // Top-center
-    { shape: 'box', center: { x: 6, y: 4 }, halfWidth: 4.7, halfHeight: 2.7 },
+    { shape: 'box', center: { x: 6, y: 4 }, halfWidth: 4.5, halfHeight: 2.5 },
     // Top-right
-    { shape: 'box', center: { x: 18.5, y: 4 }, halfWidth: 5.0, halfHeight: 2.7 },
+    { shape: 'box', center: { x: 18.5, y: 4 }, halfWidth: 4.8, halfHeight: 2.5 },
     // Mid-right
-    { shape: 'box', center: { x: 18.5, y: -4 }, halfWidth: 5.0, halfHeight: 2.7 },
+    { shape: 'box', center: { x: 18.5, y: -4 }, halfWidth: 4.8, halfHeight: 2.5 },
     // Bottom-right
-    { shape: 'box', center: { x: 18.5, y: -11.75 }, halfWidth: 5.0, halfHeight: 2.0 },
+    { shape: 'box', center: { x: 18.5, y: -11.75 }, halfWidth: 4.8, halfHeight: 2.0 },
   ];
 }

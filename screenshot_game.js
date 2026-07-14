@@ -26,20 +26,35 @@ const fs = require('fs');
   await page.goto('https://robocode.rahejaom.workers.dev/game', { waitUntil: 'load', timeout: 30000 });
   await page.waitForTimeout(5000);
 
-  // Force click the Got it! button  
+  // Dismiss "How to play" modal by finding the Got it! button
   await page.evaluate(() => {
     const buttons = document.querySelectorAll('button');
-    for (const b of buttons) {
-      if (b.textContent.includes('Got it')) {
-        b.click();
-        break;
+    for (const btn of buttons) {
+      if (btn.textContent.includes('Got it')) {
+        btn.click();
+        return true;
+      }
+    }
+    return false;
+  });
+  console.log('Dismissed How to play');
+  await page.waitForTimeout(1000);
+
+  // Close any other modals (Guilds etc) by clicking X buttons
+  await page.evaluate(() => {
+    const closeButtons = document.querySelectorAll('button');
+    for (const btn of closeButtons) {
+      if (btn.textContent.includes('\u00d7') || btn.getAttribute('aria-label')?.includes('close')) {
+        btn.click();
       }
     }
   });
-  console.log('Force clicked Got it!');
-  await page.waitForTimeout(2000);
+  // Also press Escape to close any remaining modals
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(1000);
+
   await page.screenshot({ path: '/tmp/g1.png' });
-  console.log('S1: after dismiss');
+  console.log('S1: spawn');
 
   // Walk north
   await page.keyboard.down('w');
