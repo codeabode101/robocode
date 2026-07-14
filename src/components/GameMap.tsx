@@ -2658,11 +2658,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // === PLACEMENT: one building per grass block ===
     const BUILDINGS: { x: number; y: number; w: number; d: number; palette: 'concrete' | 'brick' | 'slate' | 'wood'; debrisR: number; debrisN: number; height: number }[] = [
-      { x: -5.7, y: 4, w: 8.0, d: 4.5, palette: 'concrete', debrisR: 4.5, debrisN: 16, height: 3.5 },
-      { x: 6, y: 4, w: 8.5, d: 4.5, palette: 'brick', debrisR: 4.8, debrisN: 16, height: 2.5 },
-      { x: 18.5, y: 4, w: 9.0, d: 4.5, palette: 'slate', debrisR: 4.8, debrisN: 18, height: 3.0 },
-      { x: 18.5, y: -4, w: 9.0, d: 4.5, palette: 'slate', debrisR: 4.8, debrisN: 18, height: 2.0 },
-      { x: 18.5, y: -11.75, w: 9.0, d: 3.5, palette: 'wood', debrisR: 4.5, debrisN: 16, height: 2.5 },
+      { x: -5.7, y: 4, w: 8.0, d: 4.5, palette: 'concrete', debrisR: 4.5, debrisN: 16, height: 5.5 },
+      { x: 6, y: 4, w: 8.5, d: 4.5, palette: 'brick', debrisR: 4.8, debrisN: 16, height: 4.0 },
+      { x: 18.5, y: 4, w: 9.0, d: 4.5, palette: 'slate', debrisR: 4.8, debrisN: 18, height: 6.0 },
+      { x: 18.5, y: -4, w: 9.0, d: 4.5, palette: 'slate', debrisR: 4.8, debrisN: 18, height: 3.5 },
+      { x: 18.5, y: -11.75, w: 9.0, d: 3.5, palette: 'wood', debrisR: 4.5, debrisN: 16, height: 4.5 },
     ];
     for (const { x, y, w, d, palette, debrisR, debrisN, height } of BUILDINGS) {
       outdoorGroup.add(createAbandonedBuilding(x, y, w, d, palette, height));

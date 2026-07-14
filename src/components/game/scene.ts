@@ -1577,6 +1577,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   const vegMat = createToonMaterial(0x3a6a2a);
   const rustMat = createToonMaterial(0x8b4513);
   const steelMat = createToonMaterial(0x5a5a6a);
+  const brickMat = createToonMaterial(0x7a4030);
 
   const wallH = bh - 0.15;
   const southY = -bd / 2;
@@ -1610,59 +1611,70 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     bldg.add(wl);
   }
 
-  // Mid-band trim
+  // Mid-band trim + second band for tall buildings
   const midBand = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.08, bd + 0.08, 0.08), accentMat);
   midBand.position.set(0, 0, 0.1 + halfH);
   bldg.add(midBand);
+  if (bh > 4) {
+    const midBand2 = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.08, bd + 0.08, 0.06), accentMat);
+    midBand2.position.set(0, 0, 0.1 + wallH * 0.33);
+    bldg.add(midBand2);
+    const midBand3 = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.08, bd + 0.08, 0.06), accentMat);
+    midBand3.position.set(0, 0, 0.1 + wallH * 0.66);
+    bldg.add(midBand3);
+  }
 
   // Top cornice
   const cornice = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.16, bd + 0.16, 0.1), accentMat);
   cornice.position.set(0, 0, 0.1 + wallH - 0.05);
   bldg.add(cornice);
 
-  // === SOUTH WALL WINDOWS ===
+  // === SOUTH WALL WINDOWS — multiple rows for tall buildings ===
+  const winRows = bh > 4.5 ? 3 : bh > 3 ? 2 : 1;
   const winCount = Math.max(3, Math.floor(bw / 0.8));
   const winSpacing = bw / winCount;
   const winW = 0.4, winH = 0.5;
-  for (let i = 0; i < winCount; i++) {
-    const wx = -bw / 2 + winSpacing * (i + 0.5);
-    const state = Math.random();
-    const wz = 0.1 + halfH * 0.55;
+  for (let row = 0; row < winRows; row++) {
+    const rowZ = 0.1 + wallH * (0.2 + row * (0.6 / winRows));
+    for (let i = 0; i < winCount; i++) {
+      const wx = -bw / 2 + winSpacing * (i + 0.5);
+      const state = Math.random();
 
-    if (state < 0.22) {
-      const board = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.08, 0.06, winH + 0.08), boardMat);
-      board.position.set(wx, southY - 0.06, wz);
-      bldg.add(board);
-      const dPlank = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.14, 0.04, 0.04), trimMat);
-      dPlank.position.set(wx, southY - 0.08, wz);
-      dPlank.rotation.z = 0.7;
-      bldg.add(dPlank);
-      const cPlank = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, winH + 0.14), trimMat);
-      cPlank.position.set(wx, southY - 0.08, wz);
-      bldg.add(cPlank);
-    } else if (state < 0.45) {
-      const glass = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.04, winH), darkMat);
-      glass.position.set(wx, southY - 0.03, wz);
-      bldg.add(glass);
-      for (const [fw, fh, fp] of [
-        [winW + 0.1, 0.04, [0, winH / 2]],
-        [winW + 0.1, 0.04, [0, -winH / 2]],
-        [0.04, winH + 0.1, [-winW / 2, 0]],
-        [0.04, winH + 0.1, [winW / 2, 0]],
-      ] as const) {
-        const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.06, fh), trimMat);
-        frame.position.set(wx + fp[0], southY - 0.06, wz + fp[1]);
-        bldg.add(frame);
+      if (state < 0.22) {
+        const board = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.08, 0.06, winH + 0.08), boardMat);
+        board.position.set(wx, southY - 0.06, rowZ);
+        bldg.add(board);
+        const dPlank = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.14, 0.04, 0.04), trimMat);
+        dPlank.position.set(wx, southY - 0.08, rowZ);
+        dPlank.rotation.z = 0.7;
+        bldg.add(dPlank);
+        const cPlank = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, winH + 0.14), trimMat);
+        cPlank.position.set(wx, southY - 0.08, rowZ);
+        bldg.add(cPlank);
+      } else if (state < 0.45) {
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.04, winH), darkMat);
+        glass.position.set(wx, southY - 0.03, rowZ);
+        bldg.add(glass);
+        for (const [fw, fh, fp] of [
+          [winW + 0.1, 0.04, [0, winH / 2]],
+          [winW + 0.1, 0.04, [0, -winH / 2]],
+          [0.04, winH + 0.1, [-winW / 2, 0]],
+          [0.04, winH + 0.1, [winW / 2, 0]],
+        ] as const) {
+          const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.06, fh), trimMat);
+          frame.position.set(wx + fp[0], southY - 0.06, rowZ + fp[1]);
+          bldg.add(frame);
+        }
+      } else if (state < 0.62) {
+        const shard = new THREE.Mesh(new THREE.BoxGeometry(winW * 0.5, 0.04, winH * 0.6), glassMat);
+        shard.position.set(wx, southY - 0.03, rowZ - 0.06);
+        shard.rotation.z = 0.4 * (Math.random() > 0.5 ? 1 : -1);
+        bldg.add(shard);
+      } else if (state < 0.8) {
+        const hole = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.12, winH), darkMat);
+        hole.position.set(wx, southY - 0.02, rowZ);
+        bldg.add(hole);
       }
-    } else if (state < 0.62) {
-      const shard = new THREE.Mesh(new THREE.BoxGeometry(winW * 0.5, 0.04, winH * 0.6), glassMat);
-      shard.position.set(wx, southY - 0.03, wz - 0.06);
-      shard.rotation.z = 0.4 * (Math.random() > 0.5 ? 1 : -1);
-      bldg.add(shard);
-    } else if (state < 0.8) {
-      const hole = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.12, winH), darkMat);
-      hole.position.set(wx, southY - 0.02, wz);
-      bldg.add(hole);
     }
   }
 
@@ -1674,22 +1686,24 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
       if (Math.random() > 0.65) continue;
       const ey = -bd / 2 + ewSpacing * (i + 0.5);
       const ex = sx * bw / 2;
-      const ez = 0.1 + wallH * 0.5;
-      if (Math.random() < 0.4) {
-        const board = new THREE.Mesh(new THREE.BoxGeometry(0.08, winW * 0.9, winH * 0.9), boardMat);
-        board.position.set(ex + sx * 0.06, ey, ez);
-        bldg.add(board);
-      } else {
-        const glass = new THREE.Mesh(new THREE.BoxGeometry(0.14, winW * 0.8, winH * 0.8), darkMat);
-        glass.position.set(ex + sx * 0.04, ey, ez);
-        bldg.add(glass);
-        for (const [fw, fh, fp] of [
-          [0.06, winW + 0.06, [0, winH * 0.4]],
-          [0.06, winW + 0.06, [0, -winH * 0.4]],
-        ] as const) {
-          const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, 0.05), trimMat);
-          frame.position.set(ex + sx * 0.06, ey, ez + fp[1]);
-          bldg.add(frame);
+      for (let row = 0; row < winRows; row++) {
+        const ez = 0.1 + wallH * (0.2 + row * (0.6 / winRows));
+        if (Math.random() < 0.4) {
+          const board = new THREE.Mesh(new THREE.BoxGeometry(0.08, winW * 0.9, winH * 0.9), boardMat);
+          board.position.set(ex + sx * 0.06, ey, ez);
+          bldg.add(board);
+        } else {
+          const glass = new THREE.Mesh(new THREE.BoxGeometry(0.14, winW * 0.8, winH * 0.8), darkMat);
+          glass.position.set(ex + sx * 0.04, ey, ez);
+          bldg.add(glass);
+          for (const [fw, fh, fp] of [
+            [0.06, winW + 0.06, [0, winH * 0.4]],
+            [0.06, winW + 0.06, [0, -winH * 0.4]],
+          ] as const) {
+            const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, 0.05), trimMat);
+            frame.position.set(ex + sx * 0.06, ey, ez + fp[1]);
+            bldg.add(frame);
+          }
         }
       }
     }
@@ -1714,11 +1728,44 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   const step = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.5, 0.18, 0.1), trimMat);
   step.position.set(doorX, southY - 0.16, 0.05);
   bldg.add(step);
-  const awning = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.4, 0.35, 0.05), boardMat);
-  awning.position.set(doorX, southY - 0.18, 0.1 + doorH + 0.08);
-  bldg.add(awning);
 
-  // === TOWER/STAIRWELL SECTION — breaks the flat roofline ===
+  // === ENTRANCE CANOPY (50%) or simple awning ===
+  if (Math.random() > 0.5) {
+    // Large canopy with support columns
+    const canopy = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 0.06), boardMat);
+    canopy.position.set(doorX, southY - 0.3, 0.1 + doorH + 0.12);
+    bldg.add(canopy);
+    for (const cx of [-0.55, 0.55]) {
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, doorH + 0.1, 6), steelMat);
+      col.position.set(doorX + cx, southY - 0.55, 0.1 + (doorH + 0.1) / 2);
+      bldg.add(col);
+    }
+  } else {
+    const awning = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.4, 0.35, 0.05), boardMat);
+    awning.position.set(doorX, southY - 0.18, 0.1 + doorH + 0.08);
+    bldg.add(awning);
+  }
+
+  // === SECOND DOOR on east or west wall (40%) ===
+  if (Math.random() > 0.6) {
+    const sdSide = Math.random() > 0.5 ? 1 : -1;
+    const sdY = (Math.random() - 0.5) * bd * 0.4;
+    const sdX = sdSide * bw / 2;
+    const sd = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.45, 0.85), darkMat);
+    sd.position.set(sdX + sdSide * 0.02, sdY, 0.1 + 0.425);
+    bldg.add(sd);
+    // Metal frame
+    for (const [fw, fd, fp] of [
+      [0.06, 0.5, [0, 0.425]],
+      [0.06, 0.5, [0, -0.425]],
+    ] as const) {
+      const sf = new THREE.Mesh(new THREE.BoxGeometry(0.05, fw, fd), steelMat);
+      sf.position.set(sdX + sdSide * 0.04, sdY + fp[0], 0.1 + fp[1]);
+      bldg.add(sf);
+    }
+  }
+
+  // === TOWER/STAIRWELL SECTION ===
   const towerW = bw * 0.3;
   const towerD = bd * 0.35;
   const towerH = 1.2 + Math.random() * 0.6;
@@ -1762,7 +1809,22 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     bldg.add(para);
   }
 
-  // === COLLAPSED CORNER — roof gap + rubble at base ===
+  // === ROOF RAILING (40%) ===
+  if (Math.random() > 0.6) {
+    const railSide = Math.random() > 0.5 ? -1 : 1;
+    const railLen = bw * 0.6;
+    const railX = (Math.random() - 0.5) * bw * 0.2;
+    for (let ri = 0; ri < 4; ri++) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 4), steelMat);
+      post.position.set(railX - railLen / 2 + ri * railLen / 3, railSide * (bd / 2 - 0.1), 0.1 + bh + 0.12 + 0.15);
+      bldg.add(post);
+    }
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(railLen, 0.02, 0.02), steelMat);
+    rail.position.set(railX, railSide * (bd / 2 - 0.1), 0.1 + bh + 0.12 + 0.3);
+    bldg.add(rail);
+  }
+
+  // === COLLAPSED CORNER ===
   const collapseCorner = Math.random() > 0.35;
   let collapseX = 0, collapseY = 0;
   if (collapseCorner) {
@@ -1772,12 +1834,9 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     collapseY = csy * bd * 0.35;
     const gapW = 0.8 + Math.random() * 0.6;
     const gapD = 0.7 + Math.random() * 0.5;
-    // Dark interior visible through the gap
     const gapFloor = new THREE.Mesh(new THREE.BoxGeometry(gapW, gapD, 0.02), darkMat);
     gapFloor.position.set(collapseX, collapseY, 0.1 + bh - 0.07 - 0.07);
     bldg.add(gapFloor);
-    // Missing parapet — short segment on each affected side
-    // Rubble on ground near collapsed corner
     for (let ri = 0; ri < 6; ri++) {
       const rr = new THREE.Mesh(
         new THREE.BoxGeometry(0.12 + Math.random() * 0.2, 0.1 + Math.random() * 0.15, 0.06 + Math.random() * 0.08),
@@ -1791,7 +1850,6 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
       );
       bldg.add(rr);
     }
-    // Exposed rebar at the gap edge
     for (let ri = 0; ri < 3; ri++) {
       const rb = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.2 + Math.random() * 0.25, 4), rustMat);
       rb.position.set(
@@ -1823,6 +1881,20 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     }
   }
 
+  // === SATELLITE DISH (30%) ===
+  if (Math.random() > 0.7) {
+    const dx = bw * 0.3 * (Math.random() > 0.5 ? 1 : -1);
+    const dy = bd * 0.25 * (Math.random() > 0.5 ? 1 : -1);
+    const dishArm = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.2, 4), steelMat);
+    dishArm.position.set(dx, dy, 0.1 + bh + 0.14 + 0.25);
+    bldg.add(dishArm);
+    const dish = new THREE.Mesh(new THREE.CircleGeometry(0.15, 8), steelMat);
+    dish.position.set(dx, dy, 0.1 + bh + 0.14 + 0.36);
+    dish.rotation.x = -0.4;
+    dish.rotation.z = Math.random() * Math.PI * 2;
+    bldg.add(dish);
+  }
+
   // === ROOF ACCESS SHED ===
   const shedW = 0.5 + Math.random() * 0.3;
   const shedD = shedW * 0.7;
@@ -1836,14 +1908,47 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   shedDoor.position.set(shedX, shedY + shedD / 2 + 0.03, 0.1 + bh + 0.07 + shedH * 0.35);
   bldg.add(shedDoor);
 
-  // === VENTS ===
+  // === VENTS / AC CONDENSER / SOLAR PANELS (mixed) ===
   for (let vi = 0; vi < 3; vi++) {
     if (Math.random() > 0.5) continue;
     const vx = -bw * 0.3 + vi * bw * 0.3;
     const vy = -bd * 0.3;
-    const vent = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.14), steelMat);
-    vent.position.set(vx, vy, 0.1 + bh + 0.07 + 0.07);
-    bldg.add(vent);
+    const roll = Math.random();
+    if (roll < 0.4) {
+      // Standard vent
+      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.14), steelMat);
+      vent.position.set(vx, vy, 0.1 + bh + 0.07 + 0.07);
+      bldg.add(vent);
+    } else if (roll < 0.65) {
+      // AC condenser — larger box with fan grille
+      const ac = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.25), steelMat);
+      ac.position.set(vx, vy, 0.1 + bh + 0.07 + 0.125);
+      bldg.add(ac);
+      const grille = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 8), darkMat);
+      grille.position.set(vx, vy, 0.1 + bh + 0.07 + 0.26);
+      bldg.add(grille);
+    } else {
+      // Solar panel frame — tilted panels
+      for (let pi = 0; pi < 2; pi++) {
+        const panel = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.02, 0.22), darkMat);
+        panel.position.set(vx + pi * 0.4 - 0.2, vy, 0.1 + bh + 0.07 + 0.12);
+        panel.rotation.x = -0.4;
+        bldg.add(panel);
+        const frame = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.03, 0.01), steelMat);
+        frame.position.set(vx + pi * 0.4 - 0.2, vy - 0.1, 0.1 + bh + 0.07 + 0.22);
+        bldg.add(frame);
+      }
+    }
+  }
+
+  // === SKYLIGHT (30%) ===
+  if (Math.random() > 0.7) {
+    const skylight = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.04), glassMat);
+    skylight.position.set((Math.random() - 0.5) * bw * 0.3, (Math.random() - 0.5) * bd * 0.3, 0.1 + bh + 0.01);
+    bldg.add(skylight);
+    const skylightFrame = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.44, 0.03), trimMat);
+    skylightFrame.position.set(skylight.position.x, skylight.position.y, 0.1 + bh + 0.025);
+    bldg.add(skylightFrame);
   }
 
   // === TALL ANTENNA ===
@@ -1864,7 +1969,39 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     }
   }
 
-  // === VINES hanging over edge (not floating on roof) ===
+  // === DRAINAGE PIPES — vertical downspouts ===
+  for (let di = 0; di < 2; di++) {
+    if (Math.random() > 0.6) continue;
+    const ds = Math.random() > 0.5 ? 1 : -1;
+    const dx = ds * (bw / 2 - 0.05);
+    const dy = (Math.random() - 0.5) * bd * 0.6;
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, wallH, 4), steelMat);
+    pipe.position.set(dx, dy, 0.1 + wallH / 2);
+    bldg.add(pipe);
+    // Bracket at mid-height
+    const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.02), steelMat);
+    bracket.position.set(dx - ds * 0.02, dy, 0.1 + wallH * 0.5);
+    bldg.add(bracket);
+  }
+
+  // === AC UNITS on walls ===
+  for (let ai = 0; ai < 3; ai++) {
+    if (Math.random() > 0.5) continue;
+    const as = Math.random() > 0.5 ? 1 : -1;
+    const ax = as * bw / 2;
+    const ay = (Math.random() - 0.5) * bd * 0.5;
+    const az = 0.1 + wallH * (0.25 + Math.random() * 0.3);
+    const acUnit = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.2), steelMat);
+    acUnit.position.set(ax + as * 0.06, ay, az);
+    bldg.add(acUnit);
+    // Fan grille on face
+    const grille = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 8), darkMat);
+    grille.position.set(ax + as * 0.11, ay, az);
+    grille.rotation.z = Math.PI / 2;
+    bldg.add(grille);
+  }
+
+  // === VINES hanging over edge ===
   for (let vi = 0; vi < 3; vi++) {
     if (Math.random() > 0.5) continue;
     const vs = Math.random() > 0.5 ? 1 : -1;
@@ -1903,7 +2040,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
 
   // === GRAFFITI ===
   const graffitiColors = [0xdd3333, 0x3366dd, 0x33aa55, 0xddaa33, 0xff66aa];
-  for (let gi = 0; gi < 4; gi++) {
+  for (let gi = 0; gi < 5; gi++) {
     if (Math.random() > 0.5) continue;
     const gw = 0.4 + Math.random() * 0.7;
     const gh = 0.3 + Math.random() * 0.5;
@@ -1919,18 +2056,44 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     bldg.add(tag);
   }
 
-  // === WATER STAIN STREAKS ===
-  for (let si = 0; si < 4; si++) {
+  // === CRACK LINES (replaces water stains) ===
+  for (let ci = 0; ci < 5; ci++) {
     if (Math.random() > 0.5) continue;
-    const sh = 0.3 + Math.random() * 0.5;
-    const sx = (Math.random() - 0.5) * bw * 0.5;
-    const ss = Math.random() > 0.5 ? 1 : -1;
-    const stain = new THREE.Mesh(
-      new THREE.BoxGeometry(0.07, 0.015, sh),
+    const ch = 0.3 + Math.random() * 0.6;
+    const cx = (Math.random() - 0.5) * bw * 0.5;
+    const cs = Math.random() > 0.5 ? 1 : -1;
+    const crack = new THREE.Mesh(
+      new THREE.BoxGeometry(0.02, 0.015, ch),
       createToonMaterial(0x2a2a2a)
     );
-    stain.position.set(sx, ss * (bd / 2 + 0.015), 0.3 + Math.random() * (wallH * 0.5));
-    bldg.add(stain);
+    crack.position.set(cx, cs * (bd / 2 + 0.015), 0.3 + Math.random() * (wallH * 0.5));
+    crack.rotation.z = (Math.random() - 0.5) * 0.3;
+    bldg.add(crack);
+  }
+
+  // === EXPOSED BRICK PATCHES ===
+  for (let bi = 0; bi < 3; bi++) {
+    if (Math.random() > 0.5) continue;
+    const bw2 = 0.3 + Math.random() * 0.4;
+    const bh2 = 0.2 + Math.random() * 0.3;
+    const bs = Math.random() > 0.5 ? 1 : -1;
+    const bx = (Math.random() - 0.5) * bw * 0.4;
+    const bz = 0.3 + Math.random() * (wallH * 0.4);
+    const patch = new THREE.Mesh(
+      new THREE.BoxGeometry(bw2, 0.02, bh2),
+      brickMat
+    );
+    patch.position.set(bx, bs * (bd / 2 + 0.01), bz);
+    bldg.add(patch);
+  }
+
+  // === BOLLARDS near door ===
+  for (let bi = 0; bi < 3; bi++) {
+    if (Math.random() > 0.6) continue;
+    const bx = doorX + (bi - 1) * 0.35;
+    const bollard = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.15, 6), steelMat);
+    bollard.position.set(bx, southY - 0.25, 0.075);
+    bldg.add(bollard);
   }
 
   // === WEATHERED SIGN BOARD on south face ===
@@ -1960,7 +2123,51 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   signBoard.scale.x = -1;
   bldg.add(signBoard);
 
-  // === RUBBLE at base — flat concrete chunks, not dodecahedrons ===
+  // === DUMPSTER (30%) ===
+  if (Math.random() > 0.7) {
+    const dumpSide = Math.random() > 0.5 ? 1 : -1;
+    const dumpX = dumpSide * (bw / 2 + 0.4);
+    const dumpY = (Math.random() - 0.5) * bd * 0.4;
+    const dumpster = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.25), createToonMaterial(0x2d5a27));
+    dumpster.position.set(dumpX, dumpY, 0.125);
+    bldg.add(dumpster);
+    // Lid slightly open
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.02, 0.3), createToonMaterial(0x3a7a33));
+    lid.position.set(dumpX, dumpY - 0.08, 0.27);
+    lid.rotation.x = 0.3;
+    bldg.add(lid);
+    // Trash spilling out
+    for (let ti = 0; ti < 3; ti++) {
+      const trash = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06 + Math.random() * 0.06, 0.04, 0.03),
+        Math.random() > 0.5 ? boardMat : trimMat
+      );
+      trash.position.set(dumpX + (Math.random() - 0.5) * 0.3, dumpY + 0.2 + Math.random() * 0.1, 0.02);
+      trash.rotation.z = Math.random() * Math.PI;
+      bldg.add(trash);
+    }
+  }
+
+  // === BUSHES at base ===
+  for (let bi = 0; bi < 3; bi++) {
+    if (Math.random() > 0.5) continue;
+    const bs = Math.random() > 0.5 ? 1 : -1;
+    const bx = (Math.random() - 0.5) * bw * 0.5;
+    for (let si = 0; si < 2; si++) {
+      const bush = new THREE.Mesh(
+        new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 6, 6),
+        vegMat
+      );
+      bush.position.set(
+        bx + (Math.random() - 0.5) * 0.2,
+        bs * (bd / 2 + 0.1 + Math.random() * 0.15),
+        0.08
+      );
+      bldg.add(bush);
+    }
+  }
+
+  // === RUBBLE at base ===
   for (let ri = 0; ri < 14; ri++) {
     const side = Math.random() > 0.5 ? 1 : -1;
     const rx = (Math.random() - 0.5) * bw * 0.5;
@@ -1968,23 +2175,19 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const rt = Math.random();
     let rubble: THREE.Mesh;
     if (rt < 0.4) {
-      // Flat concrete chunk — thin box at slight angle
       rubble = new THREE.Mesh(
         new THREE.BoxGeometry(0.12 + Math.random() * 0.2, 0.08 + Math.random() * 0.12, 0.04 + Math.random() * 0.06),
         trimMat
       );
       rubble.rotation.z = Math.random() * 0.6;
     } else if (rt < 0.65) {
-      // Wood plank
       rubble = new THREE.Mesh(new THREE.BoxGeometry(0.2 + Math.random() * 0.3, 0.03, 0.025), boardMat);
       rubble.rotation.z = Math.random() * Math.PI;
     } else if (rt < 0.85) {
-      // Bent rebar on ground
       rubble = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.1 + Math.random() * 0.15, 4), rustMat);
       rubble.rotation.x = (Math.random() - 0.5) * 0.5;
       rubble.rotation.z = (Math.random() - 0.5) * 0.5;
     } else {
-      // Small vegetation at base
       rubble = new THREE.Mesh(new THREE.BoxGeometry(0.08 + Math.random() * 0.1, 0.06, 0.02), vegMat);
     }
     rubble.position.set(rx, ry, 0.025);
