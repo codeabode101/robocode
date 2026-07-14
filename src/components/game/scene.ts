@@ -1723,18 +1723,18 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
 
       if (state < 0.22) {
         const board = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.08, 0.06, winH + 0.08), boardMat);
-        board.position.set(wx, southY - 0.18, rowZ);
+        board.position.set(wx, southY - 0.11, rowZ);
         bldg.add(board);
         const dPlank = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.14, 0.04, 0.04), trimMat);
-        dPlank.position.set(wx, southY - 0.21, rowZ);
+        dPlank.position.set(wx, southY - 0.14, rowZ);
         dPlank.rotation.z = 0.7;
         bldg.add(dPlank);
         const cPlank = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, winH + 0.14), trimMat);
-        cPlank.position.set(wx, southY - 0.21, rowZ);
+        cPlank.position.set(wx, southY - 0.14, rowZ);
         bldg.add(cPlank);
       } else if (state < 0.45) {
         const glass = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.04, winH), darkMat);
-        glass.position.set(wx, southY - 0.18, rowZ);
+        glass.position.set(wx, southY - 0.11, rowZ);
         bldg.add(glass);
         for (const [fw, fh, fp] of [
           [winW + 0.1, 0.04, [0, winH / 2]],
@@ -1743,17 +1743,17 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           [0.04, winH + 0.1, [winW / 2, 0]],
         ] as const) {
           const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.06, fh), trimMat);
-          frame.position.set(wx + fp[0], southY - 0.21, rowZ + fp[1]);
+          frame.position.set(wx + fp[0], southY - 0.14, rowZ + fp[1]);
           bldg.add(frame);
         }
       } else if (state < 0.62) {
         const shard = new THREE.Mesh(new THREE.BoxGeometry(winW * 0.5, 0.04, winH * 0.6), glassMat);
-        shard.position.set(wx, southY - 0.18, rowZ - 0.06);
+        shard.position.set(wx, southY - 0.11, rowZ - 0.06);
         shard.rotation.z = 0.4 * (Math.random() > 0.5 ? 1 : -1);
         bldg.add(shard);
       } else if (state < 0.8) {
         const hole = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.12, winH), darkMat);
-        hole.position.set(wx, southY - 0.18, rowZ);
+        hole.position.set(wx, southY - 0.11, rowZ);
         bldg.add(hole);
       }
     }
@@ -1771,18 +1771,18 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
         const ez = 0.1 + wallH * (0.2 + row * (0.6 / winRows));
         if (Math.random() < 0.4) {
           const board = new THREE.Mesh(new THREE.BoxGeometry(0.08, winW * 0.9, winH * 0.9), boardMat);
-          board.position.set(ex + sx * 0.18, ey, ez);
+          board.position.set(ex + sx * 0.11, ey, ez);
           bldg.add(board);
         } else {
           const glass = new THREE.Mesh(new THREE.BoxGeometry(0.14, winW * 0.8, winH * 0.8), darkMat);
-          glass.position.set(ex + sx * 0.18, ey, ez);
+          glass.position.set(ex + sx * 0.11, ey, ez);
           bldg.add(glass);
           for (const [fw, fh, fp] of [
             [0.06, winW + 0.06, [0, winH * 0.4]],
             [0.06, winW + 0.06, [0, -winH * 0.4]],
           ] as const) {
             const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, 0.05), trimMat);
-            frame.position.set(ex + sx * 0.20, ey, ez + fp[1]);
+            frame.position.set(ex + sx * 0.13, ey, ez + fp[1]);
             bldg.add(frame);
           }
         }
@@ -1794,7 +1794,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   const doorW = 0.6, doorH = 1.0;
   const doorX = bw * 0.2 * (Math.random() > 0.5 ? 1 : -1);
   const door = new THREE.Mesh(new THREE.BoxGeometry(doorW, 0.14, doorH), darkMat);
-  door.position.set(doorX, southY - 0.15, 0.1 + doorH / 2);
+  door.position.set(doorX, southY - 0.11, 0.1 + doorH / 2);
   bldg.add(door);
   for (const [fw, fh, fp] of [
     [doorW + 0.14, 0.08, [0, doorH / 2]],
@@ -1803,11 +1803,11 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     [0.08, doorH + 0.14, [doorW / 2 + 0.04, 0]],
   ] as const) {
     const df = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.09, fh), trimMat);
-    df.position.set(doorX + fp[0], southY - 0.21, 0.1 + doorH / 2 + fp[1]);
+    df.position.set(doorX + fp[0], southY - 0.14, 0.1 + doorH / 2 + fp[1]);
     bldg.add(df);
   }
   const step = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.5, 0.18, 0.1), trimMat);
-  step.position.set(doorX, southY - 0.22, 0.05);
+  step.position.set(doorX, southY - 0.14, 0.05);
   bldg.add(step);
 
   // === ENTRANCE CANOPY (50%) or simple awning ===
