@@ -3,6 +3,27 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 
 export const LABEL_BUILD_TAG = 'label-build-20260510-0342';
 
+// === SHARED BUILDING MATERIALS (created once, reused across all buildings) ===
+const _bldgSharedMats = {
+  dark: createToonMaterial(0x1a1a22),
+  glass: createToonMaterial(0x2a3a4a),
+  board: createToonMaterial(0x8b6b4a),
+  veg: createToonMaterial(0x3a6a2a),
+  rust: createToonMaterial(0x8b4513),
+  steel: createToonMaterial(0x5a5a6a),
+  brick: createToonMaterial(0x7a4030),
+  crack: createToonMaterial(0x2a2a2a),
+  red: createToonMaterial(0xdd3333),
+  dumpBody: createToonMaterial(0x2d5a27),
+  dumpLid: createToonMaterial(0x3a7a33),
+  graffiti: [0xdd3333, 0x3366dd, 0x33aa55, 0xddaa33, 0xff66aa].map(c => createToonMaterial(c)),
+};
+// Per-palette materials cached after first use
+const _bldgPaletteMats = new Map<string, {
+  wall: THREE.Material; wallDark: THREE.Material; trim: THREE.Material;
+  accent: THREE.Material; roof: THREE.Material;
+}>();
+
 export function hashColor(seed: string) {
   let hash = 0;
   for (let i = 0; i < seed.length; i += 1) {
@@ -1560,30 +1581,26 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   const bldg = new THREE.Group();
   const bh = heightOverride ?? 2.5;
 
+  // Reuse palette materials across all buildings
   const palettes = {
     concrete: { wall: 0x8a8a92, trim: 0x6b6b73, accent: 0x55555d, roof: 0x4a4a52, wallDark: 0x6e6e76 },
     brick:    { wall: 0x9c6b4c, trim: 0x7a4a2e, accent: 0xb07850, roof: 0x6b3a1e, wallDark: 0x7a5038 },
     slate:    { wall: 0x6a7a8a, trim: 0x4a5a6a, accent: 0x5a6a7a, roof: 0x3a4a5a, wallDark: 0x556670 },
     wood:     { wall: 0x8a6a4a, trim: 0x6a4a2a, accent: 0x9a7a5a, roof: 0x5a3a1a, wallDark: 0x6e5030 },
   };
-  const p = palettes[palette];
-  const wallMat = createToonMaterial(p.wall);
-  const wallDarkMat = createToonMaterial(p.wallDark);
-  const trimMat = createToonMaterial(p.trim);
-  const accentMat = createToonMaterial(p.accent);
-  const roofMat = createToonMaterial(p.roof);
-  const darkMat = createToonMaterial(0x1a1a22);
-  const glassMat = createToonMaterial(0x2a3a4a);
-  const boardMat = createToonMaterial(0x8b6b4a);
-  const vegMat = createToonMaterial(0x3a6a2a);
-  const rustMat = createToonMaterial(0x8b4513);
-  const steelMat = createToonMaterial(0x5a5a6a);
-  const brickMat = createToonMaterial(0x7a4030);
-  const crackMat = createToonMaterial(0x2a2a2a);
-  const redMat = createToonMaterial(0xdd3333);
-  const dumpsterBodyMat = createToonMaterial(0x2d5a27);
-  const dumpsterLidMat = createToonMaterial(0x3a7a33);
-  const graffitiMats = [0xdd3333, 0x3366dd, 0x33aa55, 0xddaa33, 0xff66aa].map(c => createToonMaterial(c));
+  if (!_bldgPaletteMats.has(palette)) {
+    const p = palettes[palette];
+    _bldgPaletteMats.set(palette, {
+      wall: createToonMaterial(p.wall), wallDark: createToonMaterial(p.wallDark),
+      trim: createToonMaterial(p.trim), accent: createToonMaterial(p.accent),
+      roof: createToonMaterial(p.roof),
+    });
+  }
+  const pm = _bldgPaletteMats.get(palette)!;
+  const { wall: wallMat, wallDark: wallDarkMat, trim: trimMat, accent: accentMat, roof: roofMat } = pm;
+  const { dark: darkMat, glass: glassMat, board: boardMat, veg: vegMat, rust: rustMat,
+          steel: steelMat, brick: brickMat, crack: crackMat, red: redMat,
+          dumpBody: dumpsterBodyMat, dumpLid: dumpsterLidMat, graffiti: graffitiMats } = _bldgSharedMats;
 
   const wallH = bh - 0.15;
   const southY = -bd / 2;
@@ -1800,7 +1817,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     canopy.position.set(doorX, southY - 0.3, 0.1 + doorH + 0.12);
     bldg.add(canopy);
     for (const cx of [-0.55, 0.55]) {
-      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, doorH + 0.1, 6), steelMat);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, doorH + 0.1, 4), steelMat);
       col.position.set(doorX + cx, southY - 0.55, 0.1 + (doorH + 0.1) / 2);
       bldg.add(col);
     }
@@ -1893,7 +1910,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const gapFloor = new THREE.Mesh(new THREE.BoxGeometry(gapW, gapD, 0.02), darkMat);
     gapFloor.position.set(collapseX, collapseY, 0.1 + bh - 0.07 - 0.07);
     bldg.add(gapFloor);
-    for (let ri = 0; ri < 8; ri++) {
+    for (let ri = 0; ri < 5; ri++) {
       const rr = new THREE.Mesh(
         new THREE.BoxGeometry(0.12 + Math.random() * 0.25, 0.1 + Math.random() * 0.2, 0.06 + Math.random() * 0.1),
         trimMat
@@ -1906,7 +1923,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
       );
       bldg.add(rr);
     }
-    for (let ri = 0; ri < 4; ri++) {
+    for (let ri = 0; ri < 2; ri++) {
       const rb = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.2 + Math.random() * 0.3, 4), rustMat);
       rb.position.set(
         collapseX + (Math.random() - 0.5) * gapW * 0.8,
@@ -1924,10 +1941,10 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const tx = bw * 0.25 * (Math.random() > 0.5 ? 1 : -1);
     const ty = bd * 0.2 * (Math.random() > 0.5 ? 1 : -1);
     const tankH = 0.5 + Math.random() * 0.3;
-    const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, tankH, 10), steelMat);
+    const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, tankH, 6), steelMat);
     tank.position.set(tx, ty, 0.1 + bh + 0.14 + tankH / 2 + 0.15);
     bldg.add(tank);
-    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.04, 10), accentMat);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.04, 6), accentMat);
     band.position.set(tx, ty, 0.1 + bh + 0.14 + tankH * 0.4 + 0.15);
     bldg.add(band);
     for (const [lx, ly] of [[-0.15, -0.15], [0.15, -0.15], [-0.15, 0.15], [0.15, 0.15]]) {
@@ -1980,7 +1997,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
       const ac = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.25), steelMat);
       ac.position.set(vx, vy, 0.1 + bh + 0.07 + 0.125);
       bldg.add(ac);
-      const grille = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 8), darkMat);
+      const grille = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 6), darkMat);
       grille.position.set(vx, vy, 0.1 + bh + 0.07 + 0.26);
       bldg.add(grille);
     } else {
@@ -2051,7 +2068,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     acUnit.position.set(ax + as * 0.06, ay, az);
     bldg.add(acUnit);
     // Fan grille on face
-    const grille = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 8), darkMat);
+      const grille = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 6), darkMat);
     grille.position.set(ax + as * 0.11, ay, az);
     grille.rotation.z = Math.PI / 2;
     bldg.add(grille);
@@ -2096,7 +2113,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
 
   // === GRAFFITI ===
   const graffitiColors = [0xdd3333, 0x3366dd, 0x33aa55, 0xddaa33, 0xff66aa];
-  for (let gi = 0; gi < 5; gi++) {
+  for (let gi = 0; gi < 3; gi++) {
     if (Math.random() > 0.5) continue;
     const gw = 0.4 + Math.random() * 0.7;
     const gh = 0.3 + Math.random() * 0.5;
@@ -2113,7 +2130,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   }
 
   // === CRACK LINES (replaces water stains) ===
-  for (let ci = 0; ci < 5; ci++) {
+  for (let ci = 0; ci < 3; ci++) {
     if (Math.random() > 0.5) continue;
     const ch = 0.3 + Math.random() * 0.6;
     const cx = (Math.random() - 0.5) * bw * 0.5;
@@ -2147,7 +2164,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   for (let bi = 0; bi < 3; bi++) {
     if (Math.random() > 0.6) continue;
     const bx = doorX + (bi - 1) * 0.35;
-    const bollard = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.15, 6), steelMat);
+    const bollard = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.15, 4), steelMat);
     bollard.position.set(bx, southY - 0.25, 0.075);
     bldg.add(bollard);
   }
@@ -2224,7 +2241,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   }
 
   // === RUBBLE at base ===
-  for (let ri = 0; ri < 14; ri++) {
+  for (let ri = 0; ri < 8; ri++) {
     const side = Math.random() > 0.5 ? 1 : -1;
     const rx = (Math.random() - 0.5) * bw * 0.5;
     const ry = side * (bd / 2 + 0.08 + Math.random() * 0.35);
@@ -2251,6 +2268,8 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   }
 
   // === MERGE ALL GEOMETRIES BY MATERIAL (reduces draw calls from ~150 to ~15) ===
+  // Only structural materials cast shadows; detail materials don't
+  const shadowMats = new Set([wallMat.uuid, wallDarkMat.uuid, roofMat.uuid, accentMat.uuid, trimMat.uuid]);
   bldg.updateMatrixWorld(true);
   const geoBins = new Map<string, { mat: THREE.Material; geos: THREE.BufferGeometry[] }>();
   const toRemove: THREE.Object3D[] = [];
@@ -2271,13 +2290,12 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const merged = mergeGeometries(geos, false);
     if (merged) {
       const mesh = new THREE.Mesh(merged, mat);
-      mesh.castShadow = true;
+      mesh.castShadow = shadowMats.has(mat.uuid);
       mesh.receiveShadow = true;
       bldg.add(mesh);
     }
   }
 
   bldg.position.set(x, y, 0);
-  applyShadows(bldg, true, true);
   return bldg;
 }
