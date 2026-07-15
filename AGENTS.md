@@ -525,3 +525,23 @@ The game uses `PointerEvent.movementX/movementY` for camera orbit when pointer l
 | Bottom-right (wood) | (18.5, -11.75) | 2.5 |
 
 To get a good building screenshot: walk the player within 3–5 units of a building, then `rotateCamera()` to face it from the side (negative movementX = look left, positive = look right, negative movementY = look up).
+
+## ⚠️ PRE-DEPLOY RULES — STRICT ENFORCEMENT
+
+### ALWAYS run tests before committing or deploying
+1. Run `node screenshot_test.js` after ANY visual change to buildings, roads, or scene objects
+2. Review EVERY screenshot before proceeding — do not skip or rush
+3. Be **extremely strict** when reviewing: look for Z-fighting, missing geometry, floating objects, wrong positioning, clipping, inverted faces, color mismatches, any visual artifact
+4. If even the slightest improvement can be made, make it — don't ship something you know is slightly off
+5. Only after screenshots pass inspection: commit and deploy
+
+### Review checklist for screenshots
+- Windows/doors visible and flush with wall surface (not floating, not z-fighting)
+- All 4 wall faces have windows
+- Roads have centered yellow lines
+- No missing walls or faces
+- Buildings sit on grass, not floating
+- No geometry overlaps or clipping
+- Shadows look correct (not pitch black, not missing)
+- Collapsed corners look natural, not like bugs
+- Camera angles show buildings properly (not top-down blobs)
