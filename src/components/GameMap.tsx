@@ -7153,7 +7153,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setInteractionPromptName(null);
     setWorkshopCode('');
     setWorkshopOutput('');
-    const outsideDoor = new THREE.Vector2(-6, -10.0);
+    const outsideDoor = new THREE.Vector2(-6, -9.0);
     localPositionRef.current.copy(outsideDoor);
     yawRef.current = Math.PI; // face south (out the door)
     if (localRobotRef.current) {
