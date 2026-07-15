@@ -1686,17 +1686,17 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   }
 
   // === SOUTH WALL ===
-  buildWallSegs('x', southY, bw, true, wallDarkMat, doCollapse && csy === -1);
-  buildWallSegs('x', southY, bw, false, wallMat, doCollapse && csy === -1);
+  buildWallSegs('x', southY, bw, true, wallDarkMat);
+  buildWallSegs('x', southY, bw, false, wallMat);
 
   // === NORTH WALL ===
-  buildWallSegs('x', bd / 2, bw, true, wallDarkMat, doCollapse && csy === 1);
-  buildWallSegs('x', bd / 2, bw, false, wallMat, doCollapse && csy === 1);
+  buildWallSegs('x', bd / 2, bw, true, wallDarkMat);
+  buildWallSegs('x', bd / 2, bw, false, wallMat);
 
   // === EAST/WEST WALLS ===
   for (const sx of [-1, 1]) {
-    buildWallSegs('y', sx * bw / 2, bd, true, wallDarkMat, doCollapse && csx === sx);
-    buildWallSegs('y', sx * bw / 2, bd, false, wallMat, doCollapse && csx === sx);
+    buildWallSegs('y', sx * bw / 2, bd, true, wallDarkMat);
+    buildWallSegs('y', sx * bw / 2, bd, false, wallMat);
   }
 
   // Mid-band trim + second band for tall buildings
@@ -1975,11 +1975,8 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     bldg.add(rail);
   }
 
-  // === COLLAPSED CORNER (walls already split — add debris) ===
+  // === COLLAPSED CORNER (debris on ground near corner) ===
   if (doCollapse) {
-    const gapFloor = new THREE.Mesh(new THREE.BoxGeometry(gapW, gapD, 0.02), darkMat);
-    gapFloor.position.set(collapseX, collapseY, 0.1 + bh - 0.07 - 0.07);
-    bldg.add(gapFloor);
     for (let ri = 0; ri < 5; ri++) {
       const rr = new THREE.Mesh(
         new THREE.BoxGeometry(0.12 + Math.random() * 0.25, 0.1 + Math.random() * 0.2, 0.06 + Math.random() * 0.1),
