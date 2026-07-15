@@ -1715,6 +1715,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   function addWallWindows(
     faceX: number, faceY: number, axis: 'x' | 'y', faceSign: number,
     wallLen: number, faceMat: THREE.Material,
+    gapCenter?: number, gapHalfSize?: number,
   ) {
     const count = Math.max(3, Math.floor(wallLen / 0.8));
     const spacing = wallLen / count;
@@ -1722,6 +1723,9 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
       const rowZ = 0.1 + wallH * (0.2 + row * (0.6 / winRows));
       for (let i = 0; i < count; i++) {
         const pos = -wallLen / 2 + spacing * (i + 0.5);
+        if (gapCenter !== undefined && gapHalfSize !== undefined) {
+          if (Math.abs(pos - gapCenter) < gapHalfSize + 0.25) continue;
+        }
         const ww = 0.3 + Math.random() * 0.25;
         const wh = 0.4 + Math.random() * 0.3;
         const state = Math.random();
@@ -1740,19 +1744,23 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           const style = Math.floor(Math.random() * 4);
           const pd = 0.04;
           if (style === 0) {
-            // Cross: horizontal + vertical
-            const h = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.14, pd, pd), trimMat);
-            if (axis === 'x') { h.position.set(fx, fy + off - 0.03, rowZ); }
-            else { h.position.set(fx + off - 0.03, fy, rowZ); h.rotation.z = Math.PI / 2; h.scale.set(1, ww / wh, 1); }
-            bldg.add(h);
-            const v = new THREE.Mesh(new THREE.BoxGeometry(pd, pd, wh + 0.14), trimMat);
-            if (axis === 'x') v.position.set(fx, fy + off - 0.03, rowZ);
-            else { v.position.set(fx + off - 0.03, fy, rowZ); }
-            bldg.add(v);
+            // X boarding: two diagonal planks
+            const diag = Math.sqrt(ww * ww + wh * wh) + 0.1;
+            const angle = Math.atan2(wh, ww);
+            const p1 = new THREE.Mesh(new THREE.BoxGeometry(diag, pd, pd), trimMat);
+            const p2 = new THREE.Mesh(new THREE.BoxGeometry(diag, pd, pd), trimMat);
+            if (axis === 'x') {
+              p1.position.set(fx, fy + off - 0.03, rowZ); p1.rotation.y = angle;
+              p2.position.set(fx, fy + off - 0.03, rowZ); p2.rotation.y = -angle;
+            } else {
+              p1.position.set(fx + off - 0.03, fy, rowZ); p1.rotation.x = angle;
+              p2.position.set(fx + off - 0.03, fy, rowZ); p2.rotation.x = -angle;
+            }
+            bldg.add(p1); bldg.add(p2);
           } else if (style === 1) {
-            // Diagonal plank
+            // Single diagonal plank
             const d = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.14, pd, 0.04), trimMat);
-            if (axis === 'x') { d.position.set(fx, fy + off - 0.03, rowZ); d.rotation.z = 0.7; }
+            if (axis === 'x') { d.position.set(fx, fy + off - 0.03, rowZ); d.rotation.y = 0.7; }
             else { d.position.set(fx + off - 0.03, fy, rowZ); d.rotation.x = 0.7; }
             bldg.add(d);
           } else if (style === 2) {
@@ -1833,14 +1841,14 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   }
 
   // === SOUTH WALL WINDOWS ===
-  addWallWindows(0, southY, 'x', -1, bw, wallMat);
+  addWallWindows(0, southY, 'x', -1, bw, wallMat, doCollapse && csy === -1 ? collapseX : undefined, doCollapse && csy === -1 ? gapW / 2 : undefined);
 
   // === NORTH WALL WINDOWS ===
-  addWallWindows(0, bd / 2, 'x', 1, bw, wallMat);
+  addWallWindows(0, bd / 2, 'x', 1, bw, wallMat, doCollapse && csy === 1 ? collapseX : undefined, doCollapse && csy === 1 ? gapW / 2 : undefined);
 
   // === EAST/WEST WALL WINDOWS ===
-  addWallWindows(bw / 2, 0, 'y', 1, bd, wallMat);
-  addWallWindows(-bw / 2, 0, 'y', -1, bd, wallMat);
+  addWallWindows(bw / 2, 0, 'y', 1, bd, wallMat, doCollapse && csx === 1 ? collapseY : undefined, doCollapse && csx === 1 ? gapD / 2 : undefined);
+  addWallWindows(-bw / 2, 0, 'y', -1, bd, wallMat, doCollapse && csx === -1 ? collapseY : undefined, doCollapse && csx === -1 ? gapD / 2 : undefined);
 
   // === DOOR on south wall ===
   const doorW = 0.6, doorH = 1.0;
