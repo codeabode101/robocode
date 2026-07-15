@@ -1710,132 +1710,137 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   cornice.position.set(0, 0, 0.1 + wallH - 0.05);
   bldg.add(cornice);
 
-  // === SOUTH WALL WINDOWS — multiple rows for tall buildings ===
+  // === WINDOW HELPER — adds windows to any wall face ===
   const winRows = bh > 4.5 ? 3 : bh > 3 ? 2 : 1;
-  const winCount = Math.max(3, Math.floor(bw / 0.8));
-  const winSpacing = bw / winCount;
-  const winW = 0.4, winH = 0.5;
-  for (let row = 0; row < winRows; row++) {
-    const rowZ = 0.1 + wallH * (0.2 + row * (0.6 / winRows));
-    for (let i = 0; i < winCount; i++) {
-      const wx = -bw / 2 + winSpacing * (i + 0.5);
-      const state = Math.random();
+  function addWallWindows(
+    faceX: number, faceY: number, axis: 'x' | 'y', faceSign: number,
+    wallLen: number, faceMat: THREE.Material,
+  ) {
+    const count = Math.max(3, Math.floor(wallLen / 0.8));
+    const spacing = wallLen / count;
+    for (let row = 0; row < winRows; row++) {
+      const rowZ = 0.1 + wallH * (0.2 + row * (0.6 / winRows));
+      for (let i = 0; i < count; i++) {
+        const pos = -wallLen / 2 + spacing * (i + 0.5);
+        const ww = 0.3 + Math.random() * 0.25;
+        const wh = 0.4 + Math.random() * 0.3;
+        const state = Math.random();
+        const fx = axis === 'x' ? pos : faceX;
+        const fy = axis === 'y' ? pos : faceY;
+        const off = faceSign * 0.11;
+        const fd = 0.06;
+        const fo = off - 0.03;
 
-      if (state < 0.22) {
-        const board = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.08, 0.06, winH + 0.08), boardMat);
-        board.position.set(wx, southY - 0.11, rowZ);
-        bldg.add(board);
-        const dPlank = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.14, 0.04, 0.04), trimMat);
-        dPlank.position.set(wx, southY - 0.14, rowZ);
-        dPlank.rotation.z = 0.7;
-        bldg.add(dPlank);
-        const cPlank = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, winH + 0.14), trimMat);
-        cPlank.position.set(wx, southY - 0.14, rowZ);
-        bldg.add(cPlank);
-      } else if (state < 0.45) {
-        const glass = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.04, winH), darkMat);
-        glass.position.set(wx, southY - 0.11, rowZ);
-        bldg.add(glass);
-        for (const [fw, fh, fp] of [
-          [winW + 0.1, 0.04, [0, winH / 2]],
-          [winW + 0.1, 0.04, [0, -winH / 2]],
-          [0.04, winH + 0.1, [-winW / 2, 0]],
-          [0.04, winH + 0.1, [winW / 2, 0]],
-        ] as const) {
-          const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.06, fh), trimMat);
-          frame.position.set(wx + fp[0], southY - 0.14, rowZ + fp[1]);
-          bldg.add(frame);
-        }
-      } else if (state < 0.62) {
-        const shard = new THREE.Mesh(new THREE.BoxGeometry(winW * 0.5, 0.04, winH * 0.6), glassMat);
-        shard.position.set(wx, southY - 0.11, rowZ - 0.06);
-        shard.rotation.z = 0.4 * (Math.random() > 0.5 ? 1 : -1);
-        bldg.add(shard);
-      } else if (state < 0.8) {
-        const hole = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.12, winH), darkMat);
-        hole.position.set(wx, southY - 0.11, rowZ);
-        bldg.add(hole);
-      }
-    }
-  }
-
-  // === EAST/WEST WALL WINDOWS ===
-  for (const sx of [-1, 1]) {
-    const ewCount = Math.max(2, Math.floor(bd / 1.0));
-    const ewSpacing = bd / ewCount;
-    for (let i = 0; i < ewCount; i++) {
-      if (Math.random() > 0.65) continue;
-      const ey = -bd / 2 + ewSpacing * (i + 0.5);
-      const ex = sx * bw / 2;
-      for (let row = 0; row < winRows; row++) {
-        const ez = 0.1 + wallH * (0.2 + row * (0.6 / winRows));
-        if (Math.random() < 0.4) {
-          const board = new THREE.Mesh(new THREE.BoxGeometry(0.08, winW * 0.9, winH * 0.9), boardMat);
-          board.position.set(ex + sx * 0.11, ey, ez);
+        if (state < 0.25) {
+          // Boarded — 4 variations
+          const board = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.08, 0.06, wh + 0.08), boardMat);
+          if (axis === 'x') board.position.set(fx, fy + off, rowZ);
+          else board.position.set(fx + off, fy, rowZ);
           bldg.add(board);
-        } else {
-          const glass = new THREE.Mesh(new THREE.BoxGeometry(0.14, winW * 0.8, winH * 0.8), darkMat);
-          glass.position.set(ex + sx * 0.11, ey, ez);
+          const style = Math.floor(Math.random() * 4);
+          const pd = 0.04;
+          if (style === 0) {
+            // Cross: horizontal + vertical
+            const h = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.14, pd, pd), trimMat);
+            if (axis === 'x') { h.position.set(fx, fy + off - 0.03, rowZ); }
+            else { h.position.set(fx + off - 0.03, fy, rowZ); h.rotation.z = Math.PI / 2; h.scale.set(1, ww / wh, 1); }
+            bldg.add(h);
+            const v = new THREE.Mesh(new THREE.BoxGeometry(pd, pd, wh + 0.14), trimMat);
+            if (axis === 'x') v.position.set(fx, fy + off - 0.03, rowZ);
+            else { v.position.set(fx + off - 0.03, fy, rowZ); }
+            bldg.add(v);
+          } else if (style === 1) {
+            // Diagonal plank
+            const d = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.14, pd, 0.04), trimMat);
+            if (axis === 'x') { d.position.set(fx, fy + off - 0.03, rowZ); d.rotation.z = 0.7; }
+            else { d.position.set(fx + off - 0.03, fy, rowZ); d.rotation.x = 0.7; }
+            bldg.add(d);
+          } else if (style === 2) {
+            // Horizontal slats (2–3)
+            const n = 2 + (Math.random() > 0.5 ? 1 : 0);
+            for (let s = 0; s < n; s++) {
+              const slat = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.06, pd, 0.04), trimMat);
+              const zOff = (s - (n - 1) / 2) * (wh / n);
+              if (axis === 'x') slat.position.set(fx, fy + off - 0.03, rowZ + zOff);
+              else slat.position.set(fx + off - 0.03, fy, rowZ + zOff);
+              bldg.add(slat);
+            }
+          } else {
+            // Vertical slats (2–3)
+            const n = 2 + (Math.random() > 0.5 ? 1 : 0);
+            for (let s = 0; s < n; s++) {
+              const slat = new THREE.Mesh(new THREE.BoxGeometry(0.04, pd, wh + 0.06), trimMat);
+              const xOff = (s - (n - 1) / 2) * (ww / n);
+              if (axis === 'x') slat.position.set(fx + xOff, fy + off - 0.03, rowZ);
+              else slat.position.set(fx + off - 0.03, fy + xOff, rowZ);
+              bldg.add(slat);
+            }
+          }
+        } else if (state < 0.55) {
+          // Intact glass with frame
+          const glass = new THREE.Mesh(new THREE.BoxGeometry(ww, 0.04, wh), darkMat);
+          if (axis === 'x') glass.position.set(fx, fy + off, rowZ);
+          else glass.position.set(fx + off, fy, rowZ);
           bldg.add(glass);
-          for (const [fw, fh, fp] of [
-            [0.06, winW + 0.06, [0, winH * 0.4]],
-            [0.06, winW + 0.06, [0, -winH * 0.4]],
-          ] as const) {
-            const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, 0.05), trimMat);
-            frame.position.set(ex + sx * 0.13, ey, ez + fp[1]);
-            bldg.add(frame);
+          for (const [lw, lz] of [[ww + 0.1, wh / 2], [ww + 0.1, -wh / 2]] as const) {
+            const f = new THREE.Mesh(new THREE.BoxGeometry(lw, fd, fd), trimMat);
+            if (axis === 'x') f.position.set(fx, fy + fo, rowZ + lz);
+            else f.position.set(fx + fo, fy, rowZ + lz);
+            bldg.add(f);
+          }
+          for (const [lh, lz] of [[wh + 0.1, -ww / 2], [wh + 0.1, ww / 2]] as const) {
+            const f = new THREE.Mesh(new THREE.BoxGeometry(fd, fd, lh), trimMat);
+            if (axis === 'x') f.position.set(fx + lz, fy + fo, rowZ);
+            else f.position.set(fx + fo, fy + lz, rowZ);
+            bldg.add(f);
+          }
+        } else if (state < 0.75) {
+          // Broken shard
+          const shard = new THREE.Mesh(new THREE.BoxGeometry(ww * 0.5, 0.04, wh * 0.6), glassMat);
+          if (axis === 'x') shard.position.set(fx, fy + off, rowZ - 0.06);
+          else shard.position.set(fx + off, fy, rowZ - 0.06);
+          shard.rotation.z = 0.4 * (Math.random() > 0.5 ? 1 : -1);
+          bldg.add(shard);
+          // Small frame remnant on one side
+          const rem = new THREE.Mesh(new THREE.BoxGeometry(fd, fd, wh * 0.4), trimMat);
+          const side = Math.random() > 0.5 ? 1 : -1;
+          if (axis === 'x') rem.position.set(fx + side * ww * 0.3, fy + fo, rowZ);
+          else rem.position.set(fx + fo, fy + side * ww * 0.3, rowZ);
+          bldg.add(rem);
+        } else if (state < 0.9) {
+          // Empty dark hole
+          const hole = new THREE.Mesh(new THREE.BoxGeometry(ww, 0.12, wh), darkMat);
+          if (axis === 'x') hole.position.set(fx, fy + off, rowZ);
+          else hole.position.set(fx + off, fy, rowZ);
+          bldg.add(hole);
+        } else {
+          // Just frame (no glass, no board)
+          for (const [lw, lz] of [[ww + 0.1, wh / 2], [ww + 0.1, -wh / 2]] as const) {
+            const f = new THREE.Mesh(new THREE.BoxGeometry(lw, fd, fd), trimMat);
+            if (axis === 'x') f.position.set(fx, fy + fo, rowZ + lz);
+            else f.position.set(fx + fo, fy, rowZ + lz);
+            bldg.add(f);
+          }
+          for (const [lh, lz] of [[wh + 0.1, -ww / 2], [wh + 0.1, ww / 2]] as const) {
+            const f = new THREE.Mesh(new THREE.BoxGeometry(fd, fd, lh), trimMat);
+            if (axis === 'x') f.position.set(fx + lz, fy + fo, rowZ);
+            else f.position.set(fx + fo, fy + lz, rowZ);
+            bldg.add(f);
           }
         }
       }
     }
   }
 
-  // === NORTH WALL WINDOWS — mirror of south wall ===
-  const northY = bd / 2;
-  const northCount = Math.max(3, Math.floor(bw / 0.8));
-  const northSpacing = bw / northCount;
-  for (let row = 0; row < winRows; row++) {
-    const rowZ = 0.1 + wallH * (0.2 + row * (0.6 / winRows));
-    for (let i = 0; i < northCount; i++) {
-      const wx = -bw / 2 + northSpacing * (i + 0.5);
-      const state = Math.random();
-      if (state < 0.22) {
-        const board = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.08, 0.06, winH + 0.08), boardMat);
-        board.position.set(wx, northY + 0.11, rowZ);
-        bldg.add(board);
-        const dPlank = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.14, 0.04, 0.04), trimMat);
-        dPlank.position.set(wx, northY + 0.14, rowZ);
-        dPlank.rotation.z = 0.7;
-        bldg.add(dPlank);
-        const cPlank = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, winH + 0.14), trimMat);
-        cPlank.position.set(wx, northY + 0.14, rowZ);
-        bldg.add(cPlank);
-      } else if (state < 0.45) {
-        const glass = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.04, winH), darkMat);
-        glass.position.set(wx, northY + 0.11, rowZ);
-        bldg.add(glass);
-        for (const [fw, fh, fp] of [
-          [winW + 0.1, 0.04, [0, winH / 2]],
-          [winW + 0.1, 0.04, [0, -winH / 2]],
-          [0.04, winH + 0.1, [-winW / 2, 0]],
-          [0.04, winH + 0.1, [winW / 2, 0]],
-        ] as const) {
-          const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.06, fh), trimMat);
-          frame.position.set(wx + fp[0], northY + 0.14, rowZ + fp[1]);
-          bldg.add(frame);
-        }
-      } else if (state < 0.62) {
-        const shard = new THREE.Mesh(new THREE.BoxGeometry(winW * 0.5, 0.04, winH * 0.6), glassMat);
-        shard.position.set(wx, northY + 0.11, rowZ - 0.06);
-        shard.rotation.z = 0.4 * (Math.random() > 0.5 ? 1 : -1);
-        bldg.add(shard);
-      } else if (state < 0.8) {
-        const hole = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.12, winH), darkMat);
-        hole.position.set(wx, northY + 0.11, rowZ);
-        bldg.add(hole);
-      }
-    }
-  }
+  // === SOUTH WALL WINDOWS ===
+  addWallWindows(0, southY, 'x', -1, bw, wallMat);
+
+  // === NORTH WALL WINDOWS ===
+  addWallWindows(0, bd / 2, 'x', 1, bw, wallMat);
+
+  // === EAST/WEST WALL WINDOWS ===
+  addWallWindows(bw / 2, 0, 'y', 1, bd, wallMat);
+  addWallWindows(-bw / 2, 0, 'y', -1, bd, wallMat);
 
   // === DOOR on south wall ===
   const doorW = 0.6, doorH = 1.0;
@@ -2215,33 +2220,6 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     bollard.position.set(bx, southY - 0.25, 0.075);
     bldg.add(bollard);
   }
-
-  // === WEATHERED SIGN BOARD on south face ===
-  const signNames = ['THE STACKS', 'HOTEL', 'LODGING', 'APT', 'ROOMS', 'INN', 'DORMITORY', 'BOARDING'];
-  const signText = signNames[Math.floor(Math.random() * signNames.length)];
-  const signCanvas = document.createElement('canvas');
-  signCanvas.width = 400; signCanvas.height = 100;
-  const sctx = signCanvas.getContext('2d')!;
-  sctx.fillStyle = 'rgba(42,42,50,0.85)';
-  sctx.fillRect(0, 0, 400, 100);
-  sctx.strokeStyle = '#888';
-  sctx.lineWidth = 4;
-  sctx.strokeRect(4, 4, 392, 92);
-  sctx.fillStyle = '#c8c8c8';
-  sctx.font = '700 44px system-ui';
-  sctx.textAlign = 'center';
-  sctx.textBaseline = 'middle';
-  sctx.fillText(signText, 200, 50);
-  const signTex = new THREE.CanvasTexture(signCanvas);
-  signTex.minFilter = THREE.LinearFilter;
-  signTex.flipY = false;
-  const signBoard = new THREE.Mesh(
-    new THREE.BoxGeometry(bw * 0.5, 0.06, 0.28),
-    new THREE.MeshBasicMaterial({ map: signTex, toneMapped: false })
-  );
-  signBoard.position.set(0, southY - 0.1, 0.1 + wallH * 0.7);
-  signBoard.scale.x = -1;
-  bldg.add(signBoard);
 
   // === DUMPSTER (30%) ===
   if (Math.random() > 0.7) {

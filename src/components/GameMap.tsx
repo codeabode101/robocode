@@ -2199,8 +2199,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
     // Crosswalks removed — intersections are filled with road
     // Dashed yellow center lines for all roads
-    makeDashedLine(6.6, 0, 34, true); makeDashedLine(6.6, -8, 34, true);
-    makeDashedLine(6.6, 8, 34, true);
+    makeDashedLine(6.6, 0, 34, true); makeDashedLine(6.6, -8.25, 34, true);
+    makeDashedLine(6.6, 8.5, 34, true);
     makeDashedLine(12, -2, 24, false);
     makeDashedLine(0, 0.25, 19.5, false);  // vertical from parking lot (y=-9.5) to road top (y=10)
 
