@@ -2698,10 +2698,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { x1: -9.7, y1: -14.0, x2: -2.3, y2: -9.6, cx: -6, cy: -11.8, bw: 7.4, bd: 4.4 },
       { x1: -23.4, y1: -13.95, x2: -14.2, y2: -10.05, cx: -18.75, cy: -12, bw: 9.3, bd: 3.9 },
       { x1: 2.0, y1: -14.0, x2: 10.0, y2: -10.0, cx: 6, cy: -12, bw: 8.0, bd: 4.0 },
+      // Abandoned buildings
+      { x1: -9.7, y1: 1.75, x2: -1.7, y2: 6.25, cx: -5.7, cy: 4, bw: 8.0, bd: 4.5 },
+      { x1: 1.75, y1: 1.75, x2: 10.25, y2: 6.25, cx: 6, cy: 4, bw: 8.5, bd: 4.5 },
+      { x1: 14.0, y1: 1.75, x2: 23.0, y2: 6.25, cx: 18.5, cy: 4, bw: 9.0, bd: 4.5 },
+      { x1: 14.0, y1: -6.25, x2: 23.0, y2: -1.75, cx: 18.5, cy: -4, bw: 9.0, bd: 4.5 },
+      { x1: 14.0, y1: -13.5, x2: 23.0, y2: -10.0, cx: 18.5, cy: -11.75, bw: 9.0, bd: 3.5 },
     ];
     for (let bi = 0; bi < buildingFootprints.length; bi++) {
       const b = buildingFootprints[bi];
-      if (bi >= 3) continue; // parts shop has peaked roof, no occluder needed
+      if (bi === 3) continue; // parts shop has peaked roof, no occluder needed
       const hw = b.bw / 2, hd = b.bd / 2;
       const addPanel = (w: number, d: number, x: number, y: number) => {
         const m = new THREE.Mesh(new THREE.BoxGeometry(w, d, panelH), occluderMat);
