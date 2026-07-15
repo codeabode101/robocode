@@ -2690,7 +2690,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Invisible occluder panels around outdoor buildings — prevent camera from seeing over walls into interiors
     // Vertical panels block the side frustum; horizontal roof panels block overhead views
     const occluderMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.DoubleSide });
-    const PUSH_BUFFER = 0.8; // push camera out this far before it reaches the wall
       const INSET = 0.02;
       const buildingFootprints: { x1: number; y1: number; x2: number; y2: number; cx: number; cy: number; bw: number; bd: number; bh: number }[] = [
       { x1: -10.08, y1: -4.98, x2: -1.92, y2: -2.02, cx: -6, cy: -3.5, bw: 8.0, bd: 2.8, bh: 2.8 },
@@ -6686,20 +6685,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           camera.position.x = Math.max(-lim, Math.min(lim, camera.position.x));
           camera.position.y = Math.max(-lim, Math.min(lim, camera.position.y));
         } else {
-          // Push camera outside building interiors (mirror of room clamp in reverse)
-          // Uses expanded footprint (PUSH_BUFFER) so camera is pushed away BEFORE reaching the wall
+          // Push camera outside building interiors — snaps to nearest edge when inside footprint
           const cx = camera.position.x, cy = camera.position.y;
           for (const fp of buildingFootprints) {
-            const ex1 = fp.x1 - PUSH_BUFFER, ex2 = fp.x2 + PUSH_BUFFER;
-            const ey1 = fp.y1 - PUSH_BUFFER, ey2 = fp.y2 + PUSH_BUFFER;
-            if (cx >= ex1 && cx <= ex2 && cy >= ey1 && cy <= ey2) {
-              const dl = cx - ex1, dr = ex2 - cx;
-              const db = cy - ey1, dt = ey2 - cy;
+            if (cx >= fp.x1 && cx <= fp.x2 && cy >= fp.y1 && cy <= fp.y2) {
+              const dl = cx - fp.x1, dr = fp.x2 - cx;
+              const db = cy - fp.y1, dt = fp.y2 - cy;
               const minD = Math.min(dl, dr, db, dt);
-              if (minD === dl) camera.position.x = ex1;
-              else if (minD === dr) camera.position.x = ex2;
-              else if (minD === db) camera.position.y = ey1;
-              else camera.position.y = ey2;
+              if (minD === dl) camera.position.x = fp.x1;
+              else if (minD === dr) camera.position.x = fp.x2;
+              else if (minD === db) camera.position.y = fp.y1;
+              else camera.position.y = fp.y2;
             }
           }
         }

@@ -23,7 +23,7 @@ async function runScene(sceneNum, sceneFn) {
   try {
     browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+      args: ['--no-sandbox', '--disable-dev-shm-usage', '--enable-unsafe-swiftshader', '--use-gl=angle', '--use-angle=swiftshader-webgl'],
     });
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     await ctx.addCookies([{
