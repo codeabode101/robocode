@@ -1598,6 +1598,8 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   }
   const pm = _bldgPaletteMats.get(palette)!;
   const { wall: wallMat, wallDark: wallDarkMat, trim: trimMat, accent: accentMat, roof: roofMat } = pm;
+  wallMat.side = THREE.DoubleSide;
+  wallDarkMat.side = THREE.DoubleSide;
   const { dark: darkMat, glass: glassMat, board: boardMat, veg: vegMat, rust: rustMat,
           steel: steelMat, brick: brickMat, crack: crackMat, red: redMat,
           dumpBody: dumpsterBodyMat, dumpLid: dumpsterLidMat, graffiti: graffitiMats } = _bldgSharedMats;
