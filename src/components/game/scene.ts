@@ -1735,9 +1735,12 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
         const fd = 0.06;
         const fo = off - 0.03;
 
+        const isY = axis === 'y';
+        const bx = (w: number, d: number, h: number) => isY ? new THREE.BoxGeometry(d, w, h) : new THREE.BoxGeometry(w, d, h);
+
         if (state < 0.25) {
           // Boarded — 4 variations
-          const board = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.08, 0.06, wh + 0.08), boardMat);
+          const board = new THREE.Mesh(bx(ww + 0.08, 0.06, wh + 0.08), boardMat);
           if (axis === 'x') board.position.set(fx, fy + off, rowZ);
           else board.position.set(fx + off, fy, rowZ);
           bldg.add(board);
@@ -1747,8 +1750,8 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             // X boarding: two diagonal planks
             const diag = Math.sqrt(ww * ww + wh * wh) + 0.1;
             const angle = Math.atan2(wh, ww);
-            const p1 = new THREE.Mesh(new THREE.BoxGeometry(diag, pd, pd), trimMat);
-            const p2 = new THREE.Mesh(new THREE.BoxGeometry(diag, pd, pd), trimMat);
+            const p1 = new THREE.Mesh(bx(diag, pd, pd), trimMat);
+            const p2 = new THREE.Mesh(bx(diag, pd, pd), trimMat);
             if (axis === 'x') {
               p1.position.set(fx, fy + off - 0.03, rowZ); p1.rotation.y = angle;
               p2.position.set(fx, fy + off - 0.03, rowZ); p2.rotation.y = -angle;
@@ -1759,7 +1762,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             bldg.add(p1); bldg.add(p2);
           } else if (style === 1) {
             // Single diagonal plank
-            const d = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.14, pd, 0.04), trimMat);
+            const d = new THREE.Mesh(bx(ww + 0.14, pd, 0.04), trimMat);
             if (axis === 'x') { d.position.set(fx, fy + off - 0.03, rowZ); d.rotation.y = 0.7; }
             else { d.position.set(fx + off - 0.03, fy, rowZ); d.rotation.x = 0.7; }
             bldg.add(d);
@@ -1767,7 +1770,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             // Horizontal slats (2–3)
             const n = 2 + (Math.random() > 0.5 ? 1 : 0);
             for (let s = 0; s < n; s++) {
-              const slat = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.06, pd, 0.04), trimMat);
+              const slat = new THREE.Mesh(bx(ww + 0.06, pd, 0.04), trimMat);
               const zOff = (s - (n - 1) / 2) * (wh / n);
               if (axis === 'x') slat.position.set(fx, fy + off - 0.03, rowZ + zOff);
               else slat.position.set(fx + off - 0.03, fy, rowZ + zOff);
@@ -1777,7 +1780,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             // Vertical slats (2–3)
             const n = 2 + (Math.random() > 0.5 ? 1 : 0);
             for (let s = 0; s < n; s++) {
-              const slat = new THREE.Mesh(new THREE.BoxGeometry(0.04, pd, wh + 0.06), trimMat);
+              const slat = new THREE.Mesh(new THREE.BoxGeometry(pd, pd, wh + 0.06), trimMat);
               const xOff = (s - (n - 1) / 2) * (ww / n);
               if (axis === 'x') slat.position.set(fx + xOff, fy + off - 0.03, rowZ);
               else slat.position.set(fx + off - 0.03, fy + xOff, rowZ);
@@ -1786,12 +1789,12 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           }
         } else if (state < 0.55) {
           // Intact glass with frame
-          const glass = new THREE.Mesh(new THREE.BoxGeometry(ww, 0.04, wh), darkMat);
+          const glass = new THREE.Mesh(bx(ww, 0.04, wh), darkMat);
           if (axis === 'x') glass.position.set(fx, fy + off, rowZ);
           else glass.position.set(fx + off, fy, rowZ);
           bldg.add(glass);
           for (const [lw, lz] of [[ww + 0.1, wh / 2], [ww + 0.1, -wh / 2]] as const) {
-            const f = new THREE.Mesh(new THREE.BoxGeometry(lw, fd, fd), trimMat);
+            const f = new THREE.Mesh(bx(lw, fd, fd), trimMat);
             if (axis === 'x') f.position.set(fx, fy + fo, rowZ + lz);
             else f.position.set(fx + fo, fy, rowZ + lz);
             bldg.add(f);
@@ -1804,7 +1807,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           }
         } else if (state < 0.75) {
           // Broken shard
-          const shard = new THREE.Mesh(new THREE.BoxGeometry(ww * 0.5, 0.04, wh * 0.6), glassMat);
+          const shard = new THREE.Mesh(bx(ww * 0.5, 0.04, wh * 0.6), glassMat);
           if (axis === 'x') shard.position.set(fx, fy + off, rowZ - 0.06);
           else shard.position.set(fx + off, fy, rowZ - 0.06);
           shard.rotation.z = 0.4 * (Math.random() > 0.5 ? 1 : -1);
@@ -1817,14 +1820,14 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           bldg.add(rem);
         } else if (state < 0.9) {
           // Empty dark hole
-          const hole = new THREE.Mesh(new THREE.BoxGeometry(ww, 0.12, wh), darkMat);
+          const hole = new THREE.Mesh(bx(ww, 0.12, wh), darkMat);
           if (axis === 'x') hole.position.set(fx, fy + off, rowZ);
           else hole.position.set(fx + off, fy, rowZ);
           bldg.add(hole);
         } else {
           // Just frame (no glass, no board)
           for (const [lw, lz] of [[ww + 0.1, wh / 2], [ww + 0.1, -wh / 2]] as const) {
-            const f = new THREE.Mesh(new THREE.BoxGeometry(lw, fd, fd), trimMat);
+            const f = new THREE.Mesh(bx(lw, fd, fd), trimMat);
             if (axis === 'x') f.position.set(fx, fy + fo, rowZ + lz);
             else f.position.set(fx + fo, fy, rowZ + lz);
             bldg.add(f);

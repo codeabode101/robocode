@@ -40,7 +40,6 @@ async function runScene(sceneNum, sceneFn) {
     await page.reload({ waitUntil: 'load', timeout: 30000 });
     await page.waitForTimeout(5000);
 
-    // Dismiss modals
     await page.evaluate(() => {
       for (const b of document.querySelectorAll('button'))
         if (b.textContent.includes('Got it')) { b.click(); break; }
@@ -54,7 +53,6 @@ async function runScene(sceneNum, sceneFn) {
     });
     await page.waitForTimeout(200);
 
-    // Acquire pointer lock
     await page.evaluate(() => {
       const c = document.querySelector('canvas');
       if (c && !document.pointerLockElement) c.requestPointerLock();
@@ -75,8 +73,6 @@ async function runScene(sceneNum, sceneFn) {
           rem -= dur;
         }
       },
-      // rot(movementX, movementY) — use large negative movementY to tilt camera horizontal
-      // movementY of -140 brings pitch from 0.8 to ~0.1 (nearly horizontal)
       rot: async (mx, my) => {
         if (crashed) throw new Error('crashed');
         const steps = 8;
@@ -112,91 +108,73 @@ async function runScene(sceneNum, sceneFn) {
   }
 }
 
-// Strategy for each scene:
-// 1. Walk to position NEAR the building (but with some distance)
-// 2. Rotate yaw to face the building
-// 3. Tilt camera to ~horizontal (movementY ~ -140)
-// 4. Take shot
+// Spawn: (0, -7). Move speed: ~7.4 units/sec → 135ms per unit.
+// Camera pitch starts at 0.8 rad (~46° down). movementY=-160 → horizontal. movementY=-200 → looking up ~20°.
+//
+// Road layout (gaps between grass blocks):
+//   Horizontal roads at y=[-1,1], y=[-9.5,-7], y=[7,10]
+//   Vertical roads at x=[-1,1], x=[11,13]
+// Buildings are ON grass blocks. Stand on ADJACENT road, NOT on grass.
+// Key: walk shorter distances — player collision stops at grass edge.
+//
+// Buildings:
+//   Concrete: (-5.7, 4), w=8, d=4.5 → south face y=1.75, east face x=-1.7
+//   Brick:    (6, 4), w=8.5, d=4.5 → south face y=1.75
+//   Slate top: (18.5, 4), w=9, d=4.5 → south face y=1.75, west face x=14
+//   Slate mid: (18.5, -4), w=9, d=4.5 → south face y=-6.25, west face x=14
+//   Wood:     (18.5, -11.75), w=9, d=3.5 → north face y=-10, west face x=14
+//
+// Walk helper: ms = units * 135
 
 const scenes = [
-  // 1: Top-left building (-5.7, 4) — walk north+west, stop short, face east toward it
+  // 1: Spawn view
   async (s) => {
     await s.shot('01_spawn');
-    // Walk north to y~2, west to x~-3 (stop ~3 units east of building)
-    await s.walk(['w'], 2500); await s.walk(['a'], 1500);
-    // Face east toward building, tilt horizontal
-    await s.rot(-180, -130); await s.shot('02_topleft_face');
-    // Walk a bit closer
-    await s.walk(['a'], 1000);
-    await s.rot(0, -10); await s.shot('03_topleft_close');
   },
-  // 2: Top-center building (6, 4) — walk north, stop south of it
+  // 2: Concrete (-5.7, 4) south face — stand at (0, -3), look northwest
+  // From spawn: walk north 4 units = 540ms. Player stays on vertical road x=[-1,1].
+  // Distance to south face (y=1.75): 4.75 units. Good framing.
   async (s) => {
-    await s.walk(['w'], 2500); await s.walk(['d'], 2000);
-    // Face north toward building, tilt horizontal
-    await s.rot(0, -130); await s.shot('04_topcenter_face');
-    await s.walk(['w'], 800);
-    await s.rot(20, -10); await s.shot('05_topcenter_close');
+    await s.walk(['w'], 540);
+    await s.rot(-140, -160); await s.shot('02_concrete');
   },
-  // 3: Top-right building (18.5, 4) — walk north+east
+  // 3: Brick (6, 4) south face — stand at (6, -3), look north
+  // From spawn: south 1u to y=-8 (135ms), east 6u to x=6 (810ms), north 5u to y=-3 (675ms)
+  // Distance to south face (y=1.75): 4.75 units.
   async (s) => {
-    await s.walk(['w'], 2500); await s.walk(['d'], 4000);
-    // Face north/east toward building
-    await s.rot(0, -130); await s.shot('06_topright_face');
-    await s.rot(-60, 0); await s.shot('07_topright_side');
+    await s.walk(['s'], 135);
+    await s.walk(['d'], 810);
+    await s.walk(['w'], 675);
+    await s.rot(0, -160); await s.shot('03_brick');
   },
-  // 4: Mid-right building (18.5, -4) — walk east, stop west of it
+  // 4: Slate top (18.5, 4) — stand at (13, -3), look northeast
+  // From spawn: south 1u (135ms), east 13u to x=13 (1755ms), north 5u to y=-3 (675ms)
+  // West face at x=14 → 1 unit east. View both south and west faces at angle.
   async (s) => {
-    await s.walk(['d'], 4000); await s.walk(['w'], 1200);
-    // Face east toward building
-    await s.rot(-180, -130); await s.shot('08_midright_face');
-    await s.rot(0, 0); await s.shot('09_midright_north');
+    await s.walk(['s'], 135);
+    await s.walk(['d'], 1755);
+    await s.walk(['w'], 675);
+    await s.rot(-20, -160); await s.shot('04_slate_top');
   },
-  // 5: Bottom-right building (18.5, -11.75)
+  // 5: Concrete east face — stand at (-1, 4), look west
+  // From spawn: north 11u to y=4 (1485ms). Player on vertical road x=[-1,1].
+  // East face at x=-1.7 → 0.7 units west. Very close but shows east wall windows.
   async (s) => {
-    await s.walk(['d'], 4000); await s.walk(['s'], 2000);
-    await s.rot(-180, -130); await s.shot('10_bottomright_face');
-    await s.rot(0, 0); await s.shot('11_bottomright_north');
+    await s.walk(['w'], 1485);
+    await s.rot(180, -160); await s.shot('05_concrete_east');
   },
-  // 6: Arena (18.75, -12) — walk east+south
+  // 6: Wood (18.5, -11.75) south face — stand at (13, -8), look southeast
+  // From spawn: south 1u (135ms), east 13u (1755ms). Player on horizontal road y=[-9.5,-7].
+  // North face at y=-10 → 2 units south. West face at x=14 → 1 unit east.
   async (s) => {
-    await s.walk(['d'], 4000); await s.walk(['s'], 2000);
-    // We're near arena — face it
-    await s.rot(160, -130); await s.shot('12_arena_face');
-    await s.rot(-20, 0); await s.shot('13_arena_side');
-  },
-  // 7: Parts shop (6, -12) — walk east+south
-  async (s) => {
-    await s.walk(['d'], 2000); await s.walk(['s'], 2000);
-    await s.rot(160, -130); await s.shot('14_parts_face');
-    await s.rot(-20, 0); await s.shot('15_parts_side');
-  },
-  // 8: Workshop (-6, -11.8) — walk west+south
-  async (s) => {
-    await s.walk(['a'], 2000); await s.walk(['s'], 2000);
-    await s.rot(-160, -130); await s.shot('16_workshop_face');
-    await s.rot(20, 0); await s.shot('17_workshop_side');
-  },
-  // 9: Apartment (-6, -3.5) — stay far south, face north
-  async (s) => {
-    await s.walk(['a'], 1500); await s.walk(['s'], 500);
-    await s.rot(0, -130); await s.shot('18_apt_face');
-  },
-  // 10: Lake (6, -4) — walk east
-  async (s) => {
-    await s.walk(['d'], 2000);
-    await s.rot(0, -130); await s.shot('20_lake_face');
-  },
-  // 11: Road view — center of map
-  async (s) => {
-    await s.walk(['s'], 1000);
-    await s.rot(-160, -130); await s.shot('21_road_west');
-    await s.rot(320, 0); await s.shot('22_road_east');
+    await s.walk(['s'], 135);
+    await s.walk(['d'], 1755);
+    await s.rot(-20, -130); await s.shot('06_wood');
   },
 ];
 
 (async () => {
-  log(`Running ${scenes.length} scenes with horizontal camera angles`);
+  log(`Running ${scenes.length} scenes`);
   for (let i = 0; i < scenes.length; i++) {
     log(`\nScene ${i + 1}/${scenes.length}`);
     await runScene(i + 1, scenes[i]);
