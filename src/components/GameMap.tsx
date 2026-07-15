@@ -6685,9 +6685,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           camera.position.x = Math.max(-lim, Math.min(lim, camera.position.x));
           camera.position.y = Math.max(-lim, Math.min(lim, camera.position.y));
         } else {
-          // Push camera outside building interiors — snaps to nearest edge when inside footprint
+          // Push camera outside building interiors — only when player is outside the footprint
+          // (when player is inside, room camera clamping handles it)
           const cx = camera.position.x, cy = camera.position.y;
           for (const fp of buildingFootprints) {
+            const playerInside = px >= fp.x1 && px <= fp.x2 && py >= fp.y1 && py <= fp.y2;
+            if (playerInside) continue; // player is inside this building — room clamping handles camera
             if (cx >= fp.x1 && cx <= fp.x2 && cy >= fp.y1 && cy <= fp.y2) {
               const dl = cx - fp.x1, dr = fp.x2 - cx;
               const db = cy - fp.y1, dt = fp.y2 - cy;
@@ -7152,10 +7155,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setWorkshopOutput('');
     const outsideDoor = new THREE.Vector2(-6, -10.0);
     localPositionRef.current.copy(outsideDoor);
+    yawRef.current = Math.PI; // face south (out the door)
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.24);
     }
-    apiSync({ position: { x: outsideDoor.x, y: outsideDoor.y, rotation: null, room: 'outside' } });
+    apiSync({ position: { x: outsideDoor.x, y: outsideDoor.y, rotation: yawRef.current, room: 'outside' } });
   };
 
   const leaveArenaRoom = () => {
@@ -7171,10 +7175,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const adp = new THREE.Vector2(18.75, -9.0);
     triggerEvent('client-player-join', { x: adp.x, y: adp.y, room: 'outside' });
     localPositionRef.current.copy(adp);
+    yawRef.current = 0; // face north (out the door)
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(adp.x, adp.y, 0.24);
     }
-    apiSync({ position: { x: adp.x, y: adp.y, rotation: null, room: 'outside' } });
+    apiSync({ position: { x: adp.x, y: adp.y, rotation: yawRef.current, room: 'outside' } });
   };
 
   const leaveApartmentRoom = () => {
@@ -7190,10 +7195,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setSuccess(false);
     const outsideDoor = new THREE.Vector2(-9.6, -5.5);
     localPositionRef.current.copy(outsideDoor);
+    yawRef.current = Math.atan2(-1, -1); // face southwest (out the door)
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.24);
     }
-    apiSync({ position: { x: outsideDoor.x, y: outsideDoor.y, rotation: null, room: 'outside' } });
+    apiSync({ position: { x: outsideDoor.x, y: outsideDoor.y, rotation: yawRef.current, room: 'outside' } });
   };
 
   const prepBatteryInstallProps = () => {
