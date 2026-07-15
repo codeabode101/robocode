@@ -7155,7 +7155,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     setWorkshopOutput('');
     const outsideDoor = new THREE.Vector2(-6, -9.0);
     localPositionRef.current.copy(outsideDoor);
-    yawRef.current = Math.PI; // face south (out the door)
+    yawRef.current = 0; // face north (away from workshop — door is on north wall)
     if (localRobotRef.current) {
       localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.24);
     }
