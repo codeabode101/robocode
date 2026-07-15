@@ -1790,6 +1790,53 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     }
   }
 
+  // === NORTH WALL WINDOWS — mirror of south wall ===
+  const northY = bd / 2;
+  const northCount = Math.max(3, Math.floor(bw / 0.8));
+  const northSpacing = bw / northCount;
+  for (let row = 0; row < winRows; row++) {
+    const rowZ = 0.1 + wallH * (0.2 + row * (0.6 / winRows));
+    for (let i = 0; i < northCount; i++) {
+      const wx = -bw / 2 + northSpacing * (i + 0.5);
+      const state = Math.random();
+      if (state < 0.22) {
+        const board = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.08, 0.06, winH + 0.08), boardMat);
+        board.position.set(wx, northY + 0.11, rowZ);
+        bldg.add(board);
+        const dPlank = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.14, 0.04, 0.04), trimMat);
+        dPlank.position.set(wx, northY + 0.14, rowZ);
+        dPlank.rotation.z = 0.7;
+        bldg.add(dPlank);
+        const cPlank = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, winH + 0.14), trimMat);
+        cPlank.position.set(wx, northY + 0.14, rowZ);
+        bldg.add(cPlank);
+      } else if (state < 0.45) {
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.04, winH), darkMat);
+        glass.position.set(wx, northY + 0.11, rowZ);
+        bldg.add(glass);
+        for (const [fw, fh, fp] of [
+          [winW + 0.1, 0.04, [0, winH / 2]],
+          [winW + 0.1, 0.04, [0, -winH / 2]],
+          [0.04, winH + 0.1, [-winW / 2, 0]],
+          [0.04, winH + 0.1, [winW / 2, 0]],
+        ] as const) {
+          const frame = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.06, fh), trimMat);
+          frame.position.set(wx + fp[0], northY + 0.14, rowZ + fp[1]);
+          bldg.add(frame);
+        }
+      } else if (state < 0.62) {
+        const shard = new THREE.Mesh(new THREE.BoxGeometry(winW * 0.5, 0.04, winH * 0.6), glassMat);
+        shard.position.set(wx, northY + 0.11, rowZ - 0.06);
+        shard.rotation.z = 0.4 * (Math.random() > 0.5 ? 1 : -1);
+        bldg.add(shard);
+      } else if (state < 0.8) {
+        const hole = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.12, winH), darkMat);
+        hole.position.set(wx, northY + 0.11, rowZ);
+        bldg.add(hole);
+      }
+    }
+  }
+
   // === DOOR on south wall ===
   const doorW = 0.6, doorH = 1.0;
   const doorX = bw * 0.2 * (Math.random() > 0.5 ? 1 : -1);
