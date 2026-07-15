@@ -1610,6 +1610,11 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   foundation.position.set(0, 0, 0.06);
   bldg.add(foundation);
 
+  // Interior floor — dark slab so you can't see grass through windows
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.2, bd - 0.2, 0.08), darkMat);
+  floor.position.set(0, 0, 0.16);
+  bldg.add(floor);
+
   // === COLLAPSE ZONE (computed early so walls can skip it) ===
   const doCollapse = Math.random() > 0.55;
   let collapseX = 0, collapseY = 0, gapW = 0, gapD = 0;
