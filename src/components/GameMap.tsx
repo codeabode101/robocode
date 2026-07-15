@@ -2687,37 +2687,43 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       };
     }
 
-    // Invisible vertical occluder panels around outdoor buildings — prevent camera from seeing over walls into interiors
-    // Mirror of room camera clamping: these block the upward frustum that sees past short walls
+    // Invisible occluder panels around outdoor buildings — prevent camera from seeing over walls into interiors
+    // Vertical panels block the side frustum; horizontal roof panels block overhead views
     const occluderMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.DoubleSide });
-    const panelH = 3.0 - 1.05;
-    const panelZ = 1.05 + panelH / 2;
-    const INSET = 0.02;
-    const buildingFootprints: { x1: number; y1: number; x2: number; y2: number; cx: number; cy: number; bw: number; bd: number }[] = [
-      { x1: -10.08, y1: -4.98, x2: -1.92, y2: -2.02, cx: -6, cy: -3.5, bw: 8.0, bd: 2.8 },
-      { x1: -9.7, y1: -14.0, x2: -2.3, y2: -9.6, cx: -6, cy: -11.8, bw: 7.4, bd: 4.4 },
-      { x1: -23.4, y1: -13.95, x2: -14.2, y2: -10.05, cx: -18.75, cy: -12, bw: 9.3, bd: 3.9 },
-      { x1: 2.0, y1: -14.0, x2: 10.0, y2: -10.0, cx: 6, cy: -12, bw: 8.0, bd: 4.0 },
+    const PUSH_BUFFER = 0.8; // push camera out this far before it reaches the wall
+      const INSET = 0.02;
+      const buildingFootprints: { x1: number; y1: number; x2: number; y2: number; cx: number; cy: number; bw: number; bd: number; bh: number }[] = [
+      { x1: -10.08, y1: -4.98, x2: -1.92, y2: -2.02, cx: -6, cy: -3.5, bw: 8.0, bd: 2.8, bh: 2.8 },
+      { x1: -9.7, y1: -14.0, x2: -2.3, y2: -9.6, cx: -6, cy: -11.8, bw: 7.4, bd: 4.4, bh: 2.2 },
+      { x1: -23.4, y1: -13.95, x2: -14.2, y2: -10.05, cx: -18.75, cy: -12, bw: 9.3, bd: 3.9, bh: 3.5 },
+      { x1: 2.0, y1: -14.0, x2: 10.0, y2: -10.0, cx: 6, cy: -12, bw: 8.0, bd: 4.0, bh: 4.0 },
       // Abandoned buildings
-      { x1: -9.7, y1: 1.75, x2: -1.7, y2: 6.25, cx: -5.7, cy: 4, bw: 8.0, bd: 4.5 },
-      { x1: 1.75, y1: 1.75, x2: 10.25, y2: 6.25, cx: 6, cy: 4, bw: 8.5, bd: 4.5 },
-      { x1: 14.0, y1: 1.75, x2: 23.0, y2: 6.25, cx: 18.5, cy: 4, bw: 9.0, bd: 4.5 },
-      { x1: 14.0, y1: -6.25, x2: 23.0, y2: -1.75, cx: 18.5, cy: -4, bw: 9.0, bd: 4.5 },
-      { x1: 14.0, y1: -13.5, x2: 23.0, y2: -10.0, cx: 18.5, cy: -11.75, bw: 9.0, bd: 3.5 },
+      { x1: -9.7, y1: 1.75, x2: -1.7, y2: 6.25, cx: -5.7, cy: 4, bw: 8.0, bd: 4.5, bh: 5.5 },
+      { x1: 1.75, y1: 1.75, x2: 10.25, y2: 6.25, cx: 6, cy: 4, bw: 8.5, bd: 4.5, bh: 4.0 },
+      { x1: 14.0, y1: 1.75, x2: 23.0, y2: 6.25, cx: 18.5, cy: 4, bw: 9.0, bd: 4.5, bh: 6.0 },
+      { x1: 14.0, y1: -6.25, x2: 23.0, y2: -1.75, cx: 18.5, cy: -4, bw: 9.0, bd: 4.5, bh: 3.5 },
+      { x1: 14.0, y1: -13.5, x2: 23.0, y2: -10.0, cx: 18.5, cy: -11.75, bw: 9.0, bd: 3.5, bh: 4.5 },
     ];
     for (let bi = 0; bi < buildingFootprints.length; bi++) {
       const b = buildingFootprints[bi];
       if (bi === 3) continue; // parts shop has peaked roof, no occluder needed
       const hw = b.bw / 2, hd = b.bd / 2;
+      // Vertical wall panels — extend well above roof to block oblique camera angles
+      const panelH = b.bh + 1.5;
+      const panelZ = panelH / 2;
       const addPanel = (w: number, d: number, x: number, y: number) => {
         const m = new THREE.Mesh(new THREE.BoxGeometry(w, d, panelH), occluderMat);
         m.position.set(x, y, panelZ);
         outdoorGroup.add(m);
       };
-      addPanel(b.bw, 0.02, b.cx, b.cy + hd - INSET);
-      addPanel(b.bw, 0.02, b.cx, b.cy - hd + INSET);
-      addPanel(0.02, b.bd, b.cx + hw - INSET, b.cy);
-      addPanel(0.02, b.bd, b.cx - hw + INSET, b.cy);
+      addPanel(b.bw + 0.1, 0.02, b.cx, b.cy + hd - INSET);
+      addPanel(b.bw + 0.1, 0.02, b.cx, b.cy - hd + INSET);
+      addPanel(0.02, b.bd + 0.1, b.cx + hw - INSET, b.cy);
+      addPanel(0.02, b.bd + 0.1, b.cx - hw + INSET, b.cy);
+      // Horizontal roof panel — blocks overhead views into the building
+      const roofPanel = new THREE.Mesh(new THREE.BoxGeometry(b.bw + 0.1, b.bd + 0.1, 0.04), occluderMat);
+      roofPanel.position.set(b.cx, b.cy, b.bh + 0.2);
+      outdoorGroup.add(roofPanel);
     }
 
     const createExitSignMesh = (x: number, y: number, z: number, parent: THREE.Group, bgColor = '#dc2626', textColor = '#ffffff', borderColor = '#fde68a') => {
@@ -6681,16 +6687,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           camera.position.y = Math.max(-lim, Math.min(lim, camera.position.y));
         } else {
           // Push camera outside building interiors (mirror of room clamp in reverse)
+          // Uses expanded footprint (PUSH_BUFFER) so camera is pushed away BEFORE reaching the wall
           const cx = camera.position.x, cy = camera.position.y;
           for (const fp of buildingFootprints) {
-            if (cx >= fp.x1 && cx <= fp.x2 && cy >= fp.y1 && cy <= fp.y2) {
-              const dl = cx - fp.x1, dr = fp.x2 - cx;
-              const db = cy - fp.y1, dt = fp.y2 - cy;
+            const ex1 = fp.x1 - PUSH_BUFFER, ex2 = fp.x2 + PUSH_BUFFER;
+            const ey1 = fp.y1 - PUSH_BUFFER, ey2 = fp.y2 + PUSH_BUFFER;
+            if (cx >= ex1 && cx <= ex2 && cy >= ey1 && cy <= ey2) {
+              const dl = cx - ex1, dr = ex2 - cx;
+              const db = cy - ey1, dt = ey2 - cy;
               const minD = Math.min(dl, dr, db, dt);
-              if (minD === dl) camera.position.x = fp.x1;
-              else if (minD === dr) camera.position.x = fp.x2;
-              else if (minD === db) camera.position.y = fp.y1;
-              else camera.position.y = fp.y2;
+              if (minD === dl) camera.position.x = ex1;
+              else if (minD === dr) camera.position.x = ex2;
+              else if (minD === db) camera.position.y = ey1;
+              else camera.position.y = ey2;
             }
           }
         }
