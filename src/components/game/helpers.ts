@@ -567,8 +567,8 @@ export function computeCameraZoom(
   buildingFootprints: BuildingFootprint[],
 ): { fov: number; camDist: number; lookDist: number; height: number } {
   const BASE = { fov: 65, camDist: 2.2, lookDist: 2.5, height: 1.8 };
-  const ZOOMED = { fov: 50, camDist: 0.8, lookDist: 1.0, height: 1.2 };
-  const ZOOM_RANGE = 3;
+  const ZOOMED = { fov: 60, camDist: 2.0, lookDist: 2.1, height: 1.7 };
+  const ZOOM_RANGE = 2.0;
 
   let minDist = Infinity;
 

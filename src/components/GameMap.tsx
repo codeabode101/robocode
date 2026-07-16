@@ -2148,7 +2148,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const gMat = createToonMaterial(0x6aaa5a);
     const addG = (x: number, y: number, w: number, h: number) => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.04), gMat);
-      m.position.set(x, y, 0.20); m.receiveShadow = true;
+      m.position.set(x, y, 0.17); m.receiveShadow = true;
       outdoorGroup.add(m);
     };
     // All grass rows — expanded by 0.5 on each side for bigger building plots
@@ -2666,7 +2666,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     ];
     for (const { x, y, w, d, palette, debrisR, debrisN, height } of BUILDINGS) {
       const bldg = createAbandonedBuilding(x, y, w, d, palette, height);
-      bldg.position.z = 0.22;
+      bldg.position.z = 0.25;
       outdoorGroup.add(bldg);
       scatterDebris(x, y, debrisR, debrisN);
     }
@@ -2690,9 +2690,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
 
     // Invisible occluder panels around outdoor buildings — prevent camera from seeing over walls into interiors
-    // Vertical panels block the side frustum; horizontal roof panels block overhead views
-    const occluderMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, side: THREE.DoubleSide });
-      const INSET = 0.02;
       const buildingFootprints: { x1: number; y1: number; x2: number; y2: number; cx: number; cy: number; bw: number; bd: number; bh: number }[] = [
       { x1: -10.08, y1: -4.98, x2: -1.92, y2: -2.02, cx: -6, cy: -3.5, bw: 8.0, bd: 2.8, bh: 2.8 },
       { x1: -9.7, y1: -14.0, x2: -2.3, y2: -9.6, cx: -6, cy: -11.8, bw: 7.4, bd: 4.4, bh: 2.2 },
@@ -2705,27 +2702,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { x1: 14.0, y1: -6.25, x2: 23.0, y2: -1.75, cx: 18.5, cy: -4, bw: 9.0, bd: 4.5, bh: 3.5 },
       { x1: 14.0, y1: -13.5, x2: 23.0, y2: -10.0, cx: 18.5, cy: -11.75, bw: 9.0, bd: 3.5, bh: 4.5 },
     ];
-    for (let bi = 0; bi < buildingFootprints.length; bi++) {
-      const b = buildingFootprints[bi];
-      if (bi === 3) continue; // parts shop has peaked roof, no occluder needed
-      const hw = b.bw / 2, hd = b.bd / 2;
-      // Vertical wall panels — extend well above roof to block oblique camera angles
-      const panelH = b.bh + 1.5;
-      const panelZ = panelH / 2;
-      const addPanel = (w: number, d: number, x: number, y: number) => {
-        const m = new THREE.Mesh(new THREE.BoxGeometry(w, d, panelH), occluderMat);
-        m.position.set(x, y, panelZ);
-        outdoorGroup.add(m);
-      };
-      addPanel(b.bw + 0.1, 0.02, b.cx, b.cy + hd - INSET);
-      addPanel(b.bw + 0.1, 0.02, b.cx, b.cy - hd + INSET);
-      addPanel(0.02, b.bd + 0.1, b.cx + hw - INSET, b.cy);
-      addPanel(0.02, b.bd + 0.1, b.cx - hw + INSET, b.cy);
-      // Horizontal roof panel — blocks overhead views into the building
-      const roofPanel = new THREE.Mesh(new THREE.BoxGeometry(b.bw + 0.1, b.bd + 0.1, 0.04), occluderMat);
-      roofPanel.position.set(b.cx, b.cy, b.bh + 0.2);
-      outdoorGroup.add(roofPanel);
-    }
+      // Occluders removed — colorWrite:false renders as solid black in this environment
 
     const createExitSignMesh = (x: number, y: number, z: number, parent: THREE.Group, bgColor = '#dc2626', textColor = '#ffffff', borderColor = '#fde68a') => {
       const canvas = document.createElement('canvas');

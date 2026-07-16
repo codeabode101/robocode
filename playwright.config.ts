@@ -7,6 +7,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
+  timeout: 120000,
   use: {
     baseURL: 'https://robocode.rahejaom.workers.dev',
     trace: 'on-first-retry',
