@@ -1718,7 +1718,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   bldg.add(cornice);
 
   // === WINDOW HELPER — adds windows to any wall face ===
-  const winRows = bh > 5.5 ? 4 : bh > 4.5 ? 3 : bh > 3 ? 2 : 1;
+  const winRows = bh >= 5.5 ? 4 : bh >= 4.5 ? 3 : bh >= 3 ? 2 : 1;
   function addWallWindows(
     faceX: number, faceY: number, axis: 'x' | 'y', faceSign: number,
     wallLen: number, faceMat: THREE.Material,
