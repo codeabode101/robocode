@@ -6688,6 +6688,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           // Push camera outside building interiors — only when player is outside the footprint
           // (when player is inside, room camera clamping handles it)
           const cx = camera.position.x, cy = camera.position.y;
+          const MARGIN = 0.15;
           for (const fp of buildingFootprints) {
             const playerInside = px >= fp.x1 && px <= fp.x2 && py >= fp.y1 && py <= fp.y2;
             if (playerInside) continue; // player is inside this building — room clamping handles camera
@@ -6695,10 +6696,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const dl = cx - fp.x1, dr = fp.x2 - cx;
               const db = cy - fp.y1, dt = fp.y2 - cy;
               const minD = Math.min(dl, dr, db, dt);
-              if (minD === dl) camera.position.x = fp.x1;
-              else if (minD === dr) camera.position.x = fp.x2;
-              else if (minD === db) camera.position.y = fp.y1;
-              else camera.position.y = fp.y2;
+              if (minD === dl) camera.position.x = fp.x1 - MARGIN;
+              else if (minD === dr) camera.position.x = fp.x2 + MARGIN;
+              else if (minD === db) camera.position.y = fp.y1 - MARGIN;
+              else camera.position.y = fp.y2 + MARGIN;
             }
           }
         }

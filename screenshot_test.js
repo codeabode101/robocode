@@ -3,109 +3,145 @@ const fs = require('fs');
 
 const SITE = 'https://robocode.rahejaom.workers.dev';
 const OUT = '/tmp/test';
+const MAX_RETRIES = 2;
 
 function log(msg) { console.log(`[${new Date().toISOString().slice(11,19)}] ${msg}`); }
 
-async function runScene(sceneNum, sceneFn) {
+let jwt = null;
+
+async function getJwt() {
+  if (jwt) return jwt;
   const envContent = fs.readFileSync('.dev.vars', 'utf-8');
   const match = envContent.match(/WORKOS_API_KEY=(.+)/);
   const key = match[1].trim();
   const { SignJWT } = await import('jose');
-  const jwt = await new SignJWT({ sub: 'test-user-id' })
+  jwt = await new SignJWT({ sub: 'test-user-id' })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('1h')
     .sign(new TextEncoder().encode(key));
+  return jwt;
+}
 
-  let browser, page;
-  let crashed = false;
+async function launchBrowser() {
+  return chromium.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu-sandbox',
+      '--enable-unsafe-swiftshader',
+      '--use-gl=angle',
+      '--use-angle=swiftshader-webgl',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+    ],
+  });
+}
 
-  try {
-    browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-dev-shm-usage', '--enable-unsafe-swiftshader', '--use-gl=angle', '--use-angle=swiftshader-webgl'],
-    });
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
-    await ctx.addCookies([{
-      name: 'session', value: jwt,
-      domain: 'robocode.rahejaom.workers.dev', path: '/',
-      httpOnly: true, secure: true,
-    }]);
+async function runScene(sceneNum, sceneFn) {
+  const jwtVal = await getJwt();
 
-    page = await ctx.newPage();
-    page.on('crash', () => { crashed = true; log(`  !! PAGE CRASHED`); });
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) log(`  Retry ${attempt}/${MAX_RETRIES} for scene ${sceneNum}`);
 
-    await page.goto(`${SITE}/game`, { waitUntil: 'load', timeout: 30000 });
-    await page.waitForTimeout(3000);
-    await page.reload({ waitUntil: 'load', timeout: 30000 });
-    await page.waitForTimeout(5000);
+    let browser, page;
+    let crashed = false;
 
-    await page.evaluate(() => {
-      for (const b of document.querySelectorAll('button'))
-        if (b.textContent.includes('Got it')) { b.click(); break; }
-    });
-    await page.waitForTimeout(300);
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
-    await page.evaluate(() => {
-      for (const b of document.querySelectorAll('button'))
-        if (b.textContent.includes('\u00d7')) b.click();
-    });
-    await page.waitForTimeout(200);
+    try {
+      browser = await launchBrowser();
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+      await ctx.addCookies([{
+        name: 'session', value: jwtVal,
+        domain: 'robocode.rahejaom.workers.dev', path: '/',
+        httpOnly: true, secure: true,
+      }]);
 
-    await page.evaluate(() => {
-      const c = document.querySelector('canvas');
-      if (c && !document.pointerLockElement) c.requestPointerLock();
-    });
-    await page.waitForTimeout(200);
+      page = await ctx.newPage();
+      page.on('crash', () => { crashed = true; log(`  !! PAGE CRASHED`); });
 
-    const s = {
-      walk: async (keys, ms) => {
-        if (crashed) throw new Error('crashed');
-        const CHUNK = 2000;
-        let rem = ms;
-        while (rem > 0) {
-          const dur = Math.min(CHUNK, rem);
-          for (const k of keys) await page.keyboard.down(k);
-          await page.waitForTimeout(dur);
-          for (const k of keys) await page.keyboard.up(k);
-          await page.waitForTimeout(50);
-          rem -= dur;
-        }
-      },
-      rot: async (mx, my) => {
-        if (crashed) throw new Error('crashed');
-        const steps = 8;
-        for (let i = 0; i < steps; i++) {
-          await page.evaluate(({ a, b }) => {
-            const c = document.querySelector('canvas');
-            if (c) c.dispatchEvent(new PointerEvent('pointermove', { movementX: a, movementY: b, bubbles: true }));
-          }, { a: Math.round(mx / steps), b: Math.round(my / steps) });
-          await page.waitForTimeout(20);
-        }
-        await page.waitForTimeout(150);
-      },
-      shot: async (label) => {
-        if (crashed) throw new Error('crashed');
-        const t0 = Date.now();
-        await page.screenshot({ path: `${OUT}_${label}.png` });
-        const dt = Date.now() - t0;
-        const size = (fs.statSync(`${OUT}_${label}.png`).size / 1024).toFixed(0);
-        log(`  -> ${label} (${size}KB, ${dt}ms)`);
-      },
-    };
+      await page.goto(`${SITE}/game`, { waitUntil: 'load', timeout: 30000 });
+      await page.waitForTimeout(4000);
+      await page.reload({ waitUntil: 'load', timeout: 30000 });
+      await page.waitForTimeout(6000);
 
-    await sceneFn(s);
-    log(`  Scene ${sceneNum}: OK`);
-  } catch (e) {
-    if (crashed) {
-      log(`  Scene ${sceneNum}: CRASHED - ${e.message}`);
-    } else {
-      log(`  Scene ${sceneNum}: ERROR - ${e.message.slice(0, 100)}`);
+      if (crashed) throw new Error('crashed during load');
+
+      await page.evaluate(() => {
+        for (const b of document.querySelectorAll('button'))
+          if (b.textContent.includes('Got it')) { b.click(); break; }
+      });
+      await page.waitForTimeout(500);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(500);
+      await page.evaluate(() => {
+        for (const b of document.querySelectorAll('button'))
+          if (b.textContent.includes('\u00d7')) b.click();
+      });
+      await page.waitForTimeout(300);
+
+      await page.evaluate(() => {
+        const c = document.querySelector('canvas');
+        if (c && !document.pointerLockElement) c.requestPointerLock();
+      });
+      await page.waitForTimeout(300);
+
+      if (crashed) throw new Error('crashed during init');
+
+      const s = {
+        walk: async (keys, ms) => {
+          if (crashed) throw new Error('crashed');
+          const CHUNK = 2000;
+          let rem = ms;
+          while (rem > 0) {
+            const dur = Math.min(CHUNK, rem);
+            for (const k of keys) await page.keyboard.down(k);
+            await page.waitForTimeout(dur);
+            for (const k of keys) await page.keyboard.up(k);
+            await page.waitForTimeout(50);
+            rem -= dur;
+          }
+        },
+        rot: async (mx, my) => {
+          if (crashed) throw new Error('crashed');
+          const steps = 8;
+          for (let i = 0; i < steps; i++) {
+            await page.evaluate(({ a, b }) => {
+              const c = document.querySelector('canvas');
+              if (c) c.dispatchEvent(new PointerEvent('pointermove', { movementX: a, movementY: b, bubbles: true }));
+            }, { a: Math.round(mx / steps), b: Math.round(my / steps) });
+            await page.waitForTimeout(20);
+          }
+          await page.waitForTimeout(200);
+        },
+        shot: async (label) => {
+          if (crashed) throw new Error('crashed');
+          const t0 = Date.now();
+          await page.screenshot({ path: `${OUT}_${label}.png` });
+          const dt = Date.now() - t0;
+          const size = (fs.statSync(`${OUT}_${label}.png`).size / 1024).toFixed(0);
+          log(`  -> ${label} (${size}KB, ${dt}ms)`);
+        },
+      };
+
+      await sceneFn(s);
+      log(`  Scene ${sceneNum}: OK`);
+      return true;
+    } catch (e) {
+      if (crashed) {
+        log(`  Scene ${sceneNum}: CRASHED - ${e.message}`);
+      } else {
+        log(`  Scene ${sceneNum}: ERROR - ${e.message.slice(0, 120)}`);
+      }
+      if (attempt >= MAX_RETRIES) {
+        log(`  Scene ${sceneNum}: GAVE UP after ${MAX_RETRIES + 1} attempts`);
+        return false;
+      }
+    } finally {
+      try { await browser?.close(); } catch {}
     }
-  } finally {
-    try { await browser?.close(); } catch {}
   }
+  return false;
 }
 
 // Spawn: (0, -7). Move speed: ~7.4 units/sec → 135ms per unit.
@@ -132,15 +168,11 @@ const scenes = [
     await s.shot('01_spawn');
   },
   // 2: Concrete (-5.7, 4) south face — stand at (0, -3), look northwest
-  // From spawn: walk north 4 units = 540ms. Player stays on vertical road x=[-1,1].
-  // Distance to south face (y=1.75): 4.75 units. Good framing.
   async (s) => {
     await s.walk(['w'], 540);
     await s.rot(-140, -160); await s.shot('02_concrete');
   },
   // 3: Brick (6, 4) south face — stand at (6, -3), look north
-  // From spawn: south 1u to y=-8 (135ms), east 6u to x=6 (810ms), north 5u to y=-3 (675ms)
-  // Distance to south face (y=1.75): 4.75 units.
   async (s) => {
     await s.walk(['s'], 135);
     await s.walk(['d'], 810);
@@ -148,8 +180,6 @@ const scenes = [
     await s.rot(0, -160); await s.shot('03_brick');
   },
   // 4: Slate top (18.5, 4) — stand at (13, -3), look northeast
-  // From spawn: south 1u (135ms), east 13u to x=13 (1755ms), north 5u to y=-3 (675ms)
-  // West face at x=14 → 1 unit east. View both south and west faces at angle.
   async (s) => {
     await s.walk(['s'], 135);
     await s.walk(['d'], 1755);
@@ -157,15 +187,11 @@ const scenes = [
     await s.rot(-20, -160); await s.shot('04_slate_top');
   },
   // 5: Concrete east face — stand at (-1, 4), look west
-  // From spawn: north 11u to y=4 (1485ms). Player on vertical road x=[-1,1].
-  // East face at x=-1.7 → 0.7 units west. Very close but shows east wall windows.
   async (s) => {
     await s.walk(['w'], 1485);
     await s.rot(180, -160); await s.shot('05_concrete_east');
   },
   // 6: Wood (18.5, -11.75) south face — stand at (13, -8), look southeast
-  // From spawn: south 1u (135ms), east 13u (1755ms). Player on horizontal road y=[-9.5,-7].
-  // North face at y=-10 → 2 units south. West face at x=14 → 1 unit east.
   async (s) => {
     await s.walk(['s'], 135);
     await s.walk(['d'], 1755);
@@ -174,10 +200,12 @@ const scenes = [
 ];
 
 (async () => {
-  log(`Running ${scenes.length} scenes`);
+  log(`Running ${scenes.length} scenes (max ${MAX_RETRIES} retries each)`);
+  let passed = 0, failed = 0;
   for (let i = 0; i < scenes.length; i++) {
     log(`\nScene ${i + 1}/${scenes.length}`);
-    await runScene(i + 1, scenes[i]);
+    const ok = await runScene(i + 1, scenes[i]);
+    if (ok) passed++; else failed++;
   }
 
   log('\n=== Final Results ===');
@@ -189,5 +217,6 @@ const scenes = [
     totalKB += parseInt(kb);
     log(`  ${f} (${kb} KB)`);
   }
-  log(`${files.length} screenshots, ${totalKB} KB total`);
+  log(`${passed} passed, ${failed} failed, ${files.length} screenshots, ${totalKB} KB total`);
+  if (failed > 0) process.exit(1);
 })().catch(e => { log(`FATAL: ${e.message}`); process.exit(1); });
