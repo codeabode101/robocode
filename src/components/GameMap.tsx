@@ -2099,8 +2099,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // SINGLE continuous road rectangle covering ALL road areas (y:-22 to y:9.5, h:31.5)
     const roadColor = 0x5a6a7a;
-    const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(40, 24, 0.04), createToonMaterial(roadColor));
-    roadMesh.position.set(8.6, -2, 0.14);
+    const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(46, 24, 0.04), createToonMaterial(roadColor));
+    roadMesh.position.set(9, -2, 0.14);
     roadMesh.receiveShadow = true;
     outdoorGroup.add(roadMesh);
     // Grass blocks ABOVE the road to carve out city blocks between roads
@@ -2142,7 +2142,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       });
     };
     hSW(1.25); hSW(-1.25); hSW(-6.75); hSW(-9.75); hSW(6.75); hSW(9.75);
-    vSW(-1.25); vSW(1.25); vSW(-10.25); vSW(10.75); vSW(13.25); vSW(22.25); vSW(23.75);
+    vSW(-1.25); vSW(1.25); vSW(-10.25); vSW(10.75); vSW(13.25);
 
     // Street markings - dashed yellow center lines
     // Dashed yellow center lines
@@ -2158,11 +2158,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
     // Crosswalks removed — intersections are filled with road
     // Dashed yellow center lines for all roads
-    makeDashedLine(6.6, 0, 34, true); makeDashedLine(6.6, -8.25, 32.8, true);
-    makeDashedLine(6.6, 8.5, 34, true);
+    makeDashedLine(6.6, 0, 42, true); makeDashedLine(6.6, -8.25, 42, true);
+    makeDashedLine(6.6, 8.5, 42, true);
     makeDashedLine(12, -2, 24, false);
     makeDashedLine(0, 0.25, 19.5, false);  // vertical from parking lot (y=-9.5) to road top (y=10)
-    makeDashedLine(23, -2, 21, false);  // perpendicular road at x=23
 
     // Parking lot at (0, -11) — 3 spaces in the 3-unit gap between bottom grass columns
     const pkMat = createToonMaterial(0x3a3a4a);
