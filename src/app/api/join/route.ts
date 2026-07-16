@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
     const safeX = Number(x) || 0;
     const safeY = Number(y) || 0;
-    const safeRoom = ['outside', 'workshop', 'arena', 'apartment'].includes(room) ? room : 'outside';
+    const safeRoom = ['outside', 'workshop', 'apartment'].includes(room) ? room : 'outside';
 
     await db.run(sql`
       INSERT INTO player_positions (user_id, x, y, map, updated_at)

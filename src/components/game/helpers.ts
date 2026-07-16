@@ -557,7 +557,7 @@ export interface BuildingFootprint {
 }
 
 const ROOM_HALF: Record<string, number> = {
-  arena: 6.0, workshop: 5.3, apartment: 4.0, shop: 1.8,
+  workshop: 5.3, apartment: 4.0, shop: 1.8,
 };
 
 export function computeCameraZoom(

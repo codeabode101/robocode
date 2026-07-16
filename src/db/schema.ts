@@ -73,20 +73,14 @@ export const friendRequests = sqliteTable('friend_requests', {
 }));
 
 export const arenaPresence = sqliteTable('arena_presence', {
-  user_id: text('user_id')
-    .primaryKey()
-    .references(() => users.id),
+  user_id: text('user_id').primaryKey().references(() => users.id),
   joined_at: text('joined_at').notNull().default("datetime('now')"),
 });
 
 export const arenaChallenges = sqliteTable('arena_challenges', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-  challenger_id: text('challenger_id')
-    .notNull()
-    .references(() => users.id),
-  opponent_id: text('opponent_id')
-    .notNull()
-    .references(() => users.id),
+  challenger_id: text('challenger_id').notNull().references(() => users.id),
+  opponent_id: text('opponent_id').notNull().references(() => users.id),
   status: text('status').notNull().default('pending'),
   problem: text('problem'),
   winner_id: text('winner_id').references(() => users.id),

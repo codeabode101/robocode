@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
     const safeX = Math.max(-50, Math.min(50, Number(x) || 0));
     const safeY = Math.max(-50, Math.min(50, Number(y) || 0));
-    const safeRoom = ['outside', 'workshop', 'arena', 'apartment'].includes(room) ? room : 'outside';
+    const safeRoom = ['outside', 'workshop', 'apartment'].includes(room) ? room : 'outside';
 
     // Ensure user exists
     await db.run(sql`

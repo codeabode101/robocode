@@ -1,14 +1,6 @@
 import type { Hitbox } from './types';
 
-export interface ObstacleParams {
-  arenaCenterX: number;
-  arenaCenterY: number;
-  arenaHalfW: number;
-  arenaHalfD: number;
-}
-
-export function buildObstacles(params: ObstacleParams): Hitbox[] {
-  const { arenaCenterX, arenaCenterY, arenaHalfW, arenaHalfD } = params;
+export function buildObstacles(): Hitbox[] {
   return [
     // Apartment building walls (door gap on south side at x≈[-10,-9.2])
     { shape: 'box', center: { x: -6, y: -2.1 }, halfWidth: 4.04, halfHeight: 0.08 },
@@ -23,9 +15,6 @@ export function buildObstacles(params: ObstacleParams): Hitbox[] {
 
     // Rafiq's Robots (pet workshop) — cover wall outer edges (bw=7.4, bd=2.4, walls 0.08 thick)
     { shape: 'box', center: { x: -6, y: -11.8 }, halfWidth: 3.70, halfHeight: 2.20 },
-
-    // Arena footprint
-    { shape: 'box', center: { x: arenaCenterX, y: arenaCenterY }, halfWidth: arenaHalfW, halfHeight: arenaHalfD },
 
     // Fountain in lake
     { shape: 'circle', center: { x: 6, y: -4 }, radius: 0.6 },

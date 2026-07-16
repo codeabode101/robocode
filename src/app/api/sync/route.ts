@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     if (position && typeof position === 'object') {
       const safeX = Math.max(-50, Math.min(50, Number(position.x) || 0));
       const safeY = Math.max(-50, Math.min(50, Number(position.y) || 0));
-      const safeRoom = ['outside', 'workshop', 'arena', 'apartment', 'shop'].includes(position.room) ? position.room : 'outside';
+      const safeRoom = ['outside', 'workshop', 'apartment', 'shop'].includes(position.room) ? position.room : 'outside';
       const safeRotation = typeof position.rotation === 'number' ? position.rotation : null;
 
       await db.run(sql`

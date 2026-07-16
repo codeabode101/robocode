@@ -96,7 +96,7 @@ export type SparkyQuestStage = 'intro' | 'intro-done' | 'unit1' | 'unit1-done' |
 
 export type ScrapPartId = 'letter' | 'battery';
 
-export type RoomType = 'outside' | 'workshop' | 'apartment' | 'shop' | 'arena';
+export type RoomType = 'outside' | 'workshop' | 'apartment' | 'shop';
 
 export type GameGoal =
   | 'watch-cutscene'
