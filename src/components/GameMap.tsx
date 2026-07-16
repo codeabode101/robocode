@@ -2158,8 +2158,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     };
     // Crosswalks removed — intersections are filled with road
     // Dashed yellow center lines for all roads
-    makeDashedLine(6.6, 0, 34, true); makeDashedLine(6.6, -8.25, 34, true);
-    makeDashedLine(6.6, 8.5, 34, true);
+    makeDashedLine(8.2, 0, 37.2, true); makeDashedLine(8.2, -8.25, 37.2, true);
+    makeDashedLine(8.2, 8.5, 37.2, true);
     makeDashedLine(12, -2, 24, false);
     makeDashedLine(0, 0.25, 19.5, false);
 
@@ -2621,10 +2621,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { x: 18.5, y: 4, w: 9.0, d: 4.5, palette: 'slate', debrisR: 4.8, debrisN: 18, height: 6.0 },
       { x: 18.5, y: -4, w: 9.0, d: 4.5, palette: 'slate', debrisR: 4.8, debrisN: 18, height: 3.5 },
       { x: 18.5, y: -11.75, w: 9.0, d: 3.5, palette: 'wood', debrisR: 4.5, debrisN: 16, height: 4.5 },
-      // Wall of buildings at x≈22 — blocks road sight line, packed tight no gaps
-      { x: 24, y: 4, w: 5, d: 4.5, palette: 'concrete', debrisR: 3.5, debrisN: 12, height: 7.5 },
-      { x: 24, y: -4, w: 5, d: 4.5, palette: 'brick', debrisR: 3.5, debrisN: 12, height: 6.5 },
-      { x: 24, y: -11.75, w: 5, d: 3.5, palette: 'slate', debrisR: 3.0, debrisN: 10, height: 5.5 },
+      // Wall of buildings at x≈27 — blocks road sight line, packed tight no gaps
+      { x: 28, y: 4, w: 4, d: 4.5, palette: 'concrete', debrisR: 3.5, debrisN: 12, height: 7.5 },
+      { x: 28, y: -4, w: 4, d: 4.5, palette: 'brick', debrisR: 3.5, debrisN: 12, height: 6.5 },
+      { x: 28, y: -11.75, w: 4, d: 3.5, palette: 'slate', debrisR: 3.0, debrisN: 10, height: 5.5 },
     ];
     for (const { x, y, w, d, palette, debrisR, debrisN, height } of BUILDINGS) {
       const bldg = createAbandonedBuilding(x, y, w, d, palette, height);
@@ -2638,9 +2638,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scatterDebris(-9, 6, 0.6, 5);
     scatterDebris(2.5, 5.5, 0.6, 5);
     scatterDebris(10, 5, 0.6, 5);
-    scatterDebris(23, 0, 0.8, 6);   // wall base
-    scatterDebris(26, 7, 0.6, 5);   // behind wall north
-    scatterDebris(26, -8, 0.6, 5);  // behind wall south
+    scatterDebris(25, 0, 0.8, 6);   // wall base
+    scatterDebris(28, 7, 0.6, 5);   // behind wall north
+    scatterDebris(28, -8, 0.6, 5);  // behind wall south
 
     // Parts shop at (6.0, -12.0) — fills the entire grass patch east of Rafiq's
     {
@@ -2667,9 +2667,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { x1: 14.0, y1: -6.25, x2: 23.0, y2: -1.75, cx: 18.5, cy: -4, bw: 9.0, bd: 4.5, bh: 3.5 },
       { x1: 14.0, y1: -13.5, x2: 23.0, y2: -10.0, cx: 18.5, cy: -11.75, bw: 9.0, bd: 3.5, bh: 4.5 },
       // Wall buildings east — packed tight, blocks road sight line
-      { x1: 21.5, y1: 1.75, x2: 26.5, y2: 6.25, cx: 24, cy: 4, bw: 5.0, bd: 4.5, bh: 7.5 },
-      { x1: 21.5, y1: -6.25, x2: 26.5, y2: -1.75, cx: 24, cy: -4, bw: 5.0, bd: 4.5, bh: 6.5 },
-      { x1: 21.5, y1: -13.5, x2: 26.5, y2: -10.0, cx: 24, cy: -11.75, bw: 5.0, bd: 3.5, bh: 5.5 },
+      { x1: 26.0, y1: 1.75, x2: 30.0, y2: 6.25, cx: 28, cy: 4, bw: 4.0, bd: 4.5, bh: 7.5 },
+      { x1: 26.0, y1: -6.25, x2: 30.0, y2: -1.75, cx: 28, cy: -4, bw: 4.0, bd: 4.5, bh: 6.5 },
+      { x1: 26.0, y1: -13.5, x2: 30.0, y2: -10.0, cx: 28, cy: -11.75, bw: 4.0, bd: 3.5, bh: 5.5 },
     ];
       // Occluders removed — colorWrite:false renders as solid black in this environment
 
