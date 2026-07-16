@@ -197,6 +197,36 @@ const scenes = [
     await s.walk(['d'], 1755);
     await s.rot(-20, -130); await s.shot('06_wood');
   },
+  // 7: Road between Parts Shop and Wood — stand at (12, -11), look east at wood west face
+  // From spawn: south 4u (540ms), east 12u (1620ms)
+  async (s) => {
+    await s.walk(['s'], 540);
+    await s.walk(['d'], 1620);
+    await s.rot(-30, -130); await s.shot('07_wood_west');
+  },
+  // 8: Same spot, look west at parts shop east face
+  async (s) => {
+    await s.rot(150, -130); await s.shot('08_parts_shop_east');
+  },
+  // 9: Same spot, look north down the road
+  async (s) => {
+    await s.rot(0, -130); await s.shot('09_road_north');
+  },
+  // 10: Same spot, top-down view
+  async (s) => {
+    await s.rot(0, -280); await s.shot('10_road_topdown');
+  },
+  // 11: Closer to wood — stand at (13, -11), look northwest
+  // From spawn: south 4u (540ms), east 13u (1755ms)
+  async (s) => {
+    await s.walk(['s'], 540);
+    await s.walk(['d'], 1755);
+    await s.rot(-80, -130); await s.shot('11_wood_close_nw');
+  },
+  // 12: Same spot, look southwest
+  async (s) => {
+    await s.rot(80, -130); await s.shot('12_wood_close_sw');
+  },
 ];
 
 (async () => {

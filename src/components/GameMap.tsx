@@ -2665,7 +2665,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { x: 18.5, y: -11.75, w: 9.0, d: 3.5, palette: 'wood', debrisR: 4.5, debrisN: 16, height: 4.5 },
     ];
     for (const { x, y, w, d, palette, debrisR, debrisN, height } of BUILDINGS) {
-      outdoorGroup.add(createAbandonedBuilding(x, y, w, d, palette, height));
+      const bldg = createAbandonedBuilding(x, y, w, d, palette, height);
+      bldg.position.z = 0.22;
+      outdoorGroup.add(bldg);
       scatterDebris(x, y, debrisR, debrisN);
     }
 
