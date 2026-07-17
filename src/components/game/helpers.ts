@@ -373,12 +373,12 @@ export function createCardboardBox(): { group: THREE.Group; lid: THREE.Mesh } {
 
   // North wall
   const north = new THREE.Mesh(new THREE.BoxGeometry(w, h, t), boxMat);
-  north.position.set(0, t / 2 + h / 2, w / 2 - t / 2);
+  north.position.set(0, t / 2 + h / 2, -w / 2 - t / 2);
   group.add(north);
 
   // South wall
   const south = new THREE.Mesh(new THREE.BoxGeometry(w, h, t), boxMat);
-  south.position.set(0, t / 2 + h / 2, -(w / 2 - t / 2));
+  south.position.set(0, t / 2 + h / 2, (w / 2 - t / 2));
   group.add(south);
 
   // East wall
@@ -441,21 +441,21 @@ export function createLaptop(): THREE.Group {
   group.add(base);
 
   const kb = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.004, 0.14), darkMat);
-  kb.position.set(0, baseH + 0.002, -0.03);
+  kb.position.set(0, baseH + 0.002, 0.03);
   group.add(kb);
 
   const screenGroup = new THREE.Group();
-  screenGroup.position.set(0, baseH, -baseD / 2);
+  screenGroup.position.set(0, baseH, baseD / 2);
   screenGroup.rotation.x = 0;
 
   const lid = new THREE.Mesh(new THREE.BoxGeometry(baseW, 0.02, lidH), lidMat);
-  lid.position.set(0, 0, lidH / 2);
+  lid.position.set(0, 0, -lidH / 2);
   lid.renderOrder = 0;
   screenGroup.add(lid);
 
   const display = new THREE.Mesh(new THREE.BoxGeometry(baseW - 0.04, 0.006, lidH - 0.04), screenMat);
   display.name = 'laptop-display';
-  display.position.set(0, -0.030, lidH / 2);
+  display.position.set(0, -0.030, -lidH / 2);
   display.renderOrder = 1;
   screenGroup.add(display);
 
@@ -463,7 +463,7 @@ export function createLaptop(): THREE.Group {
 
   const usbPort = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.008, 0.028), darkMat);
   usbPort.name = 'usb-port';
-  usbPort.position.set(-baseW / 2, baseH / 2, -baseD / 2 + 0.02);
+  usbPort.position.set(-baseW / 2, baseH / 2, baseD / 2 + 0.02);
   group.add(usbPort);
   return group;
 }
@@ -665,7 +665,7 @@ export function walkPlayer(
       visual.leftArm.rotation.x = -Math.PI / 2;
       visual.rightArm.rotation.x = -Math.PI / 2;
     }
-    if (visual) visual.root.position.set(pos.x, baseY, pos.y);
+    if (visual) visual.root.position.set(pos.x, baseY, -pos.y);
     return true;
   }
   const dirX = dx / dist;
@@ -674,7 +674,7 @@ export function walkPlayer(
   pos.y += dirY * speed * delta;
   if (yawRef) yawRef.current = Math.atan2(dirX, dirY);
   if (visual) {
-    visual.root.position.set(pos.x, baseY + Math.sin(worldTime * 10) * 0.02, pos.y);
+    visual.root.position.set(pos.x, baseY + Math.sin(worldTime * 10) * 0.02, -pos.y);
   }
   const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
   if (leftLegPivot) leftLegPivot.rotation.x = walkSwing;

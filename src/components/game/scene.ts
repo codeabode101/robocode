@@ -157,7 +157,7 @@ export function createNameSprite(label: string, color: THREE.Color) {
   const baseScaleY = 0.5;
   sprite.scale.set((canvasWidth / canvasHeight) * baseScaleY, baseScaleY, 1);
   sprite.center.set(0.5, 0.05);
-  sprite.position.set(0, 0, 1.8);
+  sprite.position.set(0, 0, -1.8);
   sprite.renderOrder = 40;
   sprite.name = LABEL_BUILD_TAG;
   return sprite;
@@ -289,14 +289,14 @@ export function createPlayerSprite(imagePath: string, color: THREE.Color, name: 
   // shadow handled by Three.js shadow mapping
 
   const sprite = createCharacterSprite(imagePath, 0.7);
-  sprite.position.set(0, 0.55, 0.07);
+  sprite.position.set(0, 0.55, -0.07);
   group.add(sprite);
 
   const nameSprite = createNameSprite(name, color);
   group.add(nameSprite);
 
   const dummyBody = new THREE.Object3D();
-  dummyBody.position.set(0, 0, 0.02);
+  dummyBody.position.set(0, 0, -0.02);
   const antennaTip = new THREE.Object3D();
   const leftPupil = new THREE.Object3D();
   const rightPupil = new THREE.Object3D();
@@ -336,7 +336,7 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
   const armMat = createToonMaterial(color);
 
   const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.14), legMat);
-  leftLeg.position.set(-0.16, 0.42, 0.07);
+  leftLeg.position.set(-0.16, 0.42, -0.07);
   group.add(leftLeg);
 
   const rightLeg = leftLeg.clone();
@@ -344,7 +344,7 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
   group.add(rightLeg);
 
   const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.2, 0.06), footMat);
-  leftFoot.position.set(-0.16, 0.42, -0.03);
+  leftFoot.position.set(-0.16, 0.42, 0.03);
   group.add(leftFoot);
 
   const rightFoot = leftFoot.clone();
@@ -355,16 +355,16 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
     new THREE.BoxGeometry(0.52, 0.32, 0.32),
     bodyMat
   );
-  body.position.set(0, 0.5, 0.3);
+  body.position.set(0, 0.5, -0.3);
   group.add(body);
 
   const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.28), armMat);
-  leftArm.position.set(-0.33, 0.5, 0.26);
+  leftArm.position.set(-0.33, 0.5, -0.26);
   leftArm.rotation.y = 0.3;
   group.add(leftArm);
 
   const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.28), armMat);
-  rightArm.position.set(0.33, 0.5, 0.26);
+  rightArm.position.set(0.33, 0.5, -0.26);
   rightArm.rotation.y = -0.3;
   group.add(rightArm);
 
@@ -372,56 +372,56 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
     new THREE.BoxGeometry(0.42, 0.34, 0.22),
     bodyMat
   );
-  headBlock.position.set(0, 0.5, 0.56);
+  headBlock.position.set(0, 0.5, -0.56);
   group.add(headBlock);
 
   const facePanel = new THREE.Mesh(
     new THREE.BoxGeometry(0.36, 0.04, 0.18),
     createToonMaterial(0x475569)
   );
-  facePanel.position.set(0, 0.7, 0.58);
+  facePanel.position.set(0, 0.7, -0.58);
   group.add(facePanel);
 
   const leftEye = new THREE.Mesh(
     new THREE.SphereGeometry(0.03, 8, 8),
     new THREE.MeshBasicMaterial({ color: 0xffffff })
   );
-  leftEye.position.set(-0.07, 0.73, 0.6);
+  leftEye.position.set(-0.07, 0.73, -0.6);
   group.add(leftEye);
 
   const leftPupil = new THREE.Mesh(
     new THREE.SphereGeometry(0.012, 6, 6),
     new THREE.MeshBasicMaterial({ color: 0x000000 })
   );
-  leftPupil.position.set(-0.07, 0.745, 0.6);
+  leftPupil.position.set(-0.07, 0.745, -0.6);
   group.add(leftPupil);
 
   const rightEye = new THREE.Mesh(
     new THREE.SphereGeometry(0.03, 8, 8),
     new THREE.MeshBasicMaterial({ color: 0xffffff })
   );
-  rightEye.position.set(0.07, 0.73, 0.6);
+  rightEye.position.set(0.07, 0.73, -0.6);
   group.add(rightEye);
 
   const rightPupil = new THREE.Mesh(
     new THREE.SphereGeometry(0.012, 6, 6),
     new THREE.MeshBasicMaterial({ color: 0x000000 })
   );
-  rightPupil.position.set(0.07, 0.745, 0.6);
+  rightPupil.position.set(0.07, 0.745, -0.6);
   group.add(rightPupil);
 
   const antennaStem = new THREE.Mesh(
     new THREE.CylinderGeometry(0.015, 0.015, 0.14, 6),
     createToonMaterial(0x94a3b8)
   );
-  antennaStem.position.set(0, 0.5, 0.74);
+  antennaStem.position.set(0, 0.5, -0.74);
   group.add(antennaStem);
 
   const antennaTip = new THREE.Mesh(
     new THREE.SphereGeometry(0.04, 8, 8),
     createToonMaterial(0xef4444)
   );
-  antennaTip.position.set(0, 0.5, 0.82);
+  antennaTip.position.set(0, 0.5, -0.82);
   group.add(antennaTip);
 
   const nameSprite = createNameSprite(name, color);
@@ -483,7 +483,7 @@ export function buildPlayerVisual(clothColor: number, name: string) {
   leftArm.position.set(0, -0.12, 0);
   leftArmPivot.add(leftArm);
   const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), skinMat);
-  leftHand.position.set(0, 0, 0.12);
+  leftHand.position.set(0, 0, -0.12);
   leftArm.add(leftHand);
 
   const rightArmPivot = new THREE.Group();
@@ -495,7 +495,7 @@ export function buildPlayerVisual(clothColor: number, name: string) {
   rightArm.position.set(0, -0.12, 0);
   rightArmPivot.add(rightArm);
   const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), skinMat);
-  rightHand.position.set(0, 0, 0.12);
+  rightHand.position.set(0, 0, -0.12);
   rightArm.add(rightHand);
 
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.06, 8), skinMat);
@@ -508,15 +508,15 @@ export function buildPlayerVisual(clothColor: number, name: string) {
   group.add(head);
 
   const hair = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 16), hairMat);
-  hair.position.set(0, 0.59, -0.08);
+  hair.position.set(0, 0.59, 0.08);
   group.add(hair);
 
   for (let s = -1; s <= 1; s += 2) {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-    eye.position.set(s * 0.035, 0.53, 0.066);
+    eye.position.set(s * 0.035, 0.53, -0.066);
     group.add(eye);
     const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 8), new THREE.MeshBasicMaterial({ color: 0x050505 }));
-    pupil.position.set(s * 0.035, 0.53, 0.075);
+    pupil.position.set(s * 0.035, 0.53, -0.075);
     group.add(pupil);
   }
 
@@ -542,7 +542,7 @@ export function createGrid(size: number, step: number, color: number) {
 
 export function createPalmTree(x: number, y: number) {
   const tree = new THREE.Group();
-  tree.position.set(x, 0, y);
+  tree.position.set(x, 0, -y);
   const trunk = new THREE.Mesh(
     new THREE.CylinderGeometry(0.22, 0.26, 2.6, 12),
     createToonMaterial(0x8b5a2b)
@@ -556,7 +556,7 @@ export function createPalmTree(x: number, y: number) {
     const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 12), leafMaterial);
     const angle = (Math.PI * 2 * i) / 6;
     leaf.scale.set(2.4, 1.1, 0.9);
-    leaf.position.set(Math.cos(angle) * 0.5, 2.85, Math.sin(angle) * 0.35);
+    leaf.position.set(Math.cos(angle) * 0.5, 2.85, -Math.sin(angle) * 0.35);
     leaf.rotation.set(Math.PI / 2 - 0.3, 0, angle);
     tree.add(leaf);
   }
@@ -576,23 +576,23 @@ export function createBazaarShop(
   const stall = new THREE.Group();
 
   const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.7), createTexturedToonMaterial('tile_21.png', 3, 1, baseColor));
-  backWall.position.set(0, -0.25, 0.35); stall.add(backWall);
+  backWall.position.set(0, -0.25, -0.35); stall.add(backWall);
 
   const counter = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 0.08), createTexturedToonMaterial('tile_43.png', 3, 1, 0x8b6b4a));
-  counter.position.set(0, 0.3, 0.55); stall.add(counter);
+  counter.position.set(0, 0.3, -0.55); stall.add(counter);
 
   for (let side = -1; side <= 1; side += 2) {
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.04), createToonMaterial(0x4a3a2a));
-    leg.position.set(side * 0.7, 0.3, 0.28); stall.add(leg);
+    leg.position.set(side * 0.7, 0.3, -0.28); stall.add(leg);
   }
 
   const roof = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 0.06), createTexturedToonMaterial('tile_33.png', 3, 1, awningColor));
-  roof.position.set(0, 0.05, 0.95); stall.add(roof);
+  roof.position.set(0, 0.05, -0.95); stall.add(roof);
 
   for (let sx = -1; sx <= 1; sx += 2) {
     for (let sz = -1; sz <= 1; sz += 2) {
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.55, 6), createToonMaterial(0x64748b));
-      pole.position.set(sx * 0.75, sz * 0.25, 0.7); stall.add(pole);
+      pole.position.set(sx * 0.75, sz * 0.25, -0.7); stall.add(pole);
     }
   }
 
@@ -611,15 +611,15 @@ export function createBazaarShop(
   const signTex = new THREE.CanvasTexture(signCanvas);
   signTex.minFilter = THREE.LinearFilter;
   const signMesh = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.04, 0.18), new THREE.MeshBasicMaterial({ map: signTex }));
-  signMesh.position.set(0, 0.35, 0.96); stall.add(signMesh);
+  signMesh.position.set(0, 0.35, -0.96); stall.add(signMesh);
 
   for (let i = -2; i <= 2; i++) {
     const light = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-    light.position.set(i * 0.35, 0.3, 0.85); stall.add(light);
+    light.position.set(i * 0.35, 0.3, -0.85); stall.add(light);
   }
 
   stall.scale.set(scale, scale, scale);
-  stall.position.set(x, 0, y);
+  stall.position.set(x, 0, -y);
   stall.rotation.set(0, 0, 0);
   applyShadows(stall, true, true);
   return stall;
@@ -633,7 +633,7 @@ export function createRangoli(x: number, y: number) {
     new THREE.SphereGeometry(0.11, 14, 14),
     createToonMaterial(0xffffff, 0.42, 0.15)
   );
-  center.position.set(x, 0.2, y);
+  center.position.set(x, 0.2, -y);
   rangoli.add(center);
 
   for (let i = 0; i < 8; i += 1) {
@@ -642,7 +642,7 @@ export function createRangoli(x: number, y: number) {
       createToonMaterial(colors[i % colors.length], 0.68, 0.06)
     );
     const angle = (Math.PI * 2 * i) / 8;
-    petal.position.set(x + Math.cos(angle) * 0.24, 0.2, y + Math.sin(angle) * 0.24);
+    petal.position.set(x + Math.cos(angle) * 0.24, 0.2, -y + Math.sin(angle) * 0.24);
     petal.scale.set(1.2, 0.72, 0.6);
     petal.rotation.y = angle;
     rangoli.add(petal);
@@ -671,7 +671,7 @@ export function addWindows(building: THREE.Group, bx: number, by: number, bw: nu
         new THREE.PlaneGeometry(winW, winH),
         new THREE.MeshBasicMaterial({ color: winColor, transparent: true, opacity })
       );
-      win.position.set(startX + c * gapX, bd / 2 + 0.01, startY + r * gapY);
+      win.position.set(startX + c * gapX, bd / 2 + 0.01, -startY + r * gapY);
       group.add(win);
     }
   }
@@ -685,7 +685,7 @@ export function createBigPetShop(x: number, y: number, scale = 1) {
     new THREE.BoxGeometry(8.1, 2.55, 5.1),
     createTexturedToonMaterial('tile_23.png', 16, 5, 0xf8bbd0)
   );
-  base.position.set(x, 1.8, y);
+  base.position.set(x, 1.8, -y);
   shop.add(base);
   addOutline(base);
 
@@ -693,48 +693,48 @@ export function createBigPetShop(x: number, y: number, scale = 1) {
     new THREE.BoxGeometry(9, 2.85, 2.025),
     createTexturedToonMaterial('tile_25.png', 18, 6, 0x2563eb)
   );
-  roof.position.set(x, 3.4, y + 2.9);
+  roof.position.set(x, 3.4, -y + 2.9);
   shop.add(roof);
 
   const doorFrame = new THREE.Mesh(
     new THREE.BoxGeometry(2.325, 3.15, 0.42),
     createToonMaterial(0xfde68a, 0.55, 0.14)
   );
-  doorFrame.position.set(x, 1.9, y - 2.34);
+  doorFrame.position.set(x, 1.9, -y - 2.34);
   shop.add(doorFrame);
 
   const door = new THREE.Mesh(
     new THREE.BoxGeometry(1.8, 2.7, 0.27),
     createToonMaterial(0x0f172a, 0.36, 0.35)
   );
-  door.position.set(x, 1.9, y - 2.38);
+  door.position.set(x, 1.9, -y - 2.38);
   shop.add(door);
 
   const doorWindow = new THREE.Mesh(
     new THREE.BoxGeometry(0.72, 0.57, 0.15),
     createToonMaterial(0x93c5fd, 0.2, 0.45)
   );
-  doorWindow.position.set(x, 2.6, y - 2.48);
+  doorWindow.position.set(x, 2.6, -y - 2.48);
   shop.add(doorWindow);
 
   const doormat = new THREE.Mesh(
     new THREE.BoxGeometry(2.175, 0.12, 1.11),
     createToonMaterial(0x7c3aed, 0.7, 0.08)
   );
-  doormat.position.set(x, 0.28, y - 3.54);
+  doormat.position.set(x, 0.28, -y - 3.54);
   shop.add(doormat);
 
   const doorLabel = createLabelSprite('ENTER', '#0f172a', 'rgba(253,224,71,0.95)', '#f8fafc', 160, 74);
   doorLabel.scale.set(2.4, 0.9, 1);
   doorLabel.center.set(0.5, 0);
-  doorLabel.position.set(x, 3.25, y - 2.38);
+  doorLabel.position.set(x, 3.25, -y - 2.38);
   doorLabel.renderOrder = 36;
   shop.add(doorLabel);
 
   const sign = createLabelSprite("RAFIQ'S ROBOTS", '#f8fafc', 'rgba(15,23,42,0.92)', '#fde68a', 360, 90);
   sign.scale.set(5.78, 1.6, 1);
   sign.center.set(0.5, 0);
-  sign.position.set(x, 4.5, y + 2.9);
+  sign.position.set(x, 4.5, -y + 2.9);
   sign.renderOrder = 32;
   shop.add(sign);
 
@@ -751,7 +751,7 @@ export function createHumanVisual(name: string, spritePath: string) {
     new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.18 })
   );
   shadow.scale.set(1.08, 0.62, 1);
-  shadow.position.set(0, 0.15, -0.1);
+  shadow.position.set(0, 0.15, 0.1);
   group.add(shadow);
 
   const sprite = createCharacterSprite(spritePath);
@@ -781,8 +781,8 @@ export function animateRobotVisual(visual: RobotVisual, time: number, speedFacto
 
   const eyeX = Math.max(-0.025, Math.min(0.025, lookX * 0.018));
   const eyeY = Math.max(-0.015, Math.min(0.015, lookY * 0.012));
-  visual.leftPupil.position.set(-0.07 + eyeX, 0.75, 0.6 + eyeY);
-  visual.rightPupil.position.set(0.07 + eyeX, 0.75, 0.6 + eyeY);
+  visual.leftPupil.position.set(-0.07 + eyeX, 0.75, -0.6 + eyeY);
+  visual.rightPupil.position.set(0.07 + eyeX, 0.75, -0.6 + eyeY);
 
   // Leg swing
   const legSwing = Math.sin(time * WALK_BOB_SPEED) * 0.3 * walkAmount;
@@ -812,7 +812,7 @@ export function createRepairKiosk() {
   // Grating lines
   for (let i = -4; i <= 4; i++) {
     const bar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.005, 0.005), metalMat);
-    bar.position.set(0, 0.045, i * 0.065);
+    bar.position.set(0, 0.045, -i * 0.065);
     kiosk.add(bar);
   }
 
@@ -825,7 +825,7 @@ export function createRepairKiosk() {
   for (let rx = -2; rx <= 2; rx++) {
     for (let ry = -1; ry <= 1; ry++) {
       const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.008, 6, 6), darkMat);
-      rivet.position.set(rx * 0.2, 0.48, ry * 0.2);
+      rivet.position.set(rx * 0.2, 0.48, -ry * 0.2);
       kiosk.add(rivet);
     }
   }
@@ -833,7 +833,7 @@ export function createRepairKiosk() {
   // Side wall frames (open front)
   for (let s = -1; s <= 1; s += 2) {
     const frame = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.38, 0.45), darkMat);
-    frame.position.set(s * 0.475, 0.26, 0.01);
+    frame.position.set(s * 0.475, 0.26, -0.01);
     kiosk.add(frame);
     // Vertical pipe along frame
     const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.01, 0.45, 6), pipeMat);
@@ -849,24 +849,24 @@ export function createRepairKiosk() {
 
   // Workbench — metal top
   const bench = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.02, 0.14), metalMat);
-  bench.position.set(0, 0.44, -0.05);
+  bench.position.set(0, 0.44, 0.05);
   kiosk.add(bench);
   // Bench legs — angled struts
   for (let bx = -1; bx <= 1; bx += 2) {
     const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.12, 5), darkMat);
-    strut.position.set(bx * 0.22, 0.37, -0.05);
+    strut.position.set(bx * 0.22, 0.37, 0.05);
     kiosk.add(strut);
     const strut2 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.12, 5), darkMat);
-    strut2.position.set(bx * 0.22, 0.37, 0.04);
+    strut2.position.set(bx * 0.22, 0.37, -0.04);
     kiosk.add(strut2);
   }
 
   // Diagnostic terminal — holographic screen
   const screenBorder = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.005, 0.09), darkMat);
-  screenBorder.position.set(-0.15, 0.52, -0.05);
+  screenBorder.position.set(-0.15, 0.52, 0.05);
   kiosk.add(screenBorder);
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.07), emissiveMat);
-  screen.position.set(-0.15, 0.525, -0.05);
+  screen.position.set(-0.15, 0.525, 0.05);
   screen.userData.animated = 'screen';
   kiosk.add(screen);
   const screenGlow = new THREE.Mesh(new THREE.EdgesGeometry(screen.geometry), new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.5 }));
@@ -877,24 +877,24 @@ export function createRepairKiosk() {
   // Small status LEDs on screen border
   for (let i = 0; i < 3; i++) {
     const led = new THREE.Mesh(new THREE.SphereGeometry(0.003, 6, 6), new THREE.MeshBasicMaterial({ color: [0x22c55e, 0xfacc15, 0xef4444][i] }));
-    led.position.set(-0.15 + (i - 1) * 0.03, 0.528, -0.09);
+    led.position.set(-0.15 + (i - 1) * 0.03, 0.528, 0.09);
     kiosk.add(led);
   }
 
   // Broken robot arm on workbench (replaces drone)
   const armBase = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.03), metalMat);
-  armBase.position.set(0.12, 0.49, -0.05);
+  armBase.position.set(0.12, 0.49, 0.05);
   kiosk.add(armBase);
   const armSeg = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.025, 0.05), new THREE.MeshToonMaterial({ color: 0x94a3b8 }));
-  armSeg.position.set(0.12, 0.52, -0.02);
+  armSeg.position.set(0.12, 0.52, 0.02);
   kiosk.add(armSeg);
   const armClaw = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.012, 0.025), accentMat);
-  armClaw.position.set(0.12, 0.53, 0.02);
+  armClaw.position.set(0.12, 0.53, -0.02);
   kiosk.add(armClaw);
   // Wires from arm
   for (let i = 0; i < 3; i++) {
     const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.003, 0.04, 4), new THREE.MeshToonMaterial({ color: [0xef4444, 0x22c55e, 0x3b82f6][i] }));
-    wire.position.set(0.12 + (i - 1) * 0.015, 0.48, -0.07);
+    wire.position.set(0.12 + (i - 1) * 0.015, 0.48, 0.07);
     wire.rotation.x = 0.5;
     kiosk.add(wire);
   }
@@ -902,12 +902,12 @@ export function createRepairKiosk() {
   // Conduit pipes on back wall
   for (let i = 0; i < 3; i++) {
     const conduit = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.008, 0.22, 5), pipeMat);
-    conduit.position.set(-0.3 + i * 0.3, 0.42, -0.1);
+    conduit.position.set(-0.3 + i * 0.3, 0.42, 0.1);
     conduit.rotation.x = 0;
     kiosk.add(conduit);
     // Connector box
     const box = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.015, 0.02), darkMat);
-    box.position.set(-0.3 + i * 0.3, 0.31, -0.1);
+    box.position.set(-0.3 + i * 0.3, 0.31, 0.1);
     kiosk.add(box);
   }
 
@@ -917,33 +917,33 @@ export function createRepairKiosk() {
   lightArm.rotation.x = 0.3;
   kiosk.add(lightArm);
   const lampShade = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.03, 8), darkMat);
-  lampShade.position.set(0.2, 0.64, -0.02);
+  lampShade.position.set(0.2, 0.64, 0.02);
   kiosk.add(lampShade);
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-  bulb.position.set(0.2, 0.62, -0.02);
+  bulb.position.set(0.2, 0.62, 0.02);
   bulb.userData.animated = 'bulb';
   kiosk.add(bulb);
 
   // Exhaust fan on back wall
   const fanFrame = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.015, 10), darkMat);
-  fanFrame.position.set(0.3, 0.46, 0.1);
+  fanFrame.position.set(0.3, 0.46, -0.1);
   fanFrame.rotation.x = 0;
   kiosk.add(fanFrame);
   const fanBlade = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.005, 0.08), metalMat);
-  fanBlade.position.set(0.3, 0.468, 0.1);
+  fanBlade.position.set(0.3, 0.468, -0.1);
   fanBlade.rotation.x = 0;
   fanBlade.userData.animated = 'fan';
   kiosk.add(fanBlade);
   const fanHub = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 6), accentMat);
-  fanHub.position.set(0.3, 0.47, 0.1);
+  fanHub.position.set(0.3, 0.47, -0.1);
   kiosk.add(fanHub);
 
   // Vertical sign — post and board
   const signPost = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.012, 0.5, 6), darkMat);
-  signPost.position.set(-0.45, 0.25, -0.1);
+  signPost.position.set(-0.45, 0.25, 0.1);
   kiosk.add(signPost);
   const signAngle = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.12, 5), metalMat);
-  signAngle.position.set(-0.45, 0.50, -0.1);
+  signAngle.position.set(-0.45, 0.50, 0.1);
   signAngle.rotation.x = 0.2;
   kiosk.add(signAngle);
 
@@ -966,37 +966,37 @@ export function createRepairKiosk() {
   signTex.minFilter = THREE.LinearFilter;
   // Stand the sign vertical (face normal -Y, southward)
   const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.14), new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide }));
-  signMesh.position.set(-0.45, 0.50, -0.1);
+  signMesh.position.set(-0.45, 0.50, 0.1);
   signMesh.rotation.x = 0;
   kiosk.add(signMesh);
 
   // Hanging tools on pegboard
   for (let i = 0; i < 4; i++) {
     const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.02, 4), metalMat);
-    peg.position.set(-0.3 + i * 0.2, 0.43, -0.25);
+    peg.position.set(-0.3 + i * 0.2, 0.43, 0.25);
     kiosk.add(peg);
     const tool = new THREE.Mesh(
       [new THREE.BoxGeometry(0.008, 0.005, 0.025), new THREE.BoxGeometry(0.005, 0.008, 0.03), new THREE.BoxGeometry(0.012, 0.005, 0.02), new THREE.BoxGeometry(0.006, 0.006, 0.028)][i],
       new THREE.MeshToonMaterial({ color: [0x94a3b8, 0xf59e0b, 0x6b7280, 0xef4444][i] })
     );
-    tool.position.set(-0.3 + i * 0.2, 0.41, -0.27);
+    tool.position.set(-0.3 + i * 0.2, 0.41, 0.27);
     tool.userData.animated = 'tool';
     kiosk.add(tool);
   }
 
   // Welding torch on bench
   const torchHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.008, 0.05, 5), darkMat);
-  torchHandle.position.set(-0.22, 0.50, -0.08);
+  torchHandle.position.set(-0.22, 0.50, 0.08);
   torchHandle.rotation.x = Math.PI / 3;
   kiosk.add(torchHandle);
   const torchTip = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.015, 6), accentMat);
-  torchTip.position.set(-0.23, 0.54, -0.06);
+  torchTip.position.set(-0.23, 0.54, 0.06);
   torchTip.userData.animated = 'torch';
   kiosk.add(torchTip);
 
   // Gear decoration on side
   const gear = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.008, 8), new THREE.MeshToonMaterial({ color: 0x64748b }));
-  gear.position.set(0.48, 0.35, 0.12);
+  gear.position.set(0.48, 0.35, -0.12);
   gear.rotation.x = 0;
   gear.userData.animated = 'gear';
   kiosk.add(gear);
@@ -1004,14 +1004,14 @@ export function createRepairKiosk() {
   for (let i = 0; i < 8; i++) {
     const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.012, 0.008), metalMat);
     const angle = (i / 8) * Math.PI * 2;
-    tooth.position.set(0.48 + Math.cos(angle) * 0.045, 0.35, 0.12 + Math.sin(angle) * 0.045);
+    tooth.position.set(0.48 + Math.cos(angle) * 0.045, 0.35, -0.12 + Math.sin(angle) * 0.045);
     tooth.userData.animated = 'gear';
     kiosk.add(tooth);
   }
 
   // Spark catcher tray at bottom
   const tray = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.005, 0.1), darkMat);
-  tray.position.set(0, 0.08, -0.22);
+  tray.position.set(0, 0.08, 0.22);
   kiosk.add(tray);
 
   // Scrap metal parts on tray
@@ -1020,7 +1020,7 @@ export function createRepairKiosk() {
       [new THREE.BoxGeometry(0.015, 0.005, 0.01), new THREE.SphereGeometry(0.008, 5, 5), new THREE.CylinderGeometry(0.006, 0.01, 0.01, 5), new THREE.BoxGeometry(0.01, 0.004, 0.015)][i],
       new THREE.MeshToonMaterial({ color: [0x6b7280, 0x94a3b8, 0xf59e0b, 0xef4444][i] })
     );
-    scrap.position.set(-0.15 + i * 0.08, 0.085, -0.22);
+    scrap.position.set(-0.15 + i * 0.08, 0.085, 0.22);
     kiosk.add(scrap);
   }
 
@@ -1068,8 +1068,8 @@ export function animateRepairSparky(visual: RobotVisual, time: number, repairPha
   // Pupils look toward kiosk workbench
   const eyeX = Math.max(-0.025, Math.min(0.025, 0.05 * 0.018));
   const eyeY = Math.max(-0.015, Math.min(0.015, 0.25 * 0.012));
-  visual.leftPupil.position.set(-0.07 + eyeX, 0.75, 0.6 + eyeY);
-  visual.rightPupil.position.set(0.07 + eyeX, 0.75, 0.6 + eyeY);
+  visual.leftPupil.position.set(-0.07 + eyeX, 0.75, -0.6 + eyeY);
+  visual.rightPupil.position.set(0.07 + eyeX, 0.75, -0.6 + eyeY);
 
   // Arm animation based on repair phase (0-1, cycles)
   const armSwing = Math.sin(repairPhase * Math.PI * 2) * 0.3;
@@ -1085,8 +1085,8 @@ export function animateSparkyWave(visual: RobotVisual, time: number) {
   if (visual.antennaTip) visual.antennaTip.position.y = 0.82 + Math.sin(time * 8) * 0.015;
 
   // Pupils look toward player
-  visual.leftPupil.position.set(-0.07 + 0.02, 0.75, 0.6 + 0.01);
-  visual.rightPupil.position.set(0.07 + 0.02, 0.75, 0.6 + 0.01);
+  visual.leftPupil.position.set(-0.07 + 0.02, 0.75, -0.6 + 0.01);
+  visual.rightPupil.position.set(0.07 + 0.02, 0.75, -0.6 + 0.01);
 
   // Wave: right arm raised ~60° with side-to-side sway
   visual.rightArm.rotation.y = -Math.PI / 3 + Math.sin(time * 4) * 0.3;
@@ -1123,7 +1123,7 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
     new THREE.BoxGeometry(bw, bh, 0.08),
     wallMat
   );
-  backWall.position.set(0, 0.1 + bh / 2, -bd / 2);
+  backWall.position.set(0, 0.1 + bh / 2, bd / 2);
   shop.add(backWall);
 
   for (let s = -1; s <= 1; s += 2) {
@@ -1201,7 +1201,7 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
       new THREE.BoxGeometry(segW, bh, 0.08),
       frontMat
     );
-    wall.position.set(segCx, 0.1 + bh / 2, fwY);
+    wall.position.set(segCx, 0.1 + bh / 2, -fwY);
     shop.add(wall);
 
     // Display window with warm interior glow
@@ -1209,7 +1209,7 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
       new THREE.BoxGeometry(segW - 0.4, 0.5, 0.04),
       new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.3, side: THREE.DoubleSide })
     );
-    win.position.set(segCx, 0.35, fwY);
+    win.position.set(segCx, 0.35, -fwY);
     shop.add(win);
 
     // Window frame
@@ -1217,7 +1217,7 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
       new THREE.BoxGeometry(segW - 0.35, 0.06, 0.06),
       trimMat
     );
-    winFrame.position.set(segCx, 0.62, fwY);
+    winFrame.position.set(segCx, 0.62, -fwY);
     shop.add(winFrame);
   }
 
@@ -1226,14 +1226,14 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
     new THREE.BoxGeometry(doorW, doorH, 0.08),
     createToonMaterial(0x0f172a)
   );
-  door.position.set(0, 0.1 + doorH / 2, fwY);
+  door.position.set(0, 0.1 + doorH / 2, -fwY);
   shop.add(door);
 
   const doorFrame = new THREE.Mesh(
     new THREE.BoxGeometry(doorW + 0.1, doorH + 0.06, 0.08),
     trimMat
   );
-  doorFrame.position.set(0, 0.1 + (doorH + 0.06) / 2, fwY);
+  doorFrame.position.set(0, 0.1 + (doorH + 0.06) / 2, -fwY);
   shop.add(doorFrame);
 
   // Porch step — wide solid slab in front of door
@@ -1241,7 +1241,7 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
     new THREE.BoxGeometry(doorW + 0.6, 0.08, 0.3),
     createToonMaterial(0x9ca3af)
   );
-  porchStep.position.set(0, 0.04, fwY + 0.15);
+  porchStep.position.set(0, 0.04, -fwY + 0.15);
   shop.add(porchStep);
 
   // Awning — red/white striped canopy over door
@@ -1250,7 +1250,7 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
     new THREE.BoxGeometry(bw - 0.4, 0.15, 0.06),
     awningMat
   );
-  awning.position.set(0, 0.1 + bh + 0.08, fwY);
+  awning.position.set(0, 0.1 + bh + 0.08, -fwY);
   shop.add(awning);
 
   // String lights across the facade
@@ -1259,7 +1259,7 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
       new THREE.SphereGeometry(0.035, 8, 8),
       new THREE.MeshBasicMaterial({ color: 0xfef08a })
     );
-    light.position.set(i * 1.2, 0.1 + bh - 0.02, fwY);
+    light.position.set(i * 1.2, 0.1 + bh - 0.02, -fwY);
     shop.add(light);
   }
 
@@ -1288,18 +1288,18 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
       new THREE.BoxGeometry(0.04, 0.10, 0.04),
       createToonMaterial(0x1a1a1a)
     );
-    pole.position.set(px * 0.9, ridgeZ + 0.01 + 0.05, fwY);
+    pole.position.set(px * 0.9, ridgeZ + 0.01 + 0.05, -fwY);
     shop.add(pole);
   }
   const signBoard = new THREE.Mesh(
     new THREE.BoxGeometry(1.6, 0.44, 0.06),
     new THREE.MeshBasicMaterial({ map: signTex })
   );
-  signBoard.position.set(0, signZ, fwY);
+  signBoard.position.set(0, signZ, -fwY);
   signBoard.scale.x = -1;
   shop.add(signBoard);
 
-  shop.position.set(x, 0, y);
+  shop.position.set(x, 0, -y);
   applyShadows(shop, true, true);
   return shop;
 }
@@ -1321,21 +1321,21 @@ export function createPartModel(partId: string): THREE.Group {
       new THREE.MeshBasicMaterial({ color: 0xef4444 })
     );
     posTerm.rotation.x = 0;
-    posTerm.position.set(0, 0, 0.031);
+    posTerm.position.set(0, 0, -0.031);
     g.add(posTerm);
     // Negative terminal (flat)
     const negTerm = new THREE.Mesh(
       new THREE.BoxGeometry(0.012, 0.012, 0.003),
       createToonMaterial(0x64748b)
     );
-    negTerm.position.set(0, 0, -0.028);
+    negTerm.position.set(0, 0, 0.028);
     g.add(negTerm);
     // Charge indicator LED
     const led = new THREE.Mesh(
       new THREE.SphereGeometry(0.003, 6, 6),
       new THREE.MeshBasicMaterial({ color: 0x4ade80 })
     );
-    led.position.set(0.016, 0.009, 0.01);
+    led.position.set(0.016, 0.009, -0.01);
     g.add(led);
     // Battery band label
     const band = new THREE.Mesh(
@@ -1355,7 +1355,7 @@ export function createPartModel(partId: string): THREE.Group {
       new THREE.BoxGeometry(0.04, 0.001, 0.015),
       new THREE.MeshToonMaterial({ color: 0xe8d5a0 })
     );
-    flap.position.set(0, 0.001, 0.007);
+    flap.position.set(0, 0.001, -0.007);
     flap.rotation.x = -0.3;
     g.add(flap);
     const seal = new THREE.Mesh(
@@ -1376,7 +1376,7 @@ export function addExclamationMarker(parent: THREE.Group) {
   const worldSize = 0.5;
   marker.scale.set(worldSize / s, worldSize / s, 1);
   if (parent.rotation.x >= 1) {
-    marker.position.set(0, 0.46, 1.0);
+    marker.position.set(0, 0.46, -1.0);
   } else {
     marker.position.set(0, 0.5, 0);
   }
@@ -1405,7 +1405,7 @@ export function createApartmentBuilding(x: number, y: number, bw = 4.0, bd = 4.0
 
   // Ground floor north (back) wall — solid, no door
   const backWall = new THREE.Mesh(new THREE.BoxGeometry(bw, storyH, 0.08), wallMat);
-  backWall.position.set(0, 0.1 + storyH / 2, fwY);
+  backWall.position.set(0, 0.1 + storyH / 2, -fwY);
   building.add(backWall);
 
   // Ground floor side walls
@@ -1427,55 +1427,55 @@ export function createApartmentBuilding(x: number, y: number, bw = 4.0, bd = 4.0
     if (segW < 0.01) return;
     const segCx = (start + end) / 2;
     const wall = new THREE.Mesh(new THREE.BoxGeometry(segW, storyH, 0.08), wallMat);
-    wall.position.set(segCx, 0.1 + storyH / 2, -fwY);
+    wall.position.set(segCx, 0.1 + storyH / 2, fwY);
     building.add(wall);
 
     const win = new THREE.Mesh(new THREE.BoxGeometry(segW - 0.3, 0.5, 0.04), warmGlowMat);
-    win.position.set(segCx, 0.35, -fwY);
+    win.position.set(segCx, 0.35, fwY);
     building.add(win);
 
     const winFrame = new THREE.Mesh(new THREE.BoxGeometry(segW - 0.25, 0.06, 0.06), trimMat);
-    winFrame.position.set(segCx, 0.62, -fwY);
+    winFrame.position.set(segCx, 0.62, fwY);
     building.add(winFrame);
   });
 
   // Reception furniture visible through glass (south side)
   const furnMat = createToonMaterial(0x6b4226);
   const counter = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.04), furnMat);
-  counter.position.set(-0.8, 0.45, -0.5);
+  counter.position.set(-0.8, 0.45, 0.5);
   building.add(counter);
 
   const counterTop = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.04, 0.04), createToonMaterial(0x92400e));
-  counterTop.position.set(-0.8, 0.72, -0.5);
+  counterTop.position.set(-0.8, 0.72, 0.5);
   building.add(counterTop);
 
   const chairBase = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.04, 8), createToonMaterial(0x334155));
-  chairBase.position.set(0.7, 0.14, -0.5);
+  chairBase.position.set(0.7, 0.14, 0.5);
   building.add(chairBase);
 
   const chairSeat = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.03, 8), createToonMaterial(0x475569));
-  chairSeat.position.set(0.7, 0.18, -0.5);
+  chairSeat.position.set(0.7, 0.18, 0.5);
   building.add(chairSeat);
 
   const lampPole = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.35, 0.02), createToonMaterial(0x1e293b));
-  lampPole.position.set(-1.0, 0.3, 0.8);
+  lampPole.position.set(-1.0, 0.3, -0.8);
   building.add(lampPole);
 
   const lampGlow = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-  lampGlow.position.set(-1.0, 0.55, 0.8);
+  lampGlow.position.set(-1.0, 0.55, -0.8);
   building.add(lampGlow);
 
   // Door — south wall at doorX (z above wall z=0.6 so it renders in front)
   const door = new THREE.Mesh(new THREE.BoxGeometry(doorW, doorH, 0.08), doorMat);
-  door.position.set(doorX, 0.1 + storyH / 2 + 0.04, -fwY);
+  door.position.set(doorX, 0.1 + storyH / 2 + 0.04, fwY);
   building.add(door);
   const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.1, doorH + 0.06, 0.08), trimMat);
-  doorFrame.position.set(doorX, 0.1 + storyH / 2 + 0.04, -fwY);
+  doorFrame.position.set(doorX, 0.1 + storyH / 2 + 0.04, fwY);
   building.add(doorFrame);
 
   // Door step
   const step = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.4, 0.06, 0.3), stepMat);
-  step.position.set(doorX, 0.03, -fwY);
+  step.position.set(doorX, 0.03, fwY);
   building.add(step);
 
   // Floor divider between floors
@@ -1485,7 +1485,7 @@ export function createApartmentBuilding(x: number, y: number, bw = 4.0, bd = 4.0
 
   // Second floor north (back) wall
   const upperBack = new THREE.Mesh(new THREE.BoxGeometry(bw, storyH, 0.08), wallMat);
-  upperBack.position.set(0, 0.1 + storyH + storyH / 2, fwY);
+  upperBack.position.set(0, 0.1 + storyH + storyH / 2, -fwY);
   building.add(upperBack);
 
   // Second floor side walls
@@ -1497,7 +1497,7 @@ export function createApartmentBuilding(x: number, y: number, bw = 4.0, bd = 4.0
 
   // Second floor south (front) wall
   const upperFront = new THREE.Mesh(new THREE.BoxGeometry(bw, storyH, 0.08), wallMat);
-  upperFront.position.set(0, 0.1 + storyH + storyH / 2, -fwY);
+  upperFront.position.set(0, 0.1 + storyH + storyH / 2, fwY);
   building.add(upperFront);
 
   // Second floor south windows
@@ -1509,32 +1509,32 @@ export function createApartmentBuilding(x: number, y: number, bw = 4.0, bd = 4.0
     const wz = 0.1 + storyH + storyH / 2;
 
     const winGlass = new THREE.Mesh(new THREE.BoxGeometry(ww, wh, 0.04), glassMat);
-    winGlass.position.set(wx, wz, -fwY);
+    winGlass.position.set(wx, wz, fwY);
     building.add(winGlass);
 
     const winGlow = new THREE.Mesh(new THREE.BoxGeometry(ww - 0.1, wh - 0.1, 0.02), glowMat);
-    winGlow.position.set(wx, wz + 0.05, -fwY);
+    winGlow.position.set(wx, wz + 0.05, fwY);
     building.add(winGlow);
 
     // Window frame (4 sides)
     const fH = new THREE.Mesh(new THREE.BoxGeometry(ww + 0.08, 0.04, 0.06), trimMat);
-    fH.position.set(wx, wz + wh / 2 + 0.02, -fwY);
+    fH.position.set(wx, wz + wh / 2 + 0.02, fwY);
     building.add(fH);
     const fH2 = fH.clone();
-    fH2.position.set(wx, wz - wh / 2 - 0.02, -fwY);
+    fH2.position.set(wx, wz - wh / 2 - 0.02, fwY);
     building.add(fH2);
     const fV = new THREE.Mesh(new THREE.BoxGeometry(0.04, wh + 0.08, 0.06), trimMat);
-    fV.position.set(wx - ww / 2 - 0.04, wz, -fwY);
+    fV.position.set(wx - ww / 2 - 0.04, wz, fwY);
     building.add(fV);
     const fV2 = fV.clone();
-    fV2.position.set(wx + ww / 2 + 0.04, wz, -fwY);
+    fV2.position.set(wx + ww / 2 + 0.04, wz, fwY);
     building.add(fV2);
   }
 
   // Awning over door
   const awningMat = createTexturedToonMaterial('tile_33.png', 6, 1, 0xdc2626);
   const awning = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.6, 0.12, 0.06), awningMat);
-  awning.position.set(doorX, 0.1 + storyH - 0.02, -fwY);
+  awning.position.set(doorX, 0.1 + storyH - 0.02, fwY);
   building.add(awning);
 
   // Sign above door
@@ -1557,7 +1557,7 @@ export function createApartmentBuilding(x: number, y: number, bw = 4.0, bd = 4.0
   signTex.minFilter = THREE.LinearFilter;
   signTex.flipY = false;
   const signMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.12, 0.06), new THREE.MeshBasicMaterial({ map: signTex }));
-  signMesh.position.set(doorX, 0.1 + storyH + 0.08, -fwY);
+  signMesh.position.set(doorX, 0.1 + storyH + 0.08, fwY);
   building.add(signMesh);
 
   // Roof
@@ -1570,10 +1570,10 @@ export function createApartmentBuilding(x: number, y: number, bw = 4.0, bd = 4.0
 
   // Door glow (subtle warm light spilling from the door)
   const doorGlow = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.2, 0.04, 0.02), new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.08 }));
-  doorGlow.position.set(doorX, 0.06, -fwY);
+  doorGlow.position.set(doorX, 0.06, fwY);
   building.add(doorGlow);
 
-  building.position.set(x, 0, y);
+  building.position.set(x, 0, -y);
   return building;
 }
 
@@ -1649,7 +1649,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
       // No overlap — full wall
       const w = axis === 'x' ? new THREE.BoxGeometry(wallLen, segH, thick) : new THREE.BoxGeometry(thick, segH, wallLen);
       const mesh = new THREE.Mesh(w, mat);
-      if (axis === 'x') mesh.position.set(0, zBase, wallPos);
+      if (axis === 'x') mesh.position.set(0, zBase, -wallPos);
       else mesh.position.set(wallPos, zBase, 0);
       bldg.add(mesh);
     } else {
@@ -1664,8 +1664,8 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
         const segCenter = (s + e) / 2;
         const w = axis === 'x' ? new THREE.BoxGeometry(segLen, segH, thick) : new THREE.BoxGeometry(thick, segH, segLen);
         const mesh = new THREE.Mesh(w, mat);
-        if (axis === 'x') mesh.position.set(segCenter, zBase, wallPos);
-        else mesh.position.set(wallPos, zBase, segCenter);
+        if (axis === 'x') mesh.position.set(segCenter, zBase, -wallPos);
+        else mesh.position.set(wallPos, zBase, -segCenter);
         bldg.add(mesh);
       }
       // Jagged broken edges at gap boundaries
@@ -1676,8 +1676,8 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           const jW = 0.06 + Math.random() * 0.1;
           const jm = new THREE.Mesh(new THREE.BoxGeometry(jW, jH, 0.08), wallDarkMat);
           const jitter = (Math.random() - 0.5) * 0.08;
-          if (axis === 'x') jm.position.set(edge + jitter, 0.1 + jH / 2, wallPos);
-          else jm.position.set(wallPos, 0.1 + jH / 2, edge + jitter);
+          if (axis === 'x') jm.position.set(edge + jitter, 0.1 + jH / 2, -wallPos);
+          else jm.position.set(wallPos, 0.1 + jH / 2, -edge + jitter);
           jm.rotation.y = (Math.random() - 0.5) * 0.3;
           bldg.add(jm);
         }
@@ -1750,20 +1750,20 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           const plankOff = faceSign * 0.06;
           // 1. Glass pane
           const glass = new THREE.Mesh(bx(ww, 0.04, wh), darkMat);
-          if (axis === 'x') glass.position.set(fx, rowZ, fy + off);
-          else glass.position.set(fx + off, rowZ, fy);
+          if (axis === 'x') glass.position.set(fx, rowZ, -fy + off);
+          else glass.position.set(fx + off, rowZ, -fy);
           bldg.add(glass);
           // 2. Frame
           for (const [lw, lz] of [[ww + 0.1, wh / 2], [ww + 0.1, -wh / 2]] as const) {
             const f = new THREE.Mesh(bx(lw, fd, fd), trimMat);
-            if (axis === 'x') f.position.set(fx, rowZ + lz, fy + fo);
-            else f.position.set(fx + fo, rowZ + lz, fy);
+            if (axis === 'x') f.position.set(fx, rowZ + lz, -fy + fo);
+            else f.position.set(fx + fo, rowZ + lz, -fy);
             bldg.add(f);
           }
           for (const [lh, lz] of [[wh + 0.1, -ww / 2], [wh + 0.1, ww / 2]] as const) {
             const f = new THREE.Mesh(new THREE.BoxGeometry(fd, lh, fd), trimMat);
-            if (axis === 'x') f.position.set(fx + lz, rowZ, fy + fo);
-            else f.position.set(fx + fo, rowZ, fy + lz);
+            if (axis === 'x') f.position.set(fx + lz, rowZ, -fy + fo);
+            else f.position.set(fx + fo, rowZ, -fy + lz);
             bldg.add(f);
           }
           // 3. Cracks in glass
@@ -1773,10 +1773,10 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             const crack = new THREE.Mesh(bx(crackLen, 0.05, 0.015), crackMat);
             const crackAngle = Math.PI / 4 + (Math.random() - 0.5) * 0.6;
             if (axis === 'x') {
-              crack.position.set(fx + (Math.random() - 0.5) * ww * 0.3, rowZ + (Math.random() - 0.5) * wh * 0.3, fy + off + 0.01);
+              crack.position.set(fx + (Math.random() - 0.5) * ww * 0.3, rowZ + (Math.random() - 0.5) * wh * 0.3, -fy + off + 0.01);
               crack.rotation.y = crackAngle;
             } else {
-              crack.position.set(fx + off + 0.01, rowZ + (Math.random() - 0.5) * wh * 0.3, fy + (Math.random() - 0.5) * ww * 0.3);
+              crack.position.set(fx + off + 0.01, rowZ + (Math.random() - 0.5) * wh * 0.3, -fy + (Math.random() - 0.5) * ww * 0.3);
               crack.rotation.x = crackAngle;
             }
             bldg.add(crack);
@@ -1791,18 +1791,18 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             const p1 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
             const p2 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
             if (axis === 'x') {
-              p1.position.set(fx, rowZ, fy + plankOff); p1.rotation.y = angle;
-              p2.position.set(fx, rowZ, fy + plankOff); p2.rotation.y = -angle;
+              p1.position.set(fx, rowZ, -fy + plankOff); p1.rotation.y = angle;
+              p2.position.set(fx, rowZ, -fy + plankOff); p2.rotation.y = -angle;
             } else {
-              p1.position.set(fx + plankOff, rowZ, fy); p1.rotation.x = angle;
-              p2.position.set(fx + plankOff, rowZ, fy); p2.rotation.x = -angle;
+              p1.position.set(fx + plankOff, rowZ, -fy); p1.rotation.x = angle;
+              p2.position.set(fx + plankOff, rowZ, -fy); p2.rotation.x = -angle;
             }
             bldg.add(p1); bldg.add(p2);
           } else if (style === 1) {
             // Single diagonal plank
             const d = new THREE.Mesh(bx(ww + 0.14, pd, 0.05), boardMat);
-            if (axis === 'x') { d.position.set(fx, rowZ, fy + plankOff); d.rotation.y = 0.7; }
-            else { d.position.set(fx + plankOff, rowZ, fy); d.rotation.x = 0.7; }
+            if (axis === 'x') { d.position.set(fx, rowZ, -fy + plankOff); d.rotation.y = 0.7; }
+            else { d.position.set(fx + plankOff, rowZ, -fy); d.rotation.x = 0.7; }
             bldg.add(d);
           } else if (style === 2) {
             // Horizontal slats (2–3)
@@ -1810,8 +1810,8 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             for (let s = 0; s < n; s++) {
               const slat = new THREE.Mesh(bx(ww + 0.06, pd, 0.05), boardMat);
               const zOff = (s - (n - 1) / 2) * (wh / n);
-              if (axis === 'x') slat.position.set(fx, rowZ + zOff, fy + plankOff);
-              else slat.position.set(fx + plankOff, rowZ + zOff, fy);
+              if (axis === 'x') slat.position.set(fx, rowZ + zOff, -fy + plankOff);
+              else slat.position.set(fx + plankOff, rowZ + zOff, -fy);
               bldg.add(slat);
             }
           } else {
@@ -1820,46 +1820,46 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             for (let s = 0; s < n; s++) {
               const slat = new THREE.Mesh(new THREE.BoxGeometry(pd, wh + 0.06, pd), boardMat);
               const xOff = (s - (n - 1) / 2) * (ww / n);
-              if (axis === 'x') slat.position.set(fx + xOff, rowZ, fy + plankOff);
-              else slat.position.set(fx + plankOff, rowZ, fy + xOff);
+              if (axis === 'x') slat.position.set(fx + xOff, rowZ, -fy + plankOff);
+              else slat.position.set(fx + plankOff, rowZ, -fy + xOff);
               bldg.add(slat);
             }
           }
         } else if (state < 0.40) {
           // Intact glass with frame
           const glass = new THREE.Mesh(bx(ww, 0.04, wh), darkMat);
-          if (axis === 'x') glass.position.set(fx, rowZ, fy + off);
-          else glass.position.set(fx + off, rowZ, fy);
+          if (axis === 'x') glass.position.set(fx, rowZ, -fy + off);
+          else glass.position.set(fx + off, rowZ, -fy);
           bldg.add(glass);
           for (const [lw, lz] of [[ww + 0.1, wh / 2], [ww + 0.1, -wh / 2]] as const) {
             const f = new THREE.Mesh(bx(lw, fd, fd), trimMat);
-            if (axis === 'x') f.position.set(fx, rowZ + lz, fy + fo);
-            else f.position.set(fx + fo, rowZ + lz, fy);
+            if (axis === 'x') f.position.set(fx, rowZ + lz, -fy + fo);
+            else f.position.set(fx + fo, rowZ + lz, -fy);
             bldg.add(f);
           }
           for (const [lh, lz] of [[wh + 0.1, -ww / 2], [wh + 0.1, ww / 2]] as const) {
             const f = new THREE.Mesh(new THREE.BoxGeometry(fd, lh, fd), trimMat);
-            if (axis === 'x') f.position.set(fx + lz, rowZ, fy + fo);
-            else f.position.set(fx + fo, rowZ, fy + lz);
+            if (axis === 'x') f.position.set(fx + lz, rowZ, -fy + fo);
+            else f.position.set(fx + fo, rowZ, -fy + lz);
             bldg.add(f);
           }
         } else if (state < 0.55) {
           // Cracked glass — intact frame with diagonal crack line
           const glass = new THREE.Mesh(bx(ww, 0.04, wh), darkMat);
-          if (axis === 'x') glass.position.set(fx, rowZ, fy + off);
-          else glass.position.set(fx + off, rowZ, fy);
+          if (axis === 'x') glass.position.set(fx, rowZ, -fy + off);
+          else glass.position.set(fx + off, rowZ, -fy);
           bldg.add(glass);
           // Frame
           for (const [lw, lz] of [[ww + 0.1, wh / 2], [ww + 0.1, -wh / 2]] as const) {
             const f = new THREE.Mesh(bx(lw, fd, fd), trimMat);
-            if (axis === 'x') f.position.set(fx, rowZ + lz, fy + fo);
-            else f.position.set(fx + fo, rowZ + lz, fy);
+            if (axis === 'x') f.position.set(fx, rowZ + lz, -fy + fo);
+            else f.position.set(fx + fo, rowZ + lz, -fy);
             bldg.add(f);
           }
           for (const [lh, lz] of [[wh + 0.1, -ww / 2], [wh + 0.1, ww / 2]] as const) {
             const f = new THREE.Mesh(new THREE.BoxGeometry(fd, lh, fd), trimMat);
-            if (axis === 'x') f.position.set(fx + lz, rowZ, fy + fo);
-            else f.position.set(fx + fo, rowZ, fy + lz);
+            if (axis === 'x') f.position.set(fx + lz, rowZ, -fy + fo);
+            else f.position.set(fx + fo, rowZ, -fy + lz);
             bldg.add(f);
           }
           // Diagonal crack
@@ -1867,40 +1867,40 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           const crack = new THREE.Mesh(bx(crackLen, 0.05, 0.02), crackMat);
           const crackAngle = Math.PI / 4 + (Math.random() - 0.5) * 0.3;
           if (axis === 'x') {
-            crack.position.set(fx, rowZ, fy + off + 0.01);
+            crack.position.set(fx, rowZ, -fy + off + 0.01);
             crack.rotation.y = crackAngle;
           } else {
-            crack.position.set(fx + off + 0.01, rowZ, fy);
+            crack.position.set(fx + off + 0.01, rowZ, -fy);
             crack.rotation.x = crackAngle;
           }
           bldg.add(crack);
         } else if (state < 0.70) {
           // Glass with single diagonal board — board over intact glass
           const glass = new THREE.Mesh(bx(ww, 0.04, wh), darkMat);
-          if (axis === 'x') glass.position.set(fx, rowZ, fy + off);
-          else glass.position.set(fx + off, rowZ, fy);
+          if (axis === 'x') glass.position.set(fx, rowZ, -fy + off);
+          else glass.position.set(fx + off, rowZ, -fy);
           bldg.add(glass);
           // Frame
           for (const [lw, lz] of [[ww + 0.1, wh / 2], [ww + 0.1, -wh / 2]] as const) {
             const f = new THREE.Mesh(bx(lw, fd, fd), trimMat);
-            if (axis === 'x') f.position.set(fx, rowZ + lz, fy + fo);
-            else f.position.set(fx + fo, rowZ + lz, fy);
+            if (axis === 'x') f.position.set(fx, rowZ + lz, -fy + fo);
+            else f.position.set(fx + fo, rowZ + lz, -fy);
             bldg.add(f);
           }
           for (const [lh, lz] of [[wh + 0.1, -ww / 2], [wh + 0.1, ww / 2]] as const) {
             const f = new THREE.Mesh(new THREE.BoxGeometry(fd, lh, fd), trimMat);
-            if (axis === 'x') f.position.set(fx + lz, rowZ, fy + fo);
-            else f.position.set(fx + fo, rowZ, fy + lz);
+            if (axis === 'x') f.position.set(fx + lz, rowZ, -fy + fo);
+            else f.position.set(fx + fo, rowZ, -fy + lz);
             bldg.add(f);
           }
           // Single diagonal plank nailed over
           const pdCrack = 0.04;
           const plank = new THREE.Mesh(bx(ww * 0.9, pdCrack, 0.05), trimMat);
           if (axis === 'x') {
-            plank.position.set(fx, rowZ, fy + off + 0.02);
+            plank.position.set(fx, rowZ, -fy + off + 0.02);
             plank.rotation.y = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 0.3);
           } else {
-            plank.position.set(fx + off + 0.02, rowZ, fy);
+            plank.position.set(fx + off + 0.02, rowZ, -fy);
             plank.rotation.x = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 0.3);
           }
           bldg.add(plank);
@@ -1908,37 +1908,37 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           // Broken shard — glass remnant with frame piece
           const shard = new THREE.Mesh(bx(ww * 0.5, 0.04, wh * 0.6), glassMat);
           if (axis === 'x') {
-            shard.position.set(fx, rowZ - 0.06, fy + off + 0.01);
+            shard.position.set(fx, rowZ - 0.06, -fy + off + 0.01);
             shard.rotation.y = 0.3 * (Math.random() > 0.5 ? 1 : -1);
           } else {
-            shard.position.set(fx + off + 0.01, rowZ - 0.06, fy);
+            shard.position.set(fx + off + 0.01, rowZ - 0.06, -fy);
             shard.rotation.x = 0.3 * (Math.random() > 0.5 ? 1 : -1);
           }
           bldg.add(shard);
           // Small frame remnant on one side
           const rem = new THREE.Mesh(new THREE.BoxGeometry(fd, wh * 0.4, fd), trimMat);
           const side = Math.random() > 0.5 ? 1 : -1;
-          if (axis === 'x') rem.position.set(fx + side * ww * 0.3, rowZ, fy + fo);
-          else rem.position.set(fx + fo, rowZ, fy + side * ww * 0.3);
+          if (axis === 'x') rem.position.set(fx + side * ww * 0.3, rowZ, -fy + fo);
+          else rem.position.set(fx + fo, rowZ, -fy + side * ww * 0.3);
           bldg.add(rem);
         } else if (state < 0.93) {
           // Empty dark hole
           const hole = new THREE.Mesh(bx(ww, 0.12, wh), darkMat);
-          if (axis === 'x') hole.position.set(fx, rowZ, fy + off);
-          else hole.position.set(fx + off, rowZ, fy);
+          if (axis === 'x') hole.position.set(fx, rowZ, -fy + off);
+          else hole.position.set(fx + off, rowZ, -fy);
           bldg.add(hole);
         } else {
           // Just frame (no glass, no board)
           for (const [lw, lz] of [[ww + 0.1, wh / 2], [ww + 0.1, -wh / 2]] as const) {
             const f = new THREE.Mesh(bx(lw, fd, fd), trimMat);
-            if (axis === 'x') f.position.set(fx, rowZ + lz, fy + fo);
-            else f.position.set(fx + fo, rowZ + lz, fy);
+            if (axis === 'x') f.position.set(fx, rowZ + lz, -fy + fo);
+            else f.position.set(fx + fo, rowZ + lz, -fy);
             bldg.add(f);
           }
           for (const [lh, lz] of [[wh + 0.1, -ww / 2], [wh + 0.1, ww / 2]] as const) {
             const f = new THREE.Mesh(new THREE.BoxGeometry(fd, lh, fd), trimMat);
-            if (axis === 'x') f.position.set(fx + lz, rowZ, fy + fo);
-            else f.position.set(fx + fo, rowZ, fy + lz);
+            if (axis === 'x') f.position.set(fx + lz, rowZ, -fy + fo);
+            else f.position.set(fx + fo, rowZ, -fy + lz);
             bldg.add(f);
           }
         }
@@ -1960,7 +1960,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   const doorW = 0.6, doorH = 1.0;
   const doorX = bw * 0.2 * (Math.random() > 0.5 ? 1 : -1);
   const door = new THREE.Mesh(new THREE.BoxGeometry(doorW, doorH, 0.14), darkMat);
-  door.position.set(doorX, 0.1 + doorH / 2, southY - 0.11);
+  door.position.set(doorX, 0.1 + doorH / 2, -southY - 0.11);
   bldg.add(door);
   for (const [fw, fh, fp] of [
     [doorW + 0.14, 0.08, [0, doorH / 2]],
@@ -1969,27 +1969,27 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     [0.08, doorH + 0.14, [doorW / 2 + 0.04, 0]],
   ] as const) {
     const df = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, 0.09), trimMat);
-    df.position.set(doorX + fp[0], 0.1 + doorH / 2 + fp[1], southY - 0.14);
+    df.position.set(doorX + fp[0], 0.1 + doorH / 2 + fp[1], -southY - 0.14);
     bldg.add(df);
   }
   const step = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.5, 0.1, 0.18), trimMat);
-  step.position.set(doorX, 0.05, southY - 0.14);
+  step.position.set(doorX, 0.05, -southY - 0.14);
   bldg.add(step);
 
   // === ENTRANCE CANOPY (50%) or simple awning ===
   if (Math.random() > 0.5) {
     // Large canopy with support columns
     const canopy = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.6), boardMat);
-    canopy.position.set(doorX, 0.1 + doorH + 0.12, southY - 0.3);
+    canopy.position.set(doorX, 0.1 + doorH + 0.12, -southY - 0.3);
     bldg.add(canopy);
     for (const cx of [-0.55, 0.55]) {
       const col = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, doorH + 0.1, 4), steelMat);
-      col.position.set(doorX + cx, 0.1 + (doorH + 0.1) / 2, southY - 0.55);
+      col.position.set(doorX + cx, 0.1 + (doorH + 0.1) / 2, -southY - 0.55);
       bldg.add(col);
     }
   } else {
     const awning = new THREE.Mesh(new THREE.BoxGeometry(doorW + 0.4, 0.05, 0.35), boardMat);
-    awning.position.set(doorX, 0.1 + doorH + 0.08, southY - 0.18);
+    awning.position.set(doorX, 0.1 + doorH + 0.08, -southY - 0.18);
     bldg.add(awning);
   }
 
@@ -1999,7 +1999,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const sdY = (Math.random() - 0.5) * bd * 0.4;
     const sdX = sdSide * bw / 2;
     const sd = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.85, 0.45), darkMat);
-    sd.position.set(sdX + sdSide * 0.02, 0.1 + 0.425, sdY);
+    sd.position.set(sdX + sdSide * 0.02, 0.1 + 0.425, -sdY);
     bldg.add(sd);
     // Metal frame
     for (const [fw, fd, fp] of [
@@ -2007,7 +2007,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
       [0.06, 0.5, [0, -0.425]],
     ] as const) {
       const sf = new THREE.Mesh(new THREE.BoxGeometry(0.05, fd, fw), steelMat);
-      sf.position.set(sdX + sdSide * 0.04, 0.1 + fp[1], sdY + fp[0]);
+      sf.position.set(sdX + sdSide * 0.04, 0.1 + fp[1], -sdY + fp[0]);
       bldg.add(sf);
     }
   }
@@ -2027,16 +2027,16 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     [towerW / 2, 0, 0.14, towerD],
   ] as const) {
     const twall = new THREE.Mesh(new THREE.BoxGeometry(tw, towerH, ty === 0 ? td : 0.14), wallDarkMat);
-    twall.position.set(tx, 0.1 + wallH + towerH / 2, ty);
+    twall.position.set(tx, 0.1 + wallH + towerH / 2, -ty);
     towerGroup.add(twall);
   }
   const towerCap = new THREE.Mesh(new THREE.BoxGeometry(towerW + 0.1, 0.08, towerD + 0.1), roofMat);
   towerCap.position.set(0, 0.1 + wallH + towerH + 0.04, 0);
   towerGroup.add(towerCap);
   const towerDoor = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.5, 0.06), darkMat);
-  towerDoor.position.set(0, 0.1 + wallH + 0.3, -towerD / 2 - 0.02);
+  towerDoor.position.set(0, 0.1 + wallH + 0.3, towerD / 2 - 0.02);
   towerGroup.add(towerDoor);
-  towerGroup.position.set(towerX, 0, towerY);
+  towerGroup.position.set(towerX, 0, -towerY);
   bldg.add(towerGroup);
 
   // === FLAT ROOF ===
@@ -2047,7 +2047,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   // Parapet walls
   for (const [side, sy] of [['south', -bd / 2], ['north', bd / 2]] as const) {
     const para = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.14, 0.24, 0.1), accentMat);
-    para.position.set(0, 0.1 + bh + 0.12, sy);
+    para.position.set(0, 0.1 + bh + 0.12, -sy);
     bldg.add(para);
   }
   for (const sx of [-1, 1]) {
@@ -2063,11 +2063,11 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const railX = (Math.random() - 0.5) * bw * 0.2;
     for (let ri = 0; ri < 4; ri++) {
       const post = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 4), steelMat);
-      post.position.set(railX - railLen / 2 + ri * railLen / 3, 0.1 + bh + 0.12 + 0.15, railSide * (bd / 2 - 0.1));
+      post.position.set(railX - railLen / 2 + ri * railLen / 3, 0.1 + bh + 0.12 + 0.15, -railSide * (bd / 2 - 0.1));
       bldg.add(post);
     }
     const rail = new THREE.Mesh(new THREE.BoxGeometry(railLen, 0.02, 0.02), steelMat);
-    rail.position.set(railX, 0.1 + bh + 0.12 + 0.3, railSide * (bd / 2 - 0.1));
+    rail.position.set(railX, 0.1 + bh + 0.12 + 0.3, -railSide * (bd / 2 - 0.1));
     bldg.add(rail);
   }
 
@@ -2079,12 +2079,12 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
         trimMat
       );
       rr.rotation.y = Math.random() * 0.5;
-      rr.position.set(collapseX + (Math.random() - 0.5) * gapW * 1.5, 0.04, collapseY + (Math.random() - 0.5) * gapD * 1.5);
+      rr.position.set(collapseX + (Math.random() - 0.5) * gapW * 1.5, 0.04, -collapseY + (Math.random() - 0.5) * gapD * 1.5);
       bldg.add(rr);
     }
     for (let ri = 0; ri < 2; ri++) {
       const rb = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.2 + Math.random() * 0.3, 4), rustMat);
-      rb.position.set(collapseX + (Math.random() - 0.5) * gapW * 0.8, 0.1 + bh + 0.05 + Math.random() * 0.1, collapseY + csy * gapD * 0.55);
+      rb.position.set(collapseX + (Math.random() - 0.5) * gapW * 0.8, 0.1 + bh + 0.05 + Math.random() * 0.1, -collapseY + csy * gapD * 0.55);
       rb.rotation.x = (Math.random() - 0.5) * 0.4;
       rb.rotation.y = (Math.random() - 0.5) * 0.4;
       bldg.add(rb);
@@ -2097,14 +2097,14 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const ty = bd * 0.2 * (Math.random() > 0.5 ? 1 : -1);
     const tankH = 0.5 + Math.random() * 0.3;
     const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, tankH, 6), steelMat);
-    tank.position.set(tx, 0.1 + bh + 0.14 + tankH / 2 + 0.15, ty);
+    tank.position.set(tx, 0.1 + bh + 0.14 + tankH / 2 + 0.15, -ty);
     bldg.add(tank);
     const band = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.04, 6), accentMat);
-    band.position.set(tx, 0.1 + bh + 0.14 + tankH * 0.4 + 0.15, ty);
+    band.position.set(tx, 0.1 + bh + 0.14 + tankH * 0.4 + 0.15, -ty);
     bldg.add(band);
     for (const [lx, ly] of [[-0.15, -0.15], [0.15, -0.15], [-0.15, 0.15], [0.15, 0.15]]) {
       const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.2, 4), steelMat);
-      leg.position.set(tx + lx, 0.1 + bh + 0.14 + 0.1, ty + ly);
+      leg.position.set(tx + lx, 0.1 + bh + 0.14 + 0.1, -ty + ly);
       bldg.add(leg);
     }
   }
@@ -2114,10 +2114,10 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const dx = bw * 0.3 * (Math.random() > 0.5 ? 1 : -1);
     const dy = bd * 0.25 * (Math.random() > 0.5 ? 1 : -1);
     const dishArm = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.2, 4), steelMat);
-    dishArm.position.set(dx, 0.1 + bh + 0.14 + 0.25, dy);
+    dishArm.position.set(dx, 0.1 + bh + 0.14 + 0.25, -dy);
     bldg.add(dishArm);
     const dish = new THREE.Mesh(new THREE.CircleGeometry(0.15, 8), steelMat);
-    dish.position.set(dx, 0.1 + bh + 0.14 + 0.36, dy);
+    dish.position.set(dx, 0.1 + bh + 0.14 + 0.36, -dy);
     dish.rotation.x = -0.4;
     dish.rotation.y = Math.random() * Math.PI * 2;
     bldg.add(dish);
@@ -2130,10 +2130,10 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   const shedX = (Math.random() - 0.5) * bw * 0.3;
   const shedY = (Math.random() - 0.5) * bd * 0.3;
   const shed = new THREE.Mesh(new THREE.BoxGeometry(shedW, shedH, shedD), wallMat);
-  shed.position.set(shedX, 0.1 + bh + 0.07 + shedH / 2, shedY);
+  shed.position.set(shedX, 0.1 + bh + 0.07 + shedH / 2, -shedY);
   bldg.add(shed);
   const shedDoor = new THREE.Mesh(new THREE.BoxGeometry(shedW * 0.3, shedH * 0.7, 0.04), accentMat);
-  shedDoor.position.set(shedX, 0.1 + bh + 0.07 + shedH * 0.35, shedY + shedD / 2 + 0.03);
+  shedDoor.position.set(shedX, 0.1 + bh + 0.07 + shedH * 0.35, -shedY + shedD / 2 + 0.03);
   bldg.add(shedDoor);
 
   // === VENTS / AC CONDENSER / SOLAR PANELS (mixed) ===
@@ -2145,25 +2145,25 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     if (roll < 0.4) {
       // Standard vent
       const vent = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, 0.2), steelMat);
-      vent.position.set(vx, 0.1 + bh + 0.07 + 0.07, vy);
+      vent.position.set(vx, 0.1 + bh + 0.07 + 0.07, -vy);
       bldg.add(vent);
     } else if (roll < 0.65) {
       // AC condenser — larger box with fan grille
       const ac = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.4), steelMat);
-      ac.position.set(vx, 0.1 + bh + 0.07 + 0.125, vy);
+      ac.position.set(vx, 0.1 + bh + 0.07 + 0.125, -vy);
       bldg.add(ac);
       const grille = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 6), darkMat);
-      grille.position.set(vx, 0.1 + bh + 0.07 + 0.26, vy);
+      grille.position.set(vx, 0.1 + bh + 0.07 + 0.26, -vy);
       bldg.add(grille);
     } else {
       // Solar panel frame — tilted panels
       for (let pi = 0; pi < 2; pi++) {
         const panel = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.22, 0.02), darkMat);
-        panel.position.set(vx + pi * 0.4 - 0.2, 0.1 + bh + 0.07 + 0.12, vy);
+        panel.position.set(vx + pi * 0.4 - 0.2, 0.1 + bh + 0.07 + 0.12, -vy);
         panel.rotation.x = -0.4;
         bldg.add(panel);
         const frame = new THREE.Mesh(new THREE.BoxGeometry(0.37, 0.01, 0.03), steelMat);
-        frame.position.set(vx + pi * 0.4 - 0.2, 0.1 + bh + 0.07 + 0.22, vy - 0.1);
+        frame.position.set(vx + pi * 0.4 - 0.2, 0.1 + bh + 0.07 + 0.22, -vy - 0.1);
         bldg.add(frame);
       }
     }
@@ -2172,10 +2172,10 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   // === SKYLIGHT (30%) ===
   if (Math.random() > 0.7) {
     const skylight = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.04, 0.4), glassMat);
-    skylight.position.set((Math.random() - 0.5) * bw * 0.3, 0.1 + bh + 0.01, (Math.random() - 0.5) * bd * 0.3);
+    skylight.position.set((Math.random() - 0.5) * bw * 0.3, 0.1 + bh + 0.01, -(Math.random() - 0.5) * bd * 0.3);
     bldg.add(skylight);
     const skylightFrame = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.03, 0.44), trimMat);
-    skylightFrame.position.set(skylight.position.x, 0.1 + bh + 0.025, skylight.position.y);
+    skylightFrame.position.set(skylight.position.x, 0.1 + bh + 0.025, -skylight.position.y);
     bldg.add(skylightFrame);
   }
 
@@ -2185,14 +2185,14 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const ay = bd * 0.3 * (Math.random() > 0.5 ? 1 : -1);
     const antH = 0.8 + Math.random() * 0.5;
     const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.012, antH, 4), steelMat);
-    ant.position.set(ax, 0.1 + bh + 0.07 + antH / 2 + 0.15, ay);
+    ant.position.set(ax, 0.1 + bh + 0.07 + antH / 2 + 0.15, -ay);
     bldg.add(ant);
     const tip = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), redMat);
-    tip.position.set(ax, 0.1 + bh + 0.07 + antH + 0.18, ay);
+    tip.position.set(ax, 0.1 + bh + 0.07 + antH + 0.18, -ay);
     bldg.add(tip);
     for (let ci = 0; ci < 2; ci++) {
       const cross = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.02), steelMat);
-      cross.position.set(ax, 0.1 + bh + 0.07 + antH * (0.3 + ci * 0.35) + 0.15, ay);
+      cross.position.set(ax, 0.1 + bh + 0.07 + antH * (0.3 + ci * 0.35) + 0.15, -ay);
       bldg.add(cross);
     }
   }
@@ -2204,11 +2204,11 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const dx = ds * (bw / 2 - 0.05);
     const dy = (Math.random() - 0.5) * bd * 0.6;
     const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, wallH, 4), steelMat);
-    pipe.position.set(dx, 0.1 + wallH / 2, dy);
+    pipe.position.set(dx, 0.1 + wallH / 2, -dy);
     bldg.add(pipe);
     // Bracket at mid-height
     const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.02, 0.04), steelMat);
-    bracket.position.set(dx - ds * 0.02, 0.1 + wallH * 0.5, dy);
+    bracket.position.set(dx - ds * 0.02, 0.1 + wallH * 0.5, -dy);
     bldg.add(bracket);
   }
 
@@ -2220,11 +2220,11 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const ay = (Math.random() - 0.5) * bd * 0.5;
     const az = 0.1 + wallH * (0.25 + Math.random() * 0.3);
     const acUnit = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.2, 0.3), steelMat);
-    acUnit.position.set(ax + as * 0.06, az, ay);
+    acUnit.position.set(ax + as * 0.06, az, -ay);
     bldg.add(acUnit);
     // Fan grille on face
       const grille = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.02, 6), darkMat);
-    grille.position.set(ax + as * 0.11, az, ay);
+    grille.position.set(ax + as * 0.11, az, -ay);
     grille.rotation.y = Math.PI / 2;
     bldg.add(grille);
   }
@@ -2236,7 +2236,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const vx = (Math.random() - 0.5) * bw * 0.6;
     const vineLen = 0.3 + Math.random() * 0.5;
     const vine = new THREE.Mesh(new THREE.BoxGeometry(0.08, vineLen, 0.03), vegMat);
-    vine.position.set(vx, 0.1 + wallH - vineLen / 2, vs * (bd / 2 + 0.01));
+    vine.position.set(vx, 0.1 + wallH - vineLen / 2, -vs * (bd / 2 + 0.01));
     bldg.add(vine);
   }
 
@@ -2246,23 +2246,23 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     for (let fi = 0; fi < 3; fi++) {
       const fz = 0.1 + wallH * (0.25 + fi * 0.3);
       const plat = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.45), steelMat);
-      plat.position.set(feX, fz, southY - 0.25);
+      plat.position.set(feX, fz, -southY - 0.25);
       bldg.add(plat);
       const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.4), steelMat);
-      bracket.position.set(feX, fz - 0.08, southY - 0.14);
+      bracket.position.set(feX, fz - 0.08, -southY - 0.14);
       bldg.add(bracket);
       const rail = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.22, 0.03), steelMat);
-      rail.position.set(feX, fz + 0.11, southY - 0.45);
+      rail.position.set(feX, fz + 0.11, -southY - 0.45);
       bldg.add(rail);
       for (const rx of [-0.3, 0, 0.3]) {
         const post = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.22, 0.03), steelMat);
-        post.position.set(feX + rx, fz + 0.11, southY - 0.45);
+        post.position.set(feX + rx, fz + 0.11, -southY - 0.45);
         bldg.add(post);
       }
     }
     const ladderH = wallH * 0.55;
     const ladder = new THREE.Mesh(new THREE.BoxGeometry(0.05, ladderH, 0.05), steelMat);
-    ladder.position.set(feX + 0.3, 0.1 + wallH * 0.25 + ladderH / 2, southY - 0.4);
+    ladder.position.set(feX + 0.3, 0.1 + wallH * 0.25 + ladderH / 2, -southY - 0.4);
     bldg.add(ladder);
   }
 
@@ -2280,7 +2280,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
       new THREE.BoxGeometry(gw, gh, 0.015),
       graffitiMats[gi % graffitiMats.length]
     );
-    tag.position.set(gx, gz, gy);
+    tag.position.set(gx, gz, -gy);
     bldg.add(tag);
   }
 
@@ -2294,7 +2294,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
       new THREE.BoxGeometry(0.02, ch, 0.015),
       crackMat
     );
-    crack.position.set(cx, 0.3 + Math.random() * (wallH * 0.5), cs * (bd / 2 + 0.015));
+    crack.position.set(cx, 0.3 + Math.random() * (wallH * 0.5), -cs * (bd / 2 + 0.015));
     crack.rotation.y = (Math.random() - 0.5) * 0.3;
     bldg.add(crack);
   }
@@ -2311,7 +2311,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
       new THREE.BoxGeometry(bw2, bh2, 0.02),
       brickMat
     );
-    patch.position.set(bx, bz, bs * (bd / 2 + 0.01));
+    patch.position.set(bx, bz, -bs * (bd / 2 + 0.01));
     bldg.add(patch);
   }
 
@@ -2320,7 +2320,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     if (Math.random() > 0.6) continue;
     const bx = doorX + (bi - 1) * 0.35;
     const bollard = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.15, 4), steelMat);
-    bollard.position.set(bx, 0.075, southY - 0.25);
+    bollard.position.set(bx, 0.075, -southY - 0.25);
     bldg.add(bollard);
   }
 
@@ -2330,11 +2330,11 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     const dumpX = dumpSide * (bw / 2 + 0.4);
     const dumpY = (Math.random() - 0.5) * bd * 0.4;
     const dumpster = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.3), dumpsterBodyMat);
-    dumpster.position.set(dumpX, 0.125, dumpY);
+    dumpster.position.set(dumpX, 0.125, -dumpY);
     bldg.add(dumpster);
     // Lid slightly open
     const lid = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.02), dumpsterLidMat);
-    lid.position.set(dumpX, 0.27, dumpY - 0.08);
+    lid.position.set(dumpX, 0.27, -dumpY - 0.08);
     lid.rotation.x = 0.3;
     bldg.add(lid);
     // Trash spilling out
@@ -2343,7 +2343,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
         new THREE.BoxGeometry(0.06 + Math.random() * 0.06, 0.03, 0.04),
         Math.random() > 0.5 ? boardMat : trimMat
       );
-      trash.position.set(dumpX + (Math.random() - 0.5) * 0.3, 0.02, dumpY + 0.2 + Math.random() * 0.1);
+      trash.position.set(dumpX + (Math.random() - 0.5) * 0.3, 0.02, -dumpY + 0.2 + Math.random() * 0.1);
       trash.rotation.y = Math.random() * Math.PI;
       bldg.add(trash);
     }
@@ -2359,7 +2359,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
         new THREE.SphereGeometry(0.08 + Math.random() * 0.06, 6, 6),
         vegMat
       );
-      bush.position.set(bx + (Math.random() - 0.5) * 0.2, 0.08, bs * (bd / 2 + 0.1 + Math.random() * 0.15));
+      bush.position.set(bx + (Math.random() - 0.5) * 0.2, 0.08, -bs * (bd / 2 + 0.1 + Math.random() * 0.15));
       bldg.add(bush);
     }
   }
@@ -2387,7 +2387,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     } else {
       rubble = new THREE.Mesh(new THREE.BoxGeometry(0.08 + Math.random() * 0.1, 0.02, 0.06), vegMat);
     }
-    rubble.position.set(rx, 0.025, ry);
+    rubble.position.set(rx, 0.025, -ry);
     bldg.add(rubble);
   }
 
@@ -2420,6 +2420,6 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
     }
   }
 
-  bldg.position.set(x, 0, y);
+  bldg.position.set(x, 0, -y);
   return bldg;
 }
