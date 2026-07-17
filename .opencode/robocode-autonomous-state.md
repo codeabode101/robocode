@@ -1,6 +1,6 @@
 # Robocode Autonomous State
-Last updated: 2026-07-17T20:18:00Z
-Iteration: 1
+Last updated: 2026-07-17T21:05:00Z
+Iteration: 2
 Mode: idle
 
 ## Current Task
@@ -11,8 +11,7 @@ None — waiting for next directive.
 - Created opencode.json with Playwright MCP configured
 - Created this state file
 - Created spatial_tests.js (12 tests)
-- Fixed boarded windows: removed solid plywood backing (commit c1a4cbe)
-- Fixed boarded windows v2: dark interior backing + flush planks at 0.06 offset (commit c1a4cbe)
+- Fixed boarded windows: all windows X-shaped planks (commit 395d620)
 - Added road at x=24 between building columns (commit d22a1b1)
 - Deployed to https://robocode.rahejaom.workers.dev
 

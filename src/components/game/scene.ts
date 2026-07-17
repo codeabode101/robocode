@@ -1746,27 +1746,85 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
         const bx = (w: number, d: number, h: number) => isY ? new THREE.BoxGeometry(d, w, h) : new THREE.BoxGeometry(w, d, h);
 
         if (state < 0.20) {
-          // Boarded — dark interior backing + X-shaped planks across the opening
-          const boardOff = faceSign * 0.05;
-          const darkBg = new THREE.Mesh(bx(ww + 0.04, 0.03, wh + 0.04), darkMat);
-          if (axis === 'x') darkBg.position.set(fx, fy + boardOff, rowZ);
-          else darkBg.position.set(fx + boardOff, fy, rowZ);
-          bldg.add(darkBg);
+          // Boarded — glass + frame + cracks + planks on top
           const plankOff = faceSign * 0.06;
-          const pd = 0.06;
-          // X boarding: two diagonal planks crossing
-          const diag = Math.sqrt(ww * ww + wh * wh) + 0.1;
-          const angle = Math.atan2(wh, ww);
-          const p1 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
-          const p2 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
-          if (axis === 'x') {
-            p1.position.set(fx, fy + plankOff, rowZ); p1.rotation.z = angle;
-            p2.position.set(fx, fy + plankOff, rowZ); p2.rotation.z = -angle;
-          } else {
-            p1.position.set(fx + plankOff, fy, rowZ); p1.rotation.x = angle;
-            p2.position.set(fx + plankOff, fy, rowZ); p2.rotation.x = -angle;
+          // 1. Glass pane
+          const glass = new THREE.Mesh(bx(ww, 0.04, wh), darkMat);
+          if (axis === 'x') glass.position.set(fx, fy + off, rowZ);
+          else glass.position.set(fx + off, fy, rowZ);
+          bldg.add(glass);
+          // 2. Frame
+          for (const [lw, lz] of [[ww + 0.1, wh / 2], [ww + 0.1, -wh / 2]] as const) {
+            const f = new THREE.Mesh(bx(lw, fd, fd), trimMat);
+            if (axis === 'x') f.position.set(fx, fy + fo, rowZ + lz);
+            else f.position.set(fx + fo, fy, rowZ + lz);
+            bldg.add(f);
           }
-          bldg.add(p1); bldg.add(p2);
+          for (const [lh, lz] of [[wh + 0.1, -ww / 2], [wh + 0.1, ww / 2]] as const) {
+            const f = new THREE.Mesh(new THREE.BoxGeometry(fd, fd, lh), trimMat);
+            if (axis === 'x') f.position.set(fx + lz, fy + fo, rowZ);
+            else f.position.set(fx + fo, fy + lz, rowZ);
+            bldg.add(f);
+          }
+          // 3. Cracks in glass
+          const numCracks = 1 + (Math.random() > 0.6 ? 1 : 0);
+          for (let ci = 0; ci < numCracks; ci++) {
+            const crackLen = Math.min(ww, wh) * (0.4 + Math.random() * 0.4);
+            const crack = new THREE.Mesh(bx(crackLen, 0.05, 0.015), crackMat);
+            const crackAngle = Math.PI / 4 + (Math.random() - 0.5) * 0.6;
+            if (axis === 'x') {
+              crack.position.set(fx + (Math.random() - 0.5) * ww * 0.3, fy + off + 0.01, rowZ + (Math.random() - 0.5) * wh * 0.3);
+              crack.rotation.z = crackAngle;
+            } else {
+              crack.position.set(fx + off + 0.01, fy + (Math.random() - 0.5) * ww * 0.3, rowZ + (Math.random() - 0.5) * wh * 0.3);
+              crack.rotation.x = crackAngle;
+            }
+            bldg.add(crack);
+          }
+          // 4. Planks on top — 4 styles
+          const style = Math.floor(Math.random() * 4);
+          const pd = 0.06;
+          if (style === 0) {
+            // X boarding: two diagonal planks crossing
+            const diag = Math.sqrt(ww * ww + wh * wh) + 0.1;
+            const angle = Math.atan2(wh, ww);
+            const p1 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
+            const p2 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
+            if (axis === 'x') {
+              p1.position.set(fx, fy + plankOff, rowZ); p1.rotation.z = angle;
+              p2.position.set(fx, fy + plankOff, rowZ); p2.rotation.z = -angle;
+            } else {
+              p1.position.set(fx + plankOff, fy, rowZ); p1.rotation.x = angle;
+              p2.position.set(fx + plankOff, fy, rowZ); p2.rotation.x = -angle;
+            }
+            bldg.add(p1); bldg.add(p2);
+          } else if (style === 1) {
+            // Single diagonal plank
+            const d = new THREE.Mesh(bx(ww + 0.14, pd, 0.05), boardMat);
+            if (axis === 'x') { d.position.set(fx, fy + plankOff, rowZ); d.rotation.z = 0.7; }
+            else { d.position.set(fx + plankOff, fy, rowZ); d.rotation.x = 0.7; }
+            bldg.add(d);
+          } else if (style === 2) {
+            // Horizontal slats (2–3)
+            const n = 2 + (Math.random() > 0.5 ? 1 : 0);
+            for (let s = 0; s < n; s++) {
+              const slat = new THREE.Mesh(bx(ww + 0.06, pd, 0.05), boardMat);
+              const zOff = (s - (n - 1) / 2) * (wh / n);
+              if (axis === 'x') slat.position.set(fx, fy + plankOff, rowZ + zOff);
+              else slat.position.set(fx + plankOff, fy, rowZ + zOff);
+              bldg.add(slat);
+            }
+          } else {
+            // Vertical slats (2–3)
+            const n = 2 + (Math.random() > 0.5 ? 1 : 0);
+            for (let s = 0; s < n; s++) {
+              const slat = new THREE.Mesh(new THREE.BoxGeometry(pd, pd, wh + 0.06), boardMat);
+              const xOff = (s - (n - 1) / 2) * (ww / n);
+              if (axis === 'x') slat.position.set(fx + xOff, fy + plankOff, rowZ);
+              else slat.position.set(fx + plankOff, fy + xOff, rowZ);
+              bldg.add(slat);
+            }
+          }
         } else if (state < 0.40) {
           // Intact glass with frame
           const glass = new THREE.Mesh(bx(ww, 0.04, wh), darkMat);
