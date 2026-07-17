@@ -367,47 +367,47 @@ export function createCardboardBox(): { group: THREE.Group; lid: THREE.Mesh } {
   const w = 0.6;
 
   // Bottom panel
-  const bottom = new THREE.Mesh(new THREE.BoxGeometry(w, w, t), innerMat);
-  bottom.position.set(0, 0, t / 2);
+  const bottom = new THREE.Mesh(new THREE.BoxGeometry(w, t, w), innerMat);
+  bottom.position.set(0, t / 2, 0);
   group.add(bottom);
 
   // North wall
-  const north = new THREE.Mesh(new THREE.BoxGeometry(w, t, h), boxMat);
-  north.position.set(0, w / 2 - t / 2, t / 2 + h / 2);
+  const north = new THREE.Mesh(new THREE.BoxGeometry(w, h, t), boxMat);
+  north.position.set(0, t / 2 + h / 2, w / 2 - t / 2);
   group.add(north);
 
   // South wall
-  const south = new THREE.Mesh(new THREE.BoxGeometry(w, t, h), boxMat);
-  south.position.set(0, -(w / 2 - t / 2), t / 2 + h / 2);
+  const south = new THREE.Mesh(new THREE.BoxGeometry(w, h, t), boxMat);
+  south.position.set(0, t / 2 + h / 2, -(w / 2 - t / 2));
   group.add(south);
 
   // East wall
-  const east = new THREE.Mesh(new THREE.BoxGeometry(t, w, h), boxMat);
-  east.position.set(w / 2 - t / 2, 0, t / 2 + h / 2);
+  const east = new THREE.Mesh(new THREE.BoxGeometry(t, h, w), boxMat);
+  east.position.set(w / 2 - t / 2, t / 2 + h / 2, 0);
   group.add(east);
 
   // West wall
-  const west = new THREE.Mesh(new THREE.BoxGeometry(t, w, h), boxMat);
-  west.position.set(-(w / 2 - t / 2), 0, t / 2 + h / 2);
+  const west = new THREE.Mesh(new THREE.BoxGeometry(t, h, w), boxMat);
+  west.position.set(-(w / 2 - t / 2), t / 2 + h / 2, 0);
   group.add(west);
 
   // Tape stripes on side walls
   for (let s = -1; s <= 1; s += 2) {
-    const tape = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.62, t), tapeMat);
-    tape.position.set(s * 0.28, 0, t + h);
+    const tape = new THREE.Mesh(new THREE.BoxGeometry(0.04, t, 0.62), tapeMat);
+    tape.position.set(s * 0.28, t + h, 0);
     group.add(tape);
   }
 
   // Lid — hinged at north edge (pivotY = 0.2875)
-  const lid = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.58, 0.04), boxMat);
-  lid.position.set(0, 0, t + h + 0.02);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.04, 0.58), boxMat);
+  lid.position.set(0, t + h + 0.02, 0);
   lid.userData.pivotX = 0;
   lid.userData.pivotY = 0.2875;
   group.add(lid);
 
   // Lid tape — parent to lid so it rotates with it
-  const lidTape = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.5, 0.05), tapeMat);
-  lidTape.position.set(0, 0, t + h + 0.045);
+  const lidTape = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.05, 0.5), tapeMat);
+  lidTape.position.set(0, t + h + 0.045, 0);
   lid.add(lidTape);
 
   return { group, lid };
@@ -422,9 +422,9 @@ export function openBoxLid(lid: THREE.Mesh, progress: number) {
   const cosA = Math.cos(angle);
   const sinA = Math.sin(angle);
   lid.position.y = pivotY * (1 - cosA);
-  lid.position.z = lidZ - pivotY * sinA;
+  lid.position.y = lidZ - pivotY * sinA;
   lid.rotation.x = angle;
-  lid.rotation.z = 0;
+  lid.rotation.y = 0;
 }
 
 export function createLaptop(): THREE.Group {
@@ -436,34 +436,34 @@ export function createLaptop(): THREE.Group {
 
   const baseW = 0.6, baseD = 0.35, baseH = 0.025, lidH = baseD;
 
-  const base = new THREE.Mesh(new THREE.BoxGeometry(baseW, baseD, baseH), baseMat);
-  base.position.set(0, 0, baseH / 2);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(baseW, baseH, baseD), baseMat);
+  base.position.set(0, baseH / 2, 0);
   group.add(base);
 
-  const kb = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.14, 0.004), darkMat);
-  kb.position.set(0, -0.03, baseH + 0.002);
+  const kb = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.004, 0.14), darkMat);
+  kb.position.set(0, baseH + 0.002, -0.03);
   group.add(kb);
 
   const screenGroup = new THREE.Group();
-  screenGroup.position.set(0, -baseD / 2, baseH);
-  screenGroup.rotation.x = Math.PI / 2;
+  screenGroup.position.set(0, baseH, -baseD / 2);
+  screenGroup.rotation.x = 0;
 
-  const lid = new THREE.Mesh(new THREE.BoxGeometry(baseW, lidH, 0.02), lidMat);
-  lid.position.set(0, lidH / 2, 0);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(baseW, 0.02, lidH), lidMat);
+  lid.position.set(0, 0, lidH / 2);
   lid.renderOrder = 0;
   screenGroup.add(lid);
 
-  const display = new THREE.Mesh(new THREE.BoxGeometry(baseW - 0.04, lidH - 0.04, 0.006), screenMat);
+  const display = new THREE.Mesh(new THREE.BoxGeometry(baseW - 0.04, 0.006, lidH - 0.04), screenMat);
   display.name = 'laptop-display';
-  display.position.set(0, lidH / 2, -0.030);
+  display.position.set(0, -0.030, lidH / 2);
   display.renderOrder = 1;
   screenGroup.add(display);
 
   group.add(screenGroup);
 
-  const usbPort = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.028, 0.008), darkMat);
+  const usbPort = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.008, 0.028), darkMat);
   usbPort.name = 'usb-port';
-  usbPort.position.set(-baseW / 2, -baseD / 2 + 0.02, baseH / 2);
+  usbPort.position.set(-baseW / 2, baseH / 2, -baseD / 2 + 0.02);
   group.add(usbPort);
   return group;
 }
@@ -490,7 +490,7 @@ export function createWireCoil(): THREE.Mesh {
     emissiveIntensity: 0.5,
   });
   const coil = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 6, 12), mat);
-  coil.position.z = 0.1;
+  coil.position.y = 0.1;
   return coil;
 }
 
@@ -649,7 +649,7 @@ export function walkPlayer(
   speed: number,
   delta: number,
   worldTime: number,
-  baseZ: number,
+  baseY: number,
   visual: RobotVisual | null,
   leftLegPivot: THREE.Object3D | null,
   rightLegPivot: THREE.Object3D | null,
@@ -665,7 +665,7 @@ export function walkPlayer(
       visual.leftArm.rotation.x = -Math.PI / 2;
       visual.rightArm.rotation.x = -Math.PI / 2;
     }
-    if (visual) visual.root.position.set(pos.x, pos.y, baseZ);
+    if (visual) visual.root.position.set(pos.x, baseY, pos.y);
     return true;
   }
   const dirX = dx / dist;
@@ -674,7 +674,7 @@ export function walkPlayer(
   pos.y += dirY * speed * delta;
   if (yawRef) yawRef.current = Math.atan2(dirX, dirY);
   if (visual) {
-    visual.root.position.set(pos.x, pos.y, baseZ + Math.sin(worldTime * 10) * 0.02);
+    visual.root.position.set(pos.x, baseY + Math.sin(worldTime * 10) * 0.02, pos.y);
   }
   const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
   if (leftLegPivot) leftLegPivot.rotation.x = walkSwing;

@@ -466,7 +466,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const scratchVec3 = useRef(new THREE.Vector3());
   const scratchVec3b = useRef(new THREE.Vector3());
   const scratchVec3c = useRef(new THREE.Vector3());
-  const scratchVec3Up = useRef(new THREE.Vector3(0, 0, 1));
+  const scratchVec3Up = useRef(new THREE.Vector3(0, 1, 0));
   const scratchVec3UpY = useRef(new THREE.Vector3(0, 1, 0));
   const scratchQuat = useRef(new THREE.Quaternion());
   const scratchQuatB = useRef(new THREE.Quaternion());
@@ -854,7 +854,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const robot = createRobotVisual(new THREE.Color(colorHex), '');
     robot.nameSprite.visible = false;
     robot.root.scale.set(0.18, 0.18, 0.18);
-    robot.root.rotation.set(Math.PI / 2, 0, 0);
+    robot.root.rotation.set(0, 0, 0);
     return robot;
   }, []);
 
@@ -864,7 +864,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       workshopRegisterDockRef.current?.attach(robot);
     } else {
       npc.visual.root.attach(robot);
-      robot.position.set(0.105, 0.22, 0.11);
+      robot.position.set(0.105, 0.11, 0.22);
       robot.rotation.set(0, 0, Math.PI / 2);
       robot.scale.set(0.35, 0.35, 0.35);
     }
@@ -1501,7 +1501,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const triggerAttentionEvent = () => {
     playSparkBurst();
-    const kioskPos = new THREE.Vector3(NPC_POSITION.x, NPC_POSITION.y - 0.1, 0.15);
+    const kioskPos = new THREE.Vector3(NPC_POSITION.x, 0.15, NPC_POSITION.y - 0.1);
 
     // Smoke burst particles (expanding grey spheres)
     const particleGroup = new THREE.Group();
@@ -1737,7 +1737,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
       if (roomOwnerVisualRef.current) {
         roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current);
-        if (roomOwnerVisualRef.current.rightArm) roomOwnerVisualRef.current.rightArm.rotation.z = -0.3;
+        if (roomOwnerVisualRef.current.rightArm) roomOwnerVisualRef.current.rightArm.rotation.y = -0.3;
       }
     }
   });
@@ -1897,14 +1897,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           inWorkshopRoomRef.current = true;
           setInWorkshopRoom(true);
           if (localRobotRef.current) {
-            localRobotRef.current.root.position.set(pos.x, pos.y, 0.26);
+            localRobotRef.current.root.position.set(pos.x, 0.26, pos.y);
           }
         } else if (data.position.room === 'apartment') {
           inApartmentRoomRef.current = true;
           setInApartmentRoom(true);
           roomObstacleHitboxesRef.current = [];
           if (localRobotRef.current) {
-            localRobotRef.current.root.position.set(pos.x, pos.y, 0.28);
+            localRobotRef.current.root.position.set(pos.x, 0.28, pos.y);
           }
           if (outdoorSparkyRef.current) outdoorSparkyRef.current.root.visible = false;
           if (apartmentSparkyRef.current) apartmentSparkyRef.current.root.visible = true;
@@ -1917,7 +1917,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
         } else {
           if (localRobotRef.current) {
-            localRobotRef.current.root.position.set(pos.x, pos.y, 0.24);
+            localRobotRef.current.root.position.set(pos.x, 0.24, pos.y);
           }
         }
       }
@@ -1925,7 +1925,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (data.questStage === 'intro' && data.position && data.position.x === 0 && data.position.y === 0) {
         localPositionRef.current.set(-5.53, -9.63);
         if (localRobotRef.current) {
-          localRobotRef.current.root.position.set(-5.53, -9.63, 0.24);
+          localRobotRef.current.root.position.set(-5.53, 0.24, -9.63);
         }
         yawRef.current = Math.atan2(-2.87 - (-5.53), -5.3 - (-9.63));
       }
@@ -1992,10 +1992,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     workshopRoomGroupRef.current = workshopRoomGroup;
     {
       const wl = new THREE.PointLight(0xfbbf24, 10, 6);
-      wl.position.set(2.35, 1.95, 1.4);
+      wl.position.set(2.35, 1.4, 1.95);
       workshopRoomGroup.add(wl);
       const wl2 = new THREE.PointLight(0xfbbf24, 4, 5);
-      wl2.position.set(-2.5, -2.0, 1.2);
+      wl2.position.set(-2.5, 1.2, -2.0);
       workshopRoomGroup.add(wl2);
     }
 
@@ -2005,18 +2005,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     apartmentRoomGroupRef.current = apartmentRoomGroup;
     {
       const al = new THREE.PointLight(0xfef08a, 10, 6);
-      al.position.set(0, 0, 1.5);
+      al.position.set(0, 1.5, 0);
       apartmentRoomGroup.add(al);
       const al2 = new THREE.PointLight(0xfef08a, 4, 4);
-      al2.position.set(-2.2, -2.5, 0.9);
+      al2.position.set(-2.2, 0.9, -2.5);
       apartmentRoomGroup.add(al2);
     }
 
     const aspect = mountElement.clientWidth / mountElement.clientHeight;
     const camera = new THREE.PerspectiveCamera(65, aspect, 0.1, 100);
-    camera.up.set(0, 0, 1);
-    camera.position.set(0, -10.5, 2.2);
-    camera.lookAt(0, -3, 0.8);
+    camera.up.set(0, 1, 0);
+    camera.position.set(0, 2.2, -10.5);
+    camera.lookAt(0, 0.8, -3);
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -2034,7 +2034,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     ambientLightRef.current = ambientLight;
 
     const sunLight = new THREE.DirectionalLight(0xffeedd, 0.55);
-    sunLight.position.set(-10, -8, 5);
+    sunLight.position.set(-10, 5, -8);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(512, 512);
     sunLight.shadow.camera.left = -18;
@@ -2050,14 +2050,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       new THREE.CircleGeometry(1.1, 30),
       createToonMaterial(0xffdd99, 0.4, 0.03)
     );
-    sun.position.set(8.5, 6.8, 5.2);
+    sun.position.set(8.5, 5.2, 6.8);
     outdoorGroup.add(sun);
 
     const water = new THREE.Mesh(
       new THREE.PlaneGeometry(2000, 2000),
       createToonMaterial(0x2a3a4a)
     );
-    water.position.z = 0.02;
+    water.position.y = 0.02;
     water.receiveShadow = true;
     outdoorGroup.add(water);
 
@@ -2066,7 +2066,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       new THREE.PlaneGeometry(2000, 2000),
       new THREE.MeshBasicMaterial({ color: 0x0a0a14 })
     );
-    deepFloor.position.z = -5;
+    deepFloor.position.y = -5;
     outdoorGroup.add(deepFloor);
 
     // D-shaped island: flat left edge at x=-11, circular elsewhere
@@ -2090,7 +2090,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         gradientMap: createGradientTexture(3),
       })
     );
-    cityGround.position.z = 0.10;
+    cityGround.position.y = 0.10;
     cityGround.receiveShadow = true;
     outdoorGroup.add(cityGround);
 
@@ -2099,15 +2099,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // SINGLE continuous road rectangle covering ALL road areas (y:-22 to y:9.5, h:31.5)
     const roadColor = 0x5a6a7a;
-    const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(46, 24, 0.04), createToonMaterial(roadColor));
-    roadMesh.position.set(9, -2, 0.14);
+    const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(46, 0.04, 24), createToonMaterial(roadColor));
+    roadMesh.position.set(9, 0.14, -2);
     roadMesh.receiveShadow = true;
     outdoorGroup.add(roadMesh);
     // Grass blocks ABOVE the road to carve out city blocks between roads
     const gMat = createToonMaterial(0x6aaa5a);
     const addG = (x: number, y: number, w: number, h: number) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.04), gMat);
-      m.position.set(x, y, 0.17); m.receiveShadow = true;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.04, h), gMat);
+      m.position.set(x, 0.17, y); m.receiveShadow = true;
       outdoorGroup.add(m);
     };
     // All grass rows — expanded by 0.5 on each side for bigger building plots
@@ -2126,8 +2126,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Sidewalks along road edges, split to avoid covering intersections
     const sMat = new THREE.MeshBasicMaterial({ color: 0xc8c0b0 });
     const makeSW = (x: number, y: number, w: number, h: number) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), sMat);
-      m.position.set(x, y, 0.24); outdoorGroup.add(m);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, h), sMat);
+      m.position.set(x, 0.24, y); outdoorGroup.add(m);
     };
     // Horizontal sidewalks: split at each vertical road (gaps for intersections)
     const hSW = (y: number) => {
@@ -2152,7 +2152,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const count = Math.floor(len / step);
       for (let i = 0; i < count; i++) {
         const d = new THREE.Mesh(new THREE.PlaneGeometry(horiz ? dashLen : 0.06, horiz ? 0.06 : dashLen), dashMat);
-        d.position.set(horiz ? x - len / 2 + i * step + dashLen / 2 : x, horiz ? y : y - len / 2 + i * step + dashLen / 2, 0.17);
+        d.position.set(horiz ? x - len / 2 + i * step + dashLen / 2 : x, 0.17, horiz ? y : y - len / 2 + i * step + dashLen / 2);
         outdoorGroup.add(d);
       }
     };
@@ -2166,14 +2166,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // Parking lot at (0, -11) — 3 spaces in the 3-unit gap between bottom grass columns
     const pkMat = createToonMaterial(0x3a3a4a);
-    const asphalt = new THREE.Mesh(new THREE.BoxGeometry(3, 4.5, 0.02), pkMat);
-    asphalt.position.set(0, -11.75, 0.22);
+    const asphalt = new THREE.Mesh(new THREE.BoxGeometry(3, 0.02, 4.5), pkMat);
+    asphalt.position.set(0, 0.22, -11.75);
     asphalt.receiveShadow = true;
     outdoorGroup.add(asphalt);
     const wMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const pLine = (x: number, y: number, w: number, h: number) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.008), wMat);
-      m.position.set(x, y, 0.24);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.008, h), wMat);
+      m.position.set(x, 0.24, y);
       outdoorGroup.add(m);
     };
     // Perimeter
@@ -2188,20 +2188,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Small lake with 6 palm trees and fountain centerpiece
     const lx = 6, ly = -4, lr = 1.8;
     const lake = new THREE.Mesh(new THREE.CircleGeometry(lr, 24), createToonMaterial(0x38bdf8));
-    lake.position.set(lx, ly, 0.15); outdoorGroup.add(lake);
+    lake.position.set(lx, 0.15, ly); outdoorGroup.add(lake);
     const lakeDeep = new THREE.Mesh(new THREE.CircleGeometry(lr * 0.7, 24), createToonMaterial(0x1d4ed8));
-    lakeDeep.position.set(lx, ly, 0.14); outdoorGroup.add(lakeDeep);
+    lakeDeep.position.set(lx, 0.14, ly); outdoorGroup.add(lakeDeep);
     const lakeShine = new THREE.Mesh(new THREE.CircleGeometry(lr * 0.3, 20), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 }));
-    lakeShine.position.set(lx + 0.4, ly - 0.4, 0.16); outdoorGroup.add(lakeShine);
+    lakeShine.position.set(lx + 0.4, 0.16, ly - 0.4); outdoorGroup.add(lakeShine);
     // Fountain in the middle of the lake
     const fCol = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.3, 12), createToonMaterial(0x94a3b8));
-    fCol.rotation.x = Math.PI / 2; fCol.position.set(lx, ly, 0.22); outdoorGroup.add(fCol);
+    fCol.rotation.x = 0; fCol.position.set(lx, 0.22, ly); outdoorGroup.add(fCol);
     const fDish = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.06, 14), createToonMaterial(0x94a3b8));
-    fDish.rotation.x = Math.PI / 2; fDish.position.set(lx, ly, 0.38); outdoorGroup.add(fDish);
+    fDish.rotation.x = 0; fDish.position.set(lx, 0.38, ly); outdoorGroup.add(fDish);
     const fWater = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.02, 18), new THREE.MeshBasicMaterial({ color: 0x2563eb, transparent: true, opacity: 0.6 }));
-    fWater.rotation.x = Math.PI / 2; fWater.position.set(lx, ly, 0.42); outdoorGroup.add(fWater);
+    fWater.rotation.x = 0; fWater.position.set(lx, 0.42, ly); outdoorGroup.add(fWater);
     const fJet = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.6, 8), new THREE.MeshBasicMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.45 }));
-    fJet.rotation.x = Math.PI / 2; fJet.position.set(lx, ly, 0.7); outdoorGroup.add(fJet);
+    fJet.rotation.x = 0; fJet.position.set(lx, 0.7, ly); outdoorGroup.add(fJet);
     for (let i = 0; i < 6; i++) {
       const angle = (Math.PI * 2 * i) / 6;
       const tx = lx + Math.cos(angle) * lr;
@@ -2234,9 +2234,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     ];
     rockDefs.forEach(([rx, ry, color, geo, sx, sy, sz]) => {
       const rock = new THREE.Mesh(geo, createToonMaterial(color));
-      rock.position.set(rx, ry, 0.18);
+      rock.position.set(rx, 0.18, ry);
       rock.scale.set(sx, sy, sz);
-      rock.rotation.z = Math.random() * Math.PI * 2;
+      rock.rotation.y = Math.random() * Math.PI * 2;
       rock.receiveShadow = true;
       outdoorGroup.add(rock);
     });
@@ -2245,12 +2245,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const benchMat = createToonMaterial(0x8b6b4a);
     const benchPositions: [number, number][] = [];
     benchPositions.forEach(([benchX, benchY]) => {
-      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.12), benchMat);
-      seat.position.set(benchX, benchY, 0.16);
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.08), benchMat);
+      seat.position.set(benchX, 0.16, benchY);
       seat.castShadow = true;
       outdoorGroup.add(seat);
-      const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.04), benchMat);
-      leg1.position.set(benchX - 0.18, benchY - 0.04, 0.1);
+      const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.05), benchMat);
+      leg1.position.set(benchX - 0.18, 0.1, benchY - 0.04);
       outdoorGroup.add(leg1);
       const leg2 = leg1.clone();
       leg2.position.x = benchX + 0.18;
@@ -2262,7 +2262,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const canPositions: [number, number][] = [];
     canPositions.forEach(([canX, canY]) => {
       const can = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.25, 10), canMat);
-      can.position.set(canX, canY, 0.12);
+      can.position.set(canX, 0.12, canY);
 
       outdoorGroup.add(can);
     });
@@ -2278,15 +2278,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       [10.75, -9.75], [13.25, -9.75],
     ];
     lightPositions.forEach(([lx, ly]) => {
-      const pole = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 1), poleMat);
-      pole.position.set(lx, ly, 0.5);
+      const pole = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1, 0.06), poleMat);
+      pole.position.set(lx, 0.5, ly);
       pole.castShadow = true;
       outdoorGroup.add(pole);
       const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), lampMat);
-      lamp.position.set(lx, ly, 1.1);
+      lamp.position.set(lx, 1.1, ly);
       outdoorGroup.add(lamp);
       const lampLight = new THREE.PointLight(0xfef08a, 0.55, 5);
-      lampLight.position.set(lx, ly, 1.1);
+      lampLight.position.set(lx, 1.1, ly);
       outdoorGroup.add(lampLight);
     });
 
@@ -2302,7 +2302,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     ];
     doorEntries.forEach(([dx, dy]) => {
       const pool = new THREE.Mesh(new THREE.CircleGeometry(0.8, 16), poolMat);
-      pool.position.set(dx, dy, 0.03);
+      pool.position.set(dx, 0.03, dy);
       pool.rotation.x = -Math.PI / 2;
       outdoorGroup.add(pool);
     });
@@ -2311,12 +2311,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const treeCrownMat = createToonMaterial(0x5a9e5a);
     const treePositions: [number, number][] = [[-8, -6], [-4.5, -6], [-2, -6], [2.5, -6], [6, -6], [9, -6]];
     treePositions.forEach(([tx, ty]) => {
-      const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.4), treeTrunkMat);
-      trunk.position.set(tx, ty, 0.2);
+      const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.08), treeTrunkMat);
+      trunk.position.set(tx, 0.2, ty);
       trunk.castShadow = true;
       outdoorGroup.add(trunk);
       const crown = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), treeCrownMat);
-      crown.position.set(tx, ty, 0.7);
+      crown.position.set(tx, 0.7, ty);
       crown.castShadow = true;
       outdoorGroup.add(crown);
     });
@@ -2336,19 +2336,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const sMat = new THREE.MeshToonMaterial({ color: 0xf5d6c6, gradientMap: createGradientTexture(3) });
       const cMat = new THREE.MeshToonMaterial({ color, gradientMap: createGradientTexture(3) });
       const b = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 0.35, 12), cMat);
-      b.rotation.x = Math.PI / 2; b.position.set(0, 0, 0.2); g.add(b);
+      b.rotation.x = 0; b.position.set(0, 0.2, 0); g.add(b);
       const h = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), sMat);
-      h.position.set(0, 0, 0.55); g.add(h);
+      h.position.set(0, 0.55, 0); g.add(h);
       // Hair covering the BACK of the head (visible from camera)
       const hr = new THREE.Mesh(new THREE.SphereGeometry(0.125, 14, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), new THREE.MeshToonMaterial({ color: 0x2a1a0a, gradientMap: createGradientTexture(3) }));
-      hr.position.set(0, -0.04, 0.56); g.add(hr);
+      hr.position.set(0, 0.56, -0.04); g.add(hr);
       // Arms
       for (let s = -1; s <= 1; s += 2) {
         const a = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.25, 8), cMat);
-        a.rotation.x = Math.PI / 2; a.rotation.z = s * 0.3;
-        a.position.set(s * 0.2, 0, 0.35); g.add(a);
+        a.rotation.x = 0; a.rotation.y = s * 0.3;
+        a.position.set(s * 0.2, 0.35, 0); g.add(a);
       }
-      g.position.set(vx, vy, 0.24);
+      g.position.set(vx, 0.24, vy);
       outdoorGroup.add(g);
     };
     makeVendor(-7.5, -5.3, 0xffffff);
@@ -2369,18 +2369,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const cx = -6, cy = -11.8, bw = 7.4, bd = 4.4, bh = 1.7;
 
     // Ground floor slab
-    const gSlab = new THREE.Mesh(new THREE.BoxGeometry(bw, bd, 0.04), psFloor);
-    gSlab.position.set(cx, cy, 0.02); ps.add(gSlab);
+    const gSlab = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.04, bd), psFloor);
+    gSlab.position.set(cx, 0.02, cy); ps.add(gSlab);
     // Ceiling slab
-    const cSlab = new THREE.Mesh(new THREE.BoxGeometry(bw, bd, 0.08), new THREE.MeshToonMaterial({ color: 0x94a3b8, gradientMap: createGradientTexture(3) }));
-    cSlab.position.set(cx, cy, bh); ps.add(cSlab);
+    const cSlab = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.08, bd), new THREE.MeshToonMaterial({ color: 0x94a3b8, gradientMap: createGradientTexture(3) }));
+    cSlab.position.set(cx, bh, cy); ps.add(cSlab);
     // Back wall (now at SOUTH side, away from bazaars)
-    const bWall = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.2, 0.08, bh - 0.1), psW);
-    bWall.position.set(cx, cy - bd / 2 + 0.04, bh / 2); ps.add(bWall);
+    const bWall = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.2, bh - 0.1, 0.08), psW);
+    bWall.position.set(cx, bh / 2, cy - bd / 2 + 0.04); ps.add(bWall);
     // Side walls
     for (let s = -1; s <= 1; s += 2) {
-      const sw = new THREE.Mesh(new THREE.BoxGeometry(0.08, bd, bh - 0.1), psW);
-      sw.position.set(cx + s * (bw / 2 - 0.04), cy, bh / 2); ps.add(sw);
+      const sw = new THREE.Mesh(new THREE.BoxGeometry(0.08, bh - 0.1, bd), psW);
+      sw.position.set(cx + s * bw / 2 - 0.04, bh / 2, cy); ps.add(sw);
     }
     // Front glass wall (NORTH side, facing bazaars) — full width coverage
     const fwY = cy + bd / 2 - 0.04;
@@ -2389,30 +2389,30 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const gap = (totalW - nSect * sectW) / (nSect + 1);
     for (let i = 0; i < nSect + 1; i++) {
       const px = cx - totalW / 2 + i * (sectW + gap) + gap / 2;
-      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, bh), psT);
-      pillar.position.set(px, fwY, bh / 2); ps.add(pillar);
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.08, bh, 0.08), psT);
+      pillar.position.set(px, bh / 2, fwY); ps.add(pillar);
     }
     for (let i = 0; i < nSect; i++) {
       const gx = cx - totalW / 2 + gap + i * (sectW + gap) + sectW / 2;
-      const glass = new THREE.Mesh(new THREE.BoxGeometry(sectW - 0.02, 0.04, bh - 0.4), psG);
-      glass.position.set(gx, fwY, (bh - 0.4) / 2 + 0.2); ps.add(glass);
+      const glass = new THREE.Mesh(new THREE.BoxGeometry(sectW - 0.02, bh - 0.4, 0.04), psG);
+      glass.position.set(gx, bh - 0.4 / 2 + 0.2, fwY); ps.add(glass);
     }
     // Door (center)
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.9), new THREE.MeshToonMaterial({ color: 0x0f172a, gradientMap: createGradientTexture(3) }));
-    door.position.set(cx, fwY, 0.45); ps.add(door);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.04), new THREE.MeshToonMaterial({ color: 0x0f172a, gradientMap: createGradientTexture(3) }));
+    door.position.set(cx, 0.45, fwY); ps.add(door);
     const doorTrim = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.04, 0.04), psT);
-    doorTrim.position.set(cx, fwY, 0.92); ps.add(doorTrim);
+    doorTrim.position.set(cx, 0.92, fwY); ps.add(doorTrim);
 
     // Top floor
     const tfW = bw + 0.3, tfD = bd + 0.3, tfH = 1.3;
     const tfZ = bh + tfH / 2;
     // Back wall (SOUTH)
-    const tfBack = new THREE.Mesh(new THREE.BoxGeometry(tfW, 0.08, tfH), psAp);
-    tfBack.position.set(cx, cy - tfD / 2, tfZ); ps.add(tfBack);
+    const tfBack = new THREE.Mesh(new THREE.BoxGeometry(tfW, tfH, 0.08), psAp);
+    tfBack.position.set(cx, tfZ, cy - tfD / 2); ps.add(tfBack);
     // Side walls
     for (let s = -1; s <= 1; s += 2) {
-      const tfSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, tfD, tfH), psAp);
-      tfSide.position.set(cx + s * tfW / 2, cy, tfZ); ps.add(tfSide);
+      const tfSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, tfH, tfD), psAp);
+      tfSide.position.set(cx + s * tfW / 2, tfZ, cy); ps.add(tfSide);
     }
     // Front wall (NORTH) with window cutouts
     const fwY2 = cy + tfD / 2;
@@ -2431,29 +2431,29 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const botH = winZ - winH / 2 - bh;
       const topH = bh + tfH - (winZ + winH / 2);
       if (botH > 0.01) {
-        const bwSeg = new THREE.Mesh(new THREE.BoxGeometry(segW - 0.02, 0.08, botH), psAp);
-        bwSeg.position.set(segCx, fwY2, bh + botH / 2); ps.add(bwSeg);
+        const bwSeg = new THREE.Mesh(new THREE.BoxGeometry(segW - 0.02, botH, 0.08), psAp);
+        bwSeg.position.set(segCx, bh + botH / 2, fwY2); ps.add(bwSeg);
       }
       if (topH > 0.01) {
-        const twSeg = new THREE.Mesh(new THREE.BoxGeometry(segW - 0.02, 0.08, topH), psAp);
-        twSeg.position.set(segCx, fwY2, winZ + winH / 2 + topH / 2); ps.add(twSeg);
+        const twSeg = new THREE.Mesh(new THREE.BoxGeometry(segW - 0.02, topH, 0.08), psAp);
+        twSeg.position.set(segCx, winZ + winH / 2 + topH / 2, fwY2); ps.add(twSeg);
       }
     }
     // Window glass & frames
     for (const wcxRel of winCxRel) {
       const wcx = cx + wcxRel;
       const sill = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.2, 0.06, 0.06), psT);
-      sill.position.set(wcx, fwY2 + 0.01, winZ - winH / 2); ps.add(sill);
-      const wg = new THREE.Mesh(new THREE.BoxGeometry(winW - 0.04, 0.04, winH - 0.04), new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.4, side: THREE.DoubleSide }));
-      wg.position.set(wcx, fwY2, winZ); ps.add(wg);
+      sill.position.set(wcx, winZ - winH / 2, fwY2 + 0.01); ps.add(sill);
+      const wg = new THREE.Mesh(new THREE.BoxGeometry(winW - 0.04, winH - 0.04, 0.04), new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.4, side: THREE.DoubleSide }));
+      wg.position.set(wcx, winZ, fwY2); ps.add(wg);
       for (let s = -1; s <= 1; s += 2) {
-        const wf = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, winH), psT);
-        wf.position.set(wcx + s * (winW / 2 - 0.02), fwY2, winZ); ps.add(wf);
+        const wf = new THREE.Mesh(new THREE.BoxGeometry(0.04, winH, 0.04), psT);
+        wf.position.set(wcx + s * winW / 2 - 0.02, winZ, fwY2); ps.add(wf);
       }
     }
     // Roof
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.8, bd + 0.6, 0.08), psR);
-    roof.position.set(cx, cy, bh + 1.36); ps.add(roof);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.8, 0.08, bd + 0.6), psR);
+    roof.position.set(cx, bh + 1.36, cy); ps.add(roof);
     // Sign — HUGE 3D box on the front wall above the door
     {
       const sc = document.createElement('canvas');
@@ -2473,8 +2473,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       st.minFilter = THREE.LinearFilter;
       st.flipY = false;
       // BoxGeometry(wide, thin (faces north), tall) — mounted on apartment north wall, outside
-      const pSign = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.06, 0.5), new THREE.MeshBasicMaterial({ map: st }));
-      pSign.position.set(cx, cy + (bd + 0.3) / 2 + 0.07, bh + 0.2);
+      const pSign = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.5, 0.06), new THREE.MeshBasicMaterial({ map: st }));
+      pSign.position.set(cx, bh + 0.2, cy + bd + 0.3 / 2 + 0.07);
       pSign.scale.x = -1;
       ps.add(pSign);
     }
@@ -2486,22 +2486,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // Exclamation mark above the workshop door, visible when player should enter
     const doorAnchor = new THREE.Group();
-    doorAnchor.position.set(-6, -9.6, 1.0);
+    doorAnchor.position.set(-6, 1.0, -9.6);
     outdoorGroup.add(doorAnchor);
     const doorMarker = addExclamationMarker(doorAnchor);
     workshopDoorMarkerRef.current = doorMarker;
 
     const aptDoorAnchor = new THREE.Group();
-    aptDoorAnchor.position.set(-9.6, -4.9, 1.8);
+    aptDoorAnchor.position.set(-9.6, 1.8, -4.9);
     outdoorGroup.add(aptDoorAnchor);
     const aptDoorMarker = addExclamationMarker(aptDoorAnchor);
-    aptDoorMarker.position.set(0, 0, -0.3);
+    aptDoorMarker.position.set(0, -0.3, 0);
     aptDoorMarker.visible = false;
     apartmentDoorMarkerRef.current = aptDoorMarker;
 
     // Exclamation mark above the shop door, visible when player needs to buy a battery
     const shopDoorAnchor = new THREE.Group();
-    shopDoorAnchor.position.set(6.0, -10.2, 1.0);
+    shopDoorAnchor.position.set(6.0, 1.0, -10.2);
     outdoorGroup.add(shopDoorAnchor);
     const shopDoorMarker = addExclamationMarker(shopDoorAnchor);
     shopDoorMarkerRef.current = shopDoorMarker;
@@ -2512,36 +2512,36 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const darkWoodMat = createToonMaterial(0x4a2e15);
       const metalMat = createToonMaterial(0x555555);
       // Main deck platform — 8 units wide, east edge at -10.4
-      const deck = new THREE.Mesh(new THREE.BoxGeometry(8, 3.5, 0.08), woodMat);
-      deck.position.set(-14.4, -8, 0.12);
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(8, 0.08, 3.5), woodMat);
+      deck.position.set(-14.4, 0.12, -8);
       deck.receiveShadow = true;
       outdoorGroup.add(deck);
       // Plank grooves
       for (let i = -1.4; i <= 1.4; i += 0.75) {
         const groove = new THREE.Mesh(new THREE.BoxGeometry(7.8, 0.02, 0.02), darkWoodMat);
-        groove.position.set(-14.4, -8 + i, 0.17);
+        groove.position.set(-14.4, 0.17, -8 + i);
         outdoorGroup.add(groove);
       }
       // Corner support posts
       const postPositions: [number, number][] = [[-18.3, -9.6], [-18.3, -6.4], [-10.5, -9.6], [-10.5, -6.4]];
       postPositions.forEach(([px, py]) => {
         const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.6, 8), darkWoodMat);
-        post.rotation.x = Math.PI / 2;
-        post.position.set(px, py, 0.15);
+        post.rotation.x = 0;
+        post.position.set(px, 0.15, py);
         outdoorGroup.add(post);
       });
       // Edge planks (N+S rim)
       for (const side of [-1, 1]) {
-        const rim = new THREE.Mesh(new THREE.BoxGeometry(8, 0.08, 0.04), woodMat);
-        rim.position.set(-14.4, -8 + side * 1.7, 0.14);
+        const rim = new THREE.Mesh(new THREE.BoxGeometry(8, 0.04, 0.08), woodMat);
+        rim.position.set(-14.4, 0.14, -8 + side * 1.7);
         outdoorGroup.add(rim);
       }
       // Mooring bollards
       const bollardPositions: [number, number][] = [[-18.1, -8.5], [-18.1, -7.5], [-10.6, -8]];
       bollardPositions.forEach(([bx, by]) => {
         const bollard = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.12, 8), metalMat);
-        bollard.rotation.x = Math.PI / 2;
-        bollard.position.set(bx, by, 0.2);
+        bollard.rotation.x = 0;
+        bollard.position.set(bx, 0.2, by);
         outdoorGroup.add(bollard);
       });
       // Rope coils on the deck
@@ -2549,35 +2549,35 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       ropePositions.forEach(([rx, ry]) => {
         for (let j = 0; j < 3; j++) {
           const coil = new THREE.Mesh(new THREE.TorusGeometry(0.05 + j * 0.02, 0.012, 6, 10), createToonMaterial(0xc4a56a));
-          coil.rotation.x = Math.PI / 2;
-          coil.position.set(rx, ry, 0.14 + j * 0.02);
+          coil.rotation.x = 0;
+          coil.position.set(rx, 0.14 + j * 0.02, ry);
           outdoorGroup.add(coil);
         }
       });
       // Lantern on a post
-      const lampPost = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.5), createToonMaterial(0x333333));
-      lampPost.position.set(-10.9, -6.8, 0.35);
+      const lampPost = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.5, 0.03), createToonMaterial(0x333333));
+      lampPost.position.set(-10.9, 0.35, -6.8);
       outdoorGroup.add(lampPost);
       const lampSphere = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-      lampSphere.position.set(-10.9, -6.8, 0.6);
+      lampSphere.position.set(-10.9, 0.6, -6.8);
       outdoorGroup.add(lampSphere);
       const lampGlow = new THREE.PointLight(0xfef08a, 0.4, 3);
-      lampGlow.position.set(-10.9, -6.8, 0.6);
+      lampGlow.position.set(-10.9, 0.6, -6.8);
       outdoorGroup.add(lampGlow);
       // Small rowboat tied alongside
       {
         const boat = new THREE.Group();
-        const boatHull = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.25, 0.12), createToonMaterial(0x4a3a2a));
-        boatHull.position.set(0, 0, 0.06);
+        const boatHull = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.12, 0.25), createToonMaterial(0x4a3a2a));
+        boatHull.position.set(0, 0.06, 0);
         boat.add(boatHull);
-        const prow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08), createToonMaterial(0x4a3a2a));
-        prow.position.set(0.35, 0, 0.1);
+        const prow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.12), createToonMaterial(0x4a3a2a));
+        prow.position.set(0.35, 0.1, 0);
         boat.add(prow);
-        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.18, 0.02), createToonMaterial(0x3a2a1a));
-        seat.position.set(0, 0, 0.14);
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.02, 0.18), createToonMaterial(0x3a2a1a));
+        seat.position.set(0, 0.14, 0);
         boat.add(seat);
-        boat.position.set(-18.2, -7, 0.04);
-        boat.rotation.z = 0.15;
+        boat.position.set(-18.2, 0.04, -7);
+        boat.rotation.y = 0.15;
         outdoorGroup.add(boat);
       }
     }
@@ -2595,21 +2595,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const t = Math.random();
         if (t < 0.3) {
           const m = new THREE.Mesh(new THREE.DodecahedronGeometry(0.06 + Math.random() * 0.12), abDebrisMat);
-          m.position.set(x, y, 0.04 + Math.random() * 0.06);
+          m.position.set(x, 0.04 + Math.random() * 0.06, y);
           outdoorGroup.add(m);
         } else if (t < 0.55) {
-          const m = new THREE.Mesh(new THREE.BoxGeometry(0.15 + Math.random() * 0.3, 0.03 + Math.random() * 0.06, 0.025), abMat(0x5a3a2a));
-          m.position.set(x, y, 0.035);
-          m.rotation.z = Math.random() * Math.PI * 2;
+          const m = new THREE.Mesh(new THREE.BoxGeometry(0.15 + Math.random() * 0.3, 0.025, 0.03 + Math.random() * 0.06), abMat(0x5a3a2a));
+          m.position.set(x, 0.035, y);
+          m.rotation.y = Math.random() * Math.PI * 2;
           outdoorGroup.add(m);
         } else if (t < 0.75) {
-          const m = new THREE.Mesh(new THREE.BoxGeometry(0.08 + Math.random() * 0.1, 0.08 + Math.random() * 0.1, 0.06 + Math.random() * 0.06), abMat(0x7a4a32));
-          m.position.set(x, y, 0.03);
-          m.rotation.z = Math.random() * Math.PI * 0.5;
+          const m = new THREE.Mesh(new THREE.BoxGeometry(0.08 + Math.random() * 0.1, 0.06 + Math.random() * 0.06, 0.08 + Math.random() * 0.1), abMat(0x7a4a32));
+          m.position.set(x, 0.03, y);
+          m.rotation.y = Math.random() * Math.PI * 0.5;
           outdoorGroup.add(m);
         } else {
           const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.04 + Math.random() * 0.08), abMat(0x6b635e));
-          m.position.set(x, y, 0.03);
+          m.position.set(x, 0.03, y);
           outdoorGroup.add(m);
         }
       }
@@ -2628,7 +2628,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     ];
     for (const { x, y, w, d, palette, debrisR, debrisN, height } of BUILDINGS) {
       const bldg = createAbandonedBuilding(x, y, w, d, palette, height);
-      bldg.position.z = 0.25;
+      bldg.position.y = 0.25;
       outdoorGroup.add(bldg);
       scatterDebris(x, y, debrisR, debrisN);
     }
@@ -2700,19 +2700,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       tex.minFilter = THREE.LinearFilter;
       tex.flipY = false;
       const bracketMat = new THREE.MeshToonMaterial({ color: 0x334155 });
-      const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.35), bracketMat);
-      bracket.position.set(0, 0, -0.15);
+      const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.35, 0.04), bracketMat);
+      bracket.position.set(0, -0.15, 0);
       const signMat = new THREE.MeshBasicMaterial({ map: tex });
-      const panel = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.2), signMat);
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.02), signMat);
       panel.scale.y = -1;
       const frameMat = new THREE.MeshToonMaterial({ color: 0x1e293b });
-      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.06, 0.24), frameMat);
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.24, 0.06), frameMat);
       frame.renderOrder = 1;
       const signGroup = new THREE.Group();
       signGroup.add(frame);
       signGroup.add(panel);
       signGroup.add(bracket);
-      signGroup.position.set(x, y, z);
+      signGroup.position.set(x, z, y);
       parent.add(signGroup);
     };
 
@@ -2724,56 +2724,56 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       shopRoomGroupRef.current = shopRoomGroup;
       {
         const sl = new THREE.PointLight(0xfef08a, 10, 6);
-        sl.position.set(0, 0, 1.3);
+        sl.position.set(0, 1.3, 0);
         shopRoomGroup.add(sl);
       }
 
       const sW = 7.6, sD = 3.6, sH = 1.3;
 
       const sFloor = new THREE.Mesh(
-        new THREE.BoxGeometry(sW, sD, 0.04),
+        new THREE.BoxGeometry(sW, 0.04, sD),
         createTexturedToonMaterial('tile_43.png', 5, 3, 0x8b6b4a)
       );
-      sFloor.position.set(0, 0, 0.02);
+      sFloor.position.set(0, 0.02, 0);
       shopRoomGroup.add(sFloor);
 
       const sWallMat = createTexturedToonMaterial('tile_23.png', 4, 2, 0xf5e6d0);
       sWallMat.side = THREE.DoubleSide;
       // South wall (entrance side) — full width
-      const sWallS = new THREE.Mesh(new THREE.BoxGeometry(sW, 0.08, sH), sWallMat);
-      sWallS.position.set(0, -sD / 2, sH / 2);
+      const sWallS = new THREE.Mesh(new THREE.BoxGeometry(sW, sH, 0.08), sWallMat);
+      sWallS.position.set(0, sH / 2, -sD / 2);
       shopRoomGroup.add(sWallS);
       // North wall (exit side) — with door cutout
       const exitDoorW = 0.68;
       const nSegW = (sW - exitDoorW) / 2;
       for (let s = -1; s <= 1; s += 2) {
-        const seg = new THREE.Mesh(new THREE.BoxGeometry(nSegW, 0.08, sH), sWallMat);
-        seg.position.set(s * (exitDoorW / 2 + nSegW / 2), sD / 2, sH / 2);
+        const seg = new THREE.Mesh(new THREE.BoxGeometry(nSegW, sH, 0.08), sWallMat);
+        seg.position.set(s * exitDoorW / 2 + nSegW / 2, sH / 2, sD / 2);
         shopRoomGroup.add(seg);
       }
       // East/west end walls
       for (let s = -1; s <= 1; s += 2) {
-        const endWall = new THREE.Mesh(new THREE.BoxGeometry(0.08, sD, sH), sWallMat);
-        endWall.position.set(s * sW / 2, 0, sH / 2);
+        const endWall = new THREE.Mesh(new THREE.BoxGeometry(0.08, sH, sD), sWallMat);
+        endWall.position.set(s * sW / 2, sH / 2, 0);
         shopRoomGroup.add(endWall);
       }
 
       // Back counter
       const counterMat = createToonMaterial(0x8b4513);
-      const counter = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.12, 0.25), counterMat);
-      counter.position.set(0, -sD / 2 + 0.3, 0.16);
+      const counter = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.25, 0.12), counterMat);
+      counter.position.set(0, 0.16, -sD / 2 + 0.3);
       shopRoomGroup.add(counter);
 
-      const counterTop = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.14, 0.04), createToonMaterial(0xa0522d));
-      counterTop.position.set(0, -sD / 2 + 0.3, 0.32);
+      const counterTop = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.04, 0.14), createToonMaterial(0xa0522d));
+      counterTop.position.set(0, 0.32, -sD / 2 + 0.3);
       shopRoomGroup.add(counterTop);
 
       // Shelves along the sides with items
       const shelfMat = createToonMaterial(0x475569);
       const itemColors = [0x60a5fa, 0x34d399, 0xf97316, 0xa855f7, 0xfacc15];
       for (let sx = -1; sx <= 1; sx += 2) {
-        const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.2, 0.25), shelfMat);
-        shelf.position.set(sx * 2.2, 0, 0.16);
+        const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.25, 1.2), shelfMat);
+        shelf.position.set(sx * 2.2, 0.16, 0);
         shopRoomGroup.add(shelf);
         // Items on shelves
         for (let iy = -1; iy <= 1; iy += 2) {
@@ -2781,20 +2781,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             new THREE.BoxGeometry(0.06, 0.06, 0.06),
             createToonMaterial(itemColors[Math.floor(Math.random() * itemColors.length)])
           );
-          item.position.set(sx * (2.2 + 0.04), iy * 0.5, 0.3);
+          item.position.set(sx * 2.2 + 0.04, 0.3, iy * 0.5);
           shopRoomGroup.add(item);
         }
       }
 
       // Side display case (right side of entrance, not blocking the door)
-      const sideDisplay = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.5, 0.2), createToonMaterial(0x8b4513));
-      sideDisplay.position.set(-sW / 2 + 0.15, sD / 2 - 0.35, 0.12);
+      const sideDisplay = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, 0.5), createToonMaterial(0x8b4513));
+      sideDisplay.position.set(-sW / 2 + 0.15, 0.12, sD / 2 - 0.35);
       shopRoomGroup.add(sideDisplay);
       const dItem = new THREE.Mesh(
         new THREE.SphereGeometry(0.04, 8, 8),
         new THREE.MeshBasicMaterial({ color: 0x60a5fa })
       );
-      dItem.position.set(-sW / 2 + 0.15, sD / 2 - 0.35, 0.24);
+      dItem.position.set(-sW / 2 + 0.15, 0.24, sD / 2 - 0.35);
       shopRoomGroup.add(dItem);
 
       // Shop obstacle hitboxes
@@ -2808,62 +2808,62 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Shopkeeper person + desk
       const shopPerson = buildPlayerVisual(0x60a5fa, 'Shopkeeper');
-      shopPerson.root.position.set(0, -sD / 2 + 0.15, 0.02);
+      shopPerson.root.position.set(0, 0.02, -sD / 2 + 0.15);
       shopRoomGroup.add(shopPerson.root);
       shopNpcRef.current = shopPerson;
 
       // Fancy desk in front of shopkeeper
       const deskGroup = new THREE.Group();
       // Desk top
-      const dTop = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.4, 0.08), createToonMaterial(0x5c3d2e));
-      dTop.position.set(0, -sD / 2 + 0.25, 0.2);
+      const dTop = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.08, 0.4), createToonMaterial(0x5c3d2e));
+      dTop.position.set(0, 0.2, -sD / 2 + 0.25);
       deskGroup.add(dTop);
       // Desk front
-      const dFront = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.35, 0.12), createToonMaterial(0x8b6914));
-      dFront.position.set(0, -sD / 2 + 0.25, 0.1);
+      const dFront = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 0.35), createToonMaterial(0x8b6914));
+      dFront.position.set(0, 0.1, -sD / 2 + 0.25);
       deskGroup.add(dFront);
       // Gold trim
-      const dTrim = new THREE.Mesh(new THREE.BoxGeometry(2.04, 0.42, 0.04), createToonMaterial(0xfbbf24));
-      dTrim.position.set(0, -sD / 2 + 0.25, 0.24);
+      const dTrim = new THREE.Mesh(new THREE.BoxGeometry(2.04, 0.04, 0.42), createToonMaterial(0xfbbf24));
+      dTrim.position.set(0, 0.24, -sD / 2 + 0.25);
       deskGroup.add(dTrim);
       // Potted plant on right side of desk
       const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.06, 6), createToonMaterial(0xc2410c));
-      pot.position.set(0.7, -sD / 2 + 0.25, 0.28);
+      pot.position.set(0.7, 0.28, -sD / 2 + 0.25);
       deskGroup.add(pot);
       const leaves = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), createToonMaterial(0x22c55e));
-      leaves.position.set(0.7, -sD / 2 + 0.25, 0.33);
+      leaves.position.set(0.7, 0.33, -sD / 2 + 0.25);
       deskGroup.add(leaves);
       // Glowing crystal on left side of desk
       const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.04), new THREE.MeshBasicMaterial({ color: 0x818cf8 }));
-      crystal.position.set(-0.7, -sD / 2 + 0.25, 0.28);
+      crystal.position.set(-0.7, 0.28, -sD / 2 + 0.25);
       deskGroup.add(crystal);
       shopRoomGroup.add(deskGroup);
 
       // Welcome mat at entrance
       const welcomeMat = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, 0.2, 0.02),
+        new THREE.BoxGeometry(0.5, 0.02, 0.2),
         createToonMaterial(0x6d4c2a)
       );
-      welcomeMat.position.set(0, sD / 2 - 0.05, 0.03);
+      welcomeMat.position.set(0, 0.03, sD / 2 - 0.05);
       shopRoomGroup.add(welcomeMat);
 
       // Exit door on the north wall — flush with the wall in the cutout
       const exitDoor = new THREE.Mesh(
-        new THREE.BoxGeometry(0.6, 0.08, 0.7),
+        new THREE.BoxGeometry(0.6, 0.7, 0.08),
         createToonMaterial(0xdc2626)
       );
-      exitDoor.position.set(0, sD / 2, 0.39);
+      exitDoor.position.set(0, 0.39, sD / 2);
       shopRoomGroup.add(exitDoor);
       const exitFrame = new THREE.Mesh(
-        new THREE.BoxGeometry(0.68, 0.08, 0.76),
+        new THREE.BoxGeometry(0.68, 0.76, 0.08),
         createToonMaterial(0x1a1a1a)
       );
-      exitFrame.position.set(0, sD / 2, 0.42);
+      exitFrame.position.set(0, 0.42, sD / 2);
       shopRoomGroup.add(exitFrame);
 
       createExitSignMesh(0, 1.8, 0.84, shopRoomGroup, '#dc2626', '#ffffff', '#fde68a');
       const shopExitAnchor = new THREE.Group();
-      shopExitAnchor.position.set(0, 1.5, 0.9);
+      shopExitAnchor.position.set(0, 0.9, 1.5);
       shopRoomGroup.add(shopExitAnchor);
       const shopExitMarker = addExclamationMarker(shopExitAnchor);
       shopExitMarker.visible = false;
@@ -2895,7 +2895,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     rightArmPivotRef.current = playerVis.rightArmPivot;
     rightArmRef.current = playerVis.rightArm;
 
-    localGroup.position.set(0, -7, 0.24);
+    localGroup.position.set(0, 0.24, -7);
     scene.add(localGroup);
     localPositionRef.current.set(0, -7);
     const localRobot = { root: localGroup, nameSprite: new THREE.Sprite(), body: playerVis.torso, shadow: playerVis.torso, leftPupil: playerVis.torso, rightPupil: playerVis.torso, antennaTip: playerVis.torso, leftArm: playerVis.leftArm, rightArm: playerVis.rightArm, leftLeg: playerVis.torso, rightLeg: playerVis.torso };
@@ -2903,15 +2903,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // Held item group — attaches to right hand for 3D inventory display
     const heldItemGroup = new THREE.Group();
-    heldItemGroup.position.set(0.15, 0, 0.50);
+    heldItemGroup.position.set(0.15, 0.50, 0);
     heldItemGroup.visible = false;
     localGroup.add(heldItemGroup);
     heldItemGroupRef.current = heldItemGroup;
 
     const scrapRobot = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
     scrapRobot.root.scale.set(0.7, 0.7, 0.7);
-    scrapRobot.root.position.set(NPC_POSITION.x + 1.5, NPC_POSITION.y - 1.2, 0.24);
-    scrapRobot.root.rotation.z = 0.15;
+    scrapRobot.root.position.set(NPC_POSITION.x + 1.5, 0.24, NPC_POSITION.y - 1.2);
+    scrapRobot.root.rotation.y = 0.15;
     scrapRobot.nameSprite.visible = false;
     if (scrapRobot.leftPupil) scrapRobot.leftPupil.material.color.setHex(0x222222);
     if (scrapRobot.rightPupil) scrapRobot.rightPupil.material.color.setHex(0x222222);
@@ -2921,7 +2921,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Scrap follower robot (outdoor, follows player after battery install)
     const scrapFollower = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
     scrapFollower.root.scale.set(0.65, 0.65, 0.65);
-    scrapFollower.root.position.set(0, -8, 0.24);
+    scrapFollower.root.position.set(0, 0.24, -8);
     scrapFollower.nameSprite.visible = true;
     if (scrapFollower.leftPupil) scrapFollower.leftPupil.material.color.setHex(0x222222);
     if (scrapFollower.rightPupil) scrapFollower.rightPupil.material.color.setHex(0x222222);
@@ -2932,13 +2932,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     // Repair kiosk — proper kiosk at Snack Stop spot
     const kiosk = createRepairKiosk();
-    kiosk.position.set(-2.87, -5.3, 0.04);
+    kiosk.position.set(-2.87, 0.04, -5.3);
     outdoorGroup.add(kiosk);
     repairKioskRef.current = kiosk;
 
     const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky', 'north');
     sparky.root.scale.set(0.8, 0.8, 0.8);
-    sparky.root.position.set(NPC_POSITION.x, NPC_POSITION.y, 0.24);
+    sparky.root.position.set(NPC_POSITION.x, 0.24, NPC_POSITION.y);
     sparky.nameSprite.visible = false;
     outdoorGroup.add(sparky.root);
     if (sparky.body) sparky.body.visible = true;
@@ -2946,31 +2946,31 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     sparkyBaseQuatRef.current = sparky.root.quaternion.clone();
     // Neck connector so head doesn't float
     const sparkyNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.2, 8), createToonMaterial(0xfacc15));
-    sparkyNeck.rotation.x = Math.PI / 2;
-    sparkyNeck.position.set(0, 0, 0.35);
+    sparkyNeck.rotation.x = 0;
+    sparkyNeck.position.set(0, 0.35, 0);
     sparky.root.add(sparkyNeck);
     const sparkyQuestMarker = addExclamationMarker(sparky.root);
     sparkyQuestMarkerRef.current = sparkyQuestMarker;
 
     const workshopFloor = new THREE.Mesh(
-      new THREE.BoxGeometry(10.6, 10.6, 0.24),
+      new THREE.BoxGeometry(10.6, 0.24, 10.6),
       createTexturedToonMaterial('tile_41.png', 20, 20)
     );
-    workshopFloor.position.set(0, 0, 0.12);
+    workshopFloor.position.set(0, 0.12, 0);
     workshopRoomGroup.add(workshopFloor);
 
 
 
     const workshopWalls = [
-      new THREE.Vector3(0, 5.3, 1.2),
-      new THREE.Vector3(0, -5.3, 1.2),
-      new THREE.Vector3(-5.3, 0, 1.2),
-      new THREE.Vector3(5.3, 0, 1.2),
+      new THREE.Vector3(0, 1.2, 5.3),
+      new THREE.Vector3(0, 1.2, -5.3),
+      new THREE.Vector3(-5.3, 1.2, 0),
+      new THREE.Vector3(5.3, 1.2, 0),
     ];
     workshopWalls.forEach((position, index) => {
       const horizontal = index < 2;
       const wall = new THREE.Mesh(
-        new THREE.BoxGeometry(horizontal ? 10.6 : 0.3, horizontal ? 0.3 : 10.6, 2.4),
+        new THREE.BoxGeometry(horizontal ? 10.6 : 0.3, 2.4, horizontal ? 0.3 : 10.6),
         createTexturedToonMaterial('tile_24.png', horizontal ? 10 : 1, 5, 0x334155)
       );
       wall.position.copy(position);
@@ -2979,30 +2979,30 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     });
     // Exit door on south wall — industrial style (flush with wall inner face)
     const wsExitDoor = new THREE.Mesh(
-      new THREE.BoxGeometry(0.6, 0.08, 0.7),
+      new THREE.BoxGeometry(0.6, 0.7, 0.08),
       createToonMaterial(0x475569)
     );
-    wsExitDoor.position.set(0, -5.15, 0.59);
+    wsExitDoor.position.set(0, 0.59, -5.15);
     workshopRoomGroup.add(wsExitDoor);
     const wsExitFrame = new THREE.Mesh(
-      new THREE.BoxGeometry(0.68, 0.08, 0.76),
+      new THREE.BoxGeometry(0.68, 0.76, 0.08),
       createToonMaterial(0x1e293b)
     );
-    wsExitFrame.position.set(0, -5.15, 0.62);
+    wsExitFrame.position.set(0, 0.62, -5.15);
     workshopRoomGroup.add(wsExitFrame);
     createExitSignMesh(0, -5.15, 1.3, workshopRoomGroup, '#eab308', '#1e293b', '#000000');
     const wsExitAnchor = new THREE.Group();
-    wsExitAnchor.position.set(0, -4.6, 1.3);
+    wsExitAnchor.position.set(0, 1.3, -4.6);
     workshopRoomGroup.add(wsExitAnchor);
     const wsExitMarker = addExclamationMarker(wsExitAnchor);
     wsExitMarker.visible = false;
     workshopExitMarkerRef.current = wsExitMarker;
 
     const shelf = new THREE.Mesh(
-      new THREE.BoxGeometry(1.65, 0.45, 0.08),
+      new THREE.BoxGeometry(1.65, 0.08, 0.45),
       createToonMaterial(0x8b5a2b, 0.7, 0.08)
     );
-    shelf.position.set(-3.2, 5.075, 0.82);
+    shelf.position.set(-3.2, 0.82, 5.075);
     workshopRoomGroup.add(shelf);
 
     // Mini robots on the shelf
@@ -3011,7 +3011,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     for (let i = -1; i <= 1; i++) {
       const mini = createRobotVisual(new THREE.Color(shelfColors[i + 1]), '');
       mini.root.scale.set(0.25, 0.25, 0.25);
-      mini.root.position.set(-3.2 + i * 0.45, 5.075 + i * 0.1, shelfTopZ + 0.02);
+      mini.root.position.set(-3.2 + i * 0.45, shelfTopZ + 0.02, 5.075 + i * 0.1);
       mini.nameSprite.visible = false;
       workshopRoomGroup.add(mini.root);
       miniRobotRefs.current.push(mini);
@@ -3029,37 +3029,37 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const wcx = horiz ? cx + s * 2.0 : ix;
         const wcy = horiz ? iy : cy + s * 2.0;
         const w = new THREE.Mesh(
-          new THREE.BoxGeometry(horiz ? ww : 0.01, horiz ? 0.01 : ww, wh),
+          new THREE.BoxGeometry(horiz ? ww : 0.01, wh, horiz ? 0.01 : ww),
           winMat
         );
-        w.position.set(wcx, wcy, 1.3);
+        w.position.set(wcx, 1.3, wcy);
         w.renderOrder = 1;
         workshopRoomGroup.add(w);
         // Window frame on wall surface
         if (horiz) {
           // Top/bottom rails
           for (let t = -1; t <= 1; t += 2) {
-            const rail = new THREE.Mesh(new THREE.BoxGeometry(ww + fw * 2, 0.04, fw), frameMat);
-            rail.position.set(wcx, wcy, 1.3 + t * (wh / 2 + fw / 2));
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(ww + fw * 2, fw, 0.04), frameMat);
+            rail.position.set(wcx, 1.3 + t * wh / 2 + fw / 2, wcy);
             workshopRoomGroup.add(rail);
           }
           // Left/right stiles
           for (let t = -1; t <= 1; t += 2) {
-            const stile = new THREE.Mesh(new THREE.BoxGeometry(fw, 0.04, wh + fw * 2), frameMat);
-            stile.position.set(wcx + t * (ww / 2 + fw / 2), wcy, 1.3);
+            const stile = new THREE.Mesh(new THREE.BoxGeometry(fw, wh + fw * 2, 0.04), frameMat);
+            stile.position.set(wcx + t * ww / 2 + fw / 2, 1.3, wcy);
             workshopRoomGroup.add(stile);
           }
         } else {
           // Top/bottom rails
           for (let t = -1; t <= 1; t += 2) {
-            const rail = new THREE.Mesh(new THREE.BoxGeometry(0.04, ww + fw * 2, fw), frameMat);
-            rail.position.set(wcx, wcy, 1.3 + t * (wh / 2 + fw / 2));
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(0.04, fw, ww + fw * 2), frameMat);
+            rail.position.set(wcx, 1.3 + t * wh / 2 + fw / 2, wcy);
             workshopRoomGroup.add(rail);
           }
           // Left/right stiles
           for (let t = -1; t <= 1; t += 2) {
-            const stile = new THREE.Mesh(new THREE.BoxGeometry(0.04, fw, wh + fw * 2), frameMat);
-            stile.position.set(wcx, wcy + t * (ww / 2 + fw / 2), 1.3);
+            const stile = new THREE.Mesh(new THREE.BoxGeometry(0.04, wh + fw * 2, fw), frameMat);
+            stile.position.set(wcx, 1.3, wcy + t * ww / 2 + fw / 2);
             workshopRoomGroup.add(stile);
           }
         }
@@ -3071,15 +3071,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     addWorkshopWindow(5.3, 0, false);  // east
 
     const petBed = new THREE.Mesh(
-      new THREE.BoxGeometry(1.25, 0.82, 0.2),
+      new THREE.BoxGeometry(1.25, 0.2, 0.82),
       createToonMaterial(0xf59e0b, 0.64, 0.07)
     );
-    petBed.position.set(3.4, -2.4, 0.21);
+    petBed.position.set(3.4, 0.21, -2.4);
     workshopRoomGroup.add(petBed);
 
     const owner = createRobotVisual(new THREE.Color(0x14b8a6), 'Rafiq');
     owner.root.scale.set(0.7, 0.7, 0.7);
-    owner.root.position.set(ROOM_OWNER_POS.x, ROOM_OWNER_POS.y, 0.26);
+    owner.root.position.set(ROOM_OWNER_POS.x, 0.26, ROOM_OWNER_POS.y);
     owner.nameSprite.visible = false;
     workshopRoomGroup.add(owner.root);
     rafiqBaseQuatRef.current.copy(owner.root.quaternion);
@@ -3093,28 +3093,28 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     roomCustomerGroupRef.current = customerGroup;
 
     const registerDock = new THREE.Group();
-    registerDock.position.set(2.0, 3.05, 0.26);
+    registerDock.position.set(2.0, 0.26, 3.05);
     workshopRoomGroup.add(registerDock);
     workshopRegisterDockRef.current = registerDock;
 
     const registerBase = new THREE.Mesh(
-      new THREE.BoxGeometry(1.52, 0.72, 0.18),
+      new THREE.BoxGeometry(1.52, 0.18, 0.72),
       createToonMaterial(0x8b5a2b, 0.62, 0.08)
     );
-    registerBase.position.set(0, 0, 0.07);
+    registerBase.position.set(0, 0.07, 0);
     registerDock.add(registerBase);
 
     const registerTop = new THREE.Mesh(
-      new THREE.BoxGeometry(1.62, 0.82, 0.03),
+      new THREE.BoxGeometry(1.62, 0.03, 0.82),
       createToonMaterial(0x92400e, 0.62, 0.08)
     );
-    registerTop.position.set(0, 0, 0.19);
+    registerTop.position.set(0, 0.19, 0);
     registerDock.add(registerTop);
 
     const registerComputer = createLaptop();
     registerComputer.scale.set(0.52, 0.52, 0.52);
-    registerComputer.position.set(-0.45, -0.30, 0.22);
-    registerComputer.rotation.z = Math.PI;
+    registerComputer.position.set(-0.45, 0.22, -0.30);
+    registerComputer.rotation.y = Math.PI;
     registerDock.add(registerComputer);
     workshopRegisterComputerRef.current = registerComputer;
 
@@ -3125,21 +3125,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     {
       const apartmentFloor = new THREE.Mesh(
-        new THREE.BoxGeometry(8, 8, 0.24),
+        new THREE.BoxGeometry(8, 0.24, 8),
         createTexturedToonMaterial('tile_21.png', 16, 16, 0x8b6b4a)
       );
-      apartmentFloor.position.set(0, 0, 0.12);
+      apartmentFloor.position.set(0, 0.12, 0);
       apartmentRoomGroup.add(apartmentFloor);
 
       const aptWalls = [
-        { pos: new THREE.Vector3(0, 4.15, 1.2), horiz: true },
-        { pos: new THREE.Vector3(0, -4.15, 1.2), horiz: true },
-        { pos: new THREE.Vector3(-4.15, 0, 1.2), horiz: false },
-        { pos: new THREE.Vector3(4.15, 0, 1.2), horiz: false },
+        { pos: new THREE.Vector3(0, 1.2, 4.15), horiz: true },
+        { pos: new THREE.Vector3(0, 1.2, -4.15), horiz: true },
+        { pos: new THREE.Vector3(-4.15, 1.2, 0), horiz: false },
+        { pos: new THREE.Vector3(4.15, 1.2, 0), horiz: false },
       ];
       aptWalls.forEach(({ pos, horiz }) => {
         const wall = new THREE.Mesh(
-          new THREE.BoxGeometry(horiz ? 8.3 : 0.3, horiz ? 0.3 : 8.3, 2.4),
+          new THREE.BoxGeometry(horiz ? 8.3 : 0.3, 2.4, horiz ? 0.3 : 8.3),
           createTexturedToonMaterial('tile_24.png', horiz ? 8 : 1, 4, 0x475569)
         );
         wall.position.copy(pos);
@@ -3150,39 +3150,39 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Window on north wall
       const aptWinMat = new THREE.MeshBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false });
       const aptWinGlow = new THREE.Mesh(
-        new THREE.BoxGeometry(1.8, 0.01, 1.0),
+        new THREE.BoxGeometry(1.8, 1.0, 0.01),
         new THREE.MeshBasicMaterial({ color: 0x1e3a5f, transparent: true, opacity: 0.4 })
       );
-      aptWinGlow.position.set(0, 4.17, 1.3);
+      aptWinGlow.position.set(0, 1.3, 4.17);
       apartmentRoomGroup.add(aptWinGlow);
 
-      const aptWin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.01, 1.0), aptWinMat);
-      aptWin.position.set(0, 4.17, 1.3);
+      const aptWin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 0.01), aptWinMat);
+      aptWin.position.set(0, 1.3, 4.17);
       aptWin.renderOrder = 1;
       apartmentRoomGroup.add(aptWin);
 
       // Window frame
       const aptFrmMat = createToonMaterial(0x1e293b);
       for (let s = -1; s <= 1; s += 2) {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(1.92, 0.04, 0.06), aptFrmMat);
-        rail.position.set(0, 4.17, 1.3 + s * 0.53);
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(1.92, 0.06, 0.04), aptFrmMat);
+        rail.position.set(0, 1.3 + s * 0.53, 4.17);
         apartmentRoomGroup.add(rail);
-        const stile = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 1.12), aptFrmMat);
-        stile.position.set(s * 0.93, 4.17, 1.3);
+        const stile = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.12, 0.04), aptFrmMat);
+        stile.position.set(s * 0.93, 1.3, 4.17);
         apartmentRoomGroup.add(stile);
       }
 
       // Workbench
       const workbench = new THREE.Mesh(
-        new THREE.BoxGeometry(1.6, 0.9, 0.65),
+        new THREE.BoxGeometry(1.6, 0.65, 0.9),
         createToonMaterial(0x6b4226, 0.7, 0.08)
       );
-      workbench.position.set(2.2, -0.2, 0.52);
+      workbench.position.set(2.2, 0.52, -0.2);
       apartmentRoomGroup.add(workbench);
 
       // Scrap inside box — Sparky's find, hidden by box walls until lid opens
       scrapRobot.root.scale.set(0.4, 0.4, 0.4);
-      scrapRobot.root.position.set(-2.8, 1.8, 0.26);
+      scrapRobot.root.position.set(-2.8, 0.26, 1.8);
       scrapRobot.root.rotation.set(Math.PI / 2, 0, 0.4);
       scrapRobot.nameSprite.visible = false;
       if (scrapRobot.leftPupil) scrapRobot.leftPupil.material.color.setHex(0x111111);
@@ -3192,51 +3192,51 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Bed
       const bedBase = new THREE.Mesh(
-        new THREE.BoxGeometry(1.8, 0.9, 0.15),
+        new THREE.BoxGeometry(1.8, 0.15, 0.9),
         createToonMaterial(0x334155, 0.6, 0.06)
       );
-      bedBase.position.set(-2.8, 2.2, 0.17);
+      bedBase.position.set(-2.8, 0.17, 2.2);
       apartmentRoomGroup.add(bedBase);
       const bedMat = new THREE.Mesh(
-        new THREE.BoxGeometry(1.6, 0.7, 0.08),
+        new THREE.BoxGeometry(1.6, 0.08, 0.7),
         createToonMaterial(0x60a5fa, 0.5, 0.05)
       );
-      bedMat.position.set(-2.8, 2.2, 0.28);
+      bedMat.position.set(-2.8, 0.28, 2.2);
       apartmentRoomGroup.add(bedMat);
 
       // Bookshelf
       const shelfBack = new THREE.Mesh(
-        new THREE.BoxGeometry(0.9, 0.25, 1.2),
+        new THREE.BoxGeometry(0.9, 1.2, 0.25),
         createToonMaterial(0x78350f, 0.65, 0.07)
       );
-      shelfBack.position.set(-3.4, -1.8, 0.72);
+      shelfBack.position.set(-3.4, 0.72, -1.8);
       apartmentRoomGroup.add(shelfBack);
       for (let i = 0; i < 3; i++) {
         const plank = new THREE.Mesh(
           new THREE.BoxGeometry(0.8, 0.04, 0.04),
           createToonMaterial(0x92400e, 0.6, 0.06)
         );
-        plank.position.set(-3.4, -1.8, 0.08 + i * 0.34);
+        plank.position.set(-3.4, 0.08 + i * 0.34, -1.8);
         apartmentRoomGroup.add(plank);
       }
 
       // Small table with lamp
       const table = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, 0.5, 0.45),
+        new THREE.BoxGeometry(0.5, 0.45, 0.5),
         createToonMaterial(0x7c3aed, 0.6, 0.07)
       );
-      table.position.set(-2.2, -2.5, 0.32);
+      table.position.set(-2.2, 0.32, -2.5);
       apartmentRoomGroup.add(table);
       const lamp = new THREE.Mesh(
         new THREE.CylinderGeometry(0.06, 0.08, 0.25, 8),
         createToonMaterial(0xfbbf24, 0.4, 0.05)
       );
-      lamp.position.set(-2.2, -2.5, 0.62);
+      lamp.position.set(-2.2, 0.62, -2.5);
       apartmentRoomGroup.add(lamp);
 
       // Cardboard box (cutscene) — hidden initially
       const boxResult = createCardboardBox();
-      boxResult.group.position.set(-2.8, 1.8, 0.24);
+      boxResult.group.position.set(-2.8, 0.24, 1.8);
       boxResult.group.visible = false;
       apartmentRoomGroup.add(boxResult.group);
       cutsceneBoxRef.current = boxResult.group;
@@ -3246,7 +3246,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Computer (cutscene) — hidden until fetch-laptop phase
       const computer = createLaptop();
-      computer.position.set(-3.4, 1.2, 0.24);
+      computer.position.set(-3.4, 0.24, 1.2);
       computer.visible = false;
       apartmentRoomGroup.add(computer);
       computerRef.current = computer;
@@ -3282,7 +3282,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Sparky inside apartment (hidden until Sparky walks home)
       const aptSparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
       aptSparky.root.scale.set(0.7, 0.7, 0.7);
-      aptSparky.root.position.set(-2.6, -0.55, 0.28);
+      aptSparky.root.position.set(-2.6, 0.28, -0.55);
       aptSparky.nameSprite.visible = false;
       aptSparky.root.visible = false;
       apartmentRoomGroup.add(aptSparky.root);
@@ -3290,21 +3290,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Exit door on south wall — wooden style
       const aptDoor = new THREE.Mesh(
-        new THREE.BoxGeometry(0.6, 0.08, 0.7),
+        new THREE.BoxGeometry(0.6, 0.7, 0.08),
         createToonMaterial(0x8b5a2b)
       );
-      aptDoor.position.set(0, -4.00, 0.59);
+      aptDoor.position.set(0, 0.59, -4.00);
       apartmentRoomGroup.add(aptDoor);
       const aptDoorFrame = new THREE.Mesh(
-        new THREE.BoxGeometry(0.68, 0.08, 0.76),
+        new THREE.BoxGeometry(0.68, 0.76, 0.08),
         createToonMaterial(0x5c3a1e)
       );
-      aptDoorFrame.position.set(0, -4.00, 0.62);
+      aptDoorFrame.position.set(0, 0.62, -4.00);
       apartmentRoomGroup.add(aptDoorFrame);
       createExitSignMesh(0, -4.00, 1.3, apartmentRoomGroup, '#b45309', '#fef3c7', '#fde68a');
       // Exclamation marker at apartment exit
       const aptExitAnchor = new THREE.Group();
-      aptExitAnchor.position.set(0, -3.35, 1.3);
+      aptExitAnchor.position.set(0, 1.3, -3.35);
       apartmentRoomGroup.add(aptExitAnchor);
       const aptExitMarker = addExclamationMarker(aptExitAnchor);
       aptExitMarker.visible = false;
@@ -3417,7 +3417,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           inShopRoomRef.current = false;
           setInShopRoom(false);
           localPositionRef.current.set(6.0, -9.0);
-          localRobot.root.position.set(6.0, -9.0, 0.24);
+          localRobot.root.position.set(6.0, 0.24, -9.0);
           shopDoorArmedRef.current = false;
           roomObstacleHitboxesRef.current = [];
           apiSync({ position: { x: 6.0, y: -9.0, rotation: null, room: 'outside' } });
@@ -3629,10 +3629,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       applyDefectFromRequest(request, cargoRobot.root);
       const cmarker = addExclamationMarker(cPerson.root);
       cmarker.visible = false;
-      cmarker.position.set(0, 0, 0.85);
+      cmarker.position.set(0, 0.85, 0);
       const visual = { root: cPerson.root, nameSprite: cPerson.nameSprite, marker: cmarker, leftLegPivot: cPerson.leftLegPivot, rightLegPivot: cPerson.rightLegPivot, leftArm: cPerson.leftArm, rightArm: cPerson.rightArm, leftArmPivot: cPerson.leftArmPivot, rightArmPivot: cPerson.rightArmPivot };
       const start = new THREE.Vector2(0, -5.5);
-      visual.root.position.set(start.x, start.y, 0.24);
+      visual.root.position.set(start.x, 0.24, start.y);
       customerGroupCurrent.add(visual.root);
       const queuePos = CUSTOMER_QUEUE_POSITIONS[availableQueueIdx];
       const backY = queuePos.y;
@@ -3677,10 +3677,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       applyDefectFromRequest(request, cargoRobot.root);
       const cmarker = addExclamationMarker(cPerson.root);
       cmarker.visible = false;
-      cmarker.position.set(0, 0, 0.85);
+      cmarker.position.set(0, 0.85, 0);
       const visual = { root: cPerson.root, nameSprite: cPerson.nameSprite, marker: cmarker, leftLegPivot: cPerson.leftLegPivot, rightLegPivot: cPerson.rightLegPivot, leftArm: cPerson.leftArm, rightArm: cPerson.rightArm, leftArmPivot: cPerson.leftArmPivot, rightArmPivot: cPerson.rightArmPivot };
       const qp = CUSTOMER_QUEUE_POSITIONS[qi];
-      visual.root.position.set(qp.x, qp.y, 0.24);
+      visual.root.position.set(qp.x, 0.24, qp.y);
       customerGroupCurrent.add(visual.root);
       const npc: CustomerNpc = {
         id: `${customerName}-${Math.random().toString(36).slice(2, 8)}`,
@@ -3804,7 +3804,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               });
               if (!hitsRoomObstacle) {
                 localPositionRef.current.copy(candidate);
-                localRobot.root.position.set(candidate.x, candidate.y, 0.28);
+                localRobot.root.position.set(candidate.x, 0.28, candidate.y);
               } else {
                 moved = false;
               }
@@ -3820,7 +3820,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const hitsRoomObstacle = collidesWithAny(candidate, roomObstacleHitboxesRef.current);
               if (!hitsRoomObstacle) {
                 localPositionRef.current.copy(candidate);
-                localRobot.root.position.set(candidate.x, candidate.y, 0.28);
+                localRobot.root.position.set(candidate.x, 0.28, candidate.y);
               } else {
                 moved = false;
               }
@@ -3832,7 +3832,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               inShopRoomRef.current = false;
               setInShopRoom(false);
               localPositionRef.current.set(6.0, -9.0);
-              localRobot.root.position.set(6.0, -9.0, 0.24);
+              localRobot.root.position.set(6.0, 0.24, -9.0);
               shopDoorArmedRef.current = false;
               roomObstacleHitboxesRef.current = [];
               apiSync({ position: { x: 6.0, y: -9.0, rotation: null, room: 'outside' } });
@@ -3843,7 +3843,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const hitsShopObstacle = collidesWithAny(candidate, roomObstacleHitboxesRef.current);
               if (!hitsShopObstacle) {
                 localPositionRef.current.copy(candidate);
-                localRobot.root.position.set(candidate.x, candidate.y, 0.28);
+                localRobot.root.position.set(candidate.x, 0.28, candidate.y);
               } else {
                 moved = false;
               }
@@ -3899,7 +3899,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
               roomEntryFlashTimeoutRef.current = window.setTimeout(() => setRoomEntryFlash(false), 460);
               localPositionRef.current.copy(ROOM_SPAWN);
-              localRobot.root.position.set(ROOM_SPAWN.x, ROOM_SPAWN.y, 0.26);
+              localRobot.root.position.set(ROOM_SPAWN.x, 0.26, ROOM_SPAWN.y);
               roomObstacleHitboxesRef.current = workshopObstaclesRef.current;
               if (workshopCustomersRef.current.length === 0) {
                 spawnCustomer();
@@ -3921,7 +3921,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
               roomEntryFlashTimeoutRef.current = window.setTimeout(() => setRoomEntryFlash(false), 460);
               localPositionRef.current.set(0, 1.2);
-              localRobot.root.position.set(0, 1.2, 0.28);
+              localRobot.root.position.set(0, 0.28, 1.2);
               roomObstacleHitboxesRef.current = shopObstaclesRef.current;
               keyStateRef.current.clear();
               moved = false;
@@ -3935,7 +3935,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
               roomEntryFlashTimeoutRef.current = window.setTimeout(() => setRoomEntryFlash(false), 460);
               localPositionRef.current.copy(APARTMENT_SPAWN);
-              localRobot.root.position.set(APARTMENT_SPAWN.x, APARTMENT_SPAWN.y, 0.28);
+              localRobot.root.position.set(APARTMENT_SPAWN.x, 0.28, APARTMENT_SPAWN.y);
               roomObstacleHitboxesRef.current = [
                 { shape: 'box', center: { x: 2.2, y: -0.2 }, halfWidth: 0.8, halfHeight: 0.45 },
                 { shape: 'box', center: { x: -2.8, y: 2.2 }, halfWidth: 0.9, halfHeight: 0.45 },
@@ -3952,17 +3952,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const csSparky = apartmentSparkyRef.current;
                 if (csSparky) {
                   csSparky.root.visible = true;
-                  csSparky.root.position.set(0.2, 2.2, 0.22);
+                  csSparky.root.position.set(0.2, 0.22, 2.2);
                   const initDir = new THREE.Vector2(-2.8 - 0.2, 0.8 - 2.2).normalize();
                   aptSparkyFacingRef.current = -Math.atan2(initDir.x, initDir.y);
-                  const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                  const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                   if (sparkyBaseQuatRef.current) csSparky.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
                 }
                 // Position player avatar to walk alongside Sparky
                 if (localRobotRef.current) {
                   localPositionRef.current.set(0, 1.2);
-                  localRobotRef.current.root.position.set(0, 1.2, 0.28);
-                  localGroup.position.set(0, 1.2, 0.28);
+                  localRobotRef.current.root.position.set(0, 0.28, 1.2);
+                  localGroup.position.set(0, 0.28, 1.2);
                 }
                 yawRef.current = Math.atan2(-2.3, 0.53); // face toward walk direction
                 document.exitPointerLock();
@@ -3984,7 +3984,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }).catch(() => {});
             } else if (!hitsObstacle) {
               localPositionRef.current.copy(candidate);
-              localRobot.root.position.set(candidate.x, candidate.y, 0.24);
+              localRobot.root.position.set(candidate.x, 0.24, candidate.y);
             } else {
               moved = false;
             }
@@ -4000,7 +4000,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const step = dir.normalize().multiplyScalar(MOVE_SPEED * 0.23 * delta);
           localPositionRef.current.x += step.x;
           localPositionRef.current.y += step.y;
-          localRobot.root.position.set(localPositionRef.current.x, localPositionRef.current.y, 0.26);
+          localRobot.root.position.set(localPositionRef.current.x, 0.26, localPositionRef.current.y);
           moved = true;
         } else {
           rafiqWalkPhaseRef.current = 'arriving';
@@ -4013,7 +4013,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         rafiqCutsceneTimerRef.current += delta;
         if (roomOwnerVisualRef.current) {
           const rotProgress = Math.min(1, rafiqCutsceneTimerRef.current / 0.8);
-          const facingQ = scratchQuat.current.setFromAxisAngle(scratchVec3.current.set(0, 0, 1), rafiqTargetFacingRef.current * rotProgress);
+          const facingQ = scratchQuat.current.setFromAxisAngle(scratchVec3.current.set(0, 1, 0), rafiqTargetFacingRef.current * rotProgress);
           roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current).premultiply(facingQ);
         }
         if (rafiqCutsceneTimerRef.current >= 1.0) {
@@ -4028,12 +4028,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (!rafiqLetterSpriteRef.current && wsg) {
           const letter = new THREE.Group();
           const envBody = new THREE.Mesh(
-            new THREE.BoxGeometry(0.3, 0.4, 0.02),
+            new THREE.BoxGeometry(0.3, 0.02, 0.4),
             createToonMaterial(0xf5e6c8)
           );
           letter.add(envBody);
           const fold = new THREE.Mesh(
-            new THREE.BoxGeometry(0.26, 0.06, 0.03),
+            new THREE.BoxGeometry(0.26, 0.03, 0.06),
             createToonMaterial(0xe8d5a8)
           );
           fold.position.y = 0.15;
@@ -4042,13 +4042,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             new THREE.SphereGeometry(0.035, 8, 8),
             createToonMaterial(0xdc2626)
           );
-          seal.position.z = 0.015;
+          seal.position.y = 0.015;
           letter.add(seal);
-          letter.position.set(
-            (localPositionRef.current.x + ROOM_OWNER_POS.x) / 2,
-            (localPositionRef.current.y + ROOM_OWNER_POS.y) / 2,
-            0.5
-          );
+          letter.position.set(localPositionRef.current.x + ROOM_OWNER_POS.x / 2, 0.5, localPositionRef.current.y + ROOM_OWNER_POS.y / 2);
           rafiqLetterSpriteRef.current = letter;
           wsg.add(letter);
         }
@@ -4061,8 +4057,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const endY = localPositionRef.current.y * 0.25 + ROOM_OWNER_POS.y * 0.75;
           rafiqLetterSpriteRef.current.position.x = startX + (endX - startX) * ease;
           rafiqLetterSpriteRef.current.position.y = startY + (endY - startY) * ease;
-          rafiqLetterSpriteRef.current.position.z = 0.5 + Math.sin(ease * Math.PI) * 0.15;
-          rafiqLetterSpriteRef.current.rotation.z = Math.sin(ease * Math.PI) * 0.3;
+          rafiqLetterSpriteRef.current.position.y = 0.5 + Math.sin(ease * Math.PI) * 0.15;
+          rafiqLetterSpriteRef.current.rotation.y = Math.sin(ease * Math.PI) * 0.3;
           const s = t < 0.08 ? t / 0.08 : t > 0.85 ? (1 - t) / 0.15 : 1;
           rafiqLetterSpriteRef.current.scale.set(s, s, s);
         }
@@ -4071,12 +4067,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const arm = roomOwnerVisualRef.current.rightArm;
           if (rafiqCutsceneTimerRef.current < 0.3) {
             const p = rafiqCutsceneTimerRef.current / 0.3;
-            arm.rotation.z = -0.3 + (0.4 - (-0.3)) * p;
+            arm.rotation.y = -0.3 + (0.4 - (-0.3)) * p;
           } else if (rafiqCutsceneTimerRef.current < 1.0) {
-            arm.rotation.z = 0.4;
+            arm.rotation.y = 0.4;
           } else if (rafiqCutsceneTimerRef.current < handDuration) {
             const p = (rafiqCutsceneTimerRef.current - 1.0) / (handDuration - 1.0);
-            arm.rotation.z = 0.4 + (-0.3 - 0.4) * p;
+            arm.rotation.y = 0.4 + (-0.3 - 0.4) * p;
           }
         }
         if (rafiqCutsceneTimerRef.current >= handDuration) {
@@ -4088,7 +4084,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           rafiqWalkPhaseRef.current = 'reached';
           setShowRafiqLetterDlg(true);
           setRafiqLetterStep(0);
-          const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), rafiqTargetFacingRef.current);
+          const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rafiqTargetFacingRef.current);
           if (roomOwnerVisualRef.current) roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current).premultiply(facingQ);
         }
       }
@@ -4125,9 +4121,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
 
       const playerYaw = yawRef.current;
-      localGroup.rotation.z = -playerYaw;
-      const baseZ = inApartmentRoomRef.current ? 0.28 : inWorkshopRoomRef.current ? 0.26 : inShopRoomRef.current ? 0.08 : 0.24;
-      localGroup.position.z = baseZ + (moved ? Math.sin(worldTime * 10) * 0.02 : 0);
+      localGroup.rotation.y = -playerYaw;
+      const baseY = inApartmentRoomRef.current ? 0.28 : inWorkshopRoomRef.current ? 0.26 : inShopRoomRef.current ? 0.08 : 0.24;
+      localGroup.position.y = baseY + (moved ? Math.sin(worldTime * 10) * 0.02 : 0);
       // Walk animation for player legs
       const localVis = localRobotRef.current;
       const playerSpeed = moved ? 1 : 0;
@@ -4167,13 +4163,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (arm && heldGroup.parent !== arm) {
             arm.add(heldGroup);
           }
-          heldGroup.position.set(0, 0.14, 0);
+          heldGroup.position.set(0, 0, 0.14);
           heldGroup.rotation.set(0, 0, 0);
           heldGroup.scale.set(2, 2, 2);
         } else {
           if (heldGroup.parent !== localGroup) localGroup.add(heldGroup);
           heldGroup.scale.set(1, 1, 1);
-          heldGroup.position.set(0.15, 0, 0.50);
+          heldGroup.position.set(0.15, 0.50, 0);
           heldGroup.rotation.y = Math.sin(worldTime * 2) * 0.3;
           heldGroup.rotation.x = Math.sin(worldTime * 1.5) * 0.15;
         }
@@ -4182,7 +4178,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (heldGroup.parent !== localGroup) localGroup.add(heldGroup);
         heldGroup.scale.set(1, 1, 1);
         if (heldGroup.position.x !== 0.15 || heldGroup.position.y !== 0 || heldGroup.position.z !== 0.50) {
-          heldGroup.position.set(0.15, 0, 0.50);
+          heldGroup.position.set(0.15, 0.50, 0);
         }
       }
 
@@ -4269,7 +4265,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const idx = sparkyHomeWaypointIdxRef.current;
         if (waypoints.length > 0 && idx < waypoints.length) {
           const target = waypoints[idx];
-          const dist = sparky.root.position.distanceTo(scratchVec3.current.set(target.x, target.y, 0.14));
+          const dist = sparky.root.position.distanceTo(scratchVec3.current.set(target.x, 0.14, target.y));
           if (dist < 0.15) {
             sparkyHomeWaypointIdxRef.current++;
           } else {
@@ -4313,7 +4309,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           sparkyWaitTimerRef.current += delta;
           if (sparkyWaitTimerRef.current > 1.5 && !showTutorialRef.current) {
             const target = SPARKY_PATH[sparkyPathIndexRef.current];
-            const dist = sparky.root.position.distanceTo(scratchVec3.current.set(target.x, target.y, 0.14));
+            const dist = sparky.root.position.distanceTo(scratchVec3.current.set(target.x, 0.14, target.y));
             if (dist < 0.15) {
               sparkyPathIndexRef.current = (sparkyPathIndexRef.current + 1) % SPARKY_PATH.length;
               sparkyWaitTimerRef.current = 0;
@@ -4398,7 +4394,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       } else if (speechBubbleRef.current) {
         speechBubbleRef.current.style.display = 'none';
       }
-      sparky.root.position.z = 0.24 + Math.sin(worldTime * 4) * 0.04;
+      sparky.root.position.y = 0.24 + Math.sin(worldTime * 4) * 0.04;
       if (sparkyQuestStageRef.current === 'intro' && !sparkyGoHomeRef.current) {
         // Don't override repair animation with walk animation
       } else {
@@ -4409,7 +4405,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
       animateRobotVisual(owner, worldTime * 0.9, 0.12, -0.2, -0.1);
       if (shopNpcRef.current) {
-        shopNpcRef.current.root.position.z = 0.02 + Math.sin(worldTime * 3) * 0.02;
+        shopNpcRef.current.root.position.y = 0.02 + Math.sin(worldTime * 3) * 0.02;
       }
       if (roomOwnerVisualRef.current) {
         animateRobotVisual(roomOwnerVisualRef.current, worldTime * 0.92, 0.14, -0.28, -0.2);
@@ -4422,7 +4418,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (inApartmentRoomRef.current) {
         const aptSparky = apartmentSparkyRef.current;
         if (aptSparky && aptSparky.root.visible && aptCutscenePhaseRef.current === 'idle' && !installBatteryPhaseRef.current) {
-          aptSparky.root.position.z = 0.28 + Math.sin(worldTime * 3) * 0.04;
+          aptSparky.root.position.y = 0.28 + Math.sin(worldTime * 3) * 0.04;
           animateRobotVisual(aptSparky, worldTime, 0.3, -0.2, 0.1);
         }
         // Cutscene phase
@@ -4436,25 +4432,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const wpIdx = aptSparkyWalkWpRef.current;
             if (aptSparkyCS) {
               const spTgt = sparkyWps[Math.min(wpIdx, sparkyWps.length - 1)];
-              const dist = aptSparkyCS.root.position.distanceTo(new THREE.Vector3(spTgt.x, spTgt.y, 0.22));
+              const dist = aptSparkyCS.root.position.distanceTo(new THREE.Vector3(spTgt.x, 0.22, spTgt.y));
               if (dist > 0.08 && wpIdx < sparkyWps.length) {
                 const dir = new THREE.Vector2(spTgt.x - aptSparkyCS.root.position.x, spTgt.y - aptSparkyCS.root.position.y).normalize();
                 aptSparkyCS.root.position.x += dir.x * MOVE_SPEED * 0.29 * delta;
                 aptSparkyCS.root.position.y += dir.y * MOVE_SPEED * 0.29 * delta;
                 const moveFacing = -Math.atan2(dir.x, dir.y);
                 aptSparkyFacingRef.current = dist < 0.4 ? (moveFacing * (dist / 0.4)) : moveFacing;
-                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0.2, -0.2, 0.1);
               } else if (wpIdx < sparkyWps.length - 1) {
                 aptSparkyWalkWpRef.current = wpIdx + 1;
-                aptSparkyCS.root.position.set(spTgt.x, spTgt.y, 0.22);
+                aptSparkyCS.root.position.set(spTgt.x, 0.22, spTgt.y);
               } else {
                 aptCutscenePhaseRef.current = 'open-box';
                 aptCutsceneTimerRef.current = 0;
-                aptSparkyCS.root.position.set(sparkyWps[sparkyWps.length - 1].x, sparkyWps[sparkyWps.length - 1].y, 0.22);
+                aptSparkyCS.root.position.set(sparkyWps[sparkyWps.length - 1].x, 0.22, sparkyWps[sparkyWps.length - 1].y);
                 aptSparkyFacingRef.current = 0;
-                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0);
+                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
               }
             }
@@ -4481,11 +4477,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const progress = Math.min(1, aptCutsceneTimerRef.current / 1.5);
             if (scrapRobotRef.current) {
               const z = 0.26 + (0.55 - 0.26) * progress;
-              scrapRobotRef.current.root.position.z = z;
-              scrapRobotRef.current.root.rotation.z = 0.4 * (1 - progress) + 0.2 * progress;
+              scrapRobotRef.current.root.position.y = z;
+              scrapRobotRef.current.root.rotation.y = 0.4 * (1 - progress) + 0.2 * progress;
             }
             if (aptSparkyCS) {
-              aptSparkyCS.root.position.z = 0.22 - 0.06 * progress;
+              aptSparkyCS.root.position.y = 0.22 - 0.06 * progress;
               aptSparkyCS.body.rotation.x = -0.25 * progress;
               aptSparkyCS.leftArm.rotation.x = -1.5 * progress;
               aptSparkyCS.rightArm.rotation.x = -1.5 * progress;
@@ -4493,8 +4489,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             if (progress >= 1) {
               if (scrapRobotRef.current) {
-                scrapRobotRef.current.root.position.set(-2.8, 1.8, 0.55);
-                scrapRobotRef.current.root.rotation.z = 0.2;
+                scrapRobotRef.current.root.position.set(-2.8, 0.55, 1.8);
+                scrapRobotRef.current.root.rotation.y = 0.2;
               }
               aptCutscenePhaseRef.current = 'lift-carry';
               aptCutsceneTimerRef.current = 0;
@@ -4507,14 +4503,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const y = 1.8 + (1.2 - 1.8) * progress;
               scrapRobotRef.current.root.position.x = x;
               scrapRobotRef.current.root.position.y = y;
-              scrapRobotRef.current.root.rotation.z = 0.2 * (1 - progress) + 0.12 * progress;
+              scrapRobotRef.current.root.rotation.y = 0.2 * (1 - progress) + 0.12 * progress;
             }
             if (aptSparkyCS) {
               aptSparkyCS.root.position.x = -2.8;
               aptSparkyCS.root.position.y = 0.8 + (0.45 - 0.8) * progress;
-              aptSparkyCS.root.position.z = 0.16;
+              aptSparkyCS.root.position.y = 0.16;
               aptSparkyFacingRef.current = 0;
-              const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+              const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
               if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
               animateRobotVisual(aptSparkyCS, worldTime, 0.2, -0.1, 0.0);
               aptSparkyCS.leftArm.rotation.x = -1.5;
@@ -4522,8 +4518,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             if (progress >= 1) {
               if (scrapRobotRef.current) {
-                scrapRobotRef.current.root.position.set(-2.6, 1.2, 0.55);
-                scrapRobotRef.current.root.rotation.z = 0.12;
+                scrapRobotRef.current.root.position.set(-2.6, 0.55, 1.2);
+                scrapRobotRef.current.root.rotation.y = 0.12;
               }
               if (aptSparkyCS) {
                 aptSparkyCS.root.position.y = 0.45;
@@ -4536,11 +4532,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const progress = Math.min(1, aptCutsceneTimerRef.current / 1.5);
             if (scrapRobotRef.current) {
               const z = 0.55 + (0.24 - 0.55) * progress;
-              scrapRobotRef.current.root.position.z = z;
-              scrapRobotRef.current.root.rotation.z = 0.12 * (1 - progress) + 0.08 * progress;
+              scrapRobotRef.current.root.position.y = z;
+              scrapRobotRef.current.root.rotation.y = 0.12 * (1 - progress) + 0.08 * progress;
             }
             if (aptSparkyCS) {
-              aptSparkyCS.root.position.z = 0.16 + 0.06 * progress;
+              aptSparkyCS.root.position.y = 0.16 + 0.06 * progress;
               aptSparkyCS.body.rotation.x = -0.25 * (1 - progress);
               aptSparkyCS.leftArm.rotation.x = -1.5 * (1 - progress);
               aptSparkyCS.rightArm.rotation.x = -1.5 * (1 - progress);
@@ -4548,11 +4544,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             if (progress >= 1) {
               if (scrapRobotRef.current) {
-                scrapRobotRef.current.root.position.set(-2.6, 1.2, 0.24);
-                scrapRobotRef.current.root.rotation.z = 0.08;
+                scrapRobotRef.current.root.position.set(-2.6, 0.24, 1.2);
+                scrapRobotRef.current.root.rotation.y = 0.08;
               }
               if (aptSparkyCS) {
-                aptSparkyCS.root.position.z = 0.22;
+                aptSparkyCS.root.position.y = 0.22;
                 aptSparkyCS.body.rotation.x = 0;
                 aptSparkyCS.leftArm.rotation.x = 0;
                 aptSparkyCS.rightArm.rotation.x = 0;
@@ -4571,23 +4567,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 aptSparkyCS.root.position.x = WEST_TARGET.x + (EAST_TARGET.x - WEST_TARGET.x) * walkT;
                 aptSparkyCS.root.position.y = WEST_TARGET.y;
                 aptSparkyFacingRef.current = -Math.PI * 0.5;
-                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0.5, -0.1, 0.0);
               } else if (t < 3.0) {
                 const turnT = (t - 2.5) / 0.5;
                 aptSparkyFacingRef.current = -Math.PI * 0.5 + turnT * Math.PI;
-                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0, 0, 0);
                 if (t >= 2.8 && computerRef.current && computerRef.current.parent !== aptSparkyCS.root) {
                   aptSparkyCS.root.attach(computerRef.current);
                   computerRef.current.scale.set(1 / 0.7, 1 / 0.7, 1 / 0.7);
-                  computerRef.current.position.set(0, 0.47, 1.0);
+                  computerRef.current.position.set(0, 1.0, 0.47);
                   const invQ = aptSparkyCS.root.quaternion.clone().invert();
-                  const worldUp = new THREE.Vector3(0, 0, 1);
+                  const worldUp = new THREE.Vector3(0, 1, 0);
                   const localUp = worldUp.applyQuaternion(invQ);
-                  const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), localUp);
+                  const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), localUp);
                   computerRef.current.quaternion.copy(lapQuat);
                   computerRef.current.visible = true;
                 }
@@ -4597,13 +4593,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   aptSparkyCS.root.position.x = EAST_TARGET.x + (WEST_TARGET.x - EAST_TARGET.x) * walkT;
                   aptSparkyCS.root.position.y = WEST_TARGET.y;
                   aptSparkyFacingRef.current = Math.PI * 0.5;
-                  const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                  const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                   if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
                   animateRobotVisual(aptSparkyCS, worldTime, 0.5, -0.1, 0.0);
                 } else {
-                  aptSparkyCS.root.position.set(WEST_TARGET.x, WEST_TARGET.y, 0.22);
+                  aptSparkyCS.root.position.set(WEST_TARGET.x, 0.22, WEST_TARGET.y);
                   aptSparkyFacingRef.current = Math.PI * 0.5;
-                  const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                  const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                   if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
                   aptCutscenePhaseRef.current = 'link-computer';
                   aptCutsceneTimerRef.current = 0;
@@ -4635,8 +4631,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const walkEastProgress = Math.max(0, Math.min(1, (t - walkEastStart) / walkEastDuration));
             const tack2Progress = Math.max(0, Math.min(1, (t - tack2Start) / tack2Duration));
 
-            const laptopApproach = new THREE.Vector3(-3.4, 0.65, 0.22);
-            const scrapApproach = new THREE.Vector3(-2.6, 0.55, 0.22);
+            const laptopApproach = new THREE.Vector3(-3.4, 0.22, 0.65);
+            const scrapApproach = new THREE.Vector3(-2.6, 0.22, 0.55);
 
             if (aptSparkyCS) {
               // === Phase 1: Rotate Sparky west→north ===
@@ -4644,7 +4640,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const endAngle = 0;
               const easedRot = rotProgress < 1 ? rotProgress * rotProgress * (3 - 2 * rotProgress) : 1;
               aptSparkyFacingRef.current = startAngle + (endAngle - startAngle) * easedRot;
-              const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+              const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
               if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
 
               // Sparky sidesteps west from -2.8 to -3.4 during rotation
@@ -4654,10 +4650,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
               // Laptop stays at fixed local (0, 0.47, 1.0) — orbits naturally with Sparky
               if (computerRef.current && computerRef.current.parent === aptSparkyCS.root) {
-                computerRef.current.position.set(0, 0.47, 1.0);
+                computerRef.current.position.set(0, 1.0, 0.47);
                 const invQ = aptSparkyCS.root.quaternion.clone().invert();
-                const localUp = new THREE.Vector3(0, 0, 1).applyQuaternion(invQ);
-                const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), localUp);
+                const localUp = new THREE.Vector3(0, 1, 0).applyQuaternion(invQ);
+                const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), localUp);
                 computerRef.current.quaternion.copy(lapQuat);
               }
 
@@ -4668,7 +4664,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 apartmentRoomGroup.attach(computerRef.current);
                 computerRef.current.scale.set(1, 1, 1);
                 computerRef.current.position.copy(worldPos);
-                computerRef.current.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
+                computerRef.current.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
                 computerRef.current.userData.lowerStartZ = worldPos.z;
               }
 
@@ -4679,11 +4675,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
               // === Walk north to laptop ===
               if (walkNorthProgress > 0 && walkNorthProgress < 1) {
-                const startWalk = new THREE.Vector3(-3.4, 0.5, 0.22);
+                const startWalk = new THREE.Vector3(-3.4, 0.22, 0.5);
                 const easedWalk = walkNorthProgress * walkNorthProgress * (3 - 2 * walkNorthProgress);
                 aptSparkyCS.root.position.lerpVectors(startWalk, laptopApproach, easedWalk);
                 aptSparkyFacingRef.current = 0;
-                const wfQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0);
+                const wfQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(wfQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0.3, 0, 0);
               }
@@ -4692,12 +4688,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (tack1Progress > 0 && tack1Progress < 1) {
                 aptSparkyCS.root.position.copy(laptopApproach);
                 aptSparkyFacingRef.current += (0 - aptSparkyFacingRef.current) * 0.08;
-                const nfQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                const nfQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(nfQ);
                 // Animate tack fx
                 if (tackFxRef.current) {
                   if (tackFxPhaseRef.current === 0) {
-                    tackFxRef.current.position.set(-3.4, 1.025, 0.253);
+                    tackFxRef.current.position.set(-3.4, 0.253, 1.025);
                     tackFxRef.current.visible = true;
                     tackFxRef.current.scale.set(1, 1, 1);
                     tackFxRef.current.children.forEach((c: THREE.Object3D) => {
@@ -4720,7 +4716,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 // Right arm reaches toward laptop port
                 animateRobotVisual(aptSparkyCS, worldTime, 0, 0.3, -0.1);
                 aptSparkyCS.rightArm.rotation.x = -0.8;
-                aptSparkyCS.rightArm.rotation.z = 0.05;
+                aptSparkyCS.rightArm.rotation.y = 0.05;
               }
 
               // === Walk east to scrap ===
@@ -4728,7 +4724,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const easedWalk2 = walkEastProgress * walkEastProgress * (3 - 2 * walkEastProgress);
                 aptSparkyCS.root.position.lerpVectors(laptopApproach, scrapApproach, easedWalk2);
                 aptSparkyFacingRef.current = -Math.PI * 0.5; // face east
-                const wfQ2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                const wfQ2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(wfQ2);
                 animateRobotVisual(aptSparkyCS, worldTime, 0.3, 0, 0);
               }
@@ -4737,11 +4733,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (tack2Progress > 0 && tack2Progress < 1) {
                 aptSparkyCS.root.position.copy(scrapApproach);
                 aptSparkyFacingRef.current += (0 - aptSparkyFacingRef.current) * 0.08;
-                const nfQ2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current);
+                const nfQ2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(nfQ2);
                 if (tackFxRef.current) {
                   if (tackFxPhaseRef.current === 1) {
-                    tackFxRef.current.position.set(-2.6, 0.976, 0.36);
+                    tackFxRef.current.position.set(-2.6, 0.36, 0.976);
                     tackFxRef.current.visible = true;
                     tackFxRef.current.scale.set(1, 1, 1);
                     tackFxRef.current.children.forEach((c: THREE.Object3D) => {
@@ -4763,7 +4759,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 }
                 animateRobotVisual(aptSparkyCS, worldTime, 0, 0.3, -0.1);
                 aptSparkyCS.rightArm.rotation.x = -0.6;
-                aptSparkyCS.rightArm.rotation.z = -0.2;
+                aptSparkyCS.rightArm.rotation.y = -0.2;
               }
 
               // === Default arm pose during rotation/lowering ===
@@ -4781,22 +4777,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const startZ = (computerRef.current.userData.lowerStartZ as number) ?? computerRef.current.position.z;
               const endZ = 0.24;
               const easedLower = lowerProgress * lowerProgress * (3 - 2 * lowerProgress);
-              computerRef.current.position.z = startZ + (endZ - startZ) * easedLower;
+              computerRef.current.position.y = startZ + (endZ - startZ) * easedLower;
             }
 
             // === Coil follows Sparky's right hand ===
             if (coilRef.current && coilRef.current.visible && aptSparkyCS) {
-              const coilOffset = new THREE.Vector3(0.33, 0.12, 0.5).applyQuaternion(
-                new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), aptSparkyFacingRef.current)
+              const coilOffset = new THREE.Vector3(0.33, 0.5, 0.12).applyQuaternion(
+                new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current)
               );
               const invQ = aptSparkyCS.root.quaternion.clone().invert();
-              const coilUp = new THREE.Vector3(0, 0, 1).applyQuaternion(invQ);
-              coilRef.current.quaternion.setFromUnitVectors(coilUp, new THREE.Vector3(0, 0, 1));
-              coilRef.current.position.set(
-                aptSparkyCS.root.position.x + coilOffset.x * 0.7,
-                aptSparkyCS.root.position.y + coilOffset.y * 0.7,
-                0.38
-              );
+              const coilUp = new THREE.Vector3(0, 1, 0).applyQuaternion(invQ);
+              coilRef.current.quaternion.setFromUnitVectors(coilUp, new THREE.Vector3(0, 1, 0));
+              coilRef.current.position.set(aptSparkyCS.root.position.x + coilOffset.x * 0.7, 0.38, aptSparkyCS.root.position.y + coilOffset.y * 0.7);
             }
 
             // === Wire: laptop → hand during tack1, laptop → scrap after tack2 ===
@@ -4804,8 +4796,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (tack2Progress >= 1) {
                 // Fully connected: laptop → scrap (permanent)
                 wireRef.current.visible = true;
-                const lapPort = new THREE.Vector3(-3.4, 1.025, 0.253);
-                const scrapPos = new THREE.Vector3(-2.6, 0.976, 0.36);
+                const lapPort = new THREE.Vector3(-3.4, 0.253, 1.025);
+                const scrapPos = new THREE.Vector3(-2.6, 0.36, 0.976);
                 const mid = new THREE.Vector3().addVectors(lapPort, scrapPos).multiplyScalar(0.5);
                 wireRef.current.position.copy(mid);
                 const dir = new THREE.Vector3().subVectors(scrapPos, lapPort);
@@ -4817,8 +4809,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 animateWirePulse(wireRef.current, worldTime);
               } else if (tack2Progress > 0) {
                 wireRef.current.visible = true;
-                const scrapPos = new THREE.Vector3(-2.6, 0.976, 0.36);
-                const lapPos = new THREE.Vector3(-3.4, 1.025, 0.253);
+                const scrapPos = new THREE.Vector3(-2.6, 0.36, 0.976);
+                const lapPos = new THREE.Vector3(-3.4, 0.253, 1.025);
                 const fullWireT = tack2Progress;
                 const curEnd = new THREE.Vector3().lerpVectors(
                   coilRef.current?.position ?? scrapPos,
@@ -4836,7 +4828,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 animateWirePulse(wireRef.current, worldTime);
               } else if (tack1Progress > 0) {
                 wireRef.current.visible = true;
-                const lapPort = new THREE.Vector3(-3.4, 1.025, 0.253);
+                const lapPort = new THREE.Vector3(-3.4, 0.253, 1.025);
                 const handPos = coilRef.current?.position ?? lapPort;
                 const mid = new THREE.Vector3().addVectors(lapPort, handPos).multiplyScalar(0.5);
                 wireRef.current.position.copy(mid);
@@ -4938,11 +4930,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 aptSparkyCS.root.position.y += slDir.y * MOVE_SPEED * 0.29 * delta;
                 const slFacing = -Math.atan2(slDir.x, slDir.y);
                 aptSparkyFacingRef.current = slFacing;
-                const slQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), slFacing);
+                const slQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), slFacing);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(slQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0.15, -0.15, 0.08);
               } else {
-                aptSparkyCS.root.position.set(slTgt.x, slTgt.y, 0.22);
+                aptSparkyCS.root.position.set(slTgt.x, 0.22, slTgt.y);
               }
             }
             // Both arrived (2D distance, ignore z) → transition
@@ -5066,9 +5058,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const seed3 = Math.sin(phase * 3.1) * 0.5 + 0.5;
               const amp = Math.min(1, t / 0.3) * (1 - Math.max(0, (t - 1.8) / 0.4));
               scrapRobotRef.current.root.position.x = -2.6 + (seed1 - 0.5) * 0.06 * amp;
-              scrapRobotRef.current.root.position.z = 0.24 + (seed2 - 0.5) * 0.06 * amp;
-              scrapRobotRef.current.root.rotation.x = Math.PI / 2 + (seed3 - 0.5) * 0.15 * amp;
-              scrapRobotRef.current.root.rotation.z = 0.08 + (seed2 - 0.5) * 0.12 * amp;
+              scrapRobotRef.current.root.position.y = 0.24 + (seed2 - 0.5) * 0.06 * amp;
+              scrapRobotRef.current.root.rotation.x = 0 + (seed3 - 0.5) * 0.15 * amp;
+              scrapRobotRef.current.root.rotation.y = 0.08 + (seed2 - 0.5) * 0.12 * amp;
             }
             // Show version dialog after shake
             if (t > 2.5 && !versionDlgShownRef.current) {
@@ -5085,9 +5077,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             aptCutsceneTimerRef.current += delta;
             const vcElapsed = aptCutsceneTimerRef.current;
             if (scrapRobotRef.current && vcElapsed < 0.05) {
-              scrapRobotRef.current.root.position.set(-2.6, 1.2, 0.24);
-              scrapRobotRef.current.root.rotation.x = Math.PI / 2;
-              scrapRobotRef.current.root.rotation.z = 0.08;
+              scrapRobotRef.current.root.position.set(-2.6, 0.24, 1.2);
+              scrapRobotRef.current.root.rotation.x = 0;
+              scrapRobotRef.current.root.rotation.y = 0.08;
             }
             if (vcElapsed > 0.5 && !versionCodingShownRef.current) {
               versionCodingShownRef.current = true;
@@ -5103,9 +5095,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (scrapRobotRef.current) {
               // Reset position first frame
               if (t < 0.05) {
-                scrapRobotRef.current.root.position.set(-2.6, 1.2, 0.24);
-                scrapRobotRef.current.root.rotation.x = Math.PI / 2;
-                scrapRobotRef.current.root.rotation.z = 0.08;
+                scrapRobotRef.current.root.position.set(-2.6, 0.24, 1.2);
+                scrapRobotRef.current.root.rotation.x = 0;
+                scrapRobotRef.current.root.rotation.y = 0.08;
                 scrapRobotRef.current.root.scale.set(0.65, 0.65, 0.65);
                 scrapRobotRef.current.root.visible = true;
                 playStartupChime();
@@ -5170,7 +5162,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
               if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
               scrapRobotRef.current.root.position.x = -2.6 + (Math.random() - 0.5) * 0.04;
-              scrapRobotRef.current.root.position.z = 0.24 + (Math.random() - 0.5) * 0.04;
+              scrapRobotRef.current.root.position.y = 0.24 + (Math.random() - 0.5) * 0.04;
             }
             // Fade eyes off after 0.3s
             if (t > 0.3 && t < 0.6 && scrapRobotRef.current) {
@@ -5191,7 +5183,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   );
                   const bx = scrapRobotRef.current.root.position.x + (Math.random() - 0.5) * 0.06;
                   const by = scrapRobotRef.current.root.position.y + (Math.random() - 0.5) * 0.06;
-                  puff.position.set(bx, by, 0.7);
+                  puff.position.set(bx, 0.7, by);
                   puff.userData = { spawnTime: t, riseSpeed: 0.3 + Math.random() * 0.2, driftX: (Math.random() - 0.5) * 0.15, driftY: (Math.random() - 0.5) * 0.15 };
                   sceneRef.current.add(puff);
                   smokeParticlesRef.current.push(puff);
@@ -5208,7 +5200,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 (p.material as THREE.Material).dispose();
                 smokeParticlesRef.current.splice(i, 1);
               } else {
-                p.position.z = 0.24 + age * (p.userData.riseSpeed as number);
+                p.position.y = 0.24 + age * (p.userData.riseSpeed as number);
                 p.position.x = (p.userData.spawnX ?? p.position.x) + (p.userData.driftX as number) * age;
                 p.position.y = (p.userData.spawnY ?? p.position.y) + (p.userData.driftY as number) * age;
                 if (!p.userData.spawnX) { p.userData.spawnX = p.position.x; p.userData.spawnY = p.position.y; }
@@ -5234,8 +5226,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const t = aptCutsceneTimerRef.current;
             // Scrap falls over at start
             if (t < 0.1 && scrapRobotRef.current) {
-              scrapRobotRef.current.root.rotation.z = 0.3 + Math.random() * 0.1;
-              scrapRobotRef.current.root.position.z = 0.2;
+              scrapRobotRef.current.root.rotation.y = 0.3 + Math.random() * 0.1;
+              scrapRobotRef.current.root.position.y = 0.2;
               if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x000000);
               if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x000000);
             }
@@ -5283,7 +5275,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           endCinematicCutscene();
           aptCutscenePhaseRef.current = 'idle';
             // Position Sparky near Scrap for battery cutscene
-            if (aptSparky) aptSparky.root.position.set(-2.6, -0.55, 0.28);
+            if (aptSparky) aptSparky.root.position.set(-2.6, 0.28, -0.55);
             shopUnlockedRef.current = true;
             setShopUnlocked(true);
             cutsceneDoneRef.current = true;
@@ -5336,13 +5328,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (ibPhase === 'sparky-walk') {
             installBatteryTimerRef.current += delta;
             // Sparky walks toward Scrap
-            const sparkyTarget = new THREE.Vector3(-2.6, 0.2, 0.28);
+            const sparkyTarget = new THREE.Vector3(-2.6, 0.28, 0.2);
             const dist = aptPos.distanceTo(sparkyTarget);
             if (dist > 0.05) {
               const dir = new THREE.Vector2(sparkyTarget.x - aptPos.x, sparkyTarget.y - aptPos.y).normalize();
               aptPos.x += dir.x * MOVE_SPEED * 1.36 * delta;
               aptPos.y += dir.y * MOVE_SPEED * 1.36 * delta;
-              const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -Math.atan2(dir.x, dir.y));
+              const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.atan2(dir.x, dir.y));
               if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
               animateRobotVisual(aptSparky, worldTime, 1, dir.x, dir.y);
             } else {
@@ -5365,21 +5357,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               scrap.body = torusBody as unknown as typeof scrap.body;
               scrap.root.add(torusBody);
               const chestPanel = new THREE.Mesh(new THREE.CircleGeometry(0.09, 16), createToonMaterial(0x2a1a0a));
-              chestPanel.position.set(0, 0, 0.08);
+              chestPanel.position.set(0, 0.08, 0);
               torusBody.add(chestPanel);
               chestPanelRef.current = chestPanel;
             }
             if (installBatteryTimerRef.current < delta) playToolClank();
             if (chestPanelRef.current) {
               const openZ = 0.08 + Math.min(installBatteryTimerRef.current / 1.0, 1) * 0.15;
-              chestPanelRef.current.position.z = openZ;
+              chestPanelRef.current.position.y = openZ;
             }
             if (installBatteryTimerRef.current > 1.0) {
               installBatteryPhaseRef.current = 'place-battery';
               installBatteryTimerRef.current = 0;
               const batteryGroup = createPartModel('battery');
               batteryGroup.scale.set(2, 2, 2);
-              batteryGroup.position.set(aptPos.x, aptPos.y + 0.3, 0.4);
+              batteryGroup.position.set(aptPos.x, 0.4, aptPos.y + 0.3);
               apartmentRoomGroupRef.current?.add(batteryGroup);
               installBatteryPropRef.current = batteryGroup;
               batteryLerpStartPosRef.current.copy(batteryGroup.position);
@@ -5397,7 +5389,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (prop) {
               const progress = Math.min(installBatteryTimerRef.current / 1.2, 1);
               prop.position.lerpVectors(batteryLerpStartPosRef.current, batteryLerpEndPosRef.current, progress);
-              prop.rotation.z = progress * Math.PI * 2;
+              prop.rotation.y = progress * Math.PI * 2;
               prop.scale.setScalar(2 + progress * 0.3);
             }
             if (installBatteryTimerRef.current > 1.2) {
@@ -5407,7 +5399,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   new THREE.SphereGeometry(0.05, 10, 10),
                   new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.3 })
                 );
-                glow.position.set(0, 0, 0.24);
+                glow.position.set(0, 0.24, 0);
                 scrap.body.add(glow);
                 batteryGlowRef.current = glow;
               }
@@ -5432,7 +5424,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (chestPanelRef.current) {
               const closeProgress = Math.min(installBatteryTimerRef.current / 1.0, 1);
               const closedZ = 0.23 - closeProgress * 0.15;
-              chestPanelRef.current.position.z = closedZ;
+              chestPanelRef.current.position.y = closedZ;
             }
             if (installBatteryTimerRef.current > 2.0) {
               installBatteryPhaseRef.current = 'done';
@@ -5494,7 +5486,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const phase = sparkyInstallPhaseRef.current;
           if (phase === 'walk-to-bench') {
             const target = new THREE.Vector2(2.9, 0.3);
-            const dist = aptSparky.root.position.distanceTo(new THREE.Vector3(target.x, target.y, 0.14));
+            const dist = aptSparky.root.position.distanceTo(new THREE.Vector3(target.x, 0.14, target.y));
             if (dist > 0.15) {
               const dir = new THREE.Vector2(target.x - aptSparky.root.position.x, target.y - aptSparky.root.position.y).normalize();
               aptSparky.root.position.x += dir.x * MOVE_SPEED * 1.36 * delta;
@@ -5510,8 +5502,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else if (phase === 'weld') {
             sparkyInstallTimerRef.current += delta;
-            aptSparky.root.position.z = 0.24 + Math.sin(sparkyInstallTimerRef.current * 16) * 0.1;
-            aptSparky.root.rotation.z = Math.sin(sparkyInstallTimerRef.current * 20) * 0.08;
+            aptSparky.root.position.y = 0.24 + Math.sin(sparkyInstallTimerRef.current * 16) * 0.1;
+            aptSparky.root.rotation.y = Math.sin(sparkyInstallTimerRef.current * 20) * 0.08;
             if (sparkyInstallTimerRef.current > 1.8) {
               sparkyInstallPhaseRef.current = 'attach-part';
               sparkyInstallTimerRef.current = 0;
@@ -5527,7 +5519,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else if (phase === 'walk-back') {
             const homePos = new THREE.Vector2(0.2, 2.2);
-            const dist = aptSparky.root.position.distanceTo(new THREE.Vector3(homePos.x, homePos.y, 0.14));
+            const dist = aptSparky.root.position.distanceTo(new THREE.Vector3(homePos.x, 0.14, homePos.y));
             aptSparky.root.rotation.z *= 0.9;
             if (dist > 0.15) {
               const dir = new THREE.Vector2(homePos.x - aptSparky.root.position.x, homePos.y - aptSparky.root.position.y).normalize();
@@ -5539,7 +5531,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (phase === 'done') {
             sparkyInstallPhaseRef.current = null;
             setSparkleBurst(false);
-            aptSparky.root.rotation.z = 0;
+            aptSparky.root.rotation.y = 0;
 
             const partId = sparkyInstallPartIdRef.current!;
             const nextUnit = sparkyInstallNextStageRef.current!;
@@ -5608,8 +5600,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             else workshopRoomGroupRef.current?.attach(robotRoot);
             const behindX = sn2 ? sn2.position.x : 0;
             const behindY = sn2 ? sn2.position.y - 0.5 : -5.5;
-            robotRoot.position.set(behindX, behindY, 0.251);
-            robotRoot.rotation.set(Math.PI / 2, 0, 0);
+            robotRoot.position.set(behindX, 0.251, behindY);
+            robotRoot.rotation.set(0, 0, 0);
             robotRoot.scale.set(0.35, 0.35, 0.35);
           }
           // Reset emissive
@@ -5706,9 +5698,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const cx = walkOrigin.x + (walkTarget.x - walkOrigin.x) * easeT;
             const cy = walkOrigin.y + (walkTarget.y - walkOrigin.y) * easeT;
             localPositionRef.current.set(cx, cy);
-            localGroup.position.set(cx, cy, 0.26);
+            localGroup.position.set(cx, 0.26, cy);
             yawRef.current = Math.atan2(walkTarget.x - cx, walkTarget.y - cy);
-            localGroup.position.z = 0.26 + Math.sin(worldTime * 10) * 0.02;
+            localGroup.position.y = 0.26 + Math.sin(worldTime * 10) * 0.02;
             const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
             if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = walkSwing;
             if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -walkSwing;
@@ -5732,9 +5724,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const cx = robotPos.x + (laptopTarget.x - robotPos.x) * easeT;
             const cy = robotPos.y + (laptopTarget.y - robotPos.y) * easeT;
             localPositionRef.current.set(cx, cy);
-            localGroup.position.set(cx, cy, 0.26);
+            localGroup.position.set(cx, 0.26, cy);
             yawRef.current = Math.atan2(laptopTarget.x - cx, laptopTarget.y - cy);
-            localGroup.position.z = 0.26 + Math.sin(worldTime * 10) * 0.02;
+            localGroup.position.y = 0.26 + Math.sin(worldTime * 10) * 0.02;
             const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
             const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
             if (localRobotRef.current) {
@@ -5750,7 +5742,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             const wireStart = scratchVec3.current;
             crn.cargoRobot.root.getWorldPosition(wireStart);
-            const handPos = scratchVec3b.current.set(localPositionRef.current.x, localPositionRef.current.y + 0.25, 0.5);
+            const handPos = scratchVec3b.current.set(localPositionRef.current.x, 0.5, localPositionRef.current.y + 0.25);
             wireStart.z += 0.02;
             const dir = scratchVec3c.current.copy(handPos).sub(wireStart);
             const distWire = dir.length();
@@ -5783,7 +5775,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (port) port.getWorldPosition(laptopPos);
               else comp.getWorldPosition(laptopPos);
             }
-            const handPos = scratchVec3c.current.set(localPositionRef.current.x, localPositionRef.current.y + 0.25, 0.5);
+            const handPos = scratchVec3c.current.set(localPositionRef.current.x, 0.5, localPositionRef.current.y + 0.25);
             const wireEnd = scratchVec3b.current.lerp(laptopPos, t);
             wireStart.z += 0.02;
             wireEnd.z += 0.1;
@@ -5939,7 +5931,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           interactionRequestedRef.current = false;
         }
         if (shopNpcRef.current) {
-          shopNpcRef.current.root.position.z = 0.02 + Math.sin(worldTime * 3) * 0.02;
+          shopNpcRef.current.root.position.y = 0.02 + Math.sin(worldTime * 3) * 0.02;
         }
       }
 
@@ -5952,7 +5944,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const npc = customers[i];
           if (npc.stage === 'waiting' || npc.stage === 'awaiting-code') {
             npc.target.copy(npc.position);
-            npc.visual.root.rotation.z = 0;
+            npc.visual.root.rotation.y = 0;
           } else if (npc.stage === 'leaving') {
             if (npc.waypoints && npc.wpIndex !== undefined && npc.wpIndex < npc.waypoints.length) {
               npc.target.copy(npc.waypoints[npc.wpIndex]);
@@ -6058,8 +6050,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const cr = npc.cargoRobot;
             if (cr.root.parent !== workshopRoomGroupRef.current) {
               workshopRoomGroupRef.current?.attach(cr.root);
-              cr.root.position.set(npc.position.x, npc.position.y - 0.5, 0.251);
-              cr.root.rotation.set(Math.PI / 2, 0, 0);
+              cr.root.position.set(npc.position.x, 0.251, npc.position.y - 0.5);
+              cr.root.rotation.set(0, 0, 0);
               cr.root.scale.set(0.35, 0.35, 0.35);
             }
             const rotZ = npc.visual.root.rotation.z;
@@ -6069,8 +6061,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const targetDy = behindY - cr.root.position.y;
             cr.root.position.x += targetDx * 0.08;
             cr.root.position.y += targetDy * 0.08;
-            cr.root.rotation.set(Math.PI / 2, 0, 0);
-            cr.root.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), Math.atan2(targetDx, -targetDy));
+            cr.root.rotation.set(0, 0, 0);
+            cr.root.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), Math.atan2(targetDx, -targetDy));
             animateRobotVisual(cr, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, 0, -1);
           } else {
             const isRegisterCutscene = registerCutscenePhaseRef.current !== 'idle' && registerCutsceneCustomerRef.current?.id === npc.id;
@@ -6082,7 +6074,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             animateRobotVisual(npc.cargoRobot, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, dx, dy);
           }
           if (moving) {
-            npc.visual.root.rotation.z = -Math.atan2(dx, dy);
+            npc.visual.root.rotation.y = -Math.atan2(dx, dy);
           }
           const swing = walkSin * 0.3 * (moving ? 1 : 0);
           if (npc.visual.leftLegPivot) npc.visual.leftLegPivot.rotation.x = swing;
@@ -6156,7 +6148,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               }
             }
           }
-          npc.visual.root.position.set(npc.position.x, npc.position.y, 0.26 + bobZ);
+          npc.visual.root.position.set(npc.position.x, 0.26 + bobZ, npc.position.y);
           }
         }
 
@@ -6241,7 +6233,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         avatar.root.position.x += (avatar.target.x - avatar.root.position.x) * REMOTE_LERP;
         avatar.root.position.y += (avatar.target.y - avatar.root.position.y) * REMOTE_LERP;
         const roomZ = avatar.room === 'workshop' ? 0.26 : avatar.room === 'apartment' || avatar.room === 'shop' ? 0.28 : 0.24;
-        avatar.root.position.z = roomZ;
+        avatar.root.position.y = roomZ;
         const velocity = Math.hypot(avatar.root.position.x - prevX, avatar.root.position.y - prevY);
         avatar.walkTime += delta * (1 + velocity * 20);
         const lookX = avatar.target.x - avatar.root.position.x;
@@ -6290,90 +6282,90 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const phase = aptCutscenePhaseRef.current;
           const csSparky = apartmentSparkyRef.current;
           if (repairCutscenePhaseRef.current !== 'idle') {
-            scratchVec3.current.set(2.9, 2.2, 1.0);
+            scratchVec3.current.set(2.9, 1.0, 2.2);
             camera.position.lerp(scratchVec3.current, 0.06);
-            camera.lookAt(2.9, 3.05, 0.3);
+            camera.lookAt(2.9, 0.3, 3.05);
           } else if (registerCutscenePhaseRef.current !== 'idle') {
             if (registerCutscenePhaseRef.current === 'place-robot') {
-              scratchVec3.current.set(2.0, 0.8, 1.5);
+              scratchVec3.current.set(2.0, 1.5, 0.8);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(2.0, 3.0, 0.3);
+              camera.lookAt(2.0, 0.3, 3.0);
             } else if (registerCutscenePhaseRef.current === 'player-to-robot') {
-              scratchVec3.current.set(localPositionRef.current.x, localPositionRef.current.y - 1.5, 1.5);
+              scratchVec3.current.set(localPositionRef.current.x, 1.5, localPositionRef.current.y - 1.5);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 0.8, 0.3);
+              camera.lookAt(localPositionRef.current.x, 0.3, localPositionRef.current.y + 0.8);
             } else if (registerCutscenePhaseRef.current === 'player-to-laptop') {
-              scratchVec3.current.set(0.5, 2.2, 2.0);
+              scratchVec3.current.set(0.5, 2.0, 2.2);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(2.0, 2.7, 0.3);
+              camera.lookAt(2.0, 0.3, 2.7);
             } else if (registerCutscenePhaseRef.current === 'connect-wire' || registerCutscenePhaseRef.current === 'register-dlg') {
-              scratchVec3.current.set(0.5, 2.2, 2.0);
+              scratchVec3.current.set(0.5, 2.0, 2.2);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(2.0, 2.7, 0.3);
+              camera.lookAt(2.0, 0.3, 2.7);
             } else if (registerCutscenePhaseRef.current === 'laptop-ui' || registerCutscenePhaseRef.current === 'done') {
               const regComp = workshopRegisterComputerRef.current;
               if (regComp) {
                 const lid = regComp.children[2] as THREE.Group;
                 const display = lid.children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y - 0.18, scratchVec3.current.z);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z - 0.18);
                 camera.lookAt(scratchVec3.current);
               }
             } else {
-              scratchVec3.current.set(1.5, 2.5, 1.2);
+              scratchVec3.current.set(1.5, 1.2, 2.5);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(1.8, 3.0, 0.4);
+              camera.lookAt(1.8, 0.4, 3.0);
             }
           } else if (installBatteryPhaseRef.current) {
             const ibPhase = installBatteryPhaseRef.current;
             if (ibPhase === 'approach' || ibPhase === 'hand-off') {
-              scratchVec3.current.set(localPositionRef.current.x, localPositionRef.current.y - 1.0, 2.0);
+              scratchVec3.current.set(localPositionRef.current.x, 2.0, localPositionRef.current.y - 1.0);
               camera.position.lerp(scratchVec3.current, 0.04);
-              camera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 1.5, 0.3);
+              camera.lookAt(localPositionRef.current.x, 0.3, localPositionRef.current.y + 1.5);
             } else if (ibPhase === 'sparky-walk') {
-              scratchVec3.current.set(-2.6, -0.2, 1.8);
+              scratchVec3.current.set(-2.6, 1.8, -0.2);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(-2.6, 0.6, 0.3);
+              camera.lookAt(-2.6, 0.3, 0.6);
             } else {
-              scratchVec3.current.set(-3.5, 0.7, 1.8);
+              scratchVec3.current.set(-3.5, 1.8, 0.7);
               camera.position.lerp(scratchVec3.current, 0.08);
-              camera.lookAt(-2.6, 0.7, 0.3);
+              camera.lookAt(-2.6, 0.3, 0.7);
             }
           } else if (csSparky) {
             const sp = csSparky.root.position;
             if (phase === 'fetch-laptop') {
-              camera.position.set(-3.0, 2.5, 1.5);
-              camera.lookAt(-3.0, 1.15, 0.3);
+              camera.position.set(-3.0, 1.5, 2.5);
+              camera.lookAt(-3.0, 0.3, 1.15);
             } else if (phase === 'link-computer' || phase === 'electrocute') {
-              scratchVec3.current.set(-3.0, 2.5, 1.5);
+              scratchVec3.current.set(-3.0, 1.5, 2.5);
               camera.position.lerp(scratchVec3.current, 0.04);
-              camera.lookAt(-3.0, 1.15, 0.3);
+              camera.lookAt(-3.0, 0.3, 1.15);
             } else if (phase === 'walk-to-laptop') {
-              scratchVec3.current.set(localPositionRef.current.x, localPositionRef.current.y + 1.3, 2.0);
+              scratchVec3.current.set(localPositionRef.current.x, 2.0, localPositionRef.current.y + 1.3);
               camera.position.lerp(scratchVec3.current, 0.04);
-              camera.lookAt(localPositionRef.current.x, localPositionRef.current.y - 0.8, 0.3);
+              camera.lookAt(localPositionRef.current.x, 0.3, localPositionRef.current.y - 0.8);
             } else if (phase === 'string-tutorial') {
-              scratchVec3.current.set(-3.4, 1.6, 1.8);
+              scratchVec3.current.set(-3.4, 1.8, 1.6);
               camera.position.lerp(scratchVec3.current, 0.04);
-              camera.lookAt(-3.4, 0.5, 0.3);
+              camera.lookAt(-3.4, 0.3, 0.5);
             } else if (phase === 'laptop-ui') {
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y - 0.35, scratchVec3.current.z);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z - 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'antenna-glow') {
               const t = aptCutsceneTimerRef.current;
               if (t < 2.0) {
-                scratchVec3.current.set(-3.0, 0.8, 1.5);
+                scratchVec3.current.set(-3.0, 1.5, 0.8);
                 camera.position.lerp(scratchVec3.current, 0.06);
-                camera.lookAt(-2.6, 1.2, 0.34);
+                camera.lookAt(-2.6, 0.34, 1.2);
               } else {
                 if (computerRef.current) {
                   const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                   display.getWorldPosition(scratchVec3.current);
-                  scratchVec3b.current.set(scratchVec3.current.x, scratchVec3.current.y - 0.35, scratchVec3.current.z);
+                  scratchVec3b.current.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z - 0.35);
                   camera.position.lerp(scratchVec3b.current, 0.04);
                   camera.lookAt(scratchVec3.current);
                 }
@@ -6382,55 +6374,55 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y - 0.35, scratchVec3.current.z);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z - 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'reboot') {
-              scratchVec3.current.set(-3.0, 0.8, 1.5);
+              scratchVec3.current.set(-3.0, 1.5, 0.8);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(-2.6, 1.2, 0.34);
+              camera.lookAt(-2.6, 0.34, 1.2);
             } else if (phase === 'version-coding') {
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y - 0.35, scratchVec3.current.z);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z - 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'pre-boot') {
-              scratchVec3.current.set(-3.0, 0.8, 1.5);
+              scratchVec3.current.set(-3.0, 1.5, 0.8);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(-2.6, 1.2, 0.34);
+              camera.lookAt(-2.6, 0.34, 1.2);
             } else if (phase === 'boot-coding') {
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y - 0.35, scratchVec3.current.z);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z - 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'boot') {
-              scratchVec3.current.set(-3.0, 0.8, 1.5);
+              scratchVec3.current.set(-3.0, 1.5, 0.8);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(-2.6, 1.2, 0.34);
+              camera.lookAt(-2.6, 0.34, 1.2);
             } else {
-              scratchVec3.current.set(-2.7, 3.0, 2.2);
+              scratchVec3.current.set(-2.7, 2.2, 3.0);
               camera.position.lerp(scratchVec3.current, 0.04);
-              camera.lookAt(sp.x, sp.y, 0.3);
+              camera.lookAt(sp.x, 0.3, sp.y);
             }
           }
         } else if (cutsceneActiveRef.current && inside && room === 'workshop') {
           // Rafiq meet cutscene — camera phases
           if (rafiqWalkPhaseRef.current === 'walking') {
             // Player walks upward (+Y). Camera behind (lower Y), looks ahead toward Rafiq.
-            scratchVec3.current.set(localPositionRef.current.x, localPositionRef.current.y - 1.5, 1.8);
+            scratchVec3.current.set(localPositionRef.current.x, 1.8, localPositionRef.current.y - 1.5);
             camera.position.lerp(scratchVec3.current, 0.04);
-            camera.lookAt(localPositionRef.current.x, localPositionRef.current.y + 0.5, 0.3);
+            camera.lookAt(localPositionRef.current.x, 0.3, localPositionRef.current.y + 0.5);
           } else {
             // Centered two-shot: characters centered on screen
             const midX = (localPositionRef.current.x + ROOM_OWNER_POS.x) / 2;
             const midY = (localPositionRef.current.y + ROOM_OWNER_POS.y) / 2;
-            scratchVec3.current.set(midX, midY + 0.8, 1.6);
+            scratchVec3.current.set(midX, 1.6, midY + 0.8);
             camera.position.lerp(scratchVec3.current, 0.04);
-            camera.lookAt(midX, midY, 0.3);
+            camera.lookAt(midX, 0.3, midY);
           }
         } else {
         const zoom = computeCameraZoom(
@@ -6439,16 +6431,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           buildingFootprints as BuildingFootprint[],
         );
         const cd = Math.max(0.1, zoom.camDist + zoomOffsetRef.current);
-        const camZ = zoom.height + sinPitch * cd;
+        const camY = zoom.height + sinPitch * cd;
         cameraTargetPosRef.current.set(
           px - sinYaw * cosPitch * cd,
-          py - cosYaw * cosPitch * cd,
-          Math.max(0.05, camZ)
+          Math.max(0.05, camY),
+          py - cosYaw * cosPitch * cd
         );
         cameraLookTargetRef.current.set(
           px,
-          py,
-          inside ? 0.5 : 0.6
+          inside ? 0.5 : 0.6,
+          py
         );
         camera.position.copy(cameraTargetPosRef.current);
         camera.lookAt(cameraLookTargetRef.current);
@@ -6460,23 +6452,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           };
           const lim = limits[room] ?? 20;
           camera.position.x = Math.max(-lim, Math.min(lim, camera.position.x));
-          camera.position.y = Math.max(-lim, Math.min(lim, camera.position.y));
+          camera.position.z = Math.max(-lim, Math.min(lim, camera.position.z));
         } else {
           // Push camera outside building interiors — only when player is outside the footprint
           // (when player is inside, room camera clamping handles it)
-          const cx = camera.position.x, cy = camera.position.y;
+          const cx = camera.position.x, cz = camera.position.z;
           const MARGIN = 0.15;
           for (const fp of buildingFootprints) {
             const playerInside = px >= fp.x1 && px <= fp.x2 && py >= fp.y1 && py <= fp.y2;
             if (playerInside) continue; // player is inside this building — room clamping handles camera
-            if (cx >= fp.x1 && cx <= fp.x2 && cy >= fp.y1 && cy <= fp.y2) {
+            if (cx >= fp.x1 && cx <= fp.x2 && cz >= fp.y1 && cz <= fp.y2) {
               const dl = cx - fp.x1, dr = fp.x2 - cx;
-              const db = cy - fp.y1, dt = fp.y2 - cy;
+              const db = cz - fp.y1, dt = fp.y2 - cz;
               const minD = Math.min(dl, dr, db, dt);
               if (minD === dl) camera.position.x = fp.x1 - MARGIN;
               else if (minD === dr) camera.position.x = fp.x2 + MARGIN;
-              else if (minD === db) camera.position.y = fp.y1 - MARGIN;
-              else camera.position.y = fp.y2 + MARGIN;
+              else if (minD === db) camera.position.z = fp.y1 - MARGIN;
+              else camera.position.z = fp.y2 + MARGIN;
             }
           }
         }
@@ -6753,9 +6745,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const color = new THREE.Color(hashColor(remoteUserId)).getHex();
         const pv = buildPlayerVisual(color, name);
         const roomZ = remoteRoom === 'workshop' ? 0.26 : remoteRoom === 'apartment' || remoteRoom === 'shop' ? 0.28 : 0.24;
-        pv.root.position.set(data.x, data.y, roomZ);
+        pv.root.position.set(data.x, roomZ, data.y);
         const initialRotation = (data as any).rotation ?? 0;
-        pv.root.rotation.z = -initialRotation;
+        pv.root.rotation.y = -initialRotation;
         remoteAvatarsRef.current[remoteUserId] = {
           root: pv.root,
           nameSprite: pv.nameSprite,
@@ -6894,7 +6886,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     localPositionRef.current.copy(outsideDoor);
     yawRef.current = 0; // face north (away from workshop — door is on north wall)
     if (localRobotRef.current) {
-      localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.24);
+      localRobotRef.current.root.position.set(outsideDoor.x, 0.24, outsideDoor.y);
     }
     apiSync({ position: { x: outsideDoor.x, y: outsideDoor.y, rotation: yawRef.current, room: 'outside' } });
   };
@@ -6914,7 +6906,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     localPositionRef.current.copy(outsideDoor);
     yawRef.current = Math.atan2(-1, -1); // face southwest (out the door)
     if (localRobotRef.current) {
-      localRobotRef.current.root.position.set(outsideDoor.x, outsideDoor.y, 0.24);
+      localRobotRef.current.root.position.set(outsideDoor.x, 0.24, outsideDoor.y);
     }
     apiSync({ position: { x: outsideDoor.x, y: outsideDoor.y, rotation: yawRef.current, room: 'outside' } });
   };
@@ -6922,17 +6914,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const prepBatteryInstallProps = () => {
     if (computerRef.current) {
       computerRef.current.visible = true;
-      computerRef.current.position.set(-3.41, 0.96, 0.24);
-      computerRef.current.quaternion.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
+      computerRef.current.position.set(-3.41, 0.24, 0.96);
+      computerRef.current.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
     }
     if (cutsceneBoxRef.current) {
       cutsceneBoxRef.current.visible = true;
-      cutsceneBoxRef.current.position.set(-2.8, 1.9, 0.24);
+      cutsceneBoxRef.current.position.set(-2.8, 0.24, 1.9);
     }
     if (wireRef.current) {
       wireRef.current.visible = true;
-      const lapPort = new THREE.Vector3(-3.4, 1.025, 0.253);
-      const scrapPos = new THREE.Vector3(-2.6, 0.976, 0.36);
+      const lapPort = new THREE.Vector3(-3.4, 0.253, 1.025);
+      const scrapPos = new THREE.Vector3(-2.6, 0.36, 0.976);
       const mid = new THREE.Vector3().addVectors(lapPort, scrapPos).multiplyScalar(0.5);
       wireRef.current.position.copy(mid);
       const dir = new THREE.Vector3().subVectors(scrapPos, lapPort);
@@ -6943,10 +6935,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
     if (scrapRobotRef.current) {
       scrapRobotRef.current.root.visible = true;
-      scrapRobotRef.current.root.position.set(-2.6, 1.2, 0.24);
+      scrapRobotRef.current.root.position.set(-2.6, 0.24, 1.2);
       scrapRobotRef.current.root.scale.set(0.65, 0.65, 0.65);
-      scrapRobotRef.current.root.rotation.x = Math.PI / 2;
-      scrapRobotRef.current.root.rotation.z = 0.08;
+      scrapRobotRef.current.root.rotation.x = 0;
+      scrapRobotRef.current.root.rotation.y = 0.08;
     }
     if (apartmentSparkyRef.current) {
       apartmentSparkyRef.current.root.visible = true;
@@ -6992,8 +6984,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         new THREE.PlaneGeometry(0.06, 0.04),
         new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * colors.length)], transparent: true, opacity: 1, side: THREE.DoubleSide })
       );
-      p.position.set(pos.x + (Math.random() - 0.5) * 0.5, pos.y + (Math.random() - 0.5) * 0.5, 0.5 + Math.random() * 0.3);
-      p.rotation.z = Math.random() * Math.PI * 2;
+      p.position.set(pos.x + (Math.random() - 0.5) * 0.5, 0.5 + Math.random() * 0.3, pos.y + (Math.random() - 0.5) * 0.5);
+      p.rotation.y = Math.random() * Math.PI * 2;
       scene.add(p);
       particles.push({
         mesh: p,
@@ -7739,7 +7731,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
             if (roomOwnerVisualRef.current) {
               roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current);
-              if (roomOwnerVisualRef.current.rightArm) roomOwnerVisualRef.current.rightArm.rotation.z = -0.3;
+              if (roomOwnerVisualRef.current.rightArm) roomOwnerVisualRef.current.rightArm.rotation.y = -0.3;
             }
           }
         }}
