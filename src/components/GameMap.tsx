@@ -2621,10 +2621,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { x: 18.5, y: 4, w: 9.0, d: 4.5, palette: 'slate', debrisR: 4.8, debrisN: 18, height: 6.0 },
       { x: 18.5, y: -4, w: 9.0, d: 4.5, palette: 'slate', debrisR: 4.8, debrisN: 18, height: 3.5 },
       { x: 18.5, y: -11.75, w: 9.0, d: 3.5, palette: 'wood', debrisR: 4.5, debrisN: 16, height: 4.5 },
-      // Wall of buildings at x≈27 — blocks road sight line, packed tight no gaps
-      { x: 28, y: 4, w: 4, d: 4.5, palette: 'concrete', debrisR: 3.5, debrisN: 12, height: 7.5 },
-      { x: 28, y: -4, w: 4, d: 4.5, palette: 'brick', debrisR: 3.5, debrisN: 12, height: 6.5 },
-      { x: 28, y: -11.75, w: 4, d: 3.5, palette: 'slate', debrisR: 3.0, debrisN: 10, height: 5.5 },
+      // Wall of buildings at x≈28 — packed tight, no grass/road gap between them
+      { x: 28, y: 1, w: 4, d: 8, palette: 'concrete', debrisR: 3.5, debrisN: 12, height: 7.5 },
+      { x: 28, y: -9.5, w: 4, d: 9, palette: 'brick', debrisR: 3.5, debrisN: 12, height: 6.5 },
     ];
     for (const { x, y, w, d, palette, debrisR, debrisN, height } of BUILDINGS) {
       const bldg = createAbandonedBuilding(x, y, w, d, palette, height);
@@ -2666,10 +2665,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { x1: 14.0, y1: 1.75, x2: 23.0, y2: 6.25, cx: 18.5, cy: 4, bw: 9.0, bd: 4.5, bh: 6.0 },
       { x1: 14.0, y1: -6.25, x2: 23.0, y2: -1.75, cx: 18.5, cy: -4, bw: 9.0, bd: 4.5, bh: 3.5 },
       { x1: 14.0, y1: -13.5, x2: 23.0, y2: -10.0, cx: 18.5, cy: -11.75, bw: 9.0, bd: 3.5, bh: 4.5 },
-      // Wall buildings east — packed tight, blocks road sight line
-      { x1: 26.0, y1: 1.75, x2: 30.0, y2: 6.25, cx: 28, cy: 4, bw: 4.0, bd: 4.5, bh: 7.5 },
-      { x1: 26.0, y1: -6.25, x2: 30.0, y2: -1.75, cx: 28, cy: -4, bw: 4.0, bd: 4.5, bh: 6.5 },
-      { x1: 26.0, y1: -13.5, x2: 30.0, y2: -10.0, cx: 28, cy: -11.75, bw: 4.0, bd: 3.5, bh: 5.5 },
+      // Wall buildings east — packed tight, no gaps
+      { x1: 26.0, y1: -3.0, x2: 30.0, y2: 5.0, cx: 28, cy: 1, bw: 4.0, bd: 8.0, bh: 7.5 },
+      { x1: 26.0, y1: -14.0, x2: 30.0, y2: -5.0, cx: 28, cy: -9.5, bw: 4.0, bd: 9.0, bh: 6.5 },
     ];
       // Occluders removed — colorWrite:false renders as solid black in this environment
 

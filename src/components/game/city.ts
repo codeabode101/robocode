@@ -38,9 +38,8 @@ export function buildObstacles(): Hitbox[] {
     { shape: 'box', center: { x: 18.5, y: -4 }, halfWidth: 4.8, halfHeight: 2.5 },
     // Bottom-right
     { shape: 'box', center: { x: 18.5, y: -11.75 }, halfWidth: 4.8, halfHeight: 2.0 },
-    // East side — wall buildings blocking road sight line
-    { shape: 'box', center: { x: 28, y: 4 }, halfWidth: 2.2, halfHeight: 2.5 },
-    { shape: 'box', center: { x: 28, y: -4 }, halfWidth: 2.2, halfHeight: 2.5 },
-    { shape: 'box', center: { x: 28, y: -11.75 }, halfWidth: 2.2, halfHeight: 2.0 },
+    // East side — wall buildings blocking road, packed tight
+    { shape: 'box', center: { x: 28, y: 1 }, halfWidth: 2.2, halfHeight: 4.2 },
+    { shape: 'box', center: { x: 28, y: -9.5 }, halfWidth: 2.2, halfHeight: 4.7 },
   ];
 }
