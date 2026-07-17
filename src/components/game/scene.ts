@@ -1747,50 +1747,46 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
         const pd = 0.04; // plank thickness
 
         if (state < 0.20) {
-          // Boarded — 4 variations
-          const board = new THREE.Mesh(bx(ww + 0.08, 0.06, wh + 0.08), boardMat);
-          if (axis === 'x') board.position.set(fx, fy + off, rowZ);
-          else board.position.set(fx + off, fy, rowZ);
-          bldg.add(board);
+          // Boarded — 4 variations, just planks across the opening (no solid backing)
           const style = Math.floor(Math.random() * 4);
           if (style === 0) {
-            // X boarding: two diagonal planks
+            // X boarding: two diagonal planks crossing
             const diag = Math.sqrt(ww * ww + wh * wh) + 0.1;
             const angle = Math.atan2(wh, ww);
-            const p1 = new THREE.Mesh(bx(diag, pd, pd), trimMat);
-            const p2 = new THREE.Mesh(bx(diag, pd, pd), trimMat);
+            const p1 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
+            const p2 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
             if (axis === 'x') {
-              p1.position.set(fx, fy + off - 0.03, rowZ); p1.rotation.z = angle;
-              p2.position.set(fx, fy + off - 0.03, rowZ); p2.rotation.z = -angle;
+              p1.position.set(fx, fy + off, rowZ); p1.rotation.z = angle;
+              p2.position.set(fx, fy + off, rowZ); p2.rotation.z = -angle;
             } else {
-              p1.position.set(fx + off - 0.03, fy, rowZ); p1.rotation.x = angle;
-              p2.position.set(fx + off - 0.03, fy, rowZ); p2.rotation.x = -angle;
+              p1.position.set(fx + off, fy, rowZ); p1.rotation.x = angle;
+              p2.position.set(fx + off, fy, rowZ); p2.rotation.x = -angle;
             }
             bldg.add(p1); bldg.add(p2);
           } else if (style === 1) {
             // Single diagonal plank
-            const d = new THREE.Mesh(bx(ww + 0.14, pd, 0.04), trimMat);
-            if (axis === 'x') { d.position.set(fx, fy + off - 0.03, rowZ); d.rotation.z = 0.7; }
-            else { d.position.set(fx + off - 0.03, fy, rowZ); d.rotation.x = 0.7; }
+            const d = new THREE.Mesh(bx(ww + 0.14, pd, 0.04), boardMat);
+            if (axis === 'x') { d.position.set(fx, fy + off, rowZ); d.rotation.z = 0.7; }
+            else { d.position.set(fx + off, fy, rowZ); d.rotation.x = 0.7; }
             bldg.add(d);
           } else if (style === 2) {
             // Horizontal slats (2–3)
             const n = 2 + (Math.random() > 0.5 ? 1 : 0);
             for (let s = 0; s < n; s++) {
-              const slat = new THREE.Mesh(bx(ww + 0.06, pd, 0.04), trimMat);
+              const slat = new THREE.Mesh(bx(ww + 0.06, pd, 0.04), boardMat);
               const zOff = (s - (n - 1) / 2) * (wh / n);
-              if (axis === 'x') slat.position.set(fx, fy + off - 0.03, rowZ + zOff);
-              else slat.position.set(fx + off - 0.03, fy, rowZ + zOff);
+              if (axis === 'x') slat.position.set(fx, fy + off, rowZ + zOff);
+              else slat.position.set(fx + off, fy, rowZ + zOff);
               bldg.add(slat);
             }
           } else {
             // Vertical slats (2–3)
             const n = 2 + (Math.random() > 0.5 ? 1 : 0);
             for (let s = 0; s < n; s++) {
-              const slat = new THREE.Mesh(new THREE.BoxGeometry(pd, pd, wh + 0.06), trimMat);
+              const slat = new THREE.Mesh(new THREE.BoxGeometry(pd, pd, wh + 0.06), boardMat);
               const xOff = (s - (n - 1) / 2) * (ww / n);
-              if (axis === 'x') slat.position.set(fx + xOff, fy + off - 0.03, rowZ);
-              else slat.position.set(fx + off - 0.03, fy + xOff, rowZ);
+              if (axis === 'x') slat.position.set(fx + xOff, fy + off, rowZ);
+              else slat.position.set(fx + off, fy + xOff, rowZ);
               bldg.add(slat);
             }
           }
