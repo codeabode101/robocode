@@ -1,6 +1,6 @@
 # Robocode Autonomous State
-Last updated: 2026-07-17T21:05:00Z
-Iteration: 2
+Last updated: 2026-07-17T21:15:00Z
+Iteration: 3
 Mode: idle
 
 ## Current Task
@@ -11,18 +11,18 @@ None — waiting for next directive.
 - Created opencode.json with Playwright MCP configured
 - Created this state file
 - Created spatial_tests.js (12 tests)
-- Fixed boarded windows: all windows X-shaped planks (commit 395d620)
+- Fixed boarded windows v3: glass + frame + cracks + planks (commit e95887e)
 - Added road at x=24 between building columns (commit d22a1b1)
 - Deployed to https://robocode.rahejaom.workers.dev
 
 ## Next Up
-- Test east wall buildings at x=28 (wall buildings blocking road sight line)
-- Run spatial_tests.js to verify all tests pass
-- Verify screenshot_test.js scene 12 completes (was cut off earlier)
+- Test east wall buildings at x=28
+- Run spatial_tests.js
+- Verify screenshot_test.js scene 12
 
 ## Known Issues
-- screenshot_test.js scene 4 sometimes times out (page crash during slate top building)
-- screenshot_test.js scene 12 sometimes cuts off (timeout?)
+- screenshot_test.js scene 4 sometimes times out
+- screenshot_test.js scene 12 sometimes cuts off
 
 ## Test Results Last Run
 - screenshot_test.js: 11/12 passed, scene 12 cut off

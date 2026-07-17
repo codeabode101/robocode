@@ -1791,8 +1791,8 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             const p1 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
             const p2 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
             if (axis === 'x') {
-              p1.position.set(fx, fy + plankOff, rowZ); p1.rotation.z = angle;
-              p2.position.set(fx, fy + plankOff, rowZ); p2.rotation.z = -angle;
+              p1.position.set(fx, fy + plankOff, rowZ); p1.rotation.y = angle;
+              p2.position.set(fx, fy + plankOff, rowZ); p2.rotation.y = -angle;
             } else {
               p1.position.set(fx + plankOff, fy, rowZ); p1.rotation.x = angle;
               p2.position.set(fx + plankOff, fy, rowZ); p2.rotation.x = -angle;
@@ -1801,7 +1801,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           } else if (style === 1) {
             // Single diagonal plank
             const d = new THREE.Mesh(bx(ww + 0.14, pd, 0.05), boardMat);
-            if (axis === 'x') { d.position.set(fx, fy + plankOff, rowZ); d.rotation.z = 0.7; }
+            if (axis === 'x') { d.position.set(fx, fy + plankOff, rowZ); d.rotation.y = 0.7; }
             else { d.position.set(fx + plankOff, fy, rowZ); d.rotation.x = 0.7; }
             bldg.add(d);
           } else if (style === 2) {
