@@ -1774,7 +1774,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             const crackAngle = Math.PI / 4 + (Math.random() - 0.5) * 0.6;
             if (axis === 'x') {
               crack.position.set(fx + (Math.random() - 0.5) * ww * 0.3, fy + off + 0.01, rowZ + (Math.random() - 0.5) * wh * 0.3);
-              crack.rotation.z = crackAngle;
+              crack.rotation.y = crackAngle;
             } else {
               crack.position.set(fx + off + 0.01, fy + (Math.random() - 0.5) * ww * 0.3, rowZ + (Math.random() - 0.5) * wh * 0.3);
               crack.rotation.x = crackAngle;

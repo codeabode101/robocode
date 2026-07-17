@@ -5,6 +5,39 @@ description: Use when working on the Robocode 3D game island project. Covers pai
 
 # Robocode Development Skill
 
+## ⚠️ Z-UP COORDINATE SYSTEM — READ BEFORE ANY 3D WORK
+
+This project uses **Z-up** (NOT Y-up like Three.js defaults, Unity, or most game engines). Every rotation, position, and camera calculation depends on this.
+
+```
+X = east/west
+Y = north/south
+Z = UP (vertical)
+```
+
+**Rotation rules:**
+- `rotation.x` → rotates in **YZ plane** (north-south × up-down)
+- `rotation.y` → rotates in **XZ plane** (east-west × up-down)
+- `rotation.z` → rotates in **XY plane** (east-west × north-south) ← HORIZONTAL, NOT for face-mounted objects
+
+**Window face rotations:**
+| Face | Axis | Window spans | Correct rotation | WRONG rotation |
+|------|------|-------------|-----------------|----------------|
+| South/North | `'x'` | X (width) × Z (height) | `rotation.y` | `rotation.z` ← sticks out! |
+| East/West | `'y'` | Y (width) × Z (height) | `rotation.x` | `rotation.z` ← sticks out! |
+
+**Why this matters:** If you use `rotation.z` on a south-face plank, it rotates in the XY plane (horizontal) instead of the XZ plane (the window face). The plank will protrude from the building instead of lying flat across the window.
+
+**Building z-positions:**
+- Road mesh: z=0.14
+- Grass blocks: z=0.17
+- Buildings: z=0.25
+- Player/NPCs: z=0.24
+
+**Camera:** PerspectiveCamera(65), pitch starts at 0.8 rad (~46°). `movementX * 0.012` = yaw, `movementY * 0.005` = pitch. Top-down view, looking along -Z.
+
+---
+
 ## Project Quick Reference
 
 ### Stack
