@@ -1738,7 +1738,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
         const fy = axis === 'y' ? pos : faceY;
         const off = axis === 'x' ? -faceSign * 0.11 : faceSign * 0.11;
         const fd = 0.06;
-        const fo = off - 0.03;
+        const fo = off > 0 ? off - 0.03 : off + 0.03;
 
         const isY = axis === 'y';
         const bx = (w: number, d: number, h: number) => isY ? new THREE.BoxGeometry(d, h, w) : new THREE.BoxGeometry(w, h, d);
