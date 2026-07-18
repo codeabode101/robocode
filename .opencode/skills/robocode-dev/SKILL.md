@@ -5,36 +5,34 @@ description: Use when working on the Robocode 3D game island project. Covers pai
 
 # Robocode Development Skill
 
-## ⚠️ Z-UP COORDINATE SYSTEM — READ BEFORE ANY 3D WORK
+## ⚠️ Y-UP COORDINATE SYSTEM — READ BEFORE ANY 3D WORK
 
-This project uses **Z-up** (NOT Y-up like Three.js defaults, Unity, or most game engines). Every rotation, position, and camera calculation depends on this.
+This project uses **Y-up** (Three.js default). Migrated from Z-up in commit 302cf5f.
 
 ```
-X = east/west
-Y = north/south
-Z = UP (vertical)
+Game (Vector2):   x = east/west,  y = north/south
+Three.js Y-up:    (x, y, z) → (x, 0, -y)  (y negated for Three.js z)
+                  camera.up = (0,1,0)
 ```
 
-**Rotation rules:**
-- `rotation.x` → rotates in **YZ plane** (north-south × up-down)
-- `rotation.y` → rotates in **XZ plane** (east-west × up-down)
-- `rotation.z` → rotates in **XY plane** (east-west × north-south) ← HORIZONTAL, NOT for face-mounted objects
+**Ground plane (Three.js Y=0):**
+- Road mesh: y=0.14
+- Grass blocks: y=0.17
+- Buildings: y=0.24
+- Player/NPCs: y=0.24
 
-**Window face rotations:**
-| Face | Axis | Window spans | Correct rotation | WRONG rotation |
-|------|------|-------------|-----------------|----------------|
-| South/North | `'x'` | X (width) × Z (height) | `rotation.y` | `rotation.z` ← sticks out! |
-| East/West | `'y'` | Y (width) × Z (height) | `rotation.x` | `rotation.z` ← sticks out! |
+**Rotation rules in Y-up:**
+- `rotation.x` — pitch (around X, in YZ plane)
+- `rotation.y` — yaw (around Y, in XZ plane) — HORIZONTAL
+- `rotation.z` — roll (around Z, in XY plane)
 
-**Why this matters:** If you use `rotation.z` on a south-face plank, it rotates in the XY plane (horizontal) instead of the XZ plane (the window face). The plank will protrude from the building instead of lying flat across the window.
+**Window face planks (Y-up):**
+| Face | Axis | Correct rotation |
+|------|------|-----------------|
+| South/North | `'x'` | `rotation.z` |
+| East/West | `'y' | `rotation.x` |
 
-**Building z-positions:**
-- Road mesh: z=0.14
-- Grass blocks: z=0.17
-- Buildings: z=0.25
-- Player/NPCs: z=0.24
-
-**Camera:** PerspectiveCamera(65), pitch starts at 0.8 rad (~46°). `movementX * 0.012` = yaw, `movementY * 0.005` = pitch. Top-down view, looking along -Z.
+**Camera:** OrthographicCamera, top-down, viewHeight=26. `rotation.y` = yaw.
 
 ---
 
@@ -67,25 +65,26 @@ src/
 
 **Hitbox Rule**: Every visible 3D object MUST have a corresponding collision hitbox. Defined as `{ shape: 'box', center: { x, y }, halfWidth, halfHeight }` or `{ shape: 'circle', center: { x, y }, radius }`. Added to room obstacle arrays (`workshopObstaclesRef`, `shopObstaclesRef`, etc.).
 
-**Z-Positions**:
-- Road mesh: z=0.14
-- Grass blocks: z=0.17
-- Buildings: z=0.25
-- Player/NPCs: z=0.24 (standing on ground)
+**Y-Positions**:
+- Road mesh: y=0.14
+- Grass blocks: y=0.17
+- Buildings: y=0.25
+- Player/NPCs: y=0.24 (standing on ground)
 
 **Road Grid**:
-- Horizontal roads at y≈0, y≈-8.25, y≈8.5
-- Vertical roads at x≈0, x≈12, x≈24
+- Horizontal roads at y≈0, y≈-8.25, y≈8.5 (game north/south)
+- Vertical roads at x≈0, x≈12, x≈24 (game east/west)
+- Sidewalks split at intersections (no sidewalk over road crossings)
+- Yellow dashes extend to intersection centers (+ at 4-way, T at 3-way)
 - xGaps: `[-10.4, -1.0], [1.0, 11.0], [13.0, 23], [25.0, 29]`
 - yGaps: top `[1.0, 7.0]`, mid `[-7.0, -1.0]`, bottom `[-14, -9.5]`
-- Road mesh: `BoxGeometry(46, 24, 0.04)` at `(9, -2, 0.14)`
+- Road mesh: `BoxGeometry(42.4, 0.04, 24)` at `(10.8, 0.14, 2)`
 
 **Camera**:
-- PerspectiveCamera(65, aspect, 0.1, 100)
-- Pitch starts at 0.8 rad (~46°)
-- `movementX * 0.012` = yaw, `movementY * 0.005` = pitch
-- ZOOMED: camDist=2.0, lookDist=2.1, height=1.7, fov=60
-- ZOOM_RANGE=2.0
+- OrthographicCamera, top-down, viewHeight=26
+- ACESFilmic tone mapping, PCFSoft shadows
+- Fog at 38-58 units
+- `rotation.y` = yaw
 
 **Island**: Custom `THREE.ShapeGeometry`. Flat left edge at x=-10.4, flat bottom at y=-14. Arc uses `absarc(0,0,40,...)`.
 
@@ -217,7 +216,7 @@ Each test loads the game, walks to a position, takes a screenshot, and verifies:
 |------|---------------|
 | Building positions | Each building's west/south face is at expected coordinates |
 | Road alignment | Yellow dashed lines centered on roads, no offset |
-| Sidewalk flush | Sidewalks sit at z=0.17, flush with road edges |
+| Sidewalk flush | Sidewalks sit at y=0.17, flush with road edges |
 | No overlaps | Adjacent buildings don't clip into each other |
 | Camera zoom | At ZOOMED level, buildings are visible in frame |
 | Window states | Boarded windows show planks (not solid board), glass is dark/reflective |

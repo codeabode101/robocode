@@ -167,7 +167,7 @@ intro → cutscene → Rafiq workshop → tutorial (Variables & Data Types) → 
   → ... → all-done
 ```
 
-### Spatial Layout (Orthographic top-down, Z-up)
+### Spatial Layout (Orthographic top-down, Y-up — Three.js default)
 | Location | Position | Size/Notes |
 |----------|----------|------------|
 | Player spawn | (0, -7) | Outdoor world, ISLAND_RADIUS=40 |

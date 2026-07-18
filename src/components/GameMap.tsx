@@ -2129,20 +2129,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Cover road at dock level (z=7 to 9.5, y=-9.5 to -7 in Z-up) from building eastward
     addG(28.5, -8.25, 7, 2.5);
 
-    // Sidewalks — continuous flat strips along road edges (no inward jogs at intersections)
+    // Sidewalks — split at intersections (gaps over road crossings)
     const sMat = new THREE.MeshBasicMaterial({ color: 0xc8c0b0 });
     const makeSW = (x: number, y: number, w: number, h: number) => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, h), sMat);
       m.position.set(x, 0.24, -y); outdoorGroup.add(m);
     };
-    // Vertical road edges (continuous full-height strips)
-    const vRoadEdges = [-1.25, 1.25, 10.75, 13.25, 22.75, 25.25];
-    vRoadEdges.forEach(x => makeSW(x, -1.5, sw, 21));  // y=-12 to y=9
-    // Horizontal road edges (continuous full-width strips)
-    const hRoadEdges = [1.25, -1.25, -6.75, -9.75];
-    hRoadEdges.forEach(y => makeSW(9.2, y, 42.4, sw));  // x=-10.4 to x=32
+    const hSW = (y: number) => {
+      xGaps.forEach(([x1,x2]) => { makeSW((x1+x2)/2, y, x2-x1, sw); });
+    };
+    const vSW = (x: number) => {
+      [[-14,-9.5],[-7.0,-1.0],[1.0,7.0]].forEach(([y1,y2]) => { makeSW(x, (y1+y2)/2, sw, y2-y1); });
+    };
+    hSW(1.25); hSW(-1.25); hSW(-6.75); hSW(-9.75);
+    vSW(-1.25); vSW(1.25); vSW(10.75); vSW(13.25); vSW(22.75); vSW(25.25);
 
-    // Street markings - dashed yellow center lines (stop before intersections)
+    // Street markings - dashed yellow center lines (go through to intersection centers)
     const dashMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
     const makeDashedLine = (x: number, y: number, len: number, horiz: boolean) => {
       const dashLen = 0.4, gapLen = 0.3, step = dashLen + gapLen;
@@ -2154,35 +2156,29 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         outdoorGroup.add(d);
       }
     };
-    // Horizontal center lines — stop before each vertical road (x=1, x=11, x=23, x=25)
-    // y=0 line: segments between vertical roads
-    makeDashedLine(-5.7, 0, 8.4, true);   // x=-10.4 to -1
-    makeDashedLine(6, 0, 9, true);         // x=1 to 11
-    makeDashedLine(18, 0, 9, true);        // x=13 to 23
-    makeDashedLine(27, 0, 3.5, true);      // x=25 to 29
-    // y=-8.25 line: segments between vertical roads
-    makeDashedLine(-5.7, -8.25, 8.4, true);
-    makeDashedLine(6, -8.25, 9, true);
-    makeDashedLine(18, -8.25, 9, true);
-    makeDashedLine(27, -8.25, 3.5, true);
-    // y=8.5 line (near dock): segments between vertical roads
-    makeDashedLine(-5.7, 8.5, 8.4, true);
-    makeDashedLine(6, 8.5, 9, true);
-    makeDashedLine(18, 8.5, 9, true);
-    makeDashedLine(27, 8.5, 3.5, true);
-    // Vertical center lines — stop before each horizontal road (y=1, y=-1, y=-7, y=-9.5)
-    // x=0 line: segments between horizontal roads
-    makeDashedLine(0, 4, 5, false);        // y=1 to 7
-    makeDashedLine(0, -4, 5, false);       // y=-7 to -1
-    makeDashedLine(0, -11.75, 3.5, false); // y=-14 to -9.5
-    // x=12 line
-    makeDashedLine(12, 4, 5, false);
-    makeDashedLine(12, -4, 5, false);
-    makeDashedLine(12, -11.75, 3.5, false);
-    // x=24 line
-    makeDashedLine(24, 4, 5, false);
-    makeDashedLine(24, -4, 5, false);
-    makeDashedLine(24, -11.75, 3.5, false);
+    // Horizontal center lines — intersection center to intersection center (+ at crossings)
+    makeDashedLine(-5.2, 0, 10.4, true);    // x=-10.4 to x=0
+    makeDashedLine(6, 0, 12, true);          // x=0 to x=12
+    makeDashedLine(18, 0, 12, true);         // x=12 to x=24
+    makeDashedLine(26.5, 0, 5, true);        // x=24 to x=29
+    makeDashedLine(-5.2, -8.25, 10.4, true);
+    makeDashedLine(6, -8.25, 12, true);
+    makeDashedLine(18, -8.25, 12, true);
+    makeDashedLine(26.5, -8.25, 5, true);
+    makeDashedLine(-5.2, 8.5, 10.4, true);
+    makeDashedLine(6, 8.5, 12, true);
+    makeDashedLine(18, 8.5, 12, true);
+    makeDashedLine(26.5, 8.5, 5, true);
+    // Vertical center lines — from top T center to bottom, through + intersections
+    makeDashedLine(0, 4.25, 8.5, false);      // y=8.5 to y=0 (T at top, + at y=0)
+    makeDashedLine(0, -4.125, 8.25, false);   // y=0 to y=-8.25
+    makeDashedLine(0, -8.875, 1.25, false);   // y=-8.25 to y=-9.5
+    makeDashedLine(12, 4.25, 8.5, false);
+    makeDashedLine(12, -4.125, 8.25, false);
+    makeDashedLine(12, -8.875, 1.25, false);
+    makeDashedLine(24, 4.25, 8.5, false);
+    makeDashedLine(24, -4.125, 8.25, false);
+    makeDashedLine(24, -8.875, 1.25, false);
 
     // Parking lot at (0, -11) — 3 spaces in the 3-unit gap between bottom grass columns
     const pkMat = createToonMaterial(0x3a3a4a);
@@ -2662,7 +2658,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scatterDebris(-9, 6, 0.6, 5);
     scatterDebris(2.5, 5.5, 0.6, 5);
     scatterDebris(10, 5, 0.6, 5);
-    scatterDebris(26, 0, 0.8, 6);   // wall base
+    scatterDebris(25, 0, 0.8, 6);   // wall base
     scatterDebris(28, 7, 0.6, 5);   // behind wall north
     scatterDebris(28, -8, 0.6, 5);  // behind wall south
 
