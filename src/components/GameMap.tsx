@@ -2121,11 +2121,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       [-14, -9.5, -11.75], // bottom row (unchanged)
     ];
     const xGaps: [number, number, number][] = [
-      [-10.4, -1.0, -5.7], [1.0, 11.0, 6], [13.0, 23, 18], [25.0, 29, 27],
+      [-10.4, -1.0, -5.7], [1.0, 11.0, 6], [13.0, 22, 17.5], [25.0, 29, 27],
     ];
     yGaps.forEach(([y1, y2, yc]) => {
       xGaps.forEach(([x1, x2, xc]) => { addG(xc, yc, x2 - x1, y2 - y1); });
     });
+    // Cover road at dock level (z=7 to 9.5, y=-9.5 to -7 in Z-up) from building eastward
+    addG(28.5, -8.25, 7, 2.5);
 
     // Sidewalks along road edges, split to avoid covering intersections
     const sMat = new THREE.MeshBasicMaterial({ color: 0xc8c0b0 });
@@ -2146,7 +2148,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       });
     };
     hSW(1.25); hSW(-1.25); hSW(-6.75); hSW(-9.75); hSW(6.75); hSW(9.75);
-    vSW(-1.25); vSW(1.25); vSW(-10.25); vSW(10.75); vSW(13.25); vSW(23.25); vSW(24.75);
+    vSW(-1.25); vSW(1.25); vSW(-10.25); vSW(10.75); vSW(13.25); vSW(22.25); vSW(24.75);
 
     // Street markings - dashed yellow center lines
     // Dashed yellow center lines
@@ -2167,7 +2169,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     makeDashedLine(8.2, 8.5, 37.2, true);
     makeDashedLine(12, -2, 24, false);
     makeDashedLine(0, 0.25, 19.5, false);
-    makeDashedLine(24, -2, 21, false);  // road between building columns at x=24
+    makeDashedLine(23.5, -2, 21, false);  // road between building columns at x=23.5
 
     // Parking lot at (0, -11) — 3 spaces in the 3-unit gap between bottom grass columns
     const pkMat = createToonMaterial(0x3a3a4a);
