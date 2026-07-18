@@ -1745,7 +1745,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
 
         if (state < 0.35) {
           // Boarded — glass + frame + cracks + thick planks on top
-          const plankOff = axis === 'x' ? -faceSign * 0.08 : faceSign * 0.08;
+          const plankOff = axis === 'x' ? -faceSign * 0.14 : faceSign * 0.14;
           // 1. Glass pane
           const glass = new THREE.Mesh(bx(ww, 0.04, wh), darkMat);
           if (axis === 'x') glass.position.set(fx, rowZ, -fy + off);
@@ -1781,19 +1781,19 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           }
           // 4. Thick planks — 6 styles
           const style = Math.floor(Math.random() * 6);
-          const pd = 0.12;
+          const pd = 0.18;
           const placeP = (m: THREE.Mesh, px: number, py: number, pz: number) => {
             if (axis === 'x') m.position.set(px, py, pz + plankOff);
             else m.position.set(px + plankOff, py, pz);
           };
           if (style === 0) {
             // Full square board — one big plank covering entire window
-            const sq = new THREE.Mesh(bx(ww + 0.12, pd + 0.02, wh + 0.12), boardMat);
+            const sq = new THREE.Mesh(bx(ww + 0.2, pd, wh + 0.2), boardMat);
             placeP(sq, fx, rowZ, -fy);
             bldg.add(sq);
           } else if (style === 1) {
             // X boarding: two thick diagonal planks crossing
-            const diag = Math.sqrt(ww * ww + wh * wh) + 0.15;
+            const diag = Math.sqrt(ww * ww + wh * wh) + 0.3;
             const angle = Math.atan2(wh, ww);
             const p1 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
             const p2 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
@@ -1808,7 +1808,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           } else if (style === 2) {
             // Horizontal thick planks (3)
             for (let s = 0; s < 3; s++) {
-              const slat = new THREE.Mesh(bx(ww + 0.08, pd, pd * 0.8), boardMat);
+              const slat = new THREE.Mesh(bx(ww + 0.2, pd, pd * 0.8), boardMat);
               const zOff = (s - 1) * (wh / 3);
               placeP(slat, fx, rowZ + zOff, -fy);
               bldg.add(slat);
@@ -1824,13 +1824,13 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             }
           } else if (style === 4) {
             // Single thick diagonal plank
-            const d = new THREE.Mesh(bx(ww + 0.18, pd, pd * 0.8), boardMat);
+            const d = new THREE.Mesh(bx(ww + 0.28, pd, pd * 0.8), boardMat);
             if (axis === 'x') { d.position.set(fx, rowZ, -fy + plankOff); d.rotation.z = 0.7; }
             else { d.position.set(fx + plankOff, rowZ, -fy); d.rotation.x = 0.7; }
             bldg.add(d);
           } else {
             // Board + nails — horizontal plank with nail head cubes at corners
-            const plank = new THREE.Mesh(bx(ww + 0.14, pd, pd * 0.8), boardMat);
+            const plank = new THREE.Mesh(bx(ww + 0.24, pd, pd * 0.8), boardMat);
             placeP(plank, fx, rowZ, -fy);
             bldg.add(plank);
             const nailSize = 0.035;
