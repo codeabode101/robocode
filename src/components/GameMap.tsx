@@ -2121,7 +2121,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       [-14, -9.5, -11.75], // bottom row (unchanged)
     ];
     const xGaps: [number, number, number][] = [
-      [-10.4, -1.0, -5.7], [1.0, 11.0, 6], [13.0, 22, 17.5], [25.0, 29, 27],
+      [-10.4, -1.0, -5.7], [1.0, 11.0, 6], [13.0, 23, 18], [25.0, 29, 27],
     ];
     yGaps.forEach(([y1, y2, yc]) => {
       xGaps.forEach(([x1, x2, xc]) => { addG(xc, yc, x2 - x1, y2 - y1); });
@@ -2136,7 +2136,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       m.position.set(x, 0.24, -y); outdoorGroup.add(m);
     };
     // Vertical road edges (continuous full-height strips)
-    const vRoadEdges = [-1.25, 1.25, 10.75, 13.25, 21.75, 25.25];
+    const vRoadEdges = [-1.25, 1.25, 10.75, 13.25, 22.75, 25.25];
     vRoadEdges.forEach(x => makeSW(x, -1.5, sw, 21));  // y=-12 to y=9
     // Horizontal road edges (continuous full-width strips)
     const hRoadEdges = [1.25, -1.25, -6.75, -9.75];
@@ -2154,22 +2154,22 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         outdoorGroup.add(d);
       }
     };
-    // Horizontal center lines — stop before each vertical road (x=1, x=11, x=22, x=25)
+    // Horizontal center lines — stop before each vertical road (x=1, x=11, x=23, x=25)
     // y=0 line: segments between vertical roads
     makeDashedLine(-5.7, 0, 8.4, true);   // x=-10.4 to -1
     makeDashedLine(6, 0, 9, true);         // x=1 to 11
-    makeDashedLine(16.5, 0, 9.5, true);    // x=11 to 22
-    makeDashedLine(27.5, 0, 8, true);      // x=25 to 29
+    makeDashedLine(18, 0, 9, true);        // x=13 to 23
+    makeDashedLine(27, 0, 3.5, true);      // x=25 to 29
     // y=-8.25 line: segments between vertical roads
     makeDashedLine(-5.7, -8.25, 8.4, true);
     makeDashedLine(6, -8.25, 9, true);
-    makeDashedLine(16.5, -8.25, 9.5, true);
-    makeDashedLine(27.5, -8.25, 8, true);
+    makeDashedLine(18, -8.25, 9, true);
+    makeDashedLine(27, -8.25, 3.5, true);
     // y=8.5 line (near dock): segments between vertical roads
     makeDashedLine(-5.7, 8.5, 8.4, true);
     makeDashedLine(6, 8.5, 9, true);
-    makeDashedLine(16.5, 8.5, 9.5, true);
-    makeDashedLine(27.5, 8.5, 8, true);
+    makeDashedLine(18, 8.5, 9, true);
+    makeDashedLine(27, 8.5, 3.5, true);
     // Vertical center lines — stop before each horizontal road (y=1, y=-1, y=-7, y=-9.5)
     // x=0 line: segments between horizontal roads
     makeDashedLine(0, 4, 5, false);        // y=1 to 7
@@ -2179,10 +2179,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     makeDashedLine(12, 4, 5, false);
     makeDashedLine(12, -4, 5, false);
     makeDashedLine(12, -11.75, 3.5, false);
-    // x=23.5 line
-    makeDashedLine(23.5, 4, 5, false);
-    makeDashedLine(23.5, -4, 5, false);
-    makeDashedLine(23.5, -11.75, 3.5, false);
+    // x=24 line
+    makeDashedLine(24, 4, 5, false);
+    makeDashedLine(24, -4, 5, false);
+    makeDashedLine(24, -11.75, 3.5, false);
 
     // Parking lot at (0, -11) — 3 spaces in the 3-unit gap between bottom grass columns
     const pkMat = createToonMaterial(0x3a3a4a);
@@ -2662,7 +2662,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scatterDebris(-9, 6, 0.6, 5);
     scatterDebris(2.5, 5.5, 0.6, 5);
     scatterDebris(10, 5, 0.6, 5);
-    scatterDebris(25, 0, 0.8, 6);   // wall base
+    scatterDebris(26, 0, 0.8, 6);   // wall base
     scatterDebris(28, 7, 0.6, 5);   // behind wall north
     scatterDebris(28, -8, 0.6, 5);  // behind wall south
 
