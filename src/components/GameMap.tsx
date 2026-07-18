@@ -814,13 +814,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const BONUS_DURATION = 45;
   const fpsFrameCountRef = useRef(0);
   const fpsLastTimeRef = useRef(performance.now());
-  const [debugDisplay, setDebugDisplay] = useState({ fps: '0', x: '0.00', z: '0.00' });
+  const [debugDisplay, setDebugDisplay] = useState({ fps: '0', x: '0.00', y: '0.00', z: '0.00' });
   const perfOverlayRef = useRef<HTMLDivElement>(null);
   const perfOverlayUpdateRef = useRef(0);
   useEffect(() => {
     if (!debugMode) return;
     const id = setInterval(() => {
-      setDebugDisplay({ fps: String(fpsRef.current), x: localPositionRef.current.x.toFixed(2), z: (-localPositionRef.current.y).toFixed(2) });
+      setDebugDisplay({ fps: String(fpsRef.current), x: localPositionRef.current.x.toFixed(2), y: '0.24', z: (-localPositionRef.current.y).toFixed(2) });
     }, 250);
     return () => clearInterval(id);
   }, [debugMode]);
@@ -865,7 +865,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     } else {
       npc.visual.root.attach(robot);
       robot.position.set(0.105, 0.11, -0.22);
-      robot.rotation.set(0, 0, Math.PI / 2);
+      robot.rotation.set(0, Math.PI / 2, 0);
       robot.scale.set(0.35, 0.35, 0.35);
     }
     robot.visible = true;
@@ -1526,18 +1526,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (scene) scene.add(particleGroup);
     eventParticlesRef.current = particleGroup;
 
-    // Sparky recoil + sequence (use relative rotateZ to preserve north-facing quaternion)
+    // Sparky recoil + sequence (use relative rotateY to preserve north-facing quaternion — Y-up yaw)
     const sparky = outdoorSparkyRef.current;
     if (sparky) {
-      sparky.root.rotateZ(0.15);
+      sparky.root.rotateY(0.15);
       setTimeout(() => {
-        if (sparky.root) sparky.root.rotateZ(-0.23);
+        if (sparky.root) sparky.root.rotateY(-0.23);
       }, 150);
       setTimeout(() => {
-        if (sparky.root) sparky.root.rotateZ(0.13);
+        if (sparky.root) sparky.root.rotateY(0.13);
       }, 300);
       setTimeout(() => {
-        if (sparky.root) sparky.root.rotateZ(-0.05);
+        if (sparky.root) sparky.root.rotateY(-0.05);
       }, 500);
     }
 
@@ -4198,8 +4198,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (p.isMesh && p.userData.life > 0) {
             p.userData.life -= delta;
             p.position.x += (p.userData.vx || 0) * delta;
-            p.position.y += (p.userData.vy || 0) * delta;
-            p.position.z += (p.userData.vz || 0) * delta;
+            p.position.y += (p.userData.vz || 0) * delta;
+            p.position.z -= (p.userData.vy || 0) * delta;
             if (p.material) {
               (p.material as THREE.MeshBasicMaterial).opacity = Math.max(0, p.userData.life / 1.5);
             }
@@ -5191,9 +5191,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                     new THREE.MeshBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.5, depthWrite: false })
                   );
                   const bx = scrapRobotRef.current.root.position.x + (Math.random() - 0.5) * 0.06;
-                  const by = scrapRobotRef.current.root.position.y + (Math.random() - 0.5) * 0.06;
-                  puff.position.set(bx, 0.7, -by);
-                  puff.userData = { spawnTime: t, riseSpeed: 0.3 + Math.random() * 0.2, driftX: (Math.random() - 0.5) * 0.15, driftY: (Math.random() - 0.5) * 0.15 };
+                  const bz = scrapRobotRef.current.root.position.z + (Math.random() - 0.5) * 0.06;
+                  puff.position.set(bx, 0.7, bz);
+                  puff.userData = { spawnTime: t, riseSpeed: 0.3 + Math.random() * 0.2, driftX: (Math.random() - 0.5) * 0.15, driftZ: (Math.random() - 0.5) * 0.15 };
                   sceneRef.current.add(puff);
                   smokeParticlesRef.current.push(puff);
                 }
@@ -5209,10 +5209,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 (p.material as THREE.Material).dispose();
                 smokeParticlesRef.current.splice(i, 1);
               } else {
-                p.position.y = 0.24 + age * (p.userData.riseSpeed as number);
+                p.position.y = (p.userData.spawnY ?? p.position.y) + age * (p.userData.riseSpeed as number);
                 p.position.x = (p.userData.spawnX ?? p.position.x) + (p.userData.driftX as number) * age;
-                p.position.y = (p.userData.spawnY ?? p.position.y) + (p.userData.driftY as number) * age;
-                if (!p.userData.spawnX) { p.userData.spawnX = p.position.x; p.userData.spawnY = p.position.y; }
+                p.position.z = (p.userData.spawnZ ?? p.position.z) + (p.userData.driftZ as number) * age;
+                if (!p.userData.spawnX) { p.userData.spawnX = p.position.x; p.userData.spawnY = p.position.y; p.userData.spawnZ = p.position.z; }
                 const s = 1 + age * 3;
                 p.scale.set(s, s, 1);
                 (p.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.5 * (1 - age / 1.2));
@@ -6211,7 +6211,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         cp.mesh.position.x += cp.vx * delta;
         cp.mesh.position.y += cp.vy * delta;
         cp.mesh.position.z += cp.vz * delta;
-        cp.vz -= 3.5 * delta;
+        cp.vy -= 3.5 * delta;
         cp.mesh.rotation.z += delta * 8;
         const mat = cp.mesh.material as THREE.MeshBasicMaterial;
         mat.opacity = Math.max(0, cp.life);
@@ -6999,14 +6999,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         new THREE.PlaneGeometry(0.06, 0.04),
         new THREE.MeshBasicMaterial({ color: colors[Math.floor(Math.random() * colors.length)], transparent: true, opacity: 1, side: THREE.DoubleSide })
       );
-      p.position.set(pos.x + (Math.random() - 0.5) * 0.5, 0.5 + Math.random() * 0.3, -pos.y + (Math.random() - 0.5) * 0.5);
+      p.position.set(pos.x + (Math.random() - 0.5) * 0.5, 0.5 + Math.random() * 0.3, pos.y + (Math.random() - 0.5) * 0.5);
       p.rotation.y = Math.random() * Math.PI * 2;
       scene.add(p);
       particles.push({
         mesh: p,
         vx: (Math.random() - 0.5) * 2.5,
-        vy: (Math.random() - 0.5) * 2.5,
-        vz: Math.random() * 2 + 1,
+        vy: Math.random() * 2 + 1,
+        vz: (Math.random() - 0.5) * 2.5,
         life: 1.0,
       });
     }
@@ -7457,6 +7457,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         <div className="absolute top-20 left-4 z-50 rounded-lg bg-black/60 px-3 py-2 text-xs font-mono text-emerald-300 space-y-0.5">
           <div>FPS: {debugDisplay.fps}</div>
           <div>X: {debugDisplay.x}</div>
+          <div>Y: {debugDisplay.y}</div>
           <div>Z: {debugDisplay.z}</div>
         </div>
       )}

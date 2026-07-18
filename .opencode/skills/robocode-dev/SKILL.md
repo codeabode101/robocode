@@ -141,6 +141,7 @@ User asks → Clarify → Make change → Build → Show result → Ask "looks g
 
 ### Core Rules
 - **NEVER stop. NEVER wait for user.** Keep going until physically stopped.
+- **NEVER stop with remaining tasks.** If there are unfinished items in your todo list, you MUST complete ALL of them before stopping, committing, deploying, or asking the user anything. Do not mark items as "lower priority" or defer them. Every task the user asked for is equally important. If tasks remain, keep working — do not output a summary or ask "should I continue?".
 - **Everything is in scope**: buildings, roads, windows, game logic, multiplayer, database, tests, visual fixes, bugs — anything.
 - **After compaction**: read `.opencode/robocode-autonomous-state.md`, pick up exactly where you left off. Do NOT restart from scratch.
 - **Make decisions independently.** Think what's best for the project. Use project conventions above.

@@ -671,7 +671,7 @@ export function addWindows(building: THREE.Group, bx: number, by: number, bw: nu
         new THREE.PlaneGeometry(winW, winH),
         new THREE.MeshBasicMaterial({ color: winColor, transparent: true, opacity })
       );
-      win.position.set(startX + c * gapX, bd / 2 + 0.01, -startY + r * gapY);
+      win.position.set(startX + c * gapX, -startY + r * gapY, bd / 2 + 0.01);
       group.add(win);
     }
   }
