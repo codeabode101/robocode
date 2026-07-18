@@ -662,8 +662,8 @@ export function walkPlayer(
     if (leftLegPivot) leftLegPivot.rotation.x = 0;
     if (rightLegPivot) rightLegPivot.rotation.x = 0;
     if (visual) {
-      visual.leftArm.rotation.x = -Math.PI / 2;
-      visual.rightArm.rotation.x = -Math.PI / 2;
+      visual.leftArm.rotation.x = 0;
+      visual.rightArm.rotation.x = 0;
     }
     if (visual) visual.root.position.set(pos.x, baseY, -pos.y);
     return true;
@@ -681,8 +681,8 @@ export function walkPlayer(
   if (rightLegPivot) rightLegPivot.rotation.x = -walkSwing;
   const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
   if (visual) {
-    visual.leftArm.rotation.x = -Math.PI / 2 + armSwing;
-    visual.rightArm.rotation.x = -Math.PI / 2 - armSwing;
+    visual.leftArm.rotation.x = armSwing;
+    visual.rightArm.rotation.x = -armSwing;
   }
   return false;
 }

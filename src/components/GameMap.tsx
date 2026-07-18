@@ -1737,7 +1737,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
       if (roomOwnerVisualRef.current) {
         roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current);
-        if (roomOwnerVisualRef.current.rightArm) roomOwnerVisualRef.current.rightArm.rotation.y = -0.3;
+        if (roomOwnerVisualRef.current.rightArm) roomOwnerVisualRef.current.rightArm.rotation.z = -0.3;
       }
     }
   });
@@ -2520,6 +2520,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const woodMat = createToonMaterial(0x6b4226);
       const darkWoodMat = createToonMaterial(0x4a2e15);
       const metalMat = createToonMaterial(0x555555);
+      // Road occluder — sits above road at y=0.18, matching dock footprint
+      const dockCover = new THREE.Mesh(new THREE.BoxGeometry(8, 0.06, 3.5), woodMat);
+      dockCover.position.set(-14.4, 0.18, 8);
+      outdoorGroup.add(dockCover);
       // Main deck platform — 8 units wide, east edge at -10.4
       const deck = new THREE.Mesh(new THREE.BoxGeometry(8, 0.08, 3.5), woodMat);
       deck.position.set(-14.4, 0.12, 8);
@@ -4142,8 +4146,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Torso proxy swing (visual stand-in for arm swing)
       const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2 * playerSpeed;
       if (localVis) {
-        localVis.leftArm.rotation.x = -Math.PI / 2 + armSwing;
-        localVis.rightArm.rotation.x = -Math.PI / 2 - armSwing;
+        localVis.leftArm.rotation.x = armSwing;
+        localVis.rightArm.rotation.x = -armSwing;
       }
       // Arm pose — adapted for holding
       const isHolding = heldSlotIndexRef.current !== null && heldSlotIndexRef.current < gameStore.get('backpack').length;
@@ -4725,7 +4729,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 // Right arm reaches toward laptop port
                 animateRobotVisual(aptSparkyCS, worldTime, 0, 0.3, -0.1);
                 aptSparkyCS.rightArm.rotation.x = -0.8;
-                aptSparkyCS.rightArm.rotation.y = 0.05;
+                aptSparkyCS.rightArm.rotation.z = 0.05;
               }
 
               // === Walk east to scrap ===
@@ -4768,7 +4772,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 }
                 animateRobotVisual(aptSparkyCS, worldTime, 0, 0.3, -0.1);
                 aptSparkyCS.rightArm.rotation.x = -0.6;
-                aptSparkyCS.rightArm.rotation.y = -0.2;
+                aptSparkyCS.rightArm.rotation.z = -0.2;
               }
 
               // === Default arm pose during rotation/lowering ===
@@ -5317,8 +5321,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (localRobotRef.current) {
                 if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = 0;
                 if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = 0;
-                localRobotRef.current.leftArm.rotation.x = -Math.PI / 2;
-                localRobotRef.current.rightArm.rotation.x = -Math.PI / 2;
+                localRobotRef.current.leftArm.rotation.x = 0;
+                localRobotRef.current.rightArm.rotation.x = 0;
               }
               // Player faces north toward Scrap — side by side with Sparky
               yawRef.current = Math.PI;
@@ -5715,8 +5719,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -walkSwing;
             const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
             if (localRobotRef.current) {
-              localRobotRef.current.leftArm.rotation.x = -Math.PI / 2 + armSwing;
-              localRobotRef.current.rightArm.rotation.x = -Math.PI / 2 - armSwing;
+              localRobotRef.current.leftArm.rotation.x = armSwing;
+              localRobotRef.current.rightArm.rotation.x = -armSwing;
             }
           }
           if (registerCutsceneTimerRef.current > 0.5) {
@@ -5739,8 +5743,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3;
             const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2;
             if (localRobotRef.current) {
-              localRobotRef.current.leftArm.rotation.x = -Math.PI / 2 + armSwing;
-              localRobotRef.current.rightArm.rotation.x = -Math.PI / 2 - armSwing;
+              localRobotRef.current.leftArm.rotation.x = armSwing;
+              localRobotRef.current.rightArm.rotation.x = -armSwing;
             }
           }
           // Wire stretches from robot to player's hand as player walks
@@ -6096,7 +6100,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               npc.visual.leftArmPivot!.rotation.y = -0.1;
               npc.visual.rightArmPivot!.rotation.y = 0.1;
             } else {
-              npc.visual.leftArm.rotation.x = -Math.PI / 2 + customerArmSwing;
+              npc.visual.leftArm.rotation.x = 0 + customerArmSwing;
               npc.visual.rightArm!.rotation.x = -Math.PI / 2 - customerArmSwing;
               npc.visual.leftArmPivot!.rotation.y = 0.42;
               npc.visual.rightArmPivot!.rotation.y = -0.42;
@@ -6252,8 +6256,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         avatar.leftLegPivot.rotation.x = remoteSwing;
         avatar.rightLegPivot.rotation.x = -remoteSwing;
         const remoteArmSwing = Math.sin(avatar.walkTime * WALK_BOB_SPEED + Math.PI) * 0.2 * remoteSpeed;
-        avatar.leftArm.rotation.x = -Math.PI / 2 + remoteArmSwing;
-        avatar.rightArm.rotation.x = -Math.PI / 2 - remoteArmSwing;
+        avatar.leftArm.rotation.x = 0 + remoteArmSwing;
+        avatar.rightArm.rotation.x = 0 - remoteArmSwing;
         if (Math.abs(lookX) > 0.001 || Math.abs(lookY) > 0.001) {
           avatar.root.rotation.y = Math.atan2(lookX, -lookY);
         } else {
@@ -7747,7 +7751,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             fetch('/api/profile/workshop-intro', { method: 'POST', keepalive: true }).catch(() => {});
             if (roomOwnerVisualRef.current) {
               roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current);
-              if (roomOwnerVisualRef.current.rightArm) roomOwnerVisualRef.current.rightArm.rotation.y = -0.3;
+              if (roomOwnerVisualRef.current.rightArm) roomOwnerVisualRef.current.rightArm.rotation.z = -0.3;
             }
           }
         }}
