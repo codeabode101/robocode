@@ -1886,7 +1886,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           const crackAngle = Math.PI / 4 + (Math.random() - 0.5) * 0.3;
           if (axis === 'x') {
             crack.position.set(fx, rowZ, -fy + off + 0.01);
-            crack.rotation.y = crackAngle;
+            crack.rotation.z = crackAngle;
           } else {
             crack.position.set(fx + off + 0.01, rowZ, -fy);
             crack.rotation.x = crackAngle;
@@ -1927,7 +1927,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           const shard = new THREE.Mesh(bx(ww * 0.5, 0.04, wh * 0.6), glassMat);
           if (axis === 'x') {
             shard.position.set(fx, rowZ - 0.06, -fy + off + 0.01);
-            shard.rotation.y = 0.3 * (Math.random() > 0.5 ? 1 : -1);
+            shard.rotation.z = 0.3 * (Math.random() > 0.5 ? 1 : -1);
           } else {
             shard.position.set(fx + off + 0.01, rowZ - 0.06, -fy);
             shard.rotation.x = 0.3 * (Math.random() > 0.5 ? 1 : -1);

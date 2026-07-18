@@ -422,7 +422,7 @@ export function openBoxLid(lid: THREE.Mesh, progress: number) {
   const cosA = Math.cos(angle);
   const sinA = Math.sin(angle);
   lid.position.y = pivotY * (1 - cosA);
-  lid.position.y = lidZ - pivotY * sinA;
+  lid.position.z = lidZ - pivotY * sinA;
   lid.rotation.x = angle;
   lid.rotation.y = 0;
 }

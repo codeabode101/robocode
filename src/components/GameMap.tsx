@@ -4033,7 +4033,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         rafiqCutsceneTimerRef.current += delta;
         if (roomOwnerVisualRef.current) {
           const rotProgress = Math.min(1, rafiqCutsceneTimerRef.current / 0.8);
-          const facingQ = scratchQuat.current.setFromAxisAngle(scratchVec3.current.set(0, 0, 1), rafiqTargetFacingRef.current * rotProgress);
+          const facingQ = scratchQuat.current.setFromAxisAngle(scratchVec3.current.set(0, 1, 0), rafiqTargetFacingRef.current * rotProgress);
           roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current).premultiply(facingQ);
         }
         if (rafiqCutsceneTimerRef.current >= 1.0) {
@@ -6074,9 +6074,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               cr.root.rotation.set(0, 0, 0);
               cr.root.scale.set(0.35, 0.35, 0.35);
             }
-            const rotZ = npc.visual.root.rotation.z;
-            const behindX = npc.position.x + Math.sin(rotZ) * 0.5;
-            const behindY = npc.position.y - Math.cos(rotZ) * 0.5;
+            const rotY = npc.visual.root.rotation.y;
+            const behindX = npc.position.x + Math.sin(rotY) * 0.5;
+            const behindY = npc.position.y - Math.cos(rotY) * 0.5;
             const targetDx = behindX - cr.root.position.x;
             const targetDy = behindY - cr.root.position.y;
             cr.root.position.x += targetDx * 0.08;
