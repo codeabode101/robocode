@@ -1772,7 +1772,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             const crackAngle = Math.PI / 4 + (Math.random() - 0.5) * 0.6;
             if (axis === 'x') {
               crack.position.set(fx + (Math.random() - 0.5) * ww * 0.3, rowZ + (Math.random() - 0.5) * wh * 0.3, -fy + off + 0.01);
-              crack.rotation.y = crackAngle;
+              crack.rotation.z = crackAngle;
             } else {
               crack.position.set(fx + off + 0.01, rowZ + (Math.random() - 0.5) * wh * 0.3, -fy + (Math.random() - 0.5) * ww * 0.3);
               crack.rotation.x = crackAngle;
@@ -1789,8 +1789,8 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
             const p1 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
             const p2 = new THREE.Mesh(bx(diag, pd, pd), boardMat);
             if (axis === 'x') {
-              p1.position.set(fx, rowZ, -fy + plankOff); p1.rotation.y = angle;
-              p2.position.set(fx, rowZ, -fy + plankOff); p2.rotation.y = -angle;
+              p1.position.set(fx, rowZ, -fy + plankOff); p1.rotation.z = angle;
+              p2.position.set(fx, rowZ, -fy + plankOff); p2.rotation.z = -angle;
             } else {
               p1.position.set(fx + plankOff, rowZ, -fy); p1.rotation.x = angle;
               p2.position.set(fx + plankOff, rowZ, -fy); p2.rotation.x = -angle;
@@ -1799,7 +1799,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           } else if (style === 1) {
             // Single diagonal plank
             const d = new THREE.Mesh(bx(ww + 0.14, pd, 0.05), boardMat);
-            if (axis === 'x') { d.position.set(fx, rowZ, -fy + plankOff); d.rotation.y = 0.7; }
+            if (axis === 'x') { d.position.set(fx, rowZ, -fy + plankOff); d.rotation.z = 0.7; }
             else { d.position.set(fx + plankOff, rowZ, -fy); d.rotation.x = 0.7; }
             bldg.add(d);
           } else if (style === 2) {
@@ -1896,7 +1896,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           const plank = new THREE.Mesh(bx(ww * 0.9, pdCrack, 0.05), trimMat);
           if (axis === 'x') {
             plank.position.set(fx, rowZ, -fy + off + 0.02);
-            plank.rotation.y = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 0.3);
+            plank.rotation.z = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 0.3);
           } else {
             plank.position.set(fx + off + 0.02, rowZ, -fy);
             plank.rotation.x = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 0.3);

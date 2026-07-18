@@ -4091,12 +4091,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const arm = roomOwnerVisualRef.current.rightArm;
           if (rafiqCutsceneTimerRef.current < 0.3) {
             const p = rafiqCutsceneTimerRef.current / 0.3;
-            arm.rotation.y = -0.3 + (0.4 - (-0.3)) * p;
+            arm.rotation.x = -0.3 + (0.4 - (-0.3)) * p;
           } else if (rafiqCutsceneTimerRef.current < 1.0) {
-            arm.rotation.y = 0.4;
+            arm.rotation.x = 0.4;
           } else if (rafiqCutsceneTimerRef.current < handDuration) {
             const p = (rafiqCutsceneTimerRef.current - 1.0) / (handDuration - 1.0);
-            arm.rotation.y = 0.4 + (-0.3 - 0.4) * p;
+            arm.rotation.x = 0.4 + (-0.3 - 0.4) * p;
           }
         }
         if (rafiqCutsceneTimerRef.current >= handDuration) {
