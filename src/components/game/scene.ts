@@ -1745,7 +1745,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
 
         if (state < 0.35) {
           // Boarded — glass + frame + cracks + thick planks on top
-          const plankOff = axis === 'x' ? -faceSign * 0.14 : faceSign * 0.14;
+          const plankOff = axis === 'x' ? -faceSign * 0.18 : faceSign * 0.18;
           // 1. Glass pane
           const glass = new THREE.Mesh(bx(ww, 0.04, wh), darkMat);
           if (axis === 'x') glass.position.set(fx, rowZ, -fy + off);
@@ -1781,7 +1781,7 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
           }
           // 4. Thick planks — 6 styles
           const style = Math.floor(Math.random() * 6);
-          const pd = 0.18;
+          const pd = 0.12;
           const placeP = (m: THREE.Mesh, px: number, py: number, pz: number) => {
             if (axis === 'x') m.position.set(px, py, pz + plankOff);
             else m.position.set(px + plankOff, py, pz);
