@@ -2101,10 +2101,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const streetW = 3;
     const sw = 0.5;
 
-    // SINGLE continuous road rectangle covering ALL road areas (y:-22 to y:9.5, h:31.5)
+    // Road stops at island flat edge (x=-10.4) — avoids overlap with dock
     const roadColor = 0x5a6a7a;
-    const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(46, 0.04, 24), createToonMaterial(roadColor));
-    roadMesh.position.set(9, 0.14, 2);
+    const roadMesh = new THREE.Mesh(new THREE.BoxGeometry(42.4, 0.04, 24), createToonMaterial(roadColor));
+    roadMesh.position.set(10.8, 0.14, 2);
     roadMesh.receiveShadow = true;
     outdoorGroup.add(roadMesh);
     // Grass blocks ABOVE the road to carve out city blocks between roads
@@ -2520,10 +2520,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const woodMat = createToonMaterial(0x6b4226);
       const darkWoodMat = createToonMaterial(0x4a2e15);
       const metalMat = createToonMaterial(0x555555);
-      // Road occluder — sits above road at y=0.18, matching dock footprint
-      const dockCover = new THREE.Mesh(new THREE.BoxGeometry(8, 0.06, 3.5), woodMat);
-      dockCover.position.set(-14.4, 0.18, 8);
-      outdoorGroup.add(dockCover);
       // Main deck platform — 8 units wide, east edge at -10.4
       const deck = new THREE.Mesh(new THREE.BoxGeometry(8, 0.08, 3.5), woodMat);
       deck.position.set(-14.4, 0.12, 8);
