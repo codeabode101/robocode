@@ -2393,9 +2393,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Ceiling slab
     const cSlab = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.08, bd), new THREE.MeshToonMaterial({ color: 0x94a3b8, gradientMap: createGradientTexture(3) }));
     cSlab.position.set(cx, bh, -cy); ps.add(cSlab);
-    // Back wall (now at SOUTH side, away from bazaars)
-    const bWall = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.2, bh - 0.1, 0.08), psW);
-    bWall.position.set(cx, bh / 2, -cy - bd / 2 + 0.04); ps.add(bWall);
+  // Back wall (now at SOUTH side, away from bazaars)
+  const bWall = new THREE.Mesh(new THREE.BoxGeometry(bw - 0.2, bh - 0.1, 0.08), psW);
+  bWall.position.set(cx, bh / 2, -cy + bd / 2 - 0.04); ps.add(bWall);
     // Side walls
     for (let s = -1; s <= 1; s += 2) {
       const sw = new THREE.Mesh(new THREE.BoxGeometry(0.08, bh - 0.1, bd), psW);
@@ -2427,7 +2427,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const tfZ = bh + tfH / 2;
     // Back wall (SOUTH)
     const tfBack = new THREE.Mesh(new THREE.BoxGeometry(tfW, tfH, 0.08), psAp);
-    tfBack.position.set(cx, tfZ, -cy - tfD / 2); ps.add(tfBack);
+    tfBack.position.set(cx, tfZ, -cy + tfD / 2); ps.add(tfBack);
     // Side walls
     for (let s = -1; s <= 1; s += 2) {
       const tfSide = new THREE.Mesh(new THREE.BoxGeometry(0.08, tfH, tfD), psAp);
@@ -2491,10 +2491,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const st = new THREE.CanvasTexture(sc);
       st.minFilter = THREE.LinearFilter;
       st.flipY = false;
-      // BoxGeometry(wide, thin (faces north), tall) — mounted on apartment north wall, outside
-      const pSign = new THREE.Mesh(new THREE.BoxGeometry(4.5, 0.5, 0.06), new THREE.MeshBasicMaterial({ map: st }));
-      pSign.position.set(cx, bh + 0.2, -cy + (bd + 0.3) / 2 + 0.07);
-      pSign.scale.x = -1;
+      // Flat signboard (PlaneGeometry) — on front wall above the door, faces toward player
+      const pSign = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 0.5), new THREE.MeshBasicMaterial({ map: st, side: THREE.DoubleSide }));
+      pSign.position.set(cx, bh + 0.2, -cy - (bd + 0.3) / 2 - 0.07);
+      pSign.rotation.y = Math.PI;
       ps.add(pSign);
     }
 
