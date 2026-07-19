@@ -854,7 +854,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const robot = createRobotVisual(new THREE.Color(colorHex), '');
     robot.nameSprite.visible = false;
     robot.root.scale.set(0.18, 0.18, 0.18);
-    robot.root.rotation.set(Math.PI / 2, 0, 0);
     return robot;
   }, []);
 
@@ -865,7 +864,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     } else {
       npc.visual.root.attach(robot);
       robot.position.set(0.105, 0.22, 0.11);
-      robot.rotation.set(0, 0, Math.PI / 2);
+      robot.rotation.set(0, Math.PI / 2, 0);
       robot.scale.set(0.35, 0.35, 0.35);
     }
     robot.visible = true;
@@ -6069,7 +6068,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (cr.root.parent !== workshopRoomGroupRef.current) {
               workshopRoomGroupRef.current?.attach(cr.root);
               cr.root.position.set(npc.position.x, npc.position.y - 0.5, 0.251);
-              cr.root.rotation.set(Math.PI / 2, 0, 0);
               cr.root.scale.set(0.35, 0.35, 0.35);
             }
             const rotZ = npc.visual.root.rotation.z;
@@ -6079,8 +6077,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const targetDy = behindY - cr.root.position.y;
             cr.root.position.x += targetDx * 0.08;
             cr.root.position.y += targetDy * 0.08;
-            cr.root.rotation.set(Math.PI / 2, 0, 0);
-            cr.root.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), Math.atan2(targetDx, -targetDy));
+            cr.root.rotation.set(0, 0, 0);
+            cr.root.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), Math.atan2(targetDx, -targetDy));
             animateRobotVisual(cr, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, 0, -1);
           } else {
             const isRegisterCutscene = registerCutscenePhaseRef.current !== 'idle' && registerCutsceneCustomerRef.current?.id === npc.id;

@@ -428,9 +428,8 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
   group.add(nameSprite);
   applyShadows(group, true, true);
 
-  group.rotation.set(Math.PI / 2, 0, 0);
   if (facing === 'north') {
-    group.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
+    group.rotation.y = Math.PI;
   }
   group.scale.set(2.35, 2.35, 2.35);
   return { root: group, nameSprite, body, shadow: new THREE.Object3D() as unknown as THREE.Mesh, leftPupil, rightPupil, antennaTip, leftArm, rightArm, leftLeg, rightLeg };
