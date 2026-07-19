@@ -476,7 +476,7 @@ export function buildPlayerVisual(clothColor: number, name: string) {
 
   const leftArmPivot = new THREE.Group();
   leftArmPivot.position.set(-0.12, 0.43, 0);
-  leftArmPivot.rotation.x = 0.42;
+  leftArmPivot.rotation.x = -0.42;
   group.add(leftArmPivot);
   const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.05, 0.24, 8), clothMat);
   leftArm.position.set(0, -0.12, 0);
