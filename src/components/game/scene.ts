@@ -475,19 +475,11 @@ export function buildPlayerVisual(clothColor: number, name: string) {
   torso.position.set(0, 0.35, 0);
   group.add(torso);
 
-  // Shoulders
-  for (let s = -1; s <= 1; s += 2) {
-    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), clothMat);
-    shoulder.position.set(s * 0.12, 0.44, 0);
-    shoulder.scale.set(1, 0.6, 0.8);
-    group.add(shoulder);
-  }
-
   const leftArmPivot = new THREE.Group();
-  leftArmPivot.position.set(-0.12, 0.43, 0);
+  leftArmPivot.position.set(-0.17, 0.45, 0);
   leftArmPivot.rotation.x = -0.42;
   group.add(leftArmPivot);
-  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.05, 0.24, 8), clothMat);
+  const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.04, 0.24, 8), clothMat);
   leftArm.position.set(0, -0.12, 0);
   leftArmPivot.add(leftArm);
   const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), skinMat);
@@ -495,10 +487,10 @@ export function buildPlayerVisual(clothColor: number, name: string) {
   leftArm.add(leftHand);
 
   const rightArmPivot = new THREE.Group();
-  rightArmPivot.position.set(0.12, 0.43, 0);
+  rightArmPivot.position.set(0.17, 0.45, 0);
   rightArmPivot.rotation.x = -0.42;
   group.add(rightArmPivot);
-  const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.05, 0.24, 8), clothMat);
+  const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.04, 0.24, 8), clothMat);
   rightArm.position.set(0, -0.12, 0);
   rightArmPivot.add(rightArm);
   const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), skinMat);
