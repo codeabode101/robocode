@@ -2490,11 +2490,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       sctx.fillText("RAFIQ'S ROBOTS", 400, 66);
       const st = new THREE.CanvasTexture(sc);
       st.minFilter = THREE.LinearFilter;
-      st.flipY = false;
       // Flat signboard (PlaneGeometry) — on front wall above the door, faces toward player
-      const pSign = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 0.5), new THREE.MeshBasicMaterial({ map: st, side: THREE.DoubleSide }));
+      const pSign = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 0.5), new THREE.MeshBasicMaterial({ map: st }));
       pSign.position.set(cx, bh + 0.2, -cy - (bd + 0.3) / 2 - 0.07);
       pSign.rotation.y = Math.PI;
+      pSign.scale.x = -1;
       ps.add(pSign);
     }
 

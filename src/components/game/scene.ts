@@ -446,6 +446,7 @@ export function buildPlayerVisual(clothColor: number, name: string) {
   const clothMat = new THREE.MeshToonMaterial({ color: clothColor, gradientMap: createGradientTexture(3) });
   const darkMat = new THREE.MeshToonMaterial({ color: 0x1f2937, gradientMap: createGradientTexture(3) });
   const hairMat = new THREE.MeshToonMaterial({ color: 0x3a2a1a, gradientMap: createGradientTexture(3) });
+  const shoeMat = new THREE.MeshToonMaterial({ color: 0x111827, gradientMap: createGradientTexture(3) });
 
   const leftLegPivot = new THREE.Group();
   leftLegPivot.position.set(-0.08, 0.20, 0);
@@ -454,7 +455,7 @@ export function buildPlayerVisual(clothColor: number, name: string) {
   leftLeg.rotation.x = 0;
   leftLeg.position.set(0, -0.06, 0);
   leftLegPivot.add(leftLeg);
-  const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.1), darkMat);
+  const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.12), shoeMat);
   leftFoot.position.set(0, -0.185, 0);
   leftLegPivot.add(leftFoot);
 
@@ -465,7 +466,7 @@ export function buildPlayerVisual(clothColor: number, name: string) {
   rightLeg.rotation.x = 0;
   rightLeg.position.set(0, -0.06, 0);
   rightLegPivot.add(rightLeg);
-  const rightFoot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.1), darkMat);
+  const rightFoot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.12), shoeMat);
   rightFoot.position.set(0, -0.185, 0);
   rightLegPivot.add(rightFoot);
 
@@ -473,6 +474,14 @@ export function buildPlayerVisual(clothColor: number, name: string) {
   torso.rotation.x = 0;
   torso.position.set(0, 0.35, 0);
   group.add(torso);
+
+  // Shoulders
+  for (let s = -1; s <= 1; s += 2) {
+    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), clothMat);
+    shoulder.position.set(s * 0.12, 0.44, 0);
+    shoulder.scale.set(1, 0.6, 0.8);
+    group.add(shoulder);
+  }
 
   const leftArmPivot = new THREE.Group();
   leftArmPivot.position.set(-0.12, 0.43, 0);
@@ -496,18 +505,48 @@ export function buildPlayerVisual(clothColor: number, name: string) {
   rightHand.position.set(0, -0.24, 0);
   rightArm.add(rightHand);
 
+  // Collar
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.025, 10), clothMat);
+  collar.position.set(0, 0.49, 0);
+  group.add(collar);
+
   const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.06, 8), skinMat);
   neck.rotation.x = 0;
   neck.position.set(0, 0.51, 0);
   group.add(neck);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 12), skinMat);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 12), skinMat);
   head.position.set(0, 0.57, 0);
+  head.scale.set(1, 1.1, 0.9);
   group.add(head);
 
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 16), hairMat);
-  hair.position.set(0, 0.59, 0.08);
-  group.add(hair);
+  // Hair: main volume on top
+  const mainHair = new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 14, 0, Math.PI * 2, 0, Math.PI * 0.6), hairMat);
+  mainHair.position.set(0, 0.61, 0);
+  mainHair.scale.set(1.2, 0.65, 1.1);
+  group.add(mainHair);
+
+  // Hair: back
+  const backHair = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat);
+  backHair.position.set(0, 0.56, 0.07);
+  backHair.scale.set(0.9, 0.85, 0.9);
+  group.add(backHair);
+
+  // Hair: bangs
+  for (let i = 0; i < 3; i++) {
+    const bang = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.02, 0.035), hairMat);
+    bang.position.set((i - 1) * 0.03, 0.605, -0.065 + i * 0.008);
+    bang.rotation.x = 0.15;
+    group.add(bang);
+  }
+
+  // Hair: sides
+  for (let s = -1; s <= 1; s += 2) {
+    const sideHair = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), hairMat);
+    sideHair.position.set(s * 0.075, 0.56, 0.02);
+    sideHair.scale.set(1, 0.7, 0.8);
+    group.add(sideHair);
+  }
 
   for (let s = -1; s <= 1; s += 2) {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.015, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
