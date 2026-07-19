@@ -865,7 +865,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     } else {
       npc.visual.root.attach(robot);
       robot.position.set(0.105, 0.11, -0.22);
-      robot.rotation.set(-Math.PI / 2, 0, 0);
+      robot.rotation.set(Math.PI / 2, 0, 0);
       robot.scale.set(0.35, 0.35, 0.35);
     }
     robot.visible = true;
@@ -2927,7 +2927,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     localGroup.add(heldItemGroup);
     heldItemGroupRef.current = heldItemGroup;
 
-    const scrapRobot = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current, 'south');
+    const scrapRobot = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
     scrapRobot.root.scale.set(0.7, 0.7, 0.7);
     scrapRobot.root.position.set(NPC_POSITION.x + 1.5, 0.24, -NPC_POSITION.y - 1.2);
     scrapRobot.root.rotation.y = 0.15;
@@ -2938,7 +2938,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scrapRobotRef.current = scrapRobot;
 
     // Scrap follower robot (outdoor, follows player after battery install)
-    const scrapFollower = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current, 'south');
+    const scrapFollower = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
     scrapFollower.root.scale.set(0.65, 0.65, 0.65);
     scrapFollower.root.position.set(0, 0.24, 8);
     scrapFollower.nameSprite.visible = true;
@@ -2955,7 +2955,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(kiosk);
     repairKioskRef.current = kiosk;
 
-    const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
+    const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky', 'south');
     sparky.root.scale.set(0.8, 0.8, 0.8);
     sparky.root.position.set(NPC_POSITION.x, 0.24, -NPC_POSITION.y);
     sparky.nameSprite.visible = false;
@@ -3096,7 +3096,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     petBed.position.set(3.4, 0.21, 2.4);
     workshopRoomGroup.add(petBed);
 
-    const owner = createRobotVisual(new THREE.Color(0x14b8a6), 'Rafiq');
+    const owner = createRobotVisual(new THREE.Color(0x14b8a6), 'Rafiq', 'south');
     owner.root.scale.set(0.7, 0.7, 0.7);
     owner.root.position.set(ROOM_OWNER_POS.x, 0.26, -ROOM_OWNER_POS.y);
     owner.nameSprite.visible = false;
@@ -3202,7 +3202,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Scrap inside box — Sparky's find, hidden by box walls until lid opens
       scrapRobot.root.scale.set(0.4, 0.4, 0.4);
       scrapRobot.root.position.set(-2.8, 0.26, -1.8);
-      scrapRobot.root.rotation.set(-Math.PI / 2, 0, 0.4);
+      scrapRobot.root.rotation.set(Math.PI / 2, 0, 0.4);
       scrapRobot.nameSprite.visible = false;
       if (scrapRobot.leftPupil) scrapRobot.leftPupil.material.color.setHex(0x111111);
       if (scrapRobot.rightPupil) scrapRobot.rightPupil.material.color.setHex(0x111111);
@@ -3299,7 +3299,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       tackFxPhaseRef.current = 0;
 
       // Sparky inside apartment (hidden until Sparky walks home)
-      const aptSparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky', 'south');
+      const aptSparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
       aptSparky.root.scale.set(0.7, 0.7, 0.7);
       aptSparky.root.position.set(-2.6, 0.28, 0.55);
       aptSparky.nameSprite.visible = false;
