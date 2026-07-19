@@ -2360,7 +2360,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       h.position.set(0, 0.55, 0); g.add(h);
       // Hair covering the BACK of the head (visible from camera)
       const hr = new THREE.Mesh(new THREE.SphereGeometry(0.125, 14, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), new THREE.MeshToonMaterial({ color: 0x2a1a0a, gradientMap: createGradientTexture(3) }));
-      hr.position.set(0, 0.56, 0.04); g.add(hr);
+      hr.position.set(0, 0.56, -0.04); g.add(hr);
       // Arms
       for (let s = -1; s <= 1; s += 2) {
         const a = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.25, 8), cMat);
