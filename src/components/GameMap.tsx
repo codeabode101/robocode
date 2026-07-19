@@ -2367,6 +2367,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         a.rotation.x = Math.PI / 2; a.rotation.y = s * 0.3;
         a.position.set(s * 0.2, 0.35, 0); g.add(a);
       }
+      g.rotation.y = Math.PI;
       g.position.set(vx, 0.24, -vy);
       outdoorGroup.add(g);
     };

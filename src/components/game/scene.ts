@@ -604,24 +604,24 @@ export function createBazaarShop(
 ) {
   const stall = new THREE.Group();
 
-  const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.7), createTexturedToonMaterial('tile_21.png', 3, 1, baseColor));
-  backWall.position.set(0, -0.25, -0.35); stall.add(backWall);
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.7, 0.08), createTexturedToonMaterial('tile_21.png', 3, 1, baseColor));
+  backWall.position.set(0, 0.35, 0.3); stall.add(backWall);
 
-  const counter = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.35, 0.08), createTexturedToonMaterial('tile_43.png', 3, 1, 0x8b6b4a));
-  counter.position.set(0, 0.3, -0.55); stall.add(counter);
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.04, 0.35), createTexturedToonMaterial('tile_43.png', 3, 1, 0x8b6b4a));
+  counter.position.set(0, 0.26, -0.2); stall.add(counter);
 
   for (let side = -1; side <= 1; side += 2) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.3, 0.04), createToonMaterial(0x4a3a2a));
-    leg.position.set(side * 0.7, 0.3, -0.28); stall.add(leg);
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.24, 0.04), createToonMaterial(0x4a3a2a));
+    leg.position.set(side * 0.7, 0.12, -0.2); stall.add(leg);
   }
 
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 0.06), createTexturedToonMaterial('tile_33.png', 3, 1, awningColor));
-  roof.position.set(0, 0.05, -0.95); stall.add(roof);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.04, 0.6), createTexturedToonMaterial('tile_33.png', 3, 1, awningColor));
+  roof.position.set(0, 0.75, -0.25); stall.add(roof);
 
   for (let sx = -1; sx <= 1; sx += 2) {
     for (let sz = -1; sz <= 1; sz += 2) {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.55, 6), createToonMaterial(0x64748b));
-      pole.position.set(sx * 0.75, sz * 0.25, -0.7); stall.add(pole);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.75, 6), createToonMaterial(0x64748b));
+      pole.position.set(sx * 0.75, 0.375, sz * 0.25); stall.add(pole);
     }
   }
 
@@ -640,11 +640,11 @@ export function createBazaarShop(
   const signTex = new THREE.CanvasTexture(signCanvas);
   signTex.minFilter = THREE.LinearFilter;
   const signMesh = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.04, 0.18), new THREE.MeshBasicMaterial({ map: signTex }));
-  signMesh.position.set(0, 0.35, -0.96); stall.add(signMesh);
+  signMesh.position.set(0, 0.75, -0.55); stall.add(signMesh);
 
   for (let i = -2; i <= 2; i++) {
     const light = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-    light.position.set(i * 0.35, 0.3, -0.85); stall.add(light);
+    light.position.set(i * 0.35, 0.73, -0.3); stall.add(light);
   }
 
   stall.scale.set(scale, scale, scale);
