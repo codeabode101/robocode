@@ -600,8 +600,8 @@ export function createBazaarShop(
 ) {
   const stall = new THREE.Group();
 
-  const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.7, 0.08), createTexturedToonMaterial('tile_21.png', 3, 1, baseColor));
-  backWall.position.set(0, 0.35, -0.3); stall.add(backWall);
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 0.08), createTexturedToonMaterial('tile_21.png', 3, 2, baseColor));
+  backWall.position.set(0, 0.6, -0.3); stall.add(backWall);
 
   const counter = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.04, 0.35), createTexturedToonMaterial('tile_43.png', 3, 1, 0x8b6b4a));
   counter.position.set(0, 0.26, 0.2); stall.add(counter);
