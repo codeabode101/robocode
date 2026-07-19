@@ -477,24 +477,24 @@ export function buildPlayerVisual(clothColor: number, name: string) {
 
   const leftArmPivot = new THREE.Group();
   leftArmPivot.position.set(-0.17, 0.45, 0);
-  leftArmPivot.rotation.x = -0.42;
+  leftArmPivot.rotation.set(-0.42, 0, 0.15);
   group.add(leftArmPivot);
   const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.04, 0.24, 8), clothMat);
   leftArm.position.set(0, -0.12, 0);
   leftArmPivot.add(leftArm);
   const leftHand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), skinMat);
-  leftHand.position.set(0, -0.24, 0);
+  leftHand.position.set(0, -0.12, 0);
   leftArm.add(leftHand);
 
   const rightArmPivot = new THREE.Group();
   rightArmPivot.position.set(0.17, 0.45, 0);
-  rightArmPivot.rotation.x = -0.42;
+  rightArmPivot.rotation.set(-0.42, 0, -0.15);
   group.add(rightArmPivot);
   const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.04, 0.24, 8), clothMat);
   rightArm.position.set(0, -0.12, 0);
   rightArmPivot.add(rightArm);
   const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), skinMat);
-  rightHand.position.set(0, -0.24, 0);
+  rightHand.position.set(0, -0.12, 0);
   rightArm.add(rightHand);
 
   // Collar
