@@ -854,7 +854,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const robot = createRobotVisual(new THREE.Color(colorHex), '');
     robot.nameSprite.visible = false;
     robot.root.scale.set(0.18, 0.18, 0.18);
-    robot.root.rotation.set(0, 0, 0);
+    robot.root.rotation.set(Math.PI / 2, 0, 0);
     return robot;
   }, []);
 
@@ -864,8 +864,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       workshopRegisterDockRef.current?.attach(robot);
     } else {
       npc.visual.root.attach(robot);
-      robot.position.set(0.105, 0.11, -0.22);
-      robot.rotation.set(0, Math.PI / 2, 0);
+      robot.position.set(0.105, 0.22, 0.11);
+      robot.rotation.set(0, 0, Math.PI / 2);
       robot.scale.set(0.35, 0.35, 0.35);
     }
     robot.visible = true;
@@ -2929,8 +2929,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
     const scrapRobot = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
     scrapRobot.root.scale.set(0.7, 0.7, 0.7);
-    scrapRobot.root.position.set(NPC_POSITION.x + 1.5, 0.24, -NPC_POSITION.y - 1.2);
-    scrapRobot.root.rotation.y = 0.15;
+    scrapRobot.root.position.set(NPC_POSITION.x + 1.5, NPC_POSITION.y - 1.2, 0.24);
+    scrapRobot.root.rotation.z = 0.15;
     scrapRobot.nameSprite.visible = false;
     if (scrapRobot.leftPupil) scrapRobot.leftPupil.material.color.setHex(0x222222);
     if (scrapRobot.rightPupil) scrapRobot.rightPupil.material.color.setHex(0x222222);
@@ -2940,7 +2940,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Scrap follower robot (outdoor, follows player after battery install)
     const scrapFollower = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
     scrapFollower.root.scale.set(0.65, 0.65, 0.65);
-    scrapFollower.root.position.set(0, 0.24, 8);
+    scrapFollower.root.position.set(0, -8, 0.24);
     scrapFollower.nameSprite.visible = true;
     if (scrapFollower.leftPupil) scrapFollower.leftPupil.material.color.setHex(0x222222);
     if (scrapFollower.rightPupil) scrapFollower.rightPupil.material.color.setHex(0x222222);
@@ -6069,8 +6069,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const cr = npc.cargoRobot;
             if (cr.root.parent !== workshopRoomGroupRef.current) {
               workshopRoomGroupRef.current?.attach(cr.root);
-              cr.root.position.set(npc.position.x, 0.251, -npc.position.y - 0.5);
-              cr.root.rotation.set(0, 0, 0);
+              cr.root.position.set(npc.position.x, npc.position.y - 0.5, 0.251);
+              cr.root.rotation.set(Math.PI / 2, 0, 0);
               cr.root.scale.set(0.35, 0.35, 0.35);
             }
             const rotZ = npc.visual.root.rotation.z;
@@ -6080,8 +6080,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const targetDy = behindY - cr.root.position.y;
             cr.root.position.x += targetDx * 0.08;
             cr.root.position.y += targetDy * 0.08;
-            cr.root.rotation.set(0, 0, 0);
-            cr.root.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), Math.atan2(targetDx, -targetDy));
+            cr.root.rotation.set(Math.PI / 2, 0, 0);
+            cr.root.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), Math.atan2(targetDx, -targetDy));
             animateRobotVisual(cr, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, 0, -1);
           } else {
             const isRegisterCutscene = registerCutscenePhaseRef.current !== 'idle' && registerCutsceneCustomerRef.current?.id === npc.id;

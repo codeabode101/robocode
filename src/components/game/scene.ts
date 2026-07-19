@@ -335,16 +335,16 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
   const legMat = createToonMaterial(color);
   const armMat = createToonMaterial(color);
 
-  const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.14), legMat);
-  leftLeg.position.set(-0.16, 0.42, -0.07);
+  const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.08), legMat);
+  leftLeg.position.set(-0.16, 0.07, 0.42);
   group.add(leftLeg);
 
   const rightLeg = leftLeg.clone();
   rightLeg.position.x = 0.16;
   group.add(rightLeg);
 
-  const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.2, 0.06), footMat);
-  leftFoot.position.set(-0.16, 0.42, 0.03);
+  const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.2), footMat);
+  leftFoot.position.set(-0.16, -0.03, 0.42);
   group.add(leftFoot);
 
   const rightFoot = leftFoot.clone();
@@ -355,80 +355,80 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
     new THREE.BoxGeometry(0.52, 0.32, 0.32),
     bodyMat
   );
-  body.position.set(0, 0.5, -0.3);
+  body.position.set(0, 0.3, 0.5);
   group.add(body);
 
-  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.28), armMat);
-  leftArm.position.set(-0.33, 0.5, -0.26);
+  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.28, 0.14), armMat);
+  leftArm.position.set(-0.33, 0.26, 0.5);
   leftArm.rotation.z = 0.3;
   group.add(leftArm);
 
-  const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.28), armMat);
-  rightArm.position.set(0.33, 0.5, -0.26);
+  const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.28, 0.14), armMat);
+  rightArm.position.set(0.33, 0.26, 0.5);
   rightArm.rotation.z = -0.3;
   group.add(rightArm);
 
   const headBlock = new THREE.Mesh(
-    new THREE.BoxGeometry(0.42, 0.34, 0.22),
+    new THREE.BoxGeometry(0.42, 0.22, 0.34),
     bodyMat
   );
-  headBlock.position.set(0, 0.5, -0.56);
+  headBlock.position.set(0, 0.56, 0.5);
   group.add(headBlock);
 
   const facePanel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.36, 0.04, 0.18),
+    new THREE.BoxGeometry(0.36, 0.18, 0.04),
     createToonMaterial(0x475569)
   );
-  facePanel.position.set(0, 0.7, -0.58);
+  facePanel.position.set(0, 0.58, 0.7);
   group.add(facePanel);
 
   const leftEye = new THREE.Mesh(
     new THREE.SphereGeometry(0.03, 8, 8),
     new THREE.MeshBasicMaterial({ color: 0xffffff })
   );
-  leftEye.position.set(-0.07, 0.73, -0.6);
+  leftEye.position.set(-0.07, 0.6, 0.73);
   group.add(leftEye);
 
   const leftPupil = new THREE.Mesh(
     new THREE.SphereGeometry(0.012, 6, 6),
     new THREE.MeshBasicMaterial({ color: 0x000000 })
   );
-  leftPupil.position.set(-0.07, 0.745, -0.6);
+  leftPupil.position.set(-0.07, 0.6, 0.745);
   group.add(leftPupil);
 
   const rightEye = new THREE.Mesh(
     new THREE.SphereGeometry(0.03, 8, 8),
     new THREE.MeshBasicMaterial({ color: 0xffffff })
   );
-  rightEye.position.set(0.07, 0.73, -0.6);
+  rightEye.position.set(0.07, 0.6, 0.73);
   group.add(rightEye);
 
   const rightPupil = new THREE.Mesh(
     new THREE.SphereGeometry(0.012, 6, 6),
     new THREE.MeshBasicMaterial({ color: 0x000000 })
   );
-  rightPupil.position.set(0.07, 0.745, -0.6);
+  rightPupil.position.set(0.07, 0.6, 0.745);
   group.add(rightPupil);
 
   const antennaStem = new THREE.Mesh(
     new THREE.CylinderGeometry(0.015, 0.015, 0.14, 6),
     createToonMaterial(0x94a3b8)
   );
-  antennaStem.position.set(0, 0.5, -0.74);
+  antennaStem.position.set(0, 0.74, 0.5);
   group.add(antennaStem);
 
   const antennaTip = new THREE.Mesh(
     new THREE.SphereGeometry(0.04, 8, 8),
     createToonMaterial(0xef4444)
   );
-  antennaTip.position.set(0, 0.5, -0.82);
+  antennaTip.position.set(0, 0.82, 0.5);
   group.add(antennaTip);
 
   const nameSprite = createNameSprite(name, color);
   group.add(nameSprite);
   applyShadows(group, true, true);
 
-  group.rotation.set(0, 0, 0);
+  group.rotation.set(Math.PI / 2, 0, 0);
   if (facing === 'north') {
     group.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
   }
@@ -807,13 +807,13 @@ export function animateRobotVisual(visual: RobotVisual, time: number, speedFacto
 
   const eyeX = Math.max(-0.025, Math.min(0.025, lookX * 0.018));
   const eyeY = Math.max(-0.015, Math.min(0.015, lookY * 0.012));
-  visual.leftPupil.position.set(-0.07 + eyeX, 0.75, -0.6 + eyeY);
-  visual.rightPupil.position.set(0.07 + eyeX, 0.75, -0.6 + eyeY);
+  visual.leftPupil.position.set(-0.07 + eyeX, 0.6 + eyeY, 0.75);
+  visual.rightPupil.position.set(0.07 + eyeX, 0.6 + eyeY, 0.75);
 
   // Leg swing
   const legSwing = Math.sin(time * WALK_BOB_SPEED) * 0.3 * walkAmount;
-  visual.leftLeg.rotation.y = legSwing;
-  visual.rightLeg.rotation.y = -legSwing;
+  visual.leftLeg.rotation.z = legSwing;
+  visual.rightLeg.rotation.z = -legSwing;
 
   // Arm swing (opposite to legs)
   const armSwing = Math.sin(time * WALK_BOB_SPEED + Math.PI) * 0.2 * walkAmount;
