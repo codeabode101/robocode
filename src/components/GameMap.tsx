@@ -2364,7 +2364,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Arms
       for (let s = -1; s <= 1; s += 2) {
         const a = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.25, 8), cMat);
-        a.rotation.x = 0; a.rotation.y = s * 0.3;
+        a.rotation.x = Math.PI / 2; a.rotation.y = s * 0.3;
         a.position.set(s * 0.2, 0.35, 0); g.add(a);
       }
       g.position.set(vx, 0.24, -vy);
@@ -2642,8 +2642,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { x: 18.5, y: -4, w: 9.0, d: 4.5, palette: 'slate', debrisR: 4.8, debrisN: 18, height: 3.5 },
       { x: 18.5, y: -11.75, w: 9.0, d: 3.5, palette: 'wood', debrisR: 4.5, debrisN: 16, height: 4.5 },
       // Wall of buildings at x≈28 — packed tight, no grass/road gap between them
-      { x: 28, y: 1, w: 4, d: 8, palette: 'concrete', debrisR: 3.5, debrisN: 12, height: 7.5 },
-      { x: 28, y: -9.5, w: 4, d: 9, palette: 'brick', debrisR: 3.5, debrisN: 12, height: 6.5 },
+      { x: 31, y: 1, w: 4, d: 8, palette: 'concrete', debrisR: 3.5, debrisN: 12, height: 7.5 },
+      { x: 31, y: -9.5, w: 4, d: 9, palette: 'brick', debrisR: 3.5, debrisN: 12, height: 6.5 },
     ];
     for (const { x, y, w, d, palette, debrisR, debrisN, height } of BUILDINGS) {
       const bldg = createAbandonedBuilding(x, y, w, d, palette, height);
@@ -2658,8 +2658,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     scatterDebris(2.5, 5.5, 0.6, 5);
     scatterDebris(10, 5, 0.6, 5);
     scatterDebris(25, 0, 0.8, 6);   // wall base
-    scatterDebris(28, 7, 0.6, 5);   // behind wall north
-    scatterDebris(28, -8, 0.6, 5);  // behind wall south
+    scatterDebris(31, 7, 0.6, 5);   // behind wall north
+    scatterDebris(31, -8, 0.6, 5);  // behind wall south
 
     // Parts shop at (6.0, -12.0) — fills the entire grass patch east of Rafiq's
     {
@@ -2686,8 +2686,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       { x1: 14.0, y1: -6.25, x2: 23.0, y2: -1.75, cx: 18.5, cy: -4, bw: 9.0, bd: 4.5, bh: 3.5 },
       { x1: 14.0, y1: -13.5, x2: 23.0, y2: -10.0, cx: 18.5, cy: -11.75, bw: 9.0, bd: 3.5, bh: 4.5 },
       // Wall buildings east — packed tight, no gaps
-      { x1: 26.0, y1: -3.0, x2: 30.0, y2: 5.0, cx: 28, cy: 1, bw: 4.0, bd: 8.0, bh: 7.5 },
-      { x1: 26.0, y1: -14.0, x2: 30.0, y2: -5.0, cx: 28, cy: -9.5, bw: 4.0, bd: 9.0, bh: 6.5 },
+      { x1: 29.0, y1: -3.0, x2: 33.0, y2: 5.0, cx: 31, cy: 1, bw: 4.0, bd: 8.0, bh: 7.5 },
+      { x1: 29.0, y1: -14.0, x2: 33.0, y2: -5.0, cx: 31, cy: -9.5, bw: 4.0, bd: 9.0, bh: 6.5 },
     ];
       // Occluders removed — colorWrite:false renders as solid black in this environment
 

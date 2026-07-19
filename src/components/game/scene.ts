@@ -360,12 +360,12 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
 
   const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.28), armMat);
   leftArm.position.set(-0.33, 0.5, -0.26);
-  leftArm.rotation.z = 0.3;
+  leftArm.rotation.x = -0.3;
   group.add(leftArm);
 
   const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.28), armMat);
   rightArm.position.set(0.33, 0.5, -0.26);
-  rightArm.rotation.z = -0.3;
+  rightArm.rotation.x = -0.3;
   group.add(rightArm);
 
   const headBlock = new THREE.Mesh(
@@ -789,8 +789,8 @@ export function animateRobotVisual(visual: RobotVisual, time: number, speedFacto
 
   // Arm swing (opposite to legs)
   const armSwing = Math.sin(time * WALK_BOB_SPEED + Math.PI) * 0.2 * walkAmount;
-  visual.leftArm.rotation.z = 0.3 + armSwing;
-  visual.rightArm.rotation.z = -0.3 - armSwing;
+  visual.leftArm.rotation.x = -0.3 + armSwing;
+  visual.rightArm.rotation.x = -0.3 - armSwing;
 }
 
 export function createRepairKiosk() {
@@ -1071,10 +1071,8 @@ export function animateRepairSparky(visual: RobotVisual, time: number, repairPha
 
   // Arm animation based on repair phase (0-1, cycles)
   const armSwing = Math.sin(repairPhase * Math.PI * 2) * 0.3;
-  visual.rightArm.rotation.z = -0.3 + Math.max(0, armSwing) * 0.8;
-  visual.rightArm.rotation.x = Math.max(0, armSwing) * 0.4;
-  visual.leftArm.rotation.z = 0.3 + Math.min(0, armSwing) * 0.8;
-  visual.leftArm.rotation.x = Math.min(0, armSwing) * 0.4;
+  visual.rightArm.rotation.x = -0.3 + Math.max(0, armSwing) * (0.8 + 0.4);
+  visual.leftArm.rotation.x = -0.3 + Math.min(0, armSwing) * (0.8 + 0.4);
 }
 
 export function animateSparkyWave(visual: RobotVisual, time: number) {
@@ -1087,12 +1085,10 @@ export function animateSparkyWave(visual: RobotVisual, time: number) {
   visual.rightPupil.position.set(0.07 + 0.02, 0.75, -0.6 + 0.01);
 
   // Wave: right arm raised ~60° with side-to-side sway
-  visual.rightArm.rotation.z = -Math.PI / 3 + Math.sin(time * 4) * 0.3;
-  visual.rightArm.rotation.x = -0.3;
+  visual.rightArm.rotation.x = -Math.PI / 3 - 0.3 + Math.sin(time * 4) * 0.3;
 
   // Left arm hangs naturally
-  visual.leftArm.rotation.z = 0.3;
-  visual.leftArm.rotation.x = 0;
+  visual.leftArm.rotation.x = -0.3;
 }
 
 export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {

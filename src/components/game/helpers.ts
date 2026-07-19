@@ -448,14 +448,14 @@ export function createLaptop(): THREE.Group {
   screenGroup.position.set(0, baseH, baseD / 2);
   screenGroup.rotation.x = 0;
 
-  const lid = new THREE.Mesh(new THREE.BoxGeometry(baseW, 0.02, lidH), lidMat);
-  lid.position.set(0, 0, -lidH / 2);
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(baseW, lidH, 0.02), lidMat);
+  lid.position.set(0, lidH / 2, 0);
   lid.renderOrder = 0;
   screenGroup.add(lid);
 
-  const display = new THREE.Mesh(new THREE.BoxGeometry(baseW - 0.04, 0.006, lidH - 0.04), screenMat);
+  const display = new THREE.Mesh(new THREE.BoxGeometry(baseW - 0.04, lidH - 0.04, 0.006), screenMat);
   display.name = 'laptop-display';
-  display.position.set(0, -0.030, -lidH / 2);
+  display.position.set(0, lidH / 2, 0.01);
   display.renderOrder = 1;
   screenGroup.add(display);
 
