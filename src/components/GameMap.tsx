@@ -2494,7 +2494,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const pSign = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 0.5), new THREE.MeshBasicMaterial({ map: st }));
       pSign.position.set(cx, bh + 0.2, -cy - (bd + 0.3) / 2 - 0.07);
       pSign.rotation.y = Math.PI;
-      pSign.scale.x = -1;
       ps.add(pSign);
     }
 

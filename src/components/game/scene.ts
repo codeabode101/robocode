@@ -1174,10 +1174,10 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
   });
   for (const side of [-1, 1]) {
     const verts = new Float32Array([
-      -ew / 2, 0, ridgeZ,
-      ew / 2, 0, ridgeZ,
-      -ew / 2, side * eh, wallZ,
-      ew / 2, side * eh, wallZ,
+      -ew / 2, ridgeZ, 0,
+      ew / 2, ridgeZ, 0,
+      -ew / 2, wallZ, -side * eh,
+      ew / 2, wallZ, -side * eh,
     ]);
     const idx = [0, 1, 2, 1, 3, 2];
     const geo = new THREE.BufferGeometry();
@@ -1199,9 +1199,9 @@ export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
   // Gable end fill (triangles)
   for (const side of [-1, 1]) {
     const verts = new Float32Array([
-      side * ew / 2, 0, ridgeZ,
-      side * ew / 2, -eh, wallZ,
-      side * ew / 2, eh, wallZ,
+      side * ew / 2, ridgeZ, 0,
+      side * ew / 2, wallZ, eh,
+      side * ew / 2, wallZ, -eh,
     ]);
     const idx = [0, 1, 2];
     const geo = new THREE.BufferGeometry();
