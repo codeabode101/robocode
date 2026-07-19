@@ -865,7 +865,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     } else {
       npc.visual.root.attach(robot);
       robot.position.set(0.105, 0.11, -0.22);
-      robot.rotation.set(Math.PI / 2, 0, 0);
+      robot.rotation.set(0, Math.PI / 2, 0);
       robot.scale.set(0.35, 0.35, 0.35);
     }
     robot.visible = true;
@@ -2955,7 +2955,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(kiosk);
     repairKioskRef.current = kiosk;
 
-    const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky', 'south');
+    const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky', 'north');
     sparky.root.scale.set(0.8, 0.8, 0.8);
     sparky.root.position.set(NPC_POSITION.x, 0.24, -NPC_POSITION.y);
     sparky.nameSprite.visible = false;
@@ -3096,7 +3096,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     petBed.position.set(3.4, 0.21, 2.4);
     workshopRoomGroup.add(petBed);
 
-    const owner = createRobotVisual(new THREE.Color(0x14b8a6), 'Rafiq', 'south');
+    const owner = createRobotVisual(new THREE.Color(0x14b8a6), 'Rafiq');
     owner.root.scale.set(0.7, 0.7, 0.7);
     owner.root.position.set(ROOM_OWNER_POS.x, 0.26, -ROOM_OWNER_POS.y);
     owner.nameSprite.visible = false;
@@ -4032,7 +4032,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         rafiqCutsceneTimerRef.current += delta;
         if (roomOwnerVisualRef.current) {
           const rotProgress = Math.min(1, rafiqCutsceneTimerRef.current / 0.8);
-          const facingQ = scratchQuat.current.setFromAxisAngle(scratchVec3.current.set(0, 1, 0), rafiqTargetFacingRef.current * rotProgress);
+          const facingQ = scratchQuat.current.setFromAxisAngle(scratchVec3.current.set(0, 0, 1), rafiqTargetFacingRef.current * rotProgress);
           roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current).premultiply(facingQ);
         }
         if (rafiqCutsceneTimerRef.current >= 1.0) {
@@ -6073,9 +6073,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               cr.root.rotation.set(0, 0, 0);
               cr.root.scale.set(0.35, 0.35, 0.35);
             }
-            const rotY = npc.visual.root.rotation.y;
-            const behindX = npc.position.x + Math.sin(rotY) * 0.5;
-            const behindY = npc.position.y - Math.cos(rotY) * 0.5;
+            const rotZ = npc.visual.root.rotation.z;
+            const behindX = npc.position.x + Math.sin(rotZ) * 0.5;
+            const behindY = npc.position.y - Math.cos(rotZ) * 0.5;
             const targetDx = behindX - cr.root.position.x;
             const targetDy = behindY - cr.root.position.y;
             cr.root.position.x += targetDx * 0.08;

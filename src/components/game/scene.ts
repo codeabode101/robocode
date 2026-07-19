@@ -335,7 +335,7 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
   const legMat = createToonMaterial(color);
   const armMat = createToonMaterial(color);
 
-  const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.08), legMat);
+  const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.14), legMat);
   leftLeg.position.set(-0.16, 0.42, -0.07);
   group.add(leftLeg);
 
@@ -343,7 +343,7 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
   rightLeg.position.x = 0.16;
   group.add(rightLeg);
 
-  const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.2), footMat);
+  const leftFoot = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.2, 0.06), footMat);
   leftFoot.position.set(-0.16, 0.42, 0.03);
   group.add(leftFoot);
 
@@ -358,25 +358,25 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
   body.position.set(0, 0.5, -0.3);
   group.add(body);
 
-  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.28, 0.14), armMat);
+  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.28), armMat);
   leftArm.position.set(-0.33, 0.5, -0.26);
-  leftArm.rotation.x = -0.3;
+  leftArm.rotation.z = 0.3;
   group.add(leftArm);
 
-  const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.28, 0.14), armMat);
+  const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.28), armMat);
   rightArm.position.set(0.33, 0.5, -0.26);
-  rightArm.rotation.x = -0.3;
+  rightArm.rotation.z = -0.3;
   group.add(rightArm);
 
   const headBlock = new THREE.Mesh(
-    new THREE.BoxGeometry(0.42, 0.22, 0.34),
+    new THREE.BoxGeometry(0.42, 0.34, 0.22),
     bodyMat
   );
   headBlock.position.set(0, 0.5, -0.56);
   group.add(headBlock);
 
   const facePanel = new THREE.Mesh(
-    new THREE.BoxGeometry(0.36, 0.18, 0.04),
+    new THREE.BoxGeometry(0.36, 0.04, 0.18),
     createToonMaterial(0x475569)
   );
   facePanel.position.set(0, 0.7, -0.58);
@@ -429,7 +429,7 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
   applyShadows(group, true, true);
 
   group.rotation.set(0, 0, 0);
-  if (facing === 'south') {
+  if (facing === 'north') {
     group.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
   }
   group.scale.set(2.35, 2.35, 2.35);
@@ -807,18 +807,18 @@ export function animateRobotVisual(visual: RobotVisual, time: number, speedFacto
 
   const eyeX = Math.max(-0.025, Math.min(0.025, lookX * 0.018));
   const eyeY = Math.max(-0.015, Math.min(0.015, lookY * 0.012));
-  visual.leftPupil.position.set(-0.07 + eyeX, 0.745 + eyeY, -0.6);
-  visual.rightPupil.position.set(0.07 + eyeX, 0.745 + eyeY, -0.6);
+  visual.leftPupil.position.set(-0.07 + eyeX, 0.75, -0.6 + eyeY);
+  visual.rightPupil.position.set(0.07 + eyeX, 0.75, -0.6 + eyeY);
 
-  // Leg swing (forward/backward around X axis)
+  // Leg swing
   const legSwing = Math.sin(time * WALK_BOB_SPEED) * 0.3 * walkAmount;
-  visual.leftLeg.rotation.x = legSwing;
-  visual.rightLeg.rotation.x = -legSwing;
+  visual.leftLeg.rotation.y = legSwing;
+  visual.rightLeg.rotation.y = -legSwing;
 
   // Arm swing (opposite to legs)
   const armSwing = Math.sin(time * WALK_BOB_SPEED + Math.PI) * 0.2 * walkAmount;
-  visual.leftArm.rotation.x = -0.3 + armSwing;
-  visual.rightArm.rotation.x = -0.3 - armSwing;
+  visual.leftArm.rotation.z = 0.3 + armSwing;
+  visual.rightArm.rotation.z = -0.3 - armSwing;
 }
 
 export function createRepairKiosk() {
@@ -1099,8 +1099,10 @@ export function animateRepairSparky(visual: RobotVisual, time: number, repairPha
 
   // Arm animation based on repair phase (0-1, cycles)
   const armSwing = Math.sin(repairPhase * Math.PI * 2) * 0.3;
-  visual.rightArm.rotation.x = -0.3 + Math.max(0, armSwing) * (0.8 + 0.4);
-  visual.leftArm.rotation.x = -0.3 + Math.min(0, armSwing) * (0.8 + 0.4);
+  visual.rightArm.rotation.z = -0.3 + Math.max(0, armSwing) * 0.8;
+  visual.rightArm.rotation.x = Math.max(0, armSwing) * 0.4;
+  visual.leftArm.rotation.z = 0.3 + Math.min(0, armSwing) * 0.8;
+  visual.leftArm.rotation.x = Math.min(0, armSwing) * 0.4;
 }
 
 export function animateSparkyWave(visual: RobotVisual, time: number) {
@@ -1113,10 +1115,12 @@ export function animateSparkyWave(visual: RobotVisual, time: number) {
   visual.rightPupil.position.set(0.07 + 0.02, 0.75, -0.6 + 0.01);
 
   // Wave: right arm raised ~60° with side-to-side sway
-  visual.rightArm.rotation.x = -Math.PI / 3 - 0.3 + Math.sin(time * 4) * 0.3;
+  visual.rightArm.rotation.z = -Math.PI / 3 + Math.sin(time * 4) * 0.3;
+  visual.rightArm.rotation.x = -0.3;
 
   // Left arm hangs naturally
-  visual.leftArm.rotation.x = -0.3;
+  visual.leftArm.rotation.z = 0.3;
+  visual.leftArm.rotation.x = 0;
 }
 
 export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
