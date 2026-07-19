@@ -4455,7 +4455,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (dist > 0.08 && wpIdx < sparkyWps.length) {
                 const dir = new THREE.Vector2(spTgt.x - aptSparkyCS.root.position.x, spTgt.y - aptSparkyCS.root.position.y).normalize();
                 aptSparkyCS.root.position.x += dir.x * MOVE_SPEED * 0.29 * delta;
-                aptSparkyCS.root.position.y += dir.y * MOVE_SPEED * 0.29 * delta;
+                aptSparkyCS.root.position.z += dir.y * MOVE_SPEED * 0.29 * delta;
                 const moveFacing = -Math.atan2(dir.x, dir.y);
                 aptSparkyFacingRef.current = dist < 0.4 ? (moveFacing * (dist / 0.4)) : moveFacing;
                 const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
@@ -4519,14 +4519,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const progress = Math.min(1, aptCutsceneTimerRef.current / 2.5);
             if (scrapRobotRef.current) {
               const x = -2.8 + (-2.6 + 2.8) * progress;
-              const y = 1.8 + (1.2 - 1.8) * progress;
               scrapRobotRef.current.root.position.x = x;
-              scrapRobotRef.current.root.position.y = y;
+              scrapRobotRef.current.root.position.z = -(1.8 + (1.2 - 1.8) * progress);
               scrapRobotRef.current.root.rotation.y = 0.2 * (1 - progress) + 0.12 * progress;
             }
             if (aptSparkyCS) {
               aptSparkyCS.root.position.x = -2.8;
-              aptSparkyCS.root.position.y = 0.8 + (0.45 - 0.8) * progress;
+              aptSparkyCS.root.position.z = -(0.8 + (0.45 - 0.8) * progress);
               aptSparkyCS.root.position.y = 0.16;
               aptSparkyFacingRef.current = 0;
               const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
@@ -4541,7 +4540,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 scrapRobotRef.current.root.rotation.y = 0.12;
               }
               if (aptSparkyCS) {
-                aptSparkyCS.root.position.y = 0.45;
+                aptSparkyCS.root.position.z = -0.45;
               }
               aptCutscenePhaseRef.current = 'lift-lower';
               aptCutsceneTimerRef.current = 0;
@@ -4584,7 +4583,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (t < 2.5) {
                 const walkT = t / 2.5;
                 aptSparkyCS.root.position.x = WEST_TARGET.x + (EAST_TARGET.x - WEST_TARGET.x) * walkT;
-                aptSparkyCS.root.position.y = WEST_TARGET.y;
+                aptSparkyCS.root.position.z = -WEST_TARGET.y;
                 aptSparkyFacingRef.current = -Math.PI * 0.5;
                 const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                 if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
