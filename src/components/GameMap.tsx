@@ -2946,11 +2946,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
           heldItemGroup.position.set(0, 0, 0);
           rightHandBone.add(heldItemGroup);
         }
-        // Name sprite above the model
-        const nameSprite = createNameSprite('', new THREE.Color(0x3b82f6));
-        nameSprite.position.set(0, 0.9, 0);
-        root.add(nameSprite);
-        localRobotRef.current!.nameSprite = nameSprite;
       } catch (err) {
         console.error('Failed to load character model:', err);
         const fallback = buildPlayerVisual(0x3b82f6, '');

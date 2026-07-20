@@ -2479,8 +2479,8 @@ export async function loadPlayerModel(characterId: string) {
   const gltf = await loader.loadAsync(`/characters/${char.file}`);
   const root = gltf.scene;
   root.scale.set(0.8, 0.8, 0.8);
-  // Rotate 180° so model faces -Y (south, toward camera default)
-  root.rotation.z = Math.PI;
+  // Rotate 180° around Y so model faces south (away from camera)
+  root.rotation.y = Math.PI;
 
   const mixer = new THREE.AnimationMixer(root);
   const idleAnim = gltf.animations.find((a: any) => a.name === 'Idle_Neutral');
