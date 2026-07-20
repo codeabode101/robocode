@@ -2986,19 +2986,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
     outdoorGroup.add(kiosk);
     repairKioskRef.current = kiosk;
 
-    const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky', 'north');
-    sparky.root.scale.set(0.8, 0.8, 0.8);
+    const sparky: ReturnType<typeof createRobotVisual> = buildPlayerVisual(0xfacc15, 'Sparky') as unknown as ReturnType<typeof createRobotVisual>;
+    sparky.root.scale.set(0.9, 0.9, 0.9);
     sparky.root.position.set(NPC_POSITION.x, 0.24, -NPC_POSITION.y);
     sparky.nameSprite.visible = false;
     outdoorGroup.add(sparky.root);
-    if (sparky.body) sparky.body.visible = true;
     outdoorSparkyRef.current = sparky;
     sparkyBaseQuatRef.current = sparky.root.quaternion.clone();
-    // Neck connector so head doesn't float
-    const sparkyNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.2, 8), createToonMaterial(0xfacc15));
-    sparkyNeck.rotation.x = 0;
-    sparkyNeck.position.set(0, 0.35, 0);
-    sparky.root.add(sparkyNeck);
     const sparkyQuestMarker = addExclamationMarker(sparky.root);
     sparkyQuestMarkerRef.current = sparkyQuestMarker;
 
@@ -3127,8 +3121,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
     petBed.position.set(3.4, 0.21, 2.4);
     workshopRoomGroup.add(petBed);
 
-    const owner = createRobotVisual(new THREE.Color(0x14b8a6), 'Rafiq');
-    owner.root.scale.set(0.7, 0.7, 0.7);
+    const owner: ReturnType<typeof createRobotVisual> = buildPlayerVisual(0x14b8a6, 'Rafiq') as unknown as ReturnType<typeof createRobotVisual>;
+    owner.root.scale.set(0.9, 0.9, 0.9);
     owner.root.position.set(ROOM_OWNER_POS.x, 0.26, -ROOM_OWNER_POS.y);
     owner.nameSprite.visible = false;
     workshopRoomGroup.add(owner.root);
@@ -4381,8 +4375,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
           repairTimerRef.current += delta;
           animateRepairSparky(sparky, worldTime, repairTimerRef.current);
           if (repairKioskRef.current) animateRepairKiosk(repairKioskRef.current, worldTime);
-          if (sparky.antennaTip) {
-            sparky.antennaTip.material.color.setHSL(0.12, 0.9, 0.5 + Math.sin(worldTime * 5) * 0.3);
+          if (sparky.antennaTip && !Array.isArray(sparky.antennaTip.material)) {
+            (sparky.antennaTip.material as any).color.setHSL(0.12, 0.9, 0.5 + Math.sin(worldTime * 5) * 0.3);
           }
           if (worldTime > 25 && !sparkyEventTriggeredRef.current) {
             sparkyEventTriggeredRef.current = true;
@@ -4466,7 +4460,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
       }
       if (speechBubbleRef.current && sparkyIntroStepRef.current >= 0) {
         const headPos = scratchVec3.current;
-        sparky.antennaTip.getWorldPosition(headPos);
+        sparky.root.getWorldPosition(headPos);
+        headPos.y += 0.6;
         headPos.project(camera);
         if (headPos.z > 1) {
           speechBubbleRef.current.style.display = 'none';

@@ -796,28 +796,31 @@ export function createHumanVisual(name: string, spritePath: string) {
 export const WALK_BOB_SPEED = 14;
 
 export function animateRobotVisual(visual: RobotVisual, time: number, speedFactor: number, lookX: number, lookY: number) {
+  if (!visual.body) return;
   const walkAmount = Math.min(1, speedFactor);
   const bob = Math.sin(time * WALK_BOB_SPEED) * 0.03 * walkAmount;
   visual.body.position.y = 0.3 + bob;
   if (visual.antennaTip) visual.antennaTip.position.y = 0.82 + Math.sin(time * 9) * 0.015;
 
-  if (visual.leftPupil.scale) visual.leftPupil.scale.set(1, 1, 1);
-  if (visual.rightPupil.scale) visual.rightPupil.scale.set(1, 1, 1);
+  if (visual.leftPupil?.scale) visual.leftPupil.scale.set(1, 1, 1);
+  if (visual.rightPupil?.scale) visual.rightPupil.scale.set(1, 1, 1);
 
-  const eyeX = Math.max(-0.025, Math.min(0.025, lookX * 0.018));
-  const eyeY = Math.max(-0.015, Math.min(0.015, lookY * 0.012));
-  visual.leftPupil.position.set(-0.07 + eyeX, 0.6 + eyeY, 0.75);
-  visual.rightPupil.position.set(0.07 + eyeX, 0.6 + eyeY, 0.75);
+  if (visual.leftPupil && visual.rightPupil) {
+    const eyeX = Math.max(-0.025, Math.min(0.025, lookX * 0.018));
+    const eyeY = Math.max(-0.015, Math.min(0.015, lookY * 0.012));
+    visual.leftPupil.position.set(-0.07 + eyeX, 0.6 + eyeY, 0.75);
+    visual.rightPupil.position.set(0.07 + eyeX, 0.6 + eyeY, 0.75);
+  }
 
   // Leg swing
   const legSwing = Math.sin(time * WALK_BOB_SPEED) * 0.3 * walkAmount;
-  visual.leftLeg.rotation.z = legSwing;
-  visual.rightLeg.rotation.z = -legSwing;
+  if (visual.leftLeg) visual.leftLeg.rotation.z = legSwing;
+  if (visual.rightLeg) visual.rightLeg.rotation.z = -legSwing;
 
   // Arm swing (opposite to legs)
   const armSwing = Math.sin(time * WALK_BOB_SPEED + Math.PI) * 0.2 * walkAmount;
-  visual.leftArm.rotation.z = 0.3 + armSwing;
-  visual.rightArm.rotation.z = -0.3 - armSwing;
+  if (visual.leftArm) visual.leftArm.rotation.z = 0.3 + armSwing;
+  if (visual.rightArm) visual.rightArm.rotation.z = -0.3 - armSwing;
 }
 
 export function createRepairKiosk() {
@@ -1086,40 +1089,54 @@ export function animateRepairKiosk(kiosk: THREE.Group, time: number) {
 }
 
 export function animateRepairSparky(visual: RobotVisual, time: number, repairPhase: number) {
+  if (!visual.body) return;
   const bob = Math.sin(time * 3) * 0.015;
   visual.body.position.y = 0.3 + bob;
   if (visual.antennaTip) visual.antennaTip.position.y = 0.82 + Math.sin(time * 9) * 0.015;
 
   // Pupils look toward kiosk workbench
-  const eyeX = Math.max(-0.025, Math.min(0.025, 0.05 * 0.018));
-  const eyeY = Math.max(-0.015, Math.min(0.015, 0.25 * 0.012));
-  visual.leftPupil.position.set(-0.07 + eyeX, 0.75, -0.6 + eyeY);
-  visual.rightPupil.position.set(0.07 + eyeX, 0.75, -0.6 + eyeY);
+  if (visual.leftPupil && visual.rightPupil) {
+    const eyeX = Math.max(-0.025, Math.min(0.025, 0.05 * 0.018));
+    const eyeY = Math.max(-0.015, Math.min(0.015, 0.25 * 0.012));
+    visual.leftPupil.position.set(-0.07 + eyeX, 0.75, -0.6 + eyeY);
+    visual.rightPupil.position.set(0.07 + eyeX, 0.75, -0.6 + eyeY);
+  }
 
   // Arm animation based on repair phase (0-1, cycles)
   const armSwing = Math.sin(repairPhase * Math.PI * 2) * 0.3;
-  visual.rightArm.rotation.z = -0.3 + Math.max(0, armSwing) * 0.8;
-  visual.rightArm.rotation.x = Math.max(0, armSwing) * 0.4;
-  visual.leftArm.rotation.z = 0.3 + Math.min(0, armSwing) * 0.8;
-  visual.leftArm.rotation.x = Math.min(0, armSwing) * 0.4;
+  if (visual.rightArm) {
+    visual.rightArm.rotation.z = -0.3 + Math.max(0, armSwing) * 0.8;
+    visual.rightArm.rotation.x = Math.max(0, armSwing) * 0.4;
+  }
+  if (visual.leftArm) {
+    visual.leftArm.rotation.z = 0.3 + Math.min(0, armSwing) * 0.8;
+    visual.leftArm.rotation.x = Math.min(0, armSwing) * 0.4;
+  }
 }
 
 export function animateSparkyWave(visual: RobotVisual, time: number) {
+  if (!visual.body) return;
   const bob = Math.sin(time * 2.5) * 0.008;
   visual.body.position.y = 0.3 + bob;
   if (visual.antennaTip) visual.antennaTip.position.y = 0.82 + Math.sin(time * 8) * 0.015;
 
   // Pupils look toward player
-  visual.leftPupil.position.set(-0.07 + 0.02, 0.75, -0.6 + 0.01);
-  visual.rightPupil.position.set(0.07 + 0.02, 0.75, -0.6 + 0.01);
+  if (visual.leftPupil && visual.rightPupil) {
+    visual.leftPupil.position.set(-0.07 + 0.02, 0.75, -0.6 + 0.01);
+    visual.rightPupil.position.set(0.07 + 0.02, 0.75, -0.6 + 0.01);
+  }
 
   // Wave: right arm raised ~60° with side-to-side sway
-  visual.rightArm.rotation.z = -Math.PI / 3 + Math.sin(time * 4) * 0.3;
-  visual.rightArm.rotation.x = -0.3;
+  if (visual.rightArm) {
+    visual.rightArm.rotation.z = -Math.PI / 3 + Math.sin(time * 4) * 0.3;
+    visual.rightArm.rotation.x = -0.3;
+  }
 
   // Left arm hangs naturally
-  visual.leftArm.rotation.z = 0.3;
-  visual.leftArm.rotation.x = 0;
+  if (visual.leftArm) {
+    visual.leftArm.rotation.z = 0.3;
+    visual.leftArm.rotation.x = 0;
+  }
 }
 
 export function createPartsShop(x: number, y: number, bw = 8.0, bd = 4.0) {
