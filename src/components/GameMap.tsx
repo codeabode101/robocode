@@ -17,7 +17,7 @@ import {
   createLabelSprite, createNameSprite, createGradientTexture, getTileTexture,
   createToonMaterial, createTexturedToonMaterial,
   createGrid, createPalmTree, createBazaarShop, createRangoli, addWindows, addOutline, applyShadows, disposeObject,
-  createRobotVisual, buildPlayerVisual, createHumanVisual, createPartsShop, createPartModel, createApartmentBuilding, animateRobotVisual, LABEL_BUILD_TAG, WALK_BOB_SPEED, loadPlayerModel,
+  createRobotVisual, buildPlayerVisual, createHumanVisual, createPartsShop, createPartModel, createApartmentBuilding, animateRobotVisual, LABEL_BUILD_TAG, WALK_BOB_SPEED,
   addExclamationMarker, createRepairKiosk, animateRepairKiosk, animateRepairSparky, animateSparkyWave,
   createAbandonedBuilding,
 } from '@/components/game/scene';
@@ -86,7 +86,6 @@ interface GameMapProps {
   userId: string;
   apinatorAppKey: string;
   apinatorCluster: 'us' | 'eu';
-  characterId: string;
 }
 
   const ISLAND_RADIUS = 40;
@@ -317,7 +316,7 @@ function TFB({ show, step, steps, text, icon, onEnter, ttsOn, ttsCharIdx, onTtsT
   );
 }
 
-export default function GameMap({ userId, apinatorAppKey, apinatorCluster, characterId }: GameMapProps) {
+export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: GameMapProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const codeInputRef = useRef<HTMLTextAreaElement>(null);
   const codePreviewRef = useRef<HTMLPreElement>(null);
@@ -336,14 +335,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
   const rightLegPivotRef = useRef<THREE.Group | null>(null);
   const rightArmPivotRef = useRef<THREE.Group | null>(null);
   const rightArmRef = useRef<THREE.Object3D | null>(null);
-  const playerMixerRef = useRef<THREE.AnimationMixer | null>(null);
-  const midleActionRef = useRef<THREE.AnimationAction | null>(null);
-  const mwalkActionRef = useRef<THREE.AnimationAction | null>(null);
-  const mwaveActionRef = useRef<THREE.AnimationAction | null>(null);
-  const playerGlTFRootRef = useRef<THREE.Group | null>(null);
-  const playerRightHandBoneRef = useRef<THREE.Bone | null>(null);
-  const waveTimerRef = useRef(0);
-  const prevPlayerPosRef = useRef(new THREE.Vector2(0, 0));
+
   const onSparkyDlgCloseRef = useRef<(() => void) | null>(null);
   const remoteAvatarsRef = useRef<Record<string, RemoteAvatar>>({});
   const keyStateRef = useRef<Set<string>>(new Set());
@@ -2359,11 +2351,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
 
     // Bazaar vendors — standard player model
     const masalaVendor = buildPlayerVisual(0xf97316, '');
-    masalaVendor.root.position.set(-7.5, 0.24, 5.3);
+    masalaVendor.root.position.set(-7.5, 0.24, 5.15);
+    masalaVendor.root.rotation.y = Math.PI;
     masalaVendor.nameSprite.visible = false;
     outdoorGroup.add(masalaVendor.root);
     const codeVendor = buildPlayerVisual(0x60a5fa, '');
-    codeVendor.root.position.set(-4.87, 0.24, 5.3);
+    codeVendor.root.position.set(-4.87, 0.24, 5.15);
+    codeVendor.root.rotation.y = Math.PI;
     codeVendor.nameSprite.visible = false;
     outdoorGroup.add(codeVendor.root);
 
@@ -2917,33 +2911,14 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
     localGroup.add(heldItemGroup);
     heldItemGroupRef.current = heldItemGroup;
 
-    // Load glTF character model
-    (async () => {
-      try {
-        const { root, mixer, idleAction, walkAction, waveAction, rightHandBone } = await loadPlayerModel(characterId);
-        localGroup.add(root);
-        playerMixerRef.current = mixer;
-        midleActionRef.current = idleAction;
-        mwalkActionRef.current = walkAction;
-        mwaveActionRef.current = waveAction;
-        playerGlTFRootRef.current = root;
-        playerRightHandBoneRef.current = rightHandBone;
-        // Re-parent heldItemGroup to right hand bone if available
-        if (rightHandBone && heldItemGroup.parent !== rightHandBone) {
-          heldItemGroup.position.set(0, 0, 0);
-          rightHandBone.add(heldItemGroup);
-        }
-      } catch (err) {
-        console.error('Failed to load character model:', err);
-        const fallback = buildPlayerVisual(0x3b82f6, '');
-        localGroup.add(fallback.root);
-        localRobotRef.current = { root: localGroup, nameSprite: new THREE.Sprite(), body: fallback.torso, shadow: fallback.torso, leftPupil: fallback.torso, rightPupil: fallback.torso, antennaTip: fallback.torso, leftArm: fallback.leftArm, rightArm: fallback.rightArm, leftLeg: fallback.torso, rightLeg: fallback.torso };
-        leftLegPivotRef.current = fallback.leftLegPivot;
-        rightLegPivotRef.current = fallback.rightLegPivot;
-        rightArmPivotRef.current = fallback.rightArmPivot;
-        rightArmRef.current = fallback.rightArm;
-      }
-    })();
+    // Player visual — standard humanoid
+    const playerVisual = buildPlayerVisual(0x3b82f6, '');
+    localGroup.add(playerVisual.root);
+    localRobotRef.current = { root: localGroup, nameSprite: new THREE.Sprite(), body: playerVisual.torso, shadow: playerVisual.torso, leftPupil: playerVisual.torso, rightPupil: playerVisual.torso, antennaTip: playerVisual.torso, leftArm: playerVisual.leftArm, rightArm: playerVisual.rightArm, leftLeg: playerVisual.torso, rightLeg: playerVisual.torso };
+    leftLegPivotRef.current = playerVisual.leftLegPivot;
+    rightLegPivotRef.current = playerVisual.rightLegPivot;
+    rightArmPivotRef.current = playerVisual.rightArmPivot;
+    rightArmRef.current = playerVisual.rightArm;
 
     const scrapRobot = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
     scrapRobot.root.scale.set(0.7, 0.7, 0.7);
@@ -4155,61 +4130,28 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
       localGroup.rotation.y = -playerYaw;
       const baseY = inApartmentRoomRef.current ? 0.28 : inWorkshopRoomRef.current ? 0.26 : inShopRoomRef.current ? 0.08 : 0.24;
       localGroup.position.y = baseY + (moved ? Math.sin(worldTime * 10) * 0.02 : 0);
-      // Walk animation — glTF mixer or manual fallback
+      // Walk animation
       const isHolding = heldSlotIndexRef.current !== null && heldSlotIndexRef.current < gameStore.get('backpack').length;
-      const currPos = localPositionRef.current;
-      const playerMoving = moved || Math.abs(currPos.x - prevPlayerPosRef.current.x) > 0.0001 || Math.abs(currPos.y - prevPlayerPosRef.current.y) > 0.0001;
-      prevPlayerPosRef.current.copy(currPos);
-      if (playerMixerRef.current) {
-        playerMixerRef.current.update(delta);
-        const idleAction = midleActionRef.current;
-        const walkAction = mwalkActionRef.current;
-        const waveAction = mwaveActionRef.current;
-        if (waveTimerRef.current > 0) {
-          waveTimerRef.current -= delta;
-          if (idleAction) idleAction.weight = 0;
-          if (walkAction) walkAction.weight = 0;
-          if (waveAction) {
-            waveAction.weight = 1;
-            waveAction.setLoop(THREE.LoopOnce, 1);
-            waveAction.reset();
-            waveTimerRef.current = -1; // plays once naturally
-          }
-        } else if (waveTimerRef.current === -1 && waveAction && waveAction.isRunning() === false) {
-          // Wave finished — return to idle
-          waveTimerRef.current = 0;
-          if (idleAction) idleAction.reset().play();
-          if (idleAction) idleAction.weight = 1;
-          if (walkAction) { walkAction.weight = 0; walkAction.reset().play(); }
-        } else if (idleAction && walkAction) {
-          const target = playerMoving ? 1 : 0;
-          const speed = delta * 8;
-          idleAction.weight = THREE.MathUtils.lerp(idleAction.weight, 1 - target, speed);
-          walkAction.weight = THREE.MathUtils.lerp(walkAction.weight, target, speed);
-        }
-      } else {
-        const localVis = localRobotRef.current;
-        const playerSpeed = moved ? 1 : 0;
-        const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3 * playerSpeed;
-        if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = walkSwing;
-        if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -walkSwing;
-        const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2 * playerSpeed;
-        if (localVis) {
-          localVis.leftArm.rotation.x = armSwing;
-          localVis.rightArm.rotation.x = -armSwing;
-        }
-        if (rightArmPivotRef.current) {
-          if (isHolding) {
-            rightArmPivotRef.current.rotation.x = -0.7;
-          } else {
-            rightArmPivotRef.current.rotation.x = -0.42;
-          }
+      const localVis = localRobotRef.current;
+      const playerSpeed = moved ? 1 : 0;
+      const walkSwing = Math.sin(worldTime * WALK_BOB_SPEED) * 0.3 * playerSpeed;
+      if (leftLegPivotRef.current) leftLegPivotRef.current.rotation.x = walkSwing;
+      if (rightLegPivotRef.current) rightLegPivotRef.current.rotation.x = -walkSwing;
+      const armSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2 * playerSpeed;
+      if (localVis) {
+        localVis.leftArm.rotation.x = armSwing;
+        localVis.rightArm.rotation.x = -armSwing;
+      }
+      if (rightArmPivotRef.current) {
+        if (isHolding) {
+          rightArmPivotRef.current.rotation.x = -0.7;
+        } else {
+          rightArmPivotRef.current.rotation.x = -0.42;
         }
       }
 
-      // Held item 3D model — attaches to right hand bone (glTF) or right arm mesh (manual fallback)
+      // Held item 3D model
       const heldGroup = heldItemGroupRef.current;
-      const handBone = playerRightHandBoneRef.current;
       if (heldGroup && heldSlotIndexRef.current !== null && heldSlotIndexRef.current < gameStore.get('backpack').length) {
         heldGroup.visible = true;
         const partId = gameStore.get('backpack')[heldSlotIndexRef.current];
@@ -4220,18 +4162,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
           heldGroup.userData.partId = partId;
         }
         if (isHolding) {
-          if (handBone) {
-            if (heldGroup.parent !== handBone) handBone.add(heldGroup);
-            heldGroup.position.set(0, 0.07, 0);
-            heldGroup.rotation.set(-Math.PI / 2, 0, 0);
-            heldGroup.scale.set(2, 2, 2);
-          } else {
-            const arm = rightArmRef.current;
-            if (arm && heldGroup.parent !== arm) arm.add(heldGroup);
-            heldGroup.position.set(0, 0, -0.14);
-            heldGroup.rotation.set(0, 0, 0);
-            heldGroup.scale.set(2, 2, 2);
-          }
+          const arm = rightArmRef.current;
+          if (arm && heldGroup.parent !== arm) arm.add(heldGroup);
+          heldGroup.position.set(0, 0, -0.14);
+          heldGroup.rotation.set(0, 0, 0);
+          heldGroup.scale.set(2, 2, 2);
         } else {
           if (heldGroup.parent !== localGroup) localGroup.add(heldGroup);
           heldGroup.scale.set(1, 1, 1);
@@ -4292,10 +4227,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
 
         if (worldInteractionRequestedRef.current) {
           worldInteractionRequestedRef.current = false;
-          // Trigger wave animation on interaction
-          if (waveTimerRef.current <= 0 && mwaveActionRef.current && playerMixerRef.current) {
-            waveTimerRef.current = 0.01; // triggers wave play
-          }
           if (distanceToSparky < SPARKY_INTERACTION_DISTANCE) {
             if (stage === 'intro' && gameStore.get('backpack').includes('battery') && !sparkyGoHomeRef.current && !sparkyHomeArrivedRef.current) {
               setSparkyDlgFull('You got the battery! Follow me — let\'s install it!');
