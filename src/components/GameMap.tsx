@@ -98,23 +98,10 @@ const NETWORK_SYNC_MS = 50;
 const NPC_POSITION = new THREE.Vector2(-2.87, -6.1);
 
 const REMOTE_LERP = 0.35;
-const SPARKY_INTRO_CONVO = [
-  {
-    text: "Woah! Hey there! Can you help me? I found something amazing in my apartment!",
-    choices: [{ label: 'Sure thing!', next: 2 }, { label: 'No...', next: 1 }],
-  },
-  {
-    text: "I really need your help, please. So here's what we do...",
-    choices: [{ label: "Okay, let's go!", next: 2 }],
-  },
-  {
-    text: "I found an old robot in my apartment — just sitting there, dusty, no name. I think we can bring it back to life!",
-    choices: [{ label: 'Continue', next: 3 }],
-  },
-  {
-    text: "Follow me upstairs — I'll show you! Door's right over here ↖️",
-    choices: [{ label: "Let's go!", next: -1 }],
-  },
+const SPARKY_INTRO_STEPS = [
+  { speaker: 'Sparky', text: "Woah! Hey there! Can you help me? I found something amazing in my apartment!" },
+  { speaker: 'Sparky', text: "I found an old robot in my apartment — just sitting there, dusty, no name. I think we can bring it back to life!" },
+  { speaker: 'Sparky', text: "Follow me upstairs — I'll show you! Door's right over here ↖️" },
 ];
 const BATTERY_DLG_STEPS = [
   { speaker: 'Sparky', text: "Oh no! The battery's completely dead... we need a new one." },
@@ -438,7 +425,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const eventParticlesRef = useRef<THREE.Group | null>(null);
   const cameraTargetPosRef = useRef(new THREE.Vector3());
   const cameraLookTargetRef = useRef(new THREE.Vector3());
-  const speechBubbleRef = useRef<HTMLDivElement>(null);
   const sparkyBaseQuatRef = useRef<THREE.Quaternion | null>(null);
   const sparkyFacingRef = useRef(0);
 
@@ -480,7 +466,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyHomeTargetRef = useRef(new THREE.Vector2(-9.6, -5.7));
   const sparkyHomeWaypointsRef = useRef<THREE.Vector2[]>([]);
   const sparkyHomeWaypointIdxRef = useRef(0);
-  const sparkyIntroStepRef = useRef(-1);
+  const sparkyIntroActiveRef = useRef(false);
   const sparkyWalkHomeTimerRef = useRef(0);
   const chestGlowRef = useRef<THREE.Mesh | null>(null);
   const awakenSoundPlayedRef = useRef(false);
@@ -683,7 +669,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [showSparkyDlg, setShowSparkyDlg] = useState(false);
   const [sparkyDlgFull, setSparkyDlgFull] = useState('');
   const [sparkyDlgText, setSparkyDlgText] = useState('');
-  const [sparkyIntroStep, setSparkyIntroStep] = useState(-1);
   const [showBatteryDlg, setShowBatteryDlg] = useState(false);
   const [batteryDlgStep, setBatteryDlgStep] = useState(0);
   const [batteryDlgText, setBatteryDlgText] = useState('');
@@ -697,6 +682,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [showWhoDlg, setShowWhoDlg] = useState(false);
   const [whoStep, setWhoStep] = useState(0);
   const [whoText, setWhoText] = useState('');
+  const [showSparkyIntroDlg, setShowSparkyIntroDlg] = useState(false);
+  const [sparkyIntroDlgStep, setSparkyIntroDlgStep] = useState(0);
+  const [sparkyIntroDlgText, setSparkyIntroDlgText] = useState('');
   const [rafiqCutsceneActive, setRafiqCutsceneActive] = useState(false);
   const [showSparkyExamples, setShowSparkyExamples] = useState(false);
   const [showElectrocuteDlg, setShowElectrocuteDlg] = useState(false);
@@ -1382,7 +1370,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   const missionText = useMemo(() => getMissionText(goal, money, sparkyQuestStage), [goal, money, sparkyQuestStage]);
 
-  const anyDialogActive = showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showBatteryDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showLaptopUI || (workshopIntroSeen === false && inWorkshopRoom);
+  const anyDialogActive = showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showBatteryDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showSparkyIntroDlg || showLaptopUI || (workshopIntroSeen === false && inWorkshopRoom);
 
   // NEW MISSION full-screen modal (only for qualitative changes, never during dialogs)
   useEffect(() => {
@@ -1570,8 +1558,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   }, [tutorialStep]);
 
   useEffect(() => {
-    sparkyIntroStepRef.current = sparkyIntroStep;
-  }, [sparkyIntroStep]);
+    sparkyIntroActiveRef.current = showSparkyIntroDlg;
+  }, [showSparkyIntroDlg]);
 
   useEffect(() => {
     tutorialCompleteRef.current = tutorialComplete;
@@ -1618,10 +1606,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
   // Universal cursor release — exit pointer lock when any clickable modal opens
   useEffect(() => {
-    if (showControlsModal || showBatteryDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showLaptopUI || showFirstSaleModal || showShopModal || shopkeeperGreeting !== null) {
+    if (showControlsModal || showBatteryDlg || showRafiqLetterDlg || showWhoDlg || showSparkyDlg || showSparkyIntroDlg || showElectrocuteDlg || showStringDlg || showDateDlg || showVersionDlg || showBootDlg || showLaptopUI || showFirstSaleModal || showShopModal || shopkeeperGreeting !== null) {
       if (document.pointerLockElement) document.exitPointerLock();
     }
-  }, [showControlsModal, showBatteryDlg, showRafiqLetterDlg, showWhoDlg, showSparkyDlg, showElectrocuteDlg, showStringDlg, showDateDlg, showVersionDlg, showBootDlg, showLaptopUI, showFirstSaleModal, showShopModal, shopkeeperGreeting]);
+  }, [showControlsModal, showBatteryDlg, showRafiqLetterDlg, showWhoDlg, showSparkyDlg, showSparkyIntroDlg, showElectrocuteDlg, showStringDlg, showDateDlg, showVersionDlg, showBootDlg, showLaptopUI, showFirstSaleModal, showShopModal, shopkeeperGreeting]);
 
   // Controls modal Enter key handler
   useEffect(() => {
@@ -1671,6 +1659,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       setShowBatteryDlg(false);
       aptCutscenePhaseRef.current = 'done';
       aptCutsceneTimerRef.current = 0;
+    }
+  });
+
+  useTypewriterDialog(showSparkyIntroDlg, sparkyIntroDlgStep, SPARKY_INTRO_STEPS, setSparkyIntroDlgText);
+  useDialogEnter(showSparkyIntroDlg, () => {
+    const nextStep = sparkyIntroDlgStep + 1;
+    if (nextStep < SPARKY_INTRO_STEPS.length) { setSparkyIntroDlgStep(nextStep); }
+    else {
+      setShowSparkyIntroDlg(false);
+      // Sparky walks home
+      const __s = outdoorSparkyRef.current;
+      if (__s) {
+        const __sx = __s.root.position.x;
+        const __sy = __s.root.position.y;
+        sparkyHomeWaypointsRef.current = [new THREE.Vector2(__sx, -6.5), new THREE.Vector2(-9.6, -6.5), new THREE.Vector2(-9.6, -5.7)];
+        sparkyHomeWaypointIdxRef.current = 0;
+      }
+      sparkyWalkHomeTimerRef.current = 0;
+      sparkyGoHomeRef.current = true;
     }
   });
 
@@ -2948,7 +2955,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(kiosk);
     repairKioskRef.current = kiosk;
 
-    const sparky: ReturnType<typeof createRobotVisual> = buildPlayerVisual(0xfacc15, 'Sparky') as unknown as ReturnType<typeof createRobotVisual>;
+    const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
     sparky.root.scale.set(0.9, 0.9, 0.9);
     sparky.root.position.set(NPC_POSITION.x, 0.24, -NPC_POSITION.y);
     sparky.nameSprite.visible = false;
@@ -3334,34 +3341,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Block all keyboard input during cutscene
       if (aptCutscenePhaseRef.current !== 'idle') {
         event.preventDefault();
-        return;
-      }
-
-      // Number keys 1/2 pick conversation choice
-      if (sparkyIntroStepRef.current >= 0 && (event.key === '1' || event.key === '2')) {
-        event.preventDefault();
-        const convo = SPARKY_INTRO_CONVO[sparkyIntroStepRef.current];
-        const choiceIdx = event.key === '2' && convo.choices.length > 1 ? 1 : 0;
-        const next = convo.choices[choiceIdx].next;
-        if (next === -1) {
-          setSparkyIntroStep(-1);
-          if (!sparkyHomeArrivedRef.current) {
-            const s = outdoorSparkyRef.current;
-            if (s) {
-              const sx = s.root.position.x;
-              const sy = s.root.position.y;
-              sparkyHomeWaypointsRef.current = [
-                new THREE.Vector2(sx, -6.5),
-                new THREE.Vector2(-9.6, -6.5),
-                new THREE.Vector2(-9.6, -5.7),
-              ];
-              sparkyHomeWaypointIdxRef.current = 0;
-            }
-            sparkyGoHomeRef.current = true;
-          }
-        } else {
-          setSparkyIntroStep(next);
-        }
         return;
       }
 
@@ -4241,7 +4220,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               sparkyWalkHomeTimerRef.current = 0;
               sparkyGoHomeRef.current = true;
             } else if (stage === 'intro' && !sparkyGoHomeRef.current) {
-              setSparkyIntroStep(0);
+              setShowSparkyIntroDlg(true);
+              setSparkyIntroDlgStep(0);
             } else if (stage === 'all-done') {
               setSparkyDlgFull('Scrap is fully repaired! Take him to customers at the repair kiosk.');
               setShowSparkyDlg(true);
@@ -4331,12 +4311,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
       const baseQuat = sparkyBaseQuatRef.current;
       if (baseQuat && sparky.root.visible && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
-        const dx = sparkyIntroStepRef.current >= 0
+        const dx = sparkyIntroActiveRef.current
           ? localPositionRef.current.x - sparky.root.position.x
           : (sparkyGoHomeRef.current && !sparkyHomeArrivedRef.current && sparkyHomeWaypointIdxRef.current < sparkyHomeWaypointsRef.current.length
             ? sparkyHomeWaypointsRef.current[sparkyHomeWaypointIdxRef.current].x - sparky.root.position.x
             : 0);
-        const dy = sparkyIntroStepRef.current >= 0
+        const dy = sparkyIntroActiveRef.current
           ? localPositionRef.current.y - sparky.root.position.y
           : (sparkyGoHomeRef.current && !sparkyHomeArrivedRef.current && sparkyHomeWaypointIdxRef.current < sparkyHomeWaypointsRef.current.length
             ? sparkyHomeWaypointsRef.current[sparkyHomeWaypointIdxRef.current].y - sparky.root.position.y
@@ -4375,26 +4355,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         }
         const scrapSpeed = followDist > 1.2 ? 1 : 0;
         animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPos.x, playerPos.y - scrapPos.y);
-      }
-      if (speechBubbleRef.current && sparkyIntroStepRef.current >= 0) {
-        const headPos = scratchVec3.current;
-        sparky.root.getWorldPosition(headPos);
-        headPos.y += 0.6;
-        headPos.project(camera);
-        if (headPos.z > 1) {
-          speechBubbleRef.current.style.display = 'none';
-        } else {
-          speechBubbleRef.current.style.display = '';
-          const vw = window.innerWidth;
-          const vh = window.innerHeight;
-          const x = (headPos.x * 0.5 + 0.5) * vw;
-          const y = (-headPos.y * 0.5 + 0.5) * vh;
-          speechBubbleRef.current.style.left = `${x}px`;
-          speechBubbleRef.current.style.top = `${y}px`;
-          speechBubbleRef.current.style.transform = 'translate(-50%, -100%) translateY(-8px)';
-        }
-      } else if (speechBubbleRef.current) {
-        speechBubbleRef.current.style.display = 'none';
       }
       sparky.root.position.y = 0.24 + Math.sin(worldTime * 4) * 0.04;
       if (sparkyQuestStageRef.current === 'intro' && !sparkyGoHomeRef.current) {
@@ -7509,68 +7469,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
         onTtsToggle={onTtsToggle} hideEnter={hideGameUiRef.current} />
 
-      {/* Speech bubble + choices above Sparky (projected via ref) */}
-      <div
-        ref={speechBubbleRef}
-        className="fixed z-50 pointer-events-none"
-        style={{ display: 'none', left: 0, top: 0, transform: 'translate(-50%, -100%) translateY(-8px)' }}
-      >
-        <div className="relative pointer-events-auto">
-          <div className="relative rounded-2xl border border-amber-400/50 bg-slate-900/95 px-4 py-3 shadow-2xl backdrop-blur-sm" style={{ width: '260px' }}>
-            <div className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 border-b border-r border-amber-400/50 bg-slate-900/95" />
-            <div className="flex items-start gap-2">
-              <div className="text-2xl">🤖</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-amber-300">Sparky</div>
-                <p className="mt-0.5 text-sm text-slate-100 leading-snug">{sparkyIntroStep >= 0 ? SPARKY_INTRO_CONVO[sparkyIntroStep].text : ''}</p>
-              </div>
-            </div>
-          </div>
-          {sparkyIntroStep >= 0 && (
-            <>
-              <div className="absolute flex flex-col gap-2" style={{ right: 'calc(100% + 8px)', top: 0 }}>
-                {SPARKY_INTRO_CONVO[sparkyIntroStep].choices.filter((_, i) => i % 2 === 0).map((choice, idx) => (
-                  <button
-                    key={choice.label}
-                    className="flex items-center gap-2 rounded-xl border border-amber-400/40 bg-slate-800/90 px-3 py-2 shadow-lg backdrop-blur-sm transition-colors hover:border-amber-400 hover:bg-slate-700/90 whitespace-nowrap"
-                    onClick={() => {
-                      if (choice.next === -1) { setSparkyIntroStep(-1); if (!sparkyHomeArrivedRef.current) { const __s = outdoorSparkyRef.current; if (__s) { const __sx = __s.root.position.x; const __sy = __s.root.position.y; sparkyHomeWaypointsRef.current = [new THREE.Vector2(__sx, -6.5), new THREE.Vector2(-9.6, -6.5), new THREE.Vector2(-9.6, -5.7)]; sparkyHomeWaypointIdxRef.current = 0; } sparkyWalkHomeTimerRef.current = 0; sparkyGoHomeRef.current = true; } }
-                      else { setSparkyIntroStep(choice.next); }
-                    }}
-                  >
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-slate-900 shrink-0">
-                      {idx * 2 + 1}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-100">{choice.label}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="absolute flex flex-col gap-2" style={{ left: 'calc(100% + 8px)', top: 0 }}>
-                {SPARKY_INTRO_CONVO[sparkyIntroStep].choices.filter((_, i) => i % 2 === 1).map((choice, idx) => (
-                  <button
-                    key={choice.label}
-                    className="flex items-center gap-2 rounded-xl border border-amber-400/40 bg-slate-800/90 px-3 py-2 shadow-lg backdrop-blur-sm transition-colors hover:border-amber-400 hover:bg-slate-700/90 whitespace-nowrap"
-                    onClick={() => {
-                      if (choice.next === -1) { setSparkyIntroStep(-1); if (!sparkyHomeArrivedRef.current) { const __s = outdoorSparkyRef.current; if (__s) { const __sx = __s.root.position.x; const __sy = __s.root.position.y; sparkyHomeWaypointsRef.current = [new THREE.Vector2(__sx, -6.5), new THREE.Vector2(-9.6, -6.5), new THREE.Vector2(-9.6, -5.7)]; sparkyHomeWaypointIdxRef.current = 0; } sparkyWalkHomeTimerRef.current = 0; sparkyGoHomeRef.current = true; } }
-                      else { setSparkyIntroStep(choice.next); }
-                    }}
-                  >
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-xs font-bold text-slate-900 shrink-0">
-                      {idx * 2 + 2}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-100">{choice.label}</span>
-                  </button>
-                ))}
-              </div>
-              {sparkyIntroStep === 0 && (
-                <p className="absolute text-center text-xs text-amber-400/70 whitespace-nowrap" style={{ left: '50%', transform: 'translateX(-50%)', top: 'calc(100% + 10px)' }}>
-                  Press the number or click!
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+      <TFB show={showSparkyIntroDlg} step={sparkyIntroDlgStep} steps={SPARKY_INTRO_STEPS} text={sparkyIntroDlgText}
+        icon="robot" onEnter={() => {
+          const nextStep = sparkyIntroDlgStep + 1;
+          if (nextStep < SPARKY_INTRO_STEPS.length) { setSparkyIntroDlgStep(nextStep); }
+          else {
+            setShowSparkyIntroDlg(false);
+            const __s = outdoorSparkyRef.current;
+            if (__s) {
+              const __sx = __s.root.position.x;
+              const __sy = __s.root.position.y;
+              sparkyHomeWaypointsRef.current = [new THREE.Vector2(__sx, -6.5), new THREE.Vector2(-9.6, -6.5), new THREE.Vector2(-9.6, -5.7)];
+              sparkyHomeWaypointIdxRef.current = 0;
+            }
+            sparkyWalkHomeTimerRef.current = 0;
+            sparkyGoHomeRef.current = true;
+          }
+        }}
+        ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
 
       {shopkeeperGreeting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-4" onClick={() => setShopkeeperGreeting(null)}>
