@@ -2834,8 +2834,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
       ];
 
       // Shopkeeper person + desk
-      const shopPerson = buildPlayerVisual(0x60a5fa, 'Shopkeeper');
+      const shopPerson = buildPlayerVisual(0xd97706, 'Shopkeeper');
+      shopPerson.root.scale.set(0.9, 0.9, 0.9);
       shopPerson.root.position.set(0, 0.02, sD / 2 + 0.15);
+      shopPerson.nameSprite.visible = false;
       shopRoomGroup.add(shopPerson.root);
       shopNpcRef.current = shopPerson;
 
@@ -3121,7 +3123,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
     petBed.position.set(3.4, 0.21, 2.4);
     workshopRoomGroup.add(petBed);
 
-    const owner: ReturnType<typeof createRobotVisual> = buildPlayerVisual(0x14b8a6, 'Rafiq') as unknown as ReturnType<typeof createRobotVisual>;
+    const owner: ReturnType<typeof createRobotVisual> = buildPlayerVisual(0xd97706, 'Rafiq') as unknown as ReturnType<typeof createRobotVisual>;
     owner.root.scale.set(0.9, 0.9, 0.9);
     owner.root.position.set(ROOM_OWNER_POS.x, 0.26, -ROOM_OWNER_POS.y);
     owner.nameSprite.visible = false;
