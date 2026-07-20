@@ -2478,7 +2478,7 @@ export async function loadPlayerModel(characterId: string) {
   const loader = new GLTFLoader();
   const gltf = await loader.loadAsync(`/characters/${char.file}`);
   const root = gltf.scene;
-  root.scale.set(0.8, 0.8, 0.8);
+  root.scale.set(0.4, 0.4, 0.4);
   // Rotate 180° around Y so model faces south (away from camera)
   root.rotation.y = Math.PI;
 
