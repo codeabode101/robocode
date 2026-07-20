@@ -2468,3 +2468,33 @@ export function createAbandonedBuilding(x: number, y: number, bw: number, bd: nu
   bldg.position.set(x, 0, -y);
   return bldg;
 }
+
+export async function loadPlayerModel(characterId: string) {
+  const { CHARACTERS } = await import('./characters');
+  const char = CHARACTERS.find(c => c.id === characterId);
+  if (!char) throw new Error(`Unknown character: ${characterId}`);
+
+  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync(`/characters/${char.file}`);
+  const root = gltf.scene;
+  root.scale.set(0.8, 0.8, 0.8);
+  // Rotate 180° so model faces -Y (south, toward camera default)
+  root.rotation.z = Math.PI;
+
+  const mixer = new THREE.AnimationMixer(root);
+  const idleAnim = gltf.animations.find((a: any) => a.name === 'Idle_Neutral');
+  const walkAnim = gltf.animations.find((a: any) => a.name === 'Walk');
+  const waveAnim = gltf.animations.find((a: any) => a.name === 'Wave');
+
+  const idleAction = idleAnim ? mixer.clipAction(idleAnim) : null;
+  const walkAction = walkAnim ? mixer.clipAction(walkAnim) : null;
+  const waveAction = waveAnim ? mixer.clipAction(waveAnim) : null;
+
+  if (idleAction) { idleAction.play(); idleAction.weight = 1; }
+  if (walkAction) { walkAction.play(); walkAction.weight = 0; }
+
+  const rightHandBone = root.getObjectByName('Hand.R') as THREE.Bone | null;
+
+  return { root, mixer, idleAction, walkAction, waveAction, rightHandBone };
+}
