@@ -2357,30 +2357,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
     const apartmentBuilding = createApartmentBuilding(-6, -3.5, 8.0, 2.8, -3.6);
     outdoorGroup.add(apartmentBuilding);
 
-    // Vendor builder: 3D shopkeeper, back visible to camera
-    const makeVendor = (vx: number, vy: number, color: number) => {
-      const g = new THREE.Group();
-      const sMat = new THREE.MeshToonMaterial({ color: 0xf5d6c6, gradientMap: createGradientTexture(3) });
-      const cMat = new THREE.MeshToonMaterial({ color, gradientMap: createGradientTexture(3) });
-      const b = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 0.35, 12), cMat);
-      b.rotation.x = 0; b.position.set(0, 0.2, 0); g.add(b);
-      const h = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), sMat);
-      h.position.set(0, 0.55, 0); g.add(h);
-      // Hair covering the BACK of the head (visible from camera)
-      const hr = new THREE.Mesh(new THREE.SphereGeometry(0.125, 14, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), new THREE.MeshToonMaterial({ color: 0x2a1a0a, gradientMap: createGradientTexture(3) }));
-      hr.position.set(0, 0.56, -0.04); g.add(hr);
-      // Arms
-      for (let s = -1; s <= 1; s += 2) {
-        const a = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.25, 8), cMat);
-        a.rotation.x = Math.PI / 2; a.rotation.y = s * 0.3;
-        a.position.set(s * 0.2, 0.35, 0); g.add(a);
-      }
-      g.rotation.y = Math.PI;
-      g.position.set(vx, 0.24, -vy);
-      outdoorGroup.add(g);
-    };
-    makeVendor(-7.5, -5.3, 0xffffff);
-    makeVendor(-4.87, -5.3, 0x60a5fa);
+    // Bazaar vendors — standard player model
+    const masalaVendor = buildPlayerVisual(0xf97316, '');
+    masalaVendor.root.position.set(-7.5, 0.24, 5.3);
+    masalaVendor.nameSprite.visible = false;
+    outdoorGroup.add(masalaVendor.root);
+    const codeVendor = buildPlayerVisual(0x60a5fa, '');
+    codeVendor.root.position.set(-4.87, 0.24, 5.3);
+    codeVendor.nameSprite.visible = false;
+    outdoorGroup.add(codeVendor.root);
 
     // Grid removed (was creating lines through the lake)
 
@@ -3123,8 +3108,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster, chara
     petBed.position.set(3.4, 0.21, 2.4);
     workshopRoomGroup.add(petBed);
 
-    const owner: ReturnType<typeof createRobotVisual> = buildPlayerVisual(0xd97706, 'Rafiq') as unknown as ReturnType<typeof createRobotVisual>;
-    owner.root.scale.set(0.9, 0.9, 0.9);
+    const owner = createRobotVisual(new THREE.Color(0x14b8a6), 'Rafiq');
+    owner.root.scale.set(0.7, 0.7, 0.7);
     owner.root.position.set(ROOM_OWNER_POS.x, 0.26, -ROOM_OWNER_POS.y);
     owner.nameSprite.visible = false;
     workshopRoomGroup.add(owner.root);
