@@ -2955,7 +2955,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     outdoorGroup.add(kiosk);
     repairKioskRef.current = kiosk;
 
-    const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky');
+    const sparky = createRobotVisual(new THREE.Color(0xfacc15), 'Sparky', 'north');
     sparky.root.scale.set(0.9, 0.9, 0.9);
     sparky.root.position.set(NPC_POSITION.x, 0.24, -NPC_POSITION.y);
     sparky.nameSprite.visible = false;
@@ -4358,7 +4358,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
       sparky.root.position.y = 0.24 + Math.sin(worldTime * 4) * 0.04;
       if (sparkyQuestStageRef.current === 'intro' && !sparkyGoHomeRef.current) {
-        // Don't override repair animation with walk animation
+        const dx = localPositionRef.current.x - sparky.root.position.x;
+        const dy = localPositionRef.current.y - sparky.root.position.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const lookX = dist > 0.01 ? Math.max(-1, Math.min(1, dx / dist)) : 0;
+        const lookY = dist > 0.01 ? Math.max(-1, Math.min(1, dy / dist)) : 0;
+        animateRobotVisual(sparky, worldTime, 0.5, lookX, lookY);
       } else {
         animateRobotVisual(sparky, worldTime, 0.5, -0.3, 0.15);
       }
