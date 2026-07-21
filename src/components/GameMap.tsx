@@ -4246,19 +4246,20 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         const idx = sparkyHomeWaypointIdxRef.current;
         if (waypoints.length > 0 && idx < waypoints.length) {
           const target = waypoints[idx];
-          const dist = sparky.root.position.distanceTo(scratchVec3.current.set(target.x, target.y, 0.14));
+          const tZ = -target.y;
+          const dist = sparky.root.position.distanceTo(scratchVec3.current.set(target.x, 0.24, tZ));
           if (dist < 0.15) {
             sparkyHomeWaypointIdxRef.current++;
           } else {
-            const dir = scratchVec2.current.set(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
+            const dx = target.x - sparky.root.position.x;
+            const dz = tZ - sparky.root.position.z;
+            const len = Math.hypot(dx, dz);
             const step = 1.8 * delta;
-            const candidate = scratchVec2b.current.set(
-              sparky.root.position.x + dir.x * step,
-              sparky.root.position.y + dir.y * step
-            );
-            if (!collidesWithAny(candidate, obstacleHitboxesRef.current)) {
-              sparky.root.position.x = candidate.x;
-              sparky.root.position.y = candidate.y;
+            const cX = sparky.root.position.x + (dx / len) * step;
+            const cZ = sparky.root.position.z + (dz / len) * step;
+            if (!collidesWithAny(scratchVec2.current.set(cX, -cZ), obstacleHitboxesRef.current)) {
+              sparky.root.position.x = cX;
+              sparky.root.position.z = cZ;
               animateRobotVisual(sparky, worldTime, 0.3, -0.2, 0.1);
             }
           }
@@ -4290,20 +4291,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           sparkyWaitTimerRef.current += delta;
           if (sparkyWaitTimerRef.current > 1.5 && !showTutorialRef.current) {
             const target = SPARKY_PATH[sparkyPathIndexRef.current];
-            const dist = sparky.root.position.distanceTo(scratchVec3.current.set(target.x, target.y, 0.14));
+            const tZ = -target.y;
+            const dist = sparky.root.position.distanceTo(scratchVec3.current.set(target.x, 0.24, tZ));
             if (dist < 0.15) {
               sparkyPathIndexRef.current = (sparkyPathIndexRef.current + 1) % SPARKY_PATH.length;
               sparkyWaitTimerRef.current = 0;
             } else {
-              const dir = scratchVec2.current.set(target.x - sparky.root.position.x, target.y - sparky.root.position.y).normalize();
+              const dx = target.x - sparky.root.position.x;
+              const dz = tZ - sparky.root.position.z;
+              const len = Math.hypot(dx, dz);
               const step = 1.8 * delta;
-              const candidate = scratchVec2b.current.set(
-                sparky.root.position.x + dir.x * step,
-                sparky.root.position.y + dir.y * step
-              );
-              if (!collidesWithAny(candidate, obstacleHitboxesRef.current)) {
-                sparky.root.position.x = candidate.x;
-                sparky.root.position.y = candidate.y;
+              const cX = sparky.root.position.x + (dx / len) * step;
+              const cZ = sparky.root.position.z + (dz / len) * step;
+              if (!collidesWithAny(scratchVec2.current.set(cX, -cZ), obstacleHitboxesRef.current)) {
+                sparky.root.position.x = cX;
+                sparky.root.position.z = cZ;
               }
             }
           }
@@ -4401,7 +4403,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const spTgt = sparkyWps[Math.min(wpIdx, sparkyWps.length - 1)];
               const dist = aptSparkyCS.root.position.distanceTo(new THREE.Vector3(spTgt.x, 0.22, -spTgt.y));
               if (dist > 0.08 && wpIdx < sparkyWps.length) {
-                const dir = new THREE.Vector2(spTgt.x - aptSparkyCS.root.position.x, spTgt.y - aptSparkyCS.root.position.y).normalize();
+                const dz = (-spTgt.y) - aptSparkyCS.root.position.z;
+                const dx = spTgt.x - aptSparkyCS.root.position.x;
+                const dLen = Math.hypot(dx, dz);
+                const dir = scratchVec2.current.set(dx / dLen, dz / dLen);
                 aptSparkyCS.root.position.x += dir.x * MOVE_SPEED * 0.29 * delta;
                 aptSparkyCS.root.position.z += dir.y * MOVE_SPEED * 0.29 * delta;
                 const moveFacing = -Math.atan2(dir.x, dir.y);
@@ -5454,9 +5459,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const target = new THREE.Vector2(2.9, 0.3);
             const dist = aptSparky.root.position.distanceTo(new THREE.Vector3(target.x, 0.14, -target.y));
             if (dist > 0.15) {
-              const dir = new THREE.Vector2(target.x - aptSparky.root.position.x, target.y - aptSparky.root.position.y).normalize();
+              const dz = (-target.y) - aptSparky.root.position.z;
+              const dx = target.x - aptSparky.root.position.x;
+              const dLen = Math.hypot(dx, dz);
+              const dir = scratchVec2.current.set(dx / dLen, dz / dLen);
               aptSparky.root.position.x += dir.x * MOVE_SPEED * 1.36 * delta;
-              aptSparky.root.position.y += dir.y * MOVE_SPEED * 1.36 * delta;
+              aptSparky.root.position.z += dir.y * MOVE_SPEED * 1.36 * delta;
               setSparkyDlgFull(`${PARTS_CATALOG.find(p => p.id === sparkyInstallPartIdRef.current)?.name} — Sparky walks to the workbench...`);
               setShowSparkyDlg(true);
             } else {
@@ -5488,9 +5496,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const dist = aptSparky.root.position.distanceTo(new THREE.Vector3(homePos.x, 0.14, -homePos.y));
             aptSparky.root.rotation.z *= 0.9;
             if (dist > 0.15) {
-              const dir = new THREE.Vector2(homePos.x - aptSparky.root.position.x, homePos.y - aptSparky.root.position.y).normalize();
+              const dz = (-homePos.y) - aptSparky.root.position.z;
+              const dx = homePos.x - aptSparky.root.position.x;
+              const dLen = Math.hypot(dx, dz);
+              const dir = scratchVec2.current.set(dx / dLen, dz / dLen);
               aptSparky.root.position.x += dir.x * MOVE_SPEED * 1.36 * delta;
-              aptSparky.root.position.y += dir.y * MOVE_SPEED * 1.36 * delta;
+              aptSparky.root.position.z += dir.y * MOVE_SPEED * 1.36 * delta;
             } else {
               sparkyInstallPhaseRef.current = 'done';
             }
