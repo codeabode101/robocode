@@ -4432,7 +4432,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const phase = aptCutscenePhaseRef.current;
 
           if (phase === 'walk-west') {
-            const sparkyWps = [new THREE.Vector2(-3.2, 2.2), new THREE.Vector2(-3.2, 0.8)];
+            const sparkyWps = [new THREE.Vector2(-2.8, 2.2), new THREE.Vector2(-2.8, 1.8)];
             const playerTarget = new THREE.Vector2(-2.3, 1.73);
             const wpIdx = aptSparkyWalkWpRef.current;
             if (aptSparkyCS) {
@@ -4445,7 +4445,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const dir = scratchVec2.current.set(dx / dLen, dz / dLen);
                 aptSparkyCS.root.position.x += dir.x * MOVE_SPEED * 0.29 * delta;
                 aptSparkyCS.root.position.z += dir.y * MOVE_SPEED * 0.29 * delta;
-                const moveFacing = -Math.atan2(dir.x, dir.y);
+                const moveFacing = Math.atan2(dir.x, dir.y);
                 aptSparkyFacingRef.current = dist < 0.4 ? (moveFacing * (dist / 0.4)) : moveFacing;
                 const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                 if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
@@ -4457,8 +4457,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 aptCutscenePhaseRef.current = 'open-box';
                 aptCutsceneTimerRef.current = 0;
                 aptSparkyCS.root.position.set(sparkyWps[sparkyWps.length - 1].x, 0.22, -sparkyWps[sparkyWps.length - 1].y);
-                aptSparkyFacingRef.current = 0;
-                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0);
+                aptSparkyFacingRef.current = Math.PI;
+                const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
                 if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
               }
             }
