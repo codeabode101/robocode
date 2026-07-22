@@ -6427,14 +6427,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               scratchVec3.current.set(-3.0, 1.5, -0.8);
               camera.position.lerp(scratchVec3.current, 0.06);
               camera.lookAt(-2.6, 0.34, -1.2);
-            } else if (phase === 'walk-west' || phase === 'open-box') {
-              scratchVec3.current.set(-3.2, 1.5, -1.0);
-              camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(-2.8, 0.3, -1.8);
-            } else if (phase === 'lift-rise' || phase === 'lift-carry' || phase === 'lift-lower') {
-              scratchVec3.current.set(-3.0, 1.3, -0.6);
-              camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(-2.7, 0.3, -1.4);
             } else {
               scratchVec3.current.set(-2.7, 2.2, -3.0);
               camera.position.lerp(scratchVec3.current, 0.04);
