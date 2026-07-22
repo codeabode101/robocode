@@ -480,6 +480,59 @@ Fix scrap follower closure bug, scrap body donut issue, add per-line TTS to lapt
 
 ---
 
+## Session History (Jul 22 2026)
+
+### Goal
+Fix the apartment intro cutscene — camera looking wrong direction, Sparky facing opposite direction, height/position bugs from incomplete Z-up→Y-up conversion.
+
+### Changes Made
+
+1. **Camera Z-sign fixes** (`GameMap.tsx` ~6328-6400):
+   - All `camera.lookAt` Z values that were copied as +gameY (Z-up convention) were negated to −gameY (Y-up convention). 
+   - Fixes: `1.15→-1.15`, `0.5→-0.5`, `1.2→-1.2`.
+   - Camera was looking at wrong locations (north instead of south), so nothing was visible.
+
+2. **Laptop-facing camera offset** (`GameMap.tsx` ~6346-6390):
+   - `scratchVec3.current.z + 0.5` → `scratchVec3.current.z + 0.35` (Z-up depth offset was not negated for Y-up Z).
+
+3. **Sparky height bug in fetch-laptop return walk** (`GameMap.tsx` ~4573):
+   - `aptSparkyCS.root.position.y = WEST_TARGET.y` was setting the 3D Y (height) to 0.5 (a game-Y coordinate), making Sparky float at twice normal height.
+   - Fixed to `aptSparkyCS.root.position.set(aptSparkyCS.root.position.x, 0.22, -WEST_TARGET.y)`.
+
+4. **Base quaternion misalignment** (`GameMap.tsx`):
+   - Outdoor Sparky faces **north** (created with `facing: 'north'`, rotated 180°). Apartment Sparky faces **south** (created with default `facing: 'south'`, no rotation). 
+   - All cutscene code was using `sparkyBaseQuatRef.current` (outdoor north-facing quat) on the apartment Sparky, causing Sparky to face **opposite** to movement direction.
+   - Added `aptBaseQuatRef` storing the apartment Sparky's own (identity) quaternion at creation time (line 3312). All cutscene and battery install code now uses `aptBaseQuatRef.current`.
+
+5. **Coil position Z bug** (`GameMap.tsx` ~4773):
+   - `-aptSparkyCS.root.position.y + coilOffset.y * 0.7` was using 3D height as depth coordinate.
+   - Fixed to `aptSparkyCS.root.position.z + coilOffset.z * 0.7`.
+
+6. **Scrap follower Y-up bug** (`GameMap.tsx` ~4356, 4366):
+   - `scrapPosY` reads `root.position.y` (height) instead of `-root.position.z` (game-Y).
+   - `root.position.y = cand.y` sets height to game-Y coordinate.
+   - Fixed: reads `-root.position.z` for game-Y, writes `root.position.z = -cand.y`.
+
+7. **Laptop 180° rotation flipped display away from player** (`GameMap.tsx` ~4649):
+   - Laptop was rotated `Math.PI` around Y when placed on ground, putting the blue screen on the back of the lid (facing north, away from player).
+   - Fixed: removed the 180° rotation line. Display now faces south toward the player during coding phases.
+
+8. **Laptop lowering used Z-coordinate as height** (`GameMap.tsx` ~4650, 4759, 4762):
+   - `worldPos.z` (depth = −gameY) was stored as `lowerStartZ`, then used as `position.y` (height).
+   - Laptop started at Y≈−1.12 (underground) and rose to Y=0.24.
+   - Fixed: stores `worldPos.y` as `lowerStartY`, reads `startY`, animates `position.y = startY + (endY−startY)*easedLower`.
+
+9. **Scrap rotation.x stuck at π/2 during lift** (`GameMap.tsx` ~3208, 4461):
+   - Scrap lies face-down in the box (`rotation.x = π/2`). When lifted (`lift-rise` phase), `rotation.x` was never reset to 0.
+   - Scrap stayed tilted 90° through lift-carry and lift-lower, only snapping upright during antenna-glow shake.
+   - Fixed: added `rotation.x = 0` at the start of `lift-rise`.
+   - Also fixed axis mismatch: `rotation.z = 0.4` → `rotation.y = 0.4` at line 3208 (initial box rotation).
+
+### Branch
+`battery-only-flow` (not yet committed)
+
+---
+
 ## Automated Screenshot Testing
 
 ### Script: `screenshot_test.js`

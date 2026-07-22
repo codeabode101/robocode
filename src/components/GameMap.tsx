@@ -331,6 +331,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const robotNameRef = useRef('Scrap');
   const showTutorialRef = useRef(false);
   const tutorialCompleteRef = useRef(false);
+  const tutorialShownRef = useRef(false);
   const shopUnlockedRef = useRef(false);
   const inWorkshopRoomRef = useRef(false);
   const inApartmentRoomRef = useRef(false);
@@ -426,6 +427,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const cameraTargetPosRef = useRef(new THREE.Vector3());
   const cameraLookTargetRef = useRef(new THREE.Vector3());
   const sparkyBaseQuatRef = useRef<THREE.Quaternion | null>(null);
+  const aptBaseQuatRef = useRef<THREE.Quaternion | null>(null);
   const sparkyFacingRef = useRef(0);
 
   const aptCutscenePhaseRef = useRef<'idle' | 'walk-west' | 'open-box' | 'lift-rise' | 'lift-carry' | 'lift-lower' | 'fetch-laptop' | 'link-computer' | 'electrocute' | 'walk-to-laptop' | 'string-tutorial' | 'laptop-ui' | 'antenna-glow' | 'date-coding' | 'reboot' | 'version-coding' | 'pre-boot' | 'boot-coding' | 'boot' | 'battery-scene' | 'done'>('idle');
@@ -1569,6 +1571,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (sparkyQuestStage === 'unit1') { setTutorialPhases(unit1Phases); tutorialPhasesRef.current = unit1Phases; }
     else if (sparkyQuestStage === 'unit2') { setTutorialPhases(unit2Phases); tutorialPhasesRef.current = unit2Phases; }
   }, [sparkyQuestStage]);
+
+  useEffect(() => {
+    if (!showTutorial && sparkyQuestStage === 'unit1' && tutorialShownRef.current) {
+      tutorialShownRef.current = false;
+      updateQuestStage('unit1-done');
+    }
+  }, [showTutorial, sparkyQuestStage]);
 
   useEffect(() => {
     shopUnlockedRef.current = shopUnlocked;
@@ -2940,7 +2949,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     // Scrap follower robot (outdoor, follows player after battery install)
     const scrapFollower = createRobotVisual(new THREE.Color(0x2a1a0a), robotNameRef.current);
     scrapFollower.root.scale.set(0.65, 0.65, 0.65);
-    scrapFollower.root.position.set(0, -8, 0.24);
+    scrapFollower.root.position.set(0, 0.24, 0);
     scrapFollower.nameSprite.visible = true;
     if (scrapFollower.leftPupil) scrapFollower.leftPupil.material.color.setHex(0x222222);
     if (scrapFollower.rightPupil) scrapFollower.rightPupil.material.color.setHex(0x222222);
@@ -3196,7 +3205,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Scrap inside box — Sparky's find, hidden by box walls until lid opens
       scrapRobot.root.scale.set(0.4, 0.4, 0.4);
       scrapRobot.root.position.set(-2.8, 0.26, -1.8);
-      scrapRobot.root.rotation.set(Math.PI / 2, 0, 0.4);
+      scrapRobot.root.rotation.set(Math.PI / 2, 0.4, 0);
       scrapRobot.nameSprite.visible = false;
       if (scrapRobot.leftPupil) scrapRobot.leftPupil.material.color.setHex(0x111111);
       if (scrapRobot.rightPupil) scrapRobot.rightPupil.material.color.setHex(0x111111);
@@ -3254,6 +3263,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       apartmentRoomGroup.add(boxResult.group);
       cutsceneBoxRef.current = boxResult.group;
       cutsceneBoxLidRef.current = boxResult.lid;
+      console.log('📦 BOX CREATED', boxResult.group.position.toArray().map(v=>v.toFixed(3)).join(','), 'parent:', boxResult.group.parent?.constructor.name, 'visible:', boxResult.group.visible, 'children:', boxResult.group.children.length);
 
 
 
@@ -3300,6 +3310,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       aptSparky.root.visible = false;
       apartmentRoomGroup.add(aptSparky.root);
       apartmentSparkyRef.current = aptSparky;
+      aptBaseQuatRef.current = aptSparky.root.quaternion.clone();
 
       // Exit door on south wall — wooden style
       const aptDoor = new THREE.Mesh(
@@ -3928,20 +3939,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 { shape: 'box', center: { x: -2.2, y: -2.5 }, halfWidth: 0.25, halfHeight: 0.25 },
                 { shape: 'box', center: { x: -2.2, y: 1.5 }, halfWidth: 0.2, halfHeight: 0.15 },
               ];
+              console.log('🏠 APARTMENT ENTRY', 'aptStage:', aptStage, 'cutsceneDone:', cutsceneDoneRef.current, 'box:', !!cutsceneBoxRef.current);
               if (aptStage === 'intro' && !cutsceneDoneRef.current) {
                 // Start cutscene — only the box is visible
                 startCinematicCutscene();
                 aptCutscenePhaseRef.current = 'walk-west';
                 aptCutsceneTimerRef.current = 0;
-                if (cutsceneBoxRef.current) cutsceneBoxRef.current.visible = true;
+                if (cutsceneBoxRef.current) {
+                  cutsceneBoxRef.current.visible = true;
+                  console.log('📦 BOX VISIBLE=TRUE', 'pos:', cutsceneBoxRef.current.position.toArray().map(v=>v.toFixed(3)).join(','), 'parent:', cutsceneBoxRef.current.parent?.constructor.name, 'groupVisible:', apartmentRoomGroup.visible);
+                }
                 const csSparky = apartmentSparkyRef.current;
                 if (csSparky) {
                   csSparky.root.visible = true;
                   csSparky.root.position.set(0.2, 0.22, -2.2);
+                  aptBaseQuatRef.current = csSparky.root.quaternion.clone();
                   const initDir = new THREE.Vector2(-2.8 - 0.2, 0.8 - 2.2).normalize();
                   aptSparkyFacingRef.current = -Math.atan2(initDir.x, initDir.y);
                   const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
-                  if (sparkyBaseQuatRef.current) csSparky.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+                  if (aptBaseQuatRef.current) csSparky.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
                 }
                 // Position player avatar to walk alongside Sparky
                 if (localRobotRef.current) {
@@ -4342,7 +4358,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       if (scrapFollowerEnabledRef.current && scrapFollowerRef.current && scrapVisibleRef.current && !inApartmentRoomRef.current && !inWorkshopRoomRef.current && !inShopRoomRef.current) {
         const playerPos = localPositionRef.current;
         const scrapPosX = scrapFollowerRef.current.root.position.x;
-        const scrapPosY = scrapFollowerRef.current.root.position.y;
+        const scrapPosY = -scrapFollowerRef.current.root.position.z;
         const scrapPos = scratchVec2.current.set(scrapPosX, scrapPosY);
         const followDist = scrapPos.distanceTo(playerPos);
         if (followDist > 1.2) {
@@ -4352,9 +4368,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const cand = scratchVec2.current.set(scrapPosX + dir.x * step, scrapPosY + dir.y * step);
           if (!collidesWithAny(cand, obstacleHitboxesRef.current)) {
             scrapFollowerRef.current.root.position.x = cand.x;
-            scrapFollowerRef.current.root.position.y = cand.y;
+            scrapFollowerRef.current.root.position.z = -cand.y;
           }
         }
+        scrapFollowerRef.current.root.position.y = 0.24;
         const scrapSpeed = followDist > 1.2 ? 1 : 0;
         animateRobotVisual(scrapFollowerRef.current, worldTime, scrapSpeed, playerPos.x - scrapPos.x, playerPos.y - scrapPos.y);
       }
@@ -4412,7 +4429,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const moveFacing = -Math.atan2(dir.x, dir.y);
                 aptSparkyFacingRef.current = dist < 0.4 ? (moveFacing * (dist / 0.4)) : moveFacing;
                 const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
-                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+                if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0.2, -0.2, 0.1);
               } else if (wpIdx < sparkyWps.length - 1) {
                 aptSparkyWalkWpRef.current = wpIdx + 1;
@@ -4423,7 +4440,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 aptSparkyCS.root.position.set(sparkyWps[sparkyWps.length - 1].x, 0.22, -sparkyWps[sparkyWps.length - 1].y);
                 aptSparkyFacingRef.current = 0;
                 const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0);
-                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+                if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
               }
             }
             // Player walks to spectator position (camera-left of box, in line with it)
@@ -4448,9 +4465,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             aptCutsceneTimerRef.current += delta;
             const progress = Math.min(1, aptCutsceneTimerRef.current / 1.5);
             if (scrapRobotRef.current) {
+              scrapRobotRef.current.root.rotation.x = 0;
+              scrapRobotRef.current.root.rotation.y = 0.4 * (1 - progress) + 0.2 * progress;
               const z = 0.26 + (0.55 - 0.26) * progress;
               scrapRobotRef.current.root.position.y = z;
-              scrapRobotRef.current.root.rotation.y = 0.4 * (1 - progress) + 0.2 * progress;
             }
             if (aptSparkyCS) {
               aptSparkyCS.root.position.y = 0.22 - 0.06 * progress;
@@ -4482,7 +4500,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               aptSparkyCS.root.position.y = 0.16;
               aptSparkyFacingRef.current = 0;
               const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
-              if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+              if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
               animateRobotVisual(aptSparkyCS, worldTime, 0.2, -0.1, 0.0);
               aptSparkyCS.leftArm.rotation.x = -1.5;
               aptSparkyCS.rightArm.rotation.x = -1.5;
@@ -4539,13 +4557,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 aptSparkyCS.root.position.z = -WEST_TARGET.y;
                 aptSparkyFacingRef.current = -Math.PI * 0.5;
                 const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
-                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+                if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0.5, -0.1, 0.0);
               } else if (t < 3.0) {
                 const turnT = (t - 2.5) / 0.5;
                 aptSparkyFacingRef.current = -Math.PI * 0.5 + turnT * Math.PI;
                 const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
-                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+                if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0, 0, 0);
                 if (t >= 2.8 && computerRef.current && computerRef.current.parent !== aptSparkyCS.root) {
                   aptSparkyCS.root.attach(computerRef.current);
@@ -4562,16 +4580,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const walkT = (t - 3.0) / 2.5;
                 if (walkT < 1.0) {
                   aptSparkyCS.root.position.x = EAST_TARGET.x + (WEST_TARGET.x - EAST_TARGET.x) * walkT;
-                  aptSparkyCS.root.position.y = WEST_TARGET.y;
+                  aptSparkyCS.root.position.set(aptSparkyCS.root.position.x, 0.22, -WEST_TARGET.y);
                   aptSparkyFacingRef.current = Math.PI * 0.5;
                   const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
-                  if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+                  if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
                   animateRobotVisual(aptSparkyCS, worldTime, 0.5, -0.1, 0.0);
                 } else {
                   aptSparkyCS.root.position.set(WEST_TARGET.x, 0.22, -WEST_TARGET.y);
                   aptSparkyFacingRef.current = Math.PI * 0.5;
                   const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
-                  if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+                  if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
                   aptCutscenePhaseRef.current = 'link-computer';
                   aptCutsceneTimerRef.current = 0;
                 }
@@ -4612,7 +4630,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const easedRot = rotProgress < 1 ? rotProgress * rotProgress * (3 - 2 * rotProgress) : 1;
               aptSparkyFacingRef.current = startAngle + (endAngle - startAngle) * easedRot;
               const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
-              if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+              if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
 
               // Sparky sidesteps west from -2.8 to -3.4 during rotation
               const startX = -2.8;
@@ -4635,8 +4653,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 apartmentRoomGroup.attach(computerRef.current);
                 computerRef.current.scale.set(1, 1, 1);
                 computerRef.current.position.copy(worldPos);
-                computerRef.current.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
-                computerRef.current.userData.lowerStartZ = worldPos.z;
+                computerRef.current.position.x = -3.4;
+                computerRef.current.position.z = -1.025;
+                computerRef.current.userData.lowerStartY = worldPos.y;
               }
 
               // === Coil appears at Sparky's hand ===
@@ -4651,7 +4670,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 aptSparkyCS.root.position.lerpVectors(startWalk, laptopApproach, easedWalk);
                 aptSparkyFacingRef.current = 0;
                 const wfQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0);
-                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(wfQ);
+                if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(wfQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0.3, 0, 0);
               }
 
@@ -4660,7 +4679,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 aptSparkyCS.root.position.copy(laptopApproach);
                 aptSparkyFacingRef.current += (0 - aptSparkyFacingRef.current) * 0.08;
                 const nfQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
-                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(nfQ);
+                if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(nfQ);
                 // Animate tack fx
                 if (tackFxRef.current) {
                   if (tackFxPhaseRef.current === 0) {
@@ -4696,7 +4715,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 aptSparkyCS.root.position.lerpVectors(laptopApproach, scrapApproach, easedWalk2);
                 aptSparkyFacingRef.current = -Math.PI * 0.5; // face east
                 const wfQ2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
-                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(wfQ2);
+                if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(wfQ2);
                 animateRobotVisual(aptSparkyCS, worldTime, 0.3, 0, 0);
               }
 
@@ -4705,10 +4724,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 aptSparkyCS.root.position.copy(scrapApproach);
                 aptSparkyFacingRef.current += (0 - aptSparkyFacingRef.current) * 0.08;
                 const nfQ2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
-                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(nfQ2);
+                if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(nfQ2);
                 if (tackFxRef.current) {
                   if (tackFxPhaseRef.current === 1) {
-                    tackFxRef.current.position.set(-2.6, 0.36, -0.976);
+                    tackFxRef.current.position.set(-2.6, 0.36, -1.2);
                     tackFxRef.current.visible = true;
                     tackFxRef.current.scale.set(1, 1, 1);
                     tackFxRef.current.children.forEach((c: THREE.Object3D) => {
@@ -4745,10 +4764,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
             // === Lower laptop straight down ===
             if (computerRef.current && lowerProgress > 0 && lowerProgress < 1 && computerRef.current.parent === apartmentRoomGroup) {
-              const startZ = (computerRef.current.userData.lowerStartZ as number) ?? computerRef.current.position.z;
-              const endZ = 0.24;
+              const startY = (computerRef.current.userData.lowerStartY as number) ?? computerRef.current.position.y;
+              const endY = 0.24;
               const easedLower = lowerProgress * lowerProgress * (3 - 2 * lowerProgress);
-              computerRef.current.position.y = startZ + (endZ - startZ) * easedLower;
+              computerRef.current.position.y = startY + (endY - startY) * easedLower;
             }
 
             // === Coil follows Sparky's right hand ===
@@ -4759,7 +4778,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const invQ = aptSparkyCS.root.quaternion.clone().invert();
               const coilUp = new THREE.Vector3(0, 1, 0).applyQuaternion(invQ);
               coilRef.current.quaternion.setFromUnitVectors(coilUp, new THREE.Vector3(0, 1, 0));
-              coilRef.current.position.set(aptSparkyCS.root.position.x + coilOffset.x * 0.7, 0.38, -aptSparkyCS.root.position.y + coilOffset.y * 0.7);
+              coilRef.current.position.set(aptSparkyCS.root.position.x + coilOffset.x * 0.7, 0.38, aptSparkyCS.root.position.z + coilOffset.z * 0.7);
             }
 
             // === Wire: laptop → hand during tack1, laptop → scrap after tack2 ===
@@ -4768,7 +4787,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 // Fully connected: laptop → scrap (permanent)
                 wireRef.current.visible = true;
                 const lapPort = new THREE.Vector3(-3.4, 0.253, -1.025);
-                const scrapPos = new THREE.Vector3(-2.6, 0.36, -0.976);
+                const scrapPos = new THREE.Vector3(-2.6, 0.24, -1.2);
                 const mid = new THREE.Vector3().addVectors(lapPort, scrapPos).multiplyScalar(0.5);
                 wireRef.current.position.copy(mid);
                 const dir = new THREE.Vector3().subVectors(scrapPos, lapPort);
@@ -4780,7 +4799,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 animateWirePulse(wireRef.current, worldTime);
               } else if (tack2Progress > 0) {
                 wireRef.current.visible = true;
-                const scrapPos = new THREE.Vector3(-2.6, 0.36, -0.976);
+                const scrapPos = new THREE.Vector3(-2.6, 0.24, -1.2);
                 const lapPos = new THREE.Vector3(-3.4, 0.253, -1.025);
                 const fullWireT = tack2Progress;
                 const curEnd = new THREE.Vector3().lerpVectors(
@@ -4888,21 +4907,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             // Sparky walks west of the laptop
             const slTgt = new THREE.Vector2(-3.5, 1.2);
             if (aptSparkyCS) {
-              const slDist = Math.hypot(
-                aptSparkyCS.root.position.x - slTgt.x,
-                aptSparkyCS.root.position.y - slTgt.y
-              );
+              const dx = slTgt.x - aptSparkyCS.root.position.x;
+              const dz = (-slTgt.y) - aptSparkyCS.root.position.z;
+              const slDist = Math.hypot(dx, dz);
               if (slDist > 0.08) {
-                const slDir = new THREE.Vector2(
-                  slTgt.x - aptSparkyCS.root.position.x,
-                  slTgt.y - aptSparkyCS.root.position.y
-                ).normalize();
+                const slDir = new THREE.Vector2(dx / slDist, dz / slDist);
                 aptSparkyCS.root.position.x += slDir.x * MOVE_SPEED * 0.29 * delta;
-                aptSparkyCS.root.position.y += slDir.y * MOVE_SPEED * 0.29 * delta;
+                aptSparkyCS.root.position.z += slDir.y * MOVE_SPEED * 0.29 * delta;
                 const slFacing = -Math.atan2(slDir.x, slDir.y);
                 aptSparkyFacingRef.current = slFacing;
                 const slQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), slFacing);
-                if (sparkyBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(slQ);
+                if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(slQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0.15, -0.15, 0.08);
               } else {
                 aptSparkyCS.root.position.set(slTgt.x, 0.22, -slTgt.y);
@@ -4915,7 +4930,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             ) <= 0.08;
             const sparkyArrived = aptSparkyCS && Math.hypot(
               aptSparkyCS.root.position.x - slTgt.x,
-              aptSparkyCS.root.position.y - slTgt.y
+              aptSparkyCS.root.position.z + slTgt.y
             ) <= 0.08;
             if (playerArrived && sparkyArrived) {
               aptCutscenePhaseRef.current = 'string-tutorial';
@@ -5260,7 +5275,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             try { localStorage.setItem('rb_cutscene_done', '1'); } catch {}
             apiSync({ cutsceneDone: true });
-            updateQuestStage('unit1-done');
+            updateQuestStage('unit1');
+            tutorialShownRef.current = true;
+            showTutorialRef.current = true;
+            setShowTutorial(true);
+            setTutorialPhases(unit1Phases);
+            tutorialPhasesRef.current = unit1Phases;
+            setTutorialStep(0);
+            setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
+            setOutput('');
+            setSuccess(false);
           }
         } else if (installBatteryPhaseRef.current && aptSparky) {
           const ibPhase = installBatteryPhaseRef.current;
@@ -5268,7 +5292,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (ibPhase === 'approach') {
             if (wireRef.current) animateWirePulse(wireRef.current, worldTime);
             // Sparky faces north toward Scrap using the base quaternion
-            if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
+            if (aptBaseQuatRef.current) aptSparky.root.quaternion.copy(aptBaseQuatRef.current);
             animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
             // Player walks to Sparky's east side — both face north toward Scrap
             const playerTarget = new THREE.Vector2(-1.8, -0.55);
@@ -5306,11 +5330,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               aptPos.x += dir.x * MOVE_SPEED * 1.36 * delta;
               aptPos.y += dir.y * MOVE_SPEED * 1.36 * delta;
               const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.atan2(dir.x, dir.y));
-              if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current).premultiply(facingQ);
+              if (aptBaseQuatRef.current) aptSparky.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
               animateRobotVisual(aptSparky, worldTime, 1, dir.x, dir.y);
             } else {
               // Sparky arrived — face north toward Scrap
-              if (sparkyBaseQuatRef.current) aptSparky.root.quaternion.copy(sparkyBaseQuatRef.current);
+              if (aptBaseQuatRef.current) aptSparky.root.quaternion.copy(aptBaseQuatRef.current);
               installBatteryPhaseRef.current = 'open-chest';
               installBatteryTimerRef.current = 0;
             }
@@ -6232,6 +6256,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         outdoorGroup.visible = !inWorkshopRoomRef.current && !inShopRoomRef.current && !inApartmentRoomRef.current;
         workshopRoomGroup.visible = inWorkshopRoomRef.current;
         apartmentRoomGroup.visible = inApartmentRoomRef.current;
+        if (inApartmentRoomRef.current && cutsceneBoxRef.current) {
+          console.log('🏠 APARTMENT VISIBLE', 'groupVisible:', apartmentRoomGroup.visible, 'boxVisible:', cutsceneBoxRef.current.visible, 'boxParent:', cutsceneBoxRef.current.parent === apartmentRoomGroup, 'boxPos:', cutsceneBoxRef.current.position.toArray().map(v=>v.toFixed(3)).join(','));
+        }
         if (shopRoomGroupRef.current) shopRoomGroupRef.current.visible = inShopRoomRef.current;
         sceneBgColorRef.current.set(sceneBgOverrideRef.current ?? roomBg);
         scene.background = sceneBgColorRef.current;
@@ -6286,7 +6313,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 display.getWorldPosition(scratchVec3.current);
                 // In Y-up, getWorldPosition gives (east, height, -north).
                 // Camera above and behind: height+0.18, z offset
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.18, scratchVec3.current.z + 0.5);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.18, scratchVec3.current.z + 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else {
@@ -6313,11 +6340,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             const sp = csSparky.root.position;
             if (phase === 'fetch-laptop') {
               camera.position.set(-3.0, 1.5, 2.5);
-              camera.lookAt(-3.0, 0.3, 1.15);
+              camera.lookAt(-3.0, 0.3, -1.15);
             } else if (phase === 'link-computer' || phase === 'electrocute') {
               scratchVec3.current.set(-3.0, 1.5, -2.5);
               camera.position.lerp(scratchVec3.current, 0.04);
-              camera.lookAt(-3.0, 0.3, 1.15);
+              camera.lookAt(-3.0, 0.3, -1.15);
             } else if (phase === 'walk-to-laptop') {
               scratchVec3.current.set(localPositionRef.current.x, 2.0, -localPositionRef.current.y - 1.3);
               camera.position.lerp(scratchVec3.current, 0.04);
@@ -6325,12 +6352,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             } else if (phase === 'string-tutorial') {
               scratchVec3.current.set(-3.4, 1.8, -1.6);
               camera.position.lerp(scratchVec3.current, 0.04);
-              camera.lookAt(-3.4, 0.3, 0.5);
+              camera.lookAt(-3.4, 0.3, -0.5);
             } else if (phase === 'laptop-ui') {
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.5);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'antenna-glow') {
@@ -6338,12 +6365,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (t < 2.0) {
                 scratchVec3.current.set(-3.0, 1.5, -0.8);
                 camera.position.lerp(scratchVec3.current, 0.06);
-                camera.lookAt(-2.6, 0.34, 1.2);
+                camera.lookAt(-2.6, 0.34, -1.2);
               } else {
                 if (computerRef.current) {
                   const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                   display.getWorldPosition(scratchVec3.current);
-                  scratchVec3b.current.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.5);
+                  scratchVec3b.current.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.35);
                   camera.position.lerp(scratchVec3b.current, 0.04);
                   camera.lookAt(scratchVec3.current);
                 }
@@ -6352,35 +6379,43 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.5);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'reboot') {
               scratchVec3.current.set(-3.0, 1.5, -0.8);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(-2.6, 0.34, 1.2);
+              camera.lookAt(-2.6, 0.34, -1.2);
             } else if (phase === 'version-coding') {
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.5);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'pre-boot') {
               scratchVec3.current.set(-3.0, 1.5, -0.8);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(-2.6, 0.34, 1.2);
+              camera.lookAt(-2.6, 0.34, -1.2);
             } else if (phase === 'boot-coding') {
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.5);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'boot') {
               scratchVec3.current.set(-3.0, 1.5, -0.8);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(-2.6, 0.34, 1.2);
+              camera.lookAt(-2.6, 0.34, -1.2);
+            } else if (phase === 'walk-west' || phase === 'open-box') {
+              scratchVec3.current.set(-3.2, 1.5, -1.0);
+              camera.position.lerp(scratchVec3.current, 0.06);
+              camera.lookAt(-2.8, 0.3, -1.8);
+            } else if (phase === 'lift-rise' || phase === 'lift-carry' || phase === 'lift-lower') {
+              scratchVec3.current.set(-3.0, 1.3, -0.6);
+              camera.position.lerp(scratchVec3.current, 0.06);
+              camera.lookAt(-2.7, 0.3, -1.4);
             } else {
               scratchVec3.current.set(-2.7, 2.2, -3.0);
               camera.position.lerp(scratchVec3.current, 0.04);
@@ -6896,7 +6931,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const prepBatteryInstallProps = () => {
     if (computerRef.current) {
       computerRef.current.visible = true;
-      computerRef.current.position.set(-3.41, 0.24, -0.96);
+      computerRef.current.position.set(-3.4, 0.24, -1.025);
       computerRef.current.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
     }
     if (cutsceneBoxRef.current) {
@@ -6906,7 +6941,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     if (wireRef.current) {
       wireRef.current.visible = true;
       const lapPort = new THREE.Vector3(-3.4, 0.253, -1.025);
-      const scrapPos = new THREE.Vector3(-2.6, 0.36, -0.976);
+      const scrapPos = new THREE.Vector3(-2.6, 0.24, -1.2);
       const mid = new THREE.Vector3().addVectors(lapPort, scrapPos).multiplyScalar(0.5);
       wireRef.current.position.copy(mid);
       const dir = new THREE.Vector3().subVectors(scrapPos, lapPort);
