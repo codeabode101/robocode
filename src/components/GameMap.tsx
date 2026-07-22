@@ -4616,13 +4616,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const walkT = t / 2.5;
                 aptSparkyCS.root.position.x = WEST_TARGET.x + (EAST_TARGET.x - WEST_TARGET.x) * walkT;
                 aptSparkyCS.root.position.z = -WEST_TARGET.y;
-                aptSparkyFacingRef.current = Math.PI * 0.5;
+                aptSparkyFacingRef.current = -Math.PI * 0.5;
                 const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                 if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0.5, -0.1, 0.0);
               } else if (t < 3.0) {
                 const turnT = (t - 2.5) / 0.5;
-                aptSparkyFacingRef.current = Math.PI * 0.5 - turnT * Math.PI;
+                aptSparkyFacingRef.current = -Math.PI * 0.5 + turnT * Math.PI;
                 const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                 if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
                 animateRobotVisual(aptSparkyCS, worldTime, 0, 0, 0);
@@ -4635,6 +4635,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   const localUp = worldUp.applyQuaternion(invQ);
                   const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), localUp);
                   computerRef.current.quaternion.copy(lapQuat);
+                  computerRef.current.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
                   computerRef.current.visible = true;
                 }
               } else {
@@ -4642,13 +4643,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 if (walkT < 1.0) {
                   aptSparkyCS.root.position.x = EAST_TARGET.x + (WEST_TARGET.x - EAST_TARGET.x) * walkT;
                   aptSparkyCS.root.position.set(aptSparkyCS.root.position.x, 0.22, -WEST_TARGET.y);
-                  aptSparkyFacingRef.current = -Math.PI * 0.5;
+                  aptSparkyFacingRef.current = Math.PI * 0.5;
                   const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                   if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
                   animateRobotVisual(aptSparkyCS, worldTime, 0.5, -0.1, 0.0);
                 } else {
                   aptSparkyCS.root.position.set(WEST_TARGET.x, 0.22, -WEST_TARGET.y);
-                  aptSparkyFacingRef.current = -Math.PI * 0.5;
+                  aptSparkyFacingRef.current = Math.PI * 0.5;
                   const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
                   if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
                   aptCutscenePhaseRef.current = 'link-computer';
@@ -4705,6 +4706,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const localUp = new THREE.Vector3(0, 1, 0).applyQuaternion(invQ);
                 const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), localUp);
                 computerRef.current.quaternion.copy(lapQuat);
+                computerRef.current.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
               }
 
               // === Detach laptop at start of lowering ===
