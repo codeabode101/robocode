@@ -3752,6 +3752,25 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           aptCutscenePhaseRef.current = 'walk-west';
           aptCutsceneTimerRef.current = 0;
           startCinematicCutscene();
+          if (cutsceneBoxRef.current) {
+            cutsceneBoxRef.current.visible = true;
+          }
+          const csSparky = apartmentSparkyRef.current;
+          if (csSparky) {
+            csSparky.root.visible = true;
+            csSparky.root.position.set(0.2, 0.22, -2.2);
+            aptBaseQuatRef.current = csSparky.root.quaternion.clone();
+            const initDir = new THREE.Vector2(-2.8 - 0.2, 0.8 - 2.2).normalize();
+            aptSparkyFacingRef.current = -Math.atan2(initDir.x, initDir.y);
+            const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
+            if (aptBaseQuatRef.current) csSparky.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
+          }
+          if (localRobotRef.current) {
+            localPositionRef.current.set(0, 1.2);
+            localRobotRef.current.root.position.set(0, 0.28, -1.2);
+            localGroup.position.set(0, 0.28, -1.2);
+          }
+          yawRef.current = Math.atan2(-2.3, 0.53);
           keyStateRef.current.clear();
         } else if (pendingBatteryCutsceneRef.current && !showControlsModalRef.current) {
           pendingBatteryCutsceneRef.current = false;
