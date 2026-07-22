@@ -6401,7 +6401,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (csSparky) {
             const sp = csSparky.root.position;
             if (phase === 'fetch-laptop') {
-              camera.position.set(-3.0, 1.5, 2.5);
+              camera.position.set(-3.0, 1.5, -2.5);
               camera.lookAt(-3.0, 0.3, -1.15);
             } else if (phase === 'link-computer' || phase === 'electrocute') {
               scratchVec3.current.set(-3.0, 1.5, -2.5);
