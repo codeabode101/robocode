@@ -4469,14 +4469,56 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else if (phase === 'open-box') {
             aptCutsceneTimerRef.current += delta;
-            const progress = Math.min(1, aptCutsceneTimerRef.current / 2.0);
+            const t = aptCutsceneTimerRef.current;
             if (cutsceneBoxLidRef.current) {
-              openBoxLid(cutsceneBoxLidRef.current, progress);
+              const lid = cutsceneBoxLidRef.current;
+              if (t < 0.15) {
+                openBoxLid(lid, t / 0.15);
+              } else if (lid.parent !== apartmentRoomGroup) {
+                const worldPos = new THREE.Vector3();
+                const worldQuat = new THREE.Quaternion();
+                lid.getWorldPosition(worldPos);
+                lid.getWorldQuaternion(worldQuat);
+                apartmentRoomGroup.attach(lid);
+                lid.position.copy(worldPos);
+                lid.quaternion.copy(worldQuat);
+                lid.userData.flightSX = worldPos.x;
+                lid.userData.flightSY = worldPos.y;
+                lid.userData.flightSZ = worldPos.z;
+              }
+              if (t >= 0.25) {
+                const flyT = Math.min(1, (t - 0.25) / 1.7);
+                const eased = flyT * flyT * (3 - 2 * flyT);
+                const sx = (lid.userData.flightSX as number) ?? lid.position.x;
+                const sy = (lid.userData.flightSY as number) ?? lid.position.y;
+                const sz = (lid.userData.flightSZ as number) ?? lid.position.z;
+                lid.position.x = sx + (-1.5 - sx) * eased;
+                lid.position.z = sz + (0.5 - sz) * eased;
+                lid.position.y = sy + 1.5 * 4 * flyT * (1 - flyT);
+                const spinRate = 8 * Math.max(0.05, 1 - flyT * 0.8);
+                lid.rotation.x += delta * spinRate;
+                lid.rotation.z += delta * spinRate * 0.3;
+              }
             }
             if (aptSparkyCS) {
+              if (t < 0.4) {
+                const rT = t / 0.4;
+                aptSparkyCS.body.rotation.x = -0.3 * rT;
+                aptSparkyCS.leftArm.rotation.x = -1.5 * rT;
+                aptSparkyCS.rightArm.rotation.x = -1.5 * rT;
+              } else if (t < 0.8) {
+                const tT = (t - 0.4) / 0.4;
+                aptSparkyCS.body.rotation.x = -0.3 * (1 - tT);
+                aptSparkyCS.leftArm.rotation.x = -1.5 * (1 - tT);
+                aptSparkyCS.rightArm.rotation.x = -1.5 * (1 - tT);
+              } else {
+                aptSparkyCS.body.rotation.x = 0;
+                aptSparkyCS.leftArm.rotation.x = 0;
+                aptSparkyCS.rightArm.rotation.x = 0;
+              }
               animateRobotVisual(aptSparkyCS, worldTime, 0, -0.15, -0.1);
             }
-            if (progress >= 1) {
+            if (t >= 2.5) {
               aptCutscenePhaseRef.current = 'lift-rise';
               aptCutsceneTimerRef.current = 0;
             }
