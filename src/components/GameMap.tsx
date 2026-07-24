@@ -4635,7 +4635,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   const localUp = worldUp.applyQuaternion(invQ);
                   const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), localUp);
                   computerRef.current.quaternion.copy(lapQuat);
-                  computerRef.current.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
                   computerRef.current.visible = true;
                 }
               } else {
@@ -4688,7 +4687,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (aptSparkyCS) {
               // === Phase 1: Rotate Sparky west→north ===
               const startAngle = -Math.PI * 0.5;
-              const endAngle = Math.PI;
+              const endAngle = -Math.PI;
               const easedRot = rotProgress < 1 ? rotProgress * rotProgress * (3 - 2 * rotProgress) : 1;
               aptSparkyFacingRef.current = startAngle + (endAngle - startAngle) * easedRot;
               const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), aptSparkyFacingRef.current);
@@ -4706,7 +4705,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const localUp = new THREE.Vector3(0, 1, 0).applyQuaternion(invQ);
                 const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), localUp);
                 computerRef.current.quaternion.copy(lapQuat);
-                computerRef.current.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
               }
 
               // === Detach laptop at start of lowering ===
