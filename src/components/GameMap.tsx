@@ -4629,12 +4629,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 if (t >= 2.8 && computerRef.current && computerRef.current.parent !== aptSparkyCS.root) {
                   aptSparkyCS.root.attach(computerRef.current);
                   computerRef.current.scale.set(1 / 0.7, 1 / 0.7, 1 / 0.7);
-                  computerRef.current.position.set(0, 0.3, 0.65);
+                  computerRef.current.position.set(0, 0.3, 1.0);
                   const invQ = aptSparkyCS.root.quaternion.clone().invert();
                   const worldUp = new THREE.Vector3(0, 1, 0);
                   const localUp = worldUp.applyQuaternion(invQ);
                   const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), localUp);
                   computerRef.current.quaternion.copy(lapQuat);
+                  computerRef.current.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
                   computerRef.current.visible = true;
                 }
               } else {
@@ -4700,11 +4701,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
               // Laptop stays at fixed local (0, 0.47, 1.0) — orbits naturally with Sparky
               if (computerRef.current && computerRef.current.parent === aptSparkyCS.root) {
-                computerRef.current.position.set(0, 0.3, 0.65);
+                computerRef.current.position.set(0, 0.3, 1.0);
                 const invQ = aptSparkyCS.root.quaternion.clone().invert();
                 const localUp = new THREE.Vector3(0, 1, 0).applyQuaternion(invQ);
                 const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), localUp);
                 computerRef.current.quaternion.copy(lapQuat);
+                computerRef.current.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
               }
 
               // === Detach laptop at start of lowering ===
