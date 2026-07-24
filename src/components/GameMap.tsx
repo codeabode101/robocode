@@ -4629,7 +4629,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 if (t >= 2.8 && computerRef.current && computerRef.current.parent !== aptSparkyCS.root) {
                   aptSparkyCS.root.attach(computerRef.current);
                   computerRef.current.scale.set(1 / 0.7, 1 / 0.7, 1 / 0.7);
-                  computerRef.current.position.set(0, 1.0, -0.47);
+                  computerRef.current.position.set(0, 1.0, 0.47);
                   const invQ = aptSparkyCS.root.quaternion.clone().invert();
                   const worldUp = new THREE.Vector3(0, 1, 0);
                   const localUp = worldUp.applyQuaternion(invQ);
@@ -4701,7 +4701,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
               // Laptop stays at fixed local (0, 0.47, 1.0) — orbits naturally with Sparky
               if (computerRef.current && computerRef.current.parent === aptSparkyCS.root) {
-                computerRef.current.position.set(0, 1.0, -0.47);
+                computerRef.current.position.set(0, 1.0, 0.47);
                 const invQ = aptSparkyCS.root.quaternion.clone().invert();
                 const localUp = new THREE.Vector3(0, 1, 0).applyQuaternion(invQ);
                 const lapQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), localUp);
