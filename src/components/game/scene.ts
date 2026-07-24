@@ -360,12 +360,12 @@ export function createRobotVisual(color: THREE.Color, name: string, facing: 'sou
 
   const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.28, 0.14), armMat);
   leftArm.position.set(-0.33, 0.26, 0.5);
-  leftArm.rotation.z = 0.3;
+  leftArm.rotation.x = 0.3;
   group.add(leftArm);
 
   const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.28, 0.14), armMat);
   rightArm.position.set(0.33, 0.26, 0.5);
-  rightArm.rotation.z = -0.3;
+  rightArm.rotation.x = -0.3;
   group.add(rightArm);
 
   const headBlock = new THREE.Mesh(
@@ -814,13 +814,13 @@ export function animateRobotVisual(visual: RobotVisual, time: number, speedFacto
 
   // Leg swing
   const legSwing = Math.sin(time * WALK_BOB_SPEED) * 0.3 * walkAmount;
-  if (visual.leftLeg) visual.leftLeg.rotation.z = legSwing;
-  if (visual.rightLeg) visual.rightLeg.rotation.z = -legSwing;
+  if (visual.leftLeg) visual.leftLeg.rotation.x = legSwing;
+  if (visual.rightLeg) visual.rightLeg.rotation.x = -legSwing;
 
   // Arm swing (opposite to legs)
   const armSwing = Math.sin(time * WALK_BOB_SPEED + Math.PI) * 0.2 * walkAmount;
-  if (visual.leftArm) visual.leftArm.rotation.z = 0.3 + armSwing;
-  if (visual.rightArm) visual.rightArm.rotation.z = -0.3 - armSwing;
+  if (visual.leftArm) visual.leftArm.rotation.x = 0.3 + armSwing;
+  if (visual.rightArm) visual.rightArm.rotation.x = -0.3 - armSwing;
 }
 
 export function createRepairKiosk() {
@@ -1105,12 +1105,12 @@ export function animateRepairSparky(visual: RobotVisual, time: number, repairPha
   // Arm animation based on repair phase (0-1, cycles)
   const armSwing = Math.sin(repairPhase * Math.PI * 2) * 0.3;
   if (visual.rightArm) {
-    visual.rightArm.rotation.z = -0.3 + Math.max(0, armSwing) * 0.8;
-    visual.rightArm.rotation.x = Math.max(0, armSwing) * 0.4;
+    visual.rightArm.rotation.x = -0.3 + Math.max(0, armSwing) * 0.8;
+    visual.rightArm.rotation.z = Math.max(0, armSwing) * 0.4;
   }
   if (visual.leftArm) {
-    visual.leftArm.rotation.z = 0.3 + Math.min(0, armSwing) * 0.8;
-    visual.leftArm.rotation.x = Math.min(0, armSwing) * 0.4;
+    visual.leftArm.rotation.x = 0.3 + Math.min(0, armSwing) * 0.8;
+    visual.leftArm.rotation.z = Math.min(0, armSwing) * 0.4;
   }
 }
 
@@ -1128,14 +1128,14 @@ export function animateSparkyWave(visual: RobotVisual, time: number) {
 
   // Wave: right arm raised ~60° with side-to-side sway
   if (visual.rightArm) {
-    visual.rightArm.rotation.z = -Math.PI / 3 + Math.sin(time * 4) * 0.3;
-    visual.rightArm.rotation.x = -0.3;
+    visual.rightArm.rotation.x = -Math.PI / 3;
+    visual.rightArm.rotation.y = Math.sin(time * 4) * 0.3;
   }
 
   // Left arm hangs naturally
   if (visual.leftArm) {
-    visual.leftArm.rotation.z = 0.3;
-    visual.leftArm.rotation.x = 0;
+    visual.leftArm.rotation.x = 0.3;
+    visual.leftArm.rotation.y = 0;
   }
 }
 
