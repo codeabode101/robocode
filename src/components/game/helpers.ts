@@ -455,7 +455,7 @@ export function createLaptop(): THREE.Group {
 
   const display = new THREE.Mesh(new THREE.BoxGeometry(baseW - 0.04, lidH - 0.04, 0.006), screenMat);
   display.name = 'laptop-display';
-  display.position.set(0, lidH / 2, 0.01);
+  display.position.set(0, lidH / 2, -0.01);
   display.renderOrder = 1;
   screenGroup.add(display);
 
