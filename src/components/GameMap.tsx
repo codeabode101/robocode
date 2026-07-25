@@ -5006,6 +5006,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               document.exitPointerLock();
               setShowStringDlg(true);
               setStringDlgStep(0);
+              if (computerRef.current) {
+                const laptopGameY = -computerRef.current.position.z;
+                yawRef.current = Math.atan2(computerRef.current.position.x - localPositionRef.current.x, laptopGameY - localPositionRef.current.y);
+              }
             }
           } else if (phase === 'string-tutorial') {
             aptCutsceneTimerRef.current += delta;
