@@ -6384,8 +6384,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const display = lid.children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
                 // In Y-up, getWorldPosition gives (east, height, -north).
-                // Camera above and behind: height+0.18, z offset
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.18, scratchVec3.current.z + 0.35);
+                // Camera directly in front: same height, z offset (register faces -Z)
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z - 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else {
@@ -6429,7 +6429,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.35);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z + 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'antenna-glow') {
@@ -6451,7 +6451,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.35);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z + 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'reboot') {
@@ -6462,7 +6462,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.35);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z + 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'pre-boot') {
@@ -6473,7 +6473,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (computerRef.current) {
                 const display = (computerRef.current.children[2] as THREE.Group).children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y + 0.35, scratchVec3.current.z + 0.35);
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z + 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else if (phase === 'boot') {
