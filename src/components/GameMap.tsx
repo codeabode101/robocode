@@ -3204,8 +3204,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Scrap inside box — Sparky's find, hidden by box walls until lid opens
       scrapRobot.root.scale.set(0.4, 0.4, 0.4);
-      scrapRobot.root.position.set(-2.8, 0.22, -1.8);
-      scrapRobot.root.rotation.set(Math.PI / 2, 0.4, 0);
+      scrapRobot.root.position.set(-2.8, 0.26, -1.8);
+      scrapRobot.root.rotation.set(0, 0.4, 0);
       scrapRobot.nameSprite.visible = false;
       if (scrapRobot.leftPupil) scrapRobot.leftPupil.material.color.setHex(0x111111);
       if (scrapRobot.rightPupil) scrapRobot.rightPupil.material.color.setHex(0x111111);
