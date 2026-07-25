@@ -3957,6 +3957,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 { shape: 'box', center: { x: -3.4, y: -1.8 }, halfWidth: 0.45, halfHeight: 0.12 },
                 { shape: 'box', center: { x: -2.2, y: -2.5 }, halfWidth: 0.25, halfHeight: 0.25 },
                 { shape: 'box', center: { x: -2.2, y: 1.5 }, halfWidth: 0.2, halfHeight: 0.15 },
+                { shape: 'box', center: { x: -3.4, y: 1.2 }, halfWidth: 0.3, halfHeight: 0.175 },
               ];
               console.log('🏠 APARTMENT ENTRY', 'aptStage:', aptStage, 'cutsceneDone:', cutsceneDoneRef.current, 'box:', !!cutsceneBoxRef.current);
               if (aptStage === 'intro' && !cutsceneDoneRef.current) {
@@ -4972,8 +4973,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 yawRef.current = Math.atan2(computerRef.current.position.x - localPositionRef.current.x, laptopGameY - localPositionRef.current.y);
               }
             }
-            // Sparky walks west of the laptop
-            const slTgt = new THREE.Vector2(-3.5, 1.2);
+            // Sparky walks north of the laptop
+            const slTgt = new THREE.Vector2(-3.5, 1.6);
             if (aptSparkyCS) {
               const dx = slTgt.x - aptSparkyCS.root.position.x;
               const dz = (-slTgt.y) - aptSparkyCS.root.position.z;
