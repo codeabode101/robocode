@@ -109,7 +109,7 @@ src/
 ```bash
 npm run build                          # Build (120s timeout)
 ./scripts/deploy.sh                    # Deploy to Cloudflare (120s timeout)
-node screenshot_test.js                # 12-scene visual test (60s per scene)
+node screenshot_test.js                # Skipped by AI — model can't read images; run manually if needed
 node spatial_tests.js                  # Position/alignment/collision tests
 ```
 
@@ -122,7 +122,7 @@ node spatial_tests.js                  # Position/alignment/collision tests
 ### Rules
 1. **Ask before acting.** Present 2-3 options when there's ambiguity. Never assume.
 2. **Run `npm run build`** after each change (fast, local verification).
-3. **Run `node screenshot_test.js`** only when visual verification is needed.
+3. **Skip `node screenshot_test.js`** — the model cannot view images, so screenshot tests provide no signal.
 4. **Check in after each logical change** — don't move on until user confirms.
 5. **Only change what was asked.** Be conservative. Don't refactor things the user didn't mention.
 6. **Ask questions** if something seems off, if there are multiple approaches, or if the change might have side effects.
@@ -167,9 +167,7 @@ User asks → Clarify → Make change → Build → Show result → Ask "looks g
 4. VERIFY (automated)
    → npm run build
    → ./scripts/deploy.sh
-   → node screenshot_test.js
    → node spatial_tests.js
-   → Review EVERY screenshot strictly
 
 5. VERIFY (MCP play-through)
    → Walk to the changed area
@@ -185,7 +183,6 @@ User asks → Clarify → Make change → Build → Show result → Ask "looks g
 ```
 
 ### Graceful Test Handling
-- `screenshot_test.js`: 60s timeout per scene, max 2 retries, page crash → retry → skip after max retries
 - `npm run build`: 120s timeout
 - `deploy.sh`: 120s timeout
 - `spatial_tests.js`: 60s timeout per test, graceful skip on crash

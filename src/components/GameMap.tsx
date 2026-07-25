@@ -4714,8 +4714,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 apartmentRoomGroup.attach(computerRef.current);
                 computerRef.current.scale.set(1, 1, 1);
                 computerRef.current.position.copy(worldPos);
-                computerRef.current.position.x = -3.4;
-                computerRef.current.position.z = -1.025;
                 computerRef.current.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
                 computerRef.current.userData.lowerStartY = worldPos.y;
               }
@@ -4745,7 +4743,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 // Animate tack fx
                 if (tackFxRef.current) {
                   if (tackFxPhaseRef.current === 0) {
-                    tackFxRef.current.position.set(-3.4, 0.253, -1.025);
+                    if (computerRef.current) {
+                      tackFxRef.current.position.copy(computerRef.current.position);
+                      tackFxRef.current.position.y += 0.013;
+                    } else {
+                      tackFxRef.current.position.set(-3.4, 0.253, -1.025);
+                    }
                     tackFxRef.current.visible = true;
                     tackFxRef.current.scale.set(1, 1, 1);
                     tackFxRef.current.children.forEach((c: THREE.Object3D) => {
@@ -4848,7 +4851,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (tack2Progress >= 1) {
                 // Fully connected: laptop → scrap (permanent)
                 wireRef.current.visible = true;
-                const lapPort = new THREE.Vector3(-3.4, 0.253, -1.025);
+                const lapPort = computerRef.current.position.clone();
                 const scrapPos = new THREE.Vector3(-2.6, 0.36, -0.976);
                 const mid = new THREE.Vector3().addVectors(lapPort, scrapPos).multiplyScalar(0.5);
                 wireRef.current.position.copy(mid);
@@ -4862,7 +4865,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               } else if (tack2Progress > 0) {
                 wireRef.current.visible = true;
                 const scrapPos = new THREE.Vector3(-2.6, 0.36, -0.976);
-                const lapPos = new THREE.Vector3(-3.4, 0.253, -1.025);
+                const lapPos = computerRef.current.position.clone();
                 const fullWireT = tack2Progress;
                 const curEnd = new THREE.Vector3().lerpVectors(
                   coilRef.current?.position ?? scrapPos,
@@ -4880,7 +4883,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 animateWirePulse(wireRef.current, worldTime);
               } else if (tack1Progress > 0) {
                 wireRef.current.visible = true;
-                const lapPort = new THREE.Vector3(-3.4, 0.253, -1.025);
+                const lapPort = computerRef.current.position.clone();
                 const handPos = coilRef.current?.position ?? lapPort;
                 const mid = new THREE.Vector3().addVectors(lapPort, handPos).multiplyScalar(0.5);
                 wireRef.current.position.copy(mid);
@@ -6985,7 +6988,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const prepBatteryInstallProps = () => {
     if (computerRef.current) {
       computerRef.current.visible = true;
-      computerRef.current.position.set(-3.4, 0.24, -1.025);
+      computerRef.current.position.set(-3.4, 0.24, -1.5);
       computerRef.current.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
     }
     if (cutsceneBoxRef.current) {
@@ -6994,7 +6997,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     }
     if (wireRef.current) {
       wireRef.current.visible = true;
-      const lapPort = new THREE.Vector3(-3.4, 0.253, -1.025);
+      const lapPort = new THREE.Vector3(-3.4, 0.253, -1.5);
       const scrapPos = new THREE.Vector3(-2.6, 0.24, -1.2);
       const mid = new THREE.Vector3().addVectors(lapPort, scrapPos).multiplyScalar(0.5);
       wireRef.current.position.copy(mid);
