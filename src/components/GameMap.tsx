@@ -3204,7 +3204,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Scrap inside box — Sparky's find, hidden by box walls until lid opens
       scrapRobot.root.scale.set(0.4, 0.4, 0.4);
-      scrapRobot.root.position.set(-2.8, 0.26, -1.8);
+      scrapRobot.root.position.set(-2.8, 0.22, -1.8);
       scrapRobot.root.rotation.set(Math.PI / 2, 0.4, 0);
       scrapRobot.nameSprite.visible = false;
       if (scrapRobot.leftPupil) scrapRobot.leftPupil.material.color.setHex(0x111111);
@@ -4967,7 +4967,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             aptCutsceneTimerRef.current += delta;
             const wlTgt = new THREE.Vector2(-3.4, 0.6);
             if (walkPlayer(localPositionRef.current, wlTgt, MOVE_SPEED * 0.29, delta, worldTime, 0.28, localRobotRef.current, leftLegPivotRef.current, rightLegPivotRef.current, yawRef)) {
-              yawRef.current = Math.atan2(0, 1); // face north toward laptop screen
+              if (computerRef.current) {
+                const laptopGameY = -computerRef.current.position.z;
+                yawRef.current = Math.atan2(computerRef.current.position.x - localPositionRef.current.x, laptopGameY - localPositionRef.current.y);
+              }
             }
             // Sparky walks west of the laptop
             const slTgt = new THREE.Vector2(-3.5, 1.2);
@@ -5372,7 +5375,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 localRobotRef.current.rightArm.rotation.x = 0;
               }
               // Player faces north toward Scrap — side by side with Sparky
-              yawRef.current = Math.PI;
+              yawRef.current = 0;
             }
           } else if (ibPhase === 'hand-off') {
             installBatteryTimerRef.current += delta;
