@@ -4973,8 +4973,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 yawRef.current = Math.atan2(computerRef.current.position.x - localPositionRef.current.x, laptopGameY - localPositionRef.current.y);
               }
             }
-            // Sparky walks north of the laptop
-            const slTgt = new THREE.Vector2(-3.5, 1.6);
+            // Sparky walks east of the laptop
+            const slTgt = new THREE.Vector2(-2.8, 1.0);
             if (aptSparkyCS) {
               const dx = slTgt.x - aptSparkyCS.root.position.x;
               const dz = (-slTgt.y) - aptSparkyCS.root.position.z;
