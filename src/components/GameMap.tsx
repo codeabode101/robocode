@@ -4983,7 +4983,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const slDir = new THREE.Vector2(dx / slDist, dz / slDist);
                 aptSparkyCS.root.position.x += slDir.x * MOVE_SPEED * 0.29 * delta;
                 aptSparkyCS.root.position.z += slDir.y * MOVE_SPEED * 0.29 * delta;
-                const slFacing = -Math.atan2(slDir.x, slDir.y);
+                const slFacing = Math.atan2(slDir.x, slDir.y);
                 aptSparkyFacingRef.current = slFacing;
                 const slQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), slFacing);
                 if (aptBaseQuatRef.current) aptSparkyCS.root.quaternion.copy(aptBaseQuatRef.current).premultiply(slQ);
