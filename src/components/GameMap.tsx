@@ -7934,10 +7934,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             </div>
             {/* Code editor */}
             <div className="p-4">
+              {laptopMode === 'date' && (
+                <p className="text-slate-300 text-sm mb-2">Declare three <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">int</code> variables — <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">year</code>, <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">month</code>, and <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">day</code> — with today's values. Use the chart below for month numbers.</p>
+              )}
               {/* Per-line TTS prompts — spec sheet style */}
               {(() => {
                 const lines: string[] = laptopMode === 'name' ? ['String name = "Scrap";'] :
-                  laptopMode === 'date' ? ['int year = 2026;', 'int month = 5;', 'int day = 6;'] :
                   laptopMode === 'version' ? ['double version = 1.0;', 'String mode = "normal";'] :
                   laptopMode === 'boot' ? ['boolean ready = true;'] : [];
                 return lines.map((text, i) => {
