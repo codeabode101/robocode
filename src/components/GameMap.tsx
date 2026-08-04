@@ -7248,7 +7248,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const aspect = window.innerWidth / window.innerHeight;
       const vFov = 65 * Math.PI / 180;
       const dist = 0.35;
-      const displayW = 0.50;
+      const displayW = 0.40;
       const viewW = 2 * dist * Math.tan(vFov / 2) * aspect;
       const fraction = (displayW / viewW) * 0.92;
       setLaptopWindowCSS(`${(fraction * 100).toFixed(1)}vw`);
@@ -7958,12 +7958,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   );
                 });
               })()}
-              <CodeInput
+              <textarea
+                className="w-full bg-slate-950 text-amber-300 font-mono text-sm p-3 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-500/60 resize-none"
+                rows={laptopMode === 'date' ? 4 : laptopMode === 'version' ? 4 : laptopMode === 'boot' ? 2 : 3}
                 value={laptopCode}
-                onChange={(v) => { setLaptopCode(v); setLaptopOutput(''); setLaptopSuccess(false); setShowSemicolonArrow(false); }}
+                onChange={(e) => { setLaptopCode(e.target.value); setLaptopOutput(''); setLaptopSuccess(false); setShowSemicolonArrow(false); }}
                 autoFocus
-                textareaClassName="bg-slate-950 text-amber-300 text-sm p-3 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-500/60"
-                minHeight={laptopMode === 'date' ? '7rem' : laptopMode === 'version' ? '7rem' : laptopMode === 'boot' ? '3.5rem' : '5.25rem'}
               />
               {showSemicolonArrow && (
                 <div className="flex justify-center mt-2">
