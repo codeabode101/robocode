@@ -7248,7 +7248,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const aspect = window.innerWidth / window.innerHeight;
       const vFov = 65 * Math.PI / 180;
       const dist = 0.35;
-      const displayW = 0.40;
+      const displayW = 0.35;
       const viewW = 2 * dist * Math.tan(vFov / 2) * aspect;
       const fraction = (displayW / viewW) * 0.92;
       setLaptopWindowCSS(`${(fraction * 100).toFixed(1)}vw`);
