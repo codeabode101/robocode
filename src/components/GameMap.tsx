@@ -5348,16 +5348,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             try { localStorage.setItem('rb_cutscene_done', '1'); } catch {}
             apiSync({ cutsceneDone: true });
-            updateQuestStage('unit1');
-            tutorialShownRef.current = true;
-            showTutorialRef.current = true;
-            setShowTutorial(true);
-            setTutorialPhases(unit1Phases);
-            tutorialPhasesRef.current = unit1Phases;
-            setTutorialStep(0);
-            setCode(tutorialPhasesRef.current[0].kind === 'dialogue' ? '' : tutorialPhasesRef.current[0].starterCode || '');
-            setOutput('');
-            setSuccess(false);
           }
         } else if (installBatteryPhaseRef.current && aptSparky) {
           const ibPhase = installBatteryPhaseRef.current;
