@@ -7973,7 +7973,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               )}
               {laptopMode === 'date' && (
                 <div className="sticky bottom-0 mt-2 text-xs bg-slate-800/90 rounded-lg border border-slate-700/50 overflow-hidden">
-                  <div className="grid grid-cols-2 gap-x-4 p-2 leading-relaxed">
+                  <div className="grid grid-cols-4 gap-x-4 gap-y-1 p-2 leading-relaxed">
                     <div className="text-slate-400">January</div><div className="text-amber-300 font-mono text-right">0</div>
                     <div className="text-slate-400">February</div><div className="text-amber-300 font-mono text-right">1</div>
                     <div className="text-slate-400">March</div><div className="text-amber-300 font-mono text-right">2</div>
