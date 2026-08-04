@@ -7934,22 +7934,18 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             </div>
             {/* Code editor */}
             <div className="p-4">
-              {laptopMode === 'date' && (
-                <p className="text-slate-300 text-sm mb-2">Declare three <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">int</code> variables — <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">year</code>, <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">month</code>, and <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">day</code> — with today's values. Use the chart below for month numbers.</p>
-              )}
-              {/* Per-line TTS prompts — spec sheet style */}
               {(() => {
-                const lines: string[] = laptopMode === 'name' ? ['String name = "Scrap";'] :
-                  laptopMode === 'version' ? ['double version = 1.0;', 'String mode = "normal";'] :
-                  laptopMode === 'boot' ? ['boolean ready = true;'] : [];
-                return lines.map((text, i) => {
-                  const play = () => playLineTts(text);
-                  const isPlaying = ttsActiveTextRef.current === text;
+                const prose: { text: string; node: React.ReactNode } | null =
+                  laptopMode === 'date' ? { text: 'Declare three int variables: year, month, and day with today values. Use the chart below for month numbers.', node: <span className="text-slate-300">Declare three <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">int</code> variables — <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">year</code>, <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">month</code>, and <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">day</code> — with today's values. Use the chart below for month numbers.</span> } :
+                  laptopMode === 'version' ? { text: 'Declare a double called version set to 1.0, then a String called mode set to "normal".', node: <span className="text-slate-300">Declare a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">double</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">version</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">1.0</code>, then a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">String</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">mode</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">"normal"</code>.</span> } :
+                  laptopMode === 'boot' ? { text: 'Declare a boolean called ready set to true.', node: <span className="text-slate-300">Declare a <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">boolean</code> called <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">ready</code> set to <code className="font-mono text-amber-300 bg-slate-800 px-1 rounded">true</code>.</span> } :
+                  null;
+                if (prose) {
+                  const isPlaying = ttsActiveTextRef.current === prose.text;
                   return (
-                    <div key={i} className="flex items-center gap-1 mb-1 text-sm">
-                      <span className="text-cyan-300 font-bold shrink-0 min-w-[1.2rem]">{i + 1})</span>
-                      <span className="text-slate-100">{renderFormattedSpecLine(text)}</span>
-                      <button onClick={play} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={isPlaying ? 'Stop' : 'Read aloud'}>
+                    <div className="flex items-start gap-1 mb-2 text-sm">
+                      <span className="flex-1">{prose.node}</span>
+                      <button onClick={() => playLineTts(prose.text)} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={isPlaying ? 'Stop' : 'Read aloud'}>
                         {isPlaying ? (
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
                         ) : (
@@ -7958,7 +7954,23 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                       </button>
                     </div>
                   );
-                });
+                }
+                const text = laptopMode === 'name' ? 'String name = "Scrap";' : '';
+                if (!text) return null;
+                const isPlaying = ttsActiveTextRef.current === text;
+                return (
+                  <div className="flex items-center gap-1 mb-1 text-sm">
+                    <span className="text-cyan-300 font-bold shrink-0 min-w-[1.2rem]">1)</span>
+                    <span className="text-slate-100">{renderFormattedSpecLine(text)}</span>
+                    <button onClick={() => playLineTts(text)} className="shrink-0 p-1 rounded hover:bg-white/10 text-amber-300/70 hover:text-amber-300 transition-colors" title={isPlaying ? 'Stop' : 'Read aloud'}>
+                      {isPlaying ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                      )}
+                    </button>
+                  </div>
+                );
               })()}
               <textarea
                 className="w-full bg-slate-950 text-amber-300 font-mono text-sm p-3 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-500/60 resize-none"
