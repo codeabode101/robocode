@@ -381,6 +381,21 @@ With rotation `(0,0,PI/2)` and position `(0.105,0.22,0.11)`, scale `0.35`:
 - Hand front-surface Y=0.104 < body back Y=0.116 → hands cup from behind ✓
 - Inward arm pivots (now `-0.1`/`0.1`) bring hands 12mm closer to center → better front-cradle grip
 
+### ⚠️ Y-up CORRECTION (Aug 5 2026) — values above were Z-up, WRONG in Y-up
+The transforms above (`(0,0,PI/2)` / `(0.105,0.22,0.11)`) came from the Z-up
+branch (customer yaw was `rotation.z`). After the Z-up→Y-up migration they are
+invalid. Correct Y-up transforms in `setCustomerRobotMode`:
+- **Carry** (`npc.visual.root` local frame, customer faces -Z at `rotation.y=0`):
+  `position (0, 0.08, -0.15)`, `rotation (-Math.PI/2, 0, -Math.PI/2)`, `scale 0.35`
+  → robot lies ACROSS chest (head east), face points UP (+Y, toward camera),
+  in front of the customer (z<0). Verified: `R:(x,y,z)→(y,z,x)`.
+- **Register** (`workshopRegisterDockRef` local frame, dock top at y≈0.205):
+  `position (0.45, 0.058, 0.05)`, `rotation (-Math.PI/2, 0, Math.PI)`, `scale 0.35`
+  → robot lies on dock (feet at y=0.205 rest on surface), face UP, head SOUTH
+  (toward player). Verified: `R:(x,y,z)→(-x,z,y)`.
+THREE Euler default order is `R = Rx*Ry*Rz` — use `rotation.set` values exactly
+as above; naive axis-mapping from Z-up flips face direction (e.g. face west).
+
 ### Branch
 Current branch: `customer-queue-system`. No new branch created — fixes applied directly.
 
