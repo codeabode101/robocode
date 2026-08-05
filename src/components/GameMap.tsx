@@ -852,13 +852,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const robot = npc.cargoRobot.root;
     if (mode === 'register') {
       workshopRegisterDockRef.current?.attach(robot);
-      robot.position.set(0.30, 0.21, 0.30);
-      robot.rotation.set(0, 0, Math.PI / 2);
+      robot.position.set(0.45, 0.058, 0.05);
+      robot.rotation.set(-Math.PI / 2, 0, Math.PI);
       robot.scale.set(0.35, 0.35, 0.35);
     } else {
       npc.visual.root.attach(robot);
-      robot.position.set(0.105, 0.22, 0.11);
-      robot.rotation.set(0, 0, Math.PI / 2);
+      robot.position.set(0, 0.08, -0.15);
+      robot.rotation.set(-Math.PI / 2, 0, -Math.PI / 2);
       robot.scale.set(0.35, 0.35, 0.35);
     }
     robot.visible = true;
