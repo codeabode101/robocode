@@ -4034,7 +4034,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         rafiqCutsceneTimerRef.current += delta;
         if (roomOwnerVisualRef.current) {
           const rotProgress = Math.min(1, rafiqCutsceneTimerRef.current / 0.8);
-          const facingQ = scratchQuat.current.setFromAxisAngle(scratchVec3.current.set(0, 0, 1), rafiqTargetFacingRef.current * rotProgress);
+          const facingQ = scratchQuat.current.setFromAxisAngle(scratchVec3.current.set(0, 1, 0), rafiqTargetFacingRef.current * rotProgress);
           roomOwnerVisualRef.current.root.quaternion.copy(rafiqBaseQuatRef.current).premultiply(facingQ);
         }
         if (rafiqCutsceneTimerRef.current >= 1.0) {
@@ -4073,11 +4073,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const t = Math.min(1, rafiqCutsceneTimerRef.current / handDuration);
           const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
           const startX = localPositionRef.current.x * 0.65 + ROOM_OWNER_POS.x * 0.35;
-          const startY = localPositionRef.current.y * 0.65 + ROOM_OWNER_POS.y * 0.35;
+          const startZ = -(localPositionRef.current.y * 0.65 + ROOM_OWNER_POS.y * 0.35);
           const endX = localPositionRef.current.x * 0.25 + ROOM_OWNER_POS.x * 0.75;
-          const endY = localPositionRef.current.y * 0.25 + ROOM_OWNER_POS.y * 0.75;
+          const endZ = -(localPositionRef.current.y * 0.25 + ROOM_OWNER_POS.y * 0.75);
           rafiqLetterSpriteRef.current.position.x = startX + (endX - startX) * ease;
-          rafiqLetterSpriteRef.current.position.y = startY + (endY - startY) * ease;
+          rafiqLetterSpriteRef.current.position.z = startZ + (endZ - startZ) * ease;
           rafiqLetterSpriteRef.current.position.y = 0.5 + Math.sin(ease * Math.PI) * 0.15;
           rafiqLetterSpriteRef.current.rotation.y = Math.sin(ease * Math.PI) * 0.3;
           const s = t < 0.08 ? t / 0.08 : t > 0.85 ? (1 - t) / 0.15 : 1;
