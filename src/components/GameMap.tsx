@@ -845,7 +845,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const robot = createRobotVisual(new THREE.Color(colorHex), '');
     robot.nameSprite.visible = false;
     robot.root.scale.set(0.18, 0.18, 0.18);
-    robot.root.rotation.set(-Math.PI / 2, 0, 0);
     return robot;
   }, []);
 
@@ -853,13 +852,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const robot = npc.cargoRobot.root;
     if (mode === 'register') {
       workshopRegisterDockRef.current?.attach(robot);
-      robot.position.set(-0.02, 0.31, 0.01);
-      robot.rotation.set(-Math.PI / 2, 0, Math.PI * 0.04);
-      robot.scale.set(0.17, 0.17, 0.17);
+      robot.position.set(0.30, 0.21, 0.30);
+      robot.rotation.set(0, 0, Math.PI / 2);
+      robot.scale.set(0.35, 0.35, 0.35);
     } else {
       npc.visual.root.attach(robot);
       robot.position.set(0.105, 0.22, 0.11);
-      robot.rotation.set(-Math.PI / 2, 0, -Math.PI * 0.08);
+      robot.rotation.set(0, 0, Math.PI / 2);
       robot.scale.set(0.35, 0.35, 0.35);
     }
     robot.visible = true;
