@@ -3139,7 +3139,6 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const registerComputer = createLaptop();
     registerComputer.scale.set(0.52, 0.52, 0.52);
     registerComputer.position.set(-0.45, 0.22, 0.30);
-    registerComputer.rotation.y = Math.PI;
     registerDock.add(registerComputer);
     workshopRegisterComputerRef.current = registerComputer;
 
@@ -5740,7 +5739,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 if (!robot.userData.placed) {
                   robot.userData.placed = true;
                   const endDock = workshopRegisterDockRef.current;
-                  if (endDock)                   endDock.attach(robot);
+                  if (endDock) {
+                    endDock.attach(robot);
+                    robot.position.set(0.45, 0.058, 0.05);
+                    robot.rotation.set(-Math.PI / 2, 0, Math.PI);
+                    robot.scale.set(0.35, 0.35, 0.35);
+                  }
                   playThumpSound();
                 }
               } else {
@@ -5809,7 +5813,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             const wireStart = scratchVec3.current;
             crn.cargoRobot.root.getWorldPosition(wireStart);
-            const handPos = scratchVec3b.current.set(localPositionRef.current.x, localPositionRef.current.y + 0.25, 0.5);
+            const handPos = scratchVec3b.current.set(localPositionRef.current.x, 0.35, -localPositionRef.current.y - 0.1);
             wireStart.z += 0.02;
             const dir = scratchVec3c.current.copy(handPos).sub(wireStart);
             const distWire = dir.length();
@@ -5842,7 +5846,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (port) port.getWorldPosition(laptopPos);
               else comp.getWorldPosition(laptopPos);
             }
-            const handPos = scratchVec3c.current.set(localPositionRef.current.x, localPositionRef.current.y + 0.25, 0.5);
+            const handPos = scratchVec3c.current.set(localPositionRef.current.x, 0.35, -localPositionRef.current.y - 0.1);
             const wireEnd = scratchVec3b.current.lerp(laptopPos, t);
             wireStart.z += 0.02;
             wireEnd.z += 0.1;
@@ -6115,18 +6119,21 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           } else if (npc.stage === 'leaving') {
             // Robot follows behind customer on the ground
             const cr = npc.cargoRobot;
+            const rotY = npc.visual.root.rotation.y; // Y-up yaw (was rotation.z = roll, bug)
+            const behindX = npc.position.x + Math.sin(rotY) * 0.5;
+            const behindY = npc.position.y - Math.cos(rotY) * 0.5;
             if (cr.root.parent !== workshopRoomGroupRef.current) {
               workshopRoomGroupRef.current?.attach(cr.root);
-              cr.root.position.set(npc.position.x, npc.position.y - 0.5, 0.251);
+              cr.root.position.set(behindX, 0.251, -behindY);
               cr.root.scale.set(0.35, 0.35, 0.35);
             }
-            const rotZ = npc.visual.root.rotation.z;
-            const behindX = npc.position.x + Math.sin(rotZ) * 0.5;
-            const behindY = npc.position.y - Math.cos(rotZ) * 0.5;
-            const targetDx = behindX - cr.root.position.x;
-            const targetDy = behindY - cr.root.position.y;
+            // cr.root is world (x, height, -gameY); convert lerp in game coords
+            const prevGX = cr.root.position.x;
+            const prevGY = -cr.root.position.z;
+            const targetDx = behindX - prevGX;
+            const targetDy = behindY - prevGY;
             cr.root.position.x += targetDx * 0.08;
-            cr.root.position.y += targetDy * 0.08;
+            cr.root.position.z -= targetDy * 0.08;
             cr.root.rotation.set(0, 0, 0);
             cr.root.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), Math.atan2(targetDx, -targetDy));
             animateRobotVisual(cr, worldTime + npc.queueIndex * 0.35, moving ? 0.55 : 0.16, 0, -1);
@@ -6146,18 +6153,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (npc.visual.leftLegPivot) npc.visual.leftLegPivot.rotation.x = swing;
           if (npc.visual.rightLegPivot) npc.visual.rightLegPivot.rotation.x = -swing;
           const customerArmSwing = Math.sin(worldTime * WALK_BOB_SPEED + Math.PI) * 0.2 * (moving ? 1 : 0);
-          if (npc.visual.leftArm) {
-            if (npc.stage === 'waiting') {
-              npc.visual.leftArm.rotation.x = -Math.PI / 4;
-              npc.visual.rightArm!.rotation.x = -Math.PI / 4;
-              npc.visual.leftArmPivot!.rotation.y = -0.1;
-              npc.visual.rightArmPivot!.rotation.y = 0.1;
+          if (npc.visual.leftArm && npc.visual.leftArmPivot && npc.visual.rightArmPivot) {
+            if (npc.stage === 'waiting' || npc.stage === 'walking-to-queue') {
+              // Customer cradles the cargo robot in front — arms reach forward (rotation.x>0)
+              // and INWARD (rotation.z: +left/-right) toward the robot.
+              npc.visual.leftArmPivot.rotation.set(0.5 + customerArmSwing, 0, 0.15);
+              npc.visual.rightArmPivot.rotation.set(0.5 - customerArmSwing, 0, -0.15);
             } else {
-              npc.visual.leftArm.rotation.x = 0 + customerArmSwing;
-              npc.visual.rightArm!.rotation.x = -Math.PI / 2 - customerArmSwing;
-              npc.visual.leftArmPivot!.rotation.y = 0.42;
-              npc.visual.rightArmPivot!.rotation.y = -0.42;
+              // Register / awaiting-code / leaving: arms hang down, gentle swing while walking
+              npc.visual.leftArmPivot.rotation.set(0.1 + customerArmSwing, 0, 0.1);
+              npc.visual.rightArmPivot.rotation.set(0.1 - customerArmSwing, 0, -0.1);
             }
+            npc.visual.leftArm.rotation.set(0, 0, 0);
+            npc.visual.rightArm!.rotation.set(0, 0, 0);
           }
           const bobZ = moving ? walkSin * 0.03 : 0;
           npc.visual.nameSprite.position.y = 1.15 + Math.sin(worldTime * 2 + npc.position.y) * 0.03;
@@ -6353,12 +6361,12 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (repairCutscenePhaseRef.current !== 'idle') {
             scratchVec3.current.set(2.9, 1.0, -2.2);
             camera.position.lerp(scratchVec3.current, 0.06);
-            camera.lookAt(2.9, 0.3, 3.05);
+            camera.lookAt(2.9, 0.3, -3.05);
           } else if (registerCutscenePhaseRef.current !== 'idle') {
             if (registerCutscenePhaseRef.current === 'place-robot') {
               scratchVec3.current.set(2.0, 1.5, -0.8);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(2.0, 0.3, 3.0);
+              camera.lookAt(2.0, 0.3, -3.0);
             } else if (registerCutscenePhaseRef.current === 'player-to-robot') {
               scratchVec3.current.set(localPositionRef.current.x, 1.5, -localPositionRef.current.y + 1.5);
               camera.position.lerp(scratchVec3.current, 0.06);
@@ -6366,20 +6374,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             } else if (registerCutscenePhaseRef.current === 'player-to-laptop') {
               scratchVec3.current.set(0.5, 2.0, -2.2);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(2.0, 0.3, 2.7);
+              camera.lookAt(2.0, 0.3, -2.7);
             } else if (registerCutscenePhaseRef.current === 'connect-wire' || registerCutscenePhaseRef.current === 'register-dlg') {
               scratchVec3.current.set(0.5, 2.0, -2.2);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(2.0, 0.3, 2.7);
+              camera.lookAt(2.0, 0.3, -2.7);
             } else if (registerCutscenePhaseRef.current === 'laptop-ui' || registerCutscenePhaseRef.current === 'done') {
               const regComp = workshopRegisterComputerRef.current;
               if (regComp) {
                 const lid = regComp.children[2] as THREE.Group;
                 const display = lid.children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                // In Y-up, getWorldPosition gives (east, height, -north).
-                // Camera directly in front: same height, z offset (register faces -Z)
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z - 0.35);
+                // Laptop screen faces +Z (south, toward player/customer) — camera in front
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z + 0.35);
                 camera.lookAt(scratchVec3.current);
               }
             } else {
