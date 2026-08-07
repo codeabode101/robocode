@@ -857,7 +857,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       robot.scale.set(0.35, 0.35, 0.35);
     } else {
       npc.visual.root.attach(robot);
-      robot.position.set(0, 0.08, -0.15);
+      robot.position.set(0, 0.12, -0.24);
       robot.rotation.set(-Math.PI / 2, 0, -Math.PI / 2);
       robot.scale.set(0.35, 0.35, 0.35);
     }
@@ -3139,6 +3139,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const registerComputer = createLaptop();
     registerComputer.scale.set(0.52, 0.52, 0.52);
     registerComputer.position.set(-0.45, 0.22, 0.30);
+    registerComputer.rotation.y = Math.PI;
     registerDock.add(registerComputer);
     workshopRegisterComputerRef.current = registerComputer;
 
