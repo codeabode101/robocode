@@ -6174,9 +6174,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           if (crRoot) {
             const ud = crRoot.userData;
             if (ud.nameBroken) {
-              // Head wobble
-              crRoot.rotation.x = Math.sin(worldTime * 4) * 0.02;
-              crRoot.rotation.y = Math.sin(worldTime * 3) * 0.02;
+              // Head wobble — only use yaw (rotation.y), NOT rotation.x/z which carry the
+              // carry/register pose (-PI/2 in x). Stomping x would roll the robot sideways.
+              crRoot.rotation.y = Math.sin(worldTime * 3) * 0.05;
             }
             // sizeBroken flag kept for future use (no scale pulsing)
             // Cache toon materials once for defect animations
