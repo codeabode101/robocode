@@ -852,7 +852,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const robot = npc.cargoRobot.root;
     if (mode === 'register') {
       workshopRegisterDockRef.current?.attach(robot);
-      robot.position.set(0.45, 0.058, 0.05);
+      robot.position.set(0.1, 0.058, 0.05);
       robot.rotation.set(-Math.PI / 2, 0, Math.PI);
       robot.scale.set(0.35, 0.35, 0.35);
     } else {
@@ -5741,7 +5741,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                   const endDock = workshopRegisterDockRef.current;
                   if (endDock) {
                     endDock.attach(robot);
-                    robot.position.set(0.45, 0.058, 0.05);
+                    robot.position.set(0.1, 0.058, 0.05);
                     robot.rotation.set(-Math.PI / 2, 0, Math.PI);
                     robot.scale.set(0.35, 0.35, 0.35);
                   }
@@ -5813,8 +5813,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
             const wireStart = scratchVec3.current;
             crn.cargoRobot.root.getWorldPosition(wireStart);
-            const handPos = scratchVec3b.current.set(localPositionRef.current.x, 0.35, -localPositionRef.current.y - 0.1);
-            wireStart.z += 0.02;
+            const handPos = scratchVec3b.current.set(localPositionRef.current.x, 0.52, -localPositionRef.current.y - 0.1);
+            wireStart.y = Math.max(wireStart.y, 0.52);
             const dir = scratchVec3c.current.copy(handPos).sub(wireStart);
             const distWire = dir.length();
             if (distWire > 0.001) {
@@ -5846,10 +5846,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               if (port) port.getWorldPosition(laptopPos);
               else comp.getWorldPosition(laptopPos);
             }
-            const handPos = scratchVec3c.current.set(localPositionRef.current.x, 0.35, -localPositionRef.current.y - 0.1);
+            const handPos = scratchVec3c.current.set(localPositionRef.current.x, 0.52, -localPositionRef.current.y - 0.1);
             const wireEnd = scratchVec3b.current.lerp(laptopPos, t);
-            wireStart.z += 0.02;
-            wireEnd.z += 0.1;
+            wireStart.y = Math.max(wireStart.y, 0.52);
+            wireEnd.y += 0.1;
             const dir = scratchVec3c.current.copy(wireEnd).sub(wireStart);
             const distWire = dir.length();
             if (distWire > 0.001) {
@@ -6385,8 +6385,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                 const lid = regComp.children[2] as THREE.Group;
                 const display = lid.children[1] as THREE.Mesh;
                 display.getWorldPosition(scratchVec3.current);
-                // Laptop screen faces +Z (south, toward player/customer) — camera in front
-                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z + 0.35);
+                // Laptop screen faces +Z (south, toward player/customer) — camera in front, close (matches Z-up 0.18)
+                camera.position.set(scratchVec3.current.x, scratchVec3.current.y, scratchVec3.current.z + 0.18);
                 camera.lookAt(scratchVec3.current);
               }
             } else {
