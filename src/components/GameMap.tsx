@@ -2786,11 +2786,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Back counter
       const counterMat = createToonMaterial(0x8b4513);
       const counter = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.25, 0.12), counterMat);
-      counter.position.set(0, 0.16, sD / 2 + 0.3);
+      counter.position.set(0, 0.16, sD / 2 - 0.3);
       shopRoomGroup.add(counter);
 
       const counterTop = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.04, 0.14), createToonMaterial(0xa0522d));
-      counterTop.position.set(0, 0.32, sD / 2 + 0.3);
+      counterTop.position.set(0, 0.32, sD / 2 - 0.3);
       shopRoomGroup.add(counterTop);
 
       // Shelves along the sides with items
@@ -2813,13 +2813,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Side display case (right side of entrance, not blocking the door)
       const sideDisplay = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, 0.5), createToonMaterial(0x8b4513));
-      sideDisplay.position.set(-sW / 2 + 0.15, 0.12, -sD / 2 - 0.35);
+      sideDisplay.position.set(-sW / 2 + 0.15, 0.12, -sD / 2 + 0.35);
       shopRoomGroup.add(sideDisplay);
       const dItem = new THREE.Mesh(
         new THREE.SphereGeometry(0.04, 8, 8),
         new THREE.MeshBasicMaterial({ color: 0x60a5fa })
       );
-      dItem.position.set(-sW / 2 + 0.15, 0.24, -sD / 2 - 0.35);
+      dItem.position.set(-sW / 2 + 0.15, 0.24, -sD / 2 + 0.35);
       shopRoomGroup.add(dItem);
 
       // Shop obstacle hitboxes
@@ -2832,10 +2832,8 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       ];
 
       // Shopkeeper person + desk
-      const shopPerson = buildPlayerVisual(0xd97706, 'Shopkeeper');
-      shopPerson.root.scale.set(0.9, 0.9, 0.9);
-      shopPerson.root.position.set(0, 0.02, sD / 2 + 0.15);
-      shopPerson.nameSprite.visible = false;
+      const shopPerson = buildPlayerVisual(0x60a5fa, 'Shopkeeper');
+      shopPerson.root.position.set(0, 0.02, sD / 2 - 0.15);
       shopRoomGroup.add(shopPerson.root);
       shopNpcRef.current = shopPerson;
 
@@ -2843,26 +2841,26 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const deskGroup = new THREE.Group();
       // Desk top
       const dTop = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.08, 0.4), createToonMaterial(0x5c3d2e));
-      dTop.position.set(0, 0.2, sD / 2 + 0.25);
+      dTop.position.set(0, 0.2, sD / 2 - 0.25);
       deskGroup.add(dTop);
       // Desk front
       const dFront = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 0.35), createToonMaterial(0x8b6914));
-      dFront.position.set(0, 0.1, sD / 2 + 0.25);
+      dFront.position.set(0, 0.1, sD / 2 - 0.25);
       deskGroup.add(dFront);
       // Gold trim
       const dTrim = new THREE.Mesh(new THREE.BoxGeometry(2.04, 0.04, 0.42), createToonMaterial(0xfbbf24));
-      dTrim.position.set(0, 0.24, sD / 2 + 0.25);
+      dTrim.position.set(0, 0.24, sD / 2 - 0.25);
       deskGroup.add(dTrim);
       // Potted plant on right side of desk
       const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.06, 6), createToonMaterial(0xc2410c));
-      pot.position.set(0.7, 0.28, sD / 2 + 0.25);
+      pot.position.set(0.7, 0.28, sD / 2 - 0.25);
       deskGroup.add(pot);
       const leaves = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), createToonMaterial(0x22c55e));
-      leaves.position.set(0.7, 0.33, sD / 2 + 0.25);
+      leaves.position.set(0.7, 0.33, sD / 2 - 0.25);
       deskGroup.add(leaves);
       // Glowing crystal on left side of desk
       const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.04), new THREE.MeshBasicMaterial({ color: 0x818cf8 }));
-      crystal.position.set(-0.7, 0.28, sD / 2 + 0.25);
+      crystal.position.set(-0.7, 0.28, sD / 2 - 0.25);
       deskGroup.add(crystal);
       shopRoomGroup.add(deskGroup);
 
@@ -2871,7 +2869,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         new THREE.BoxGeometry(0.5, 0.02, 0.2),
         createToonMaterial(0x6d4c2a)
       );
-      welcomeMat.position.set(0, 0.03, -sD / 2 - 0.05);
+      welcomeMat.position.set(0, 0.03, -sD / 2 + 0.05);
       shopRoomGroup.add(welcomeMat);
 
       // Exit door on the north wall — flush with the wall in the cutout
