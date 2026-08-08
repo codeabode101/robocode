@@ -2833,7 +2833,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Shopkeeper person + desk
       const shopPerson = buildPlayerVisual(0x60a5fa, 'Shopkeeper');
-      shopPerson.root.position.set(0, 0.02, sD / 2 - 0.15);
+      shopPerson.root.position.set(0, 0.02, sD / 2 - 0.7);
       shopRoomGroup.add(shopPerson.root);
       shopNpcRef.current = shopPerson;
 
