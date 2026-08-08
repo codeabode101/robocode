@@ -2786,11 +2786,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       // Back counter
       const counterMat = createToonMaterial(0x8b4513);
       const counter = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.25, 0.12), counterMat);
-      counter.position.set(0, 0.16, sD / 2 - 0.3);
+      counter.position.set(0, 0.16, sD / 2 - 0.16);
       shopRoomGroup.add(counter);
 
       const counterTop = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.04, 0.14), createToonMaterial(0xa0522d));
-      counterTop.position.set(0, 0.32, sD / 2 - 0.3);
+      counterTop.position.set(0, 0.32, sD / 2 - 0.16);
       shopRoomGroup.add(counterTop);
 
       // Shelves along the sides with items
@@ -2824,16 +2824,17 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
 
       // Shop obstacle hitboxes
       shopObstaclesRef.current = [
-        { shape: 'box', center: { x: 0, y: -1.5 }, halfWidth: 0.8, halfHeight: 0.06 },
-        { shape: 'box', center: { x: 0, y: -1.55 }, halfWidth: 1.0, halfHeight: 0.2 },
+        { shape: 'box', center: { x: 0, y: -1.64 }, halfWidth: 0.85, halfHeight: 0.06 },
+        { shape: 'box', center: { x: 0, y: -1.64 }, halfWidth: 1.02, halfHeight: 0.2 },
         { shape: 'box', center: { x: 2.2, y: 0 }, halfWidth: 0.02, halfHeight: 0.6 },
+        { shape: 'box', center: { x: 0, y: -0.85 }, halfWidth: 1.0, halfHeight: 0.2 },
         { shape: 'box', center: { x: -2.2, y: 0 }, halfWidth: 0.02, halfHeight: 0.6 },
         { shape: 'box', center: { x: -3.65, y: 1.45 }, halfWidth: 0.03, halfHeight: 0.25 },
       ];
 
       // Shopkeeper person + desk
       const shopPerson = buildPlayerVisual(0x60a5fa, 'Shopkeeper');
-      shopPerson.root.position.set(0, 0.02, sD / 2 - 0.7);
+      shopPerson.root.position.set(0, 0.02, sD / 2 - 0.38);
       shopRoomGroup.add(shopPerson.root);
       shopNpcRef.current = shopPerson;
 
@@ -2841,26 +2842,26 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       const deskGroup = new THREE.Group();
       // Desk top
       const dTop = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.08, 0.4), createToonMaterial(0x5c3d2e));
-      dTop.position.set(0, 0.2, sD / 2 - 0.25);
+      dTop.position.set(0, 0.2, sD / 2 - 0.95);
       deskGroup.add(dTop);
       // Desk front
       const dFront = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.12, 0.35), createToonMaterial(0x8b6914));
-      dFront.position.set(0, 0.1, sD / 2 - 0.25);
+      dFront.position.set(0, 0.1, sD / 2 - 0.95);
       deskGroup.add(dFront);
       // Gold trim
       const dTrim = new THREE.Mesh(new THREE.BoxGeometry(2.04, 0.04, 0.42), createToonMaterial(0xfbbf24));
-      dTrim.position.set(0, 0.24, sD / 2 - 0.25);
+      dTrim.position.set(0, 0.24, sD / 2 - 0.95);
       deskGroup.add(dTrim);
       // Potted plant on right side of desk
       const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.06, 6), createToonMaterial(0xc2410c));
-      pot.position.set(0.7, 0.28, sD / 2 - 0.25);
+      pot.position.set(0.7, 0.28, sD / 2 - 0.95);
       deskGroup.add(pot);
       const leaves = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), createToonMaterial(0x22c55e));
-      leaves.position.set(0.7, 0.33, sD / 2 - 0.25);
+      leaves.position.set(0.7, 0.33, sD / 2 - 0.95);
       deskGroup.add(leaves);
       // Glowing crystal on left side of desk
       const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.04), new THREE.MeshBasicMaterial({ color: 0x818cf8 }));
-      crystal.position.set(-0.7, 0.28, sD / 2 - 0.25);
+      crystal.position.set(-0.7, 0.28, sD / 2 - 0.95);
       deskGroup.add(crystal);
       shopRoomGroup.add(deskGroup);
 
