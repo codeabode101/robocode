@@ -4181,9 +4181,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         if (isHolding) {
           const arm = rightArmRef.current;
           if (arm && heldGroup.parent !== arm) arm.add(heldGroup);
-          heldGroup.position.set(0, 0, -0.14);
+          heldGroup.position.set(0, -0.125, 0);
           heldGroup.rotation.set(0, 0, 0);
-          heldGroup.scale.set(2, 2, 2);
+          heldGroup.rotation.y = Math.sin(worldTime * 2) * 0.1;
+          heldGroup.scale.set(1.5, 1.5, 1.5);
         } else {
           if (heldGroup.parent !== localGroup) localGroup.add(heldGroup);
           heldGroup.scale.set(1, 1, 1);
