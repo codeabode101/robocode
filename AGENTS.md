@@ -495,6 +495,65 @@ Fix scrap follower closure bug, scrap body donut issue, add per-line TTS to lapt
 
 ---
 
+## Session History (Aug 9 2026)
+
+### Goal
+Fix reload bug where reloading mid battery-install cutscene in Sparky's apartment showed
+"make more money / buy battery" instead of resuming the cutscene (freshly-purchased battery
+was being wiped from the saved profile).
+
+### Root Cause (confirmed on live worker)
+1. **Data-destructive reset wipe** (`src/app/api/profile/route.ts`, now removed): if a stored
+   quest stage was any of `['earn-money','buy-chai','gift-ready','done','grind1','grind2',
+   'grind3','arena-ready']`, every `GET /api/profile` DELETED tutorial rows and zeroed
+   `currency` + `backpack_json`. Legacy accounts (predating the battery-only flow) carried
+   `_quest_earn-money` rows, so buying a battery then reloading wiped money AND backpack →
+   mission reverted to "make more money to buy battery". Verified live: seeding
+   `questStage='earn-money'` + `backpack=['battery']` + `money=10` → profile returned
+   `backpack=[]`, `money=0`.
+2. **Battery removal timing is correct** — the battery stays in the backpack through the whole
+   install cutscene and is consumed only in `finishBatteryInstall` (GameMap.tsx:878). This is
+   intentional: reload-resume (GameMap.tsx:2035) and apartment-door re-trigger (4071) key off
+   `backpack.includes('battery')`.
+
+### Changes Made
+1. **Removed the `resetStages` wipe** in `src/app/api/profile/route.ts:59-67`. The battery-only
+   flow never writes those stages (only `intro`/`unit1-done`/`all-done`), so the wipe had no
+   legitimate use and only destroyed legacy accounts.
+2. **Added `pending_battery_cutscene`** (INTEGER, default 0) to `users`:
+   - `migrations/006_add_pending_battery_cutscene.sql` (column already existed remotely —
+     verify with `wrangler d1 execute ... --command "SELECT name FROM pragma_table_info('users')"`)
+   - `src/db/schema.ts` — new column
+   - `src/app/api/sync/route.ts` — persist when `typeof pendingBatteryCutscene === 'boolean'`
+   - `src/app/api/profile/route.ts` — return `pendingBatteryCutscene` in GET
+3. **Purchase hardening** — parts-shop Buy for `battery` now also fires
+   `apiSync({ money: newMoney, backpack: newBackpack, pendingBatteryCutscene: true })`
+   (atomic single POST with all three) in addition to the two fire-and-forget POSTs.
+4. **Self-healing flag** — the 30s periodic sync re-arms
+   `pendingBatteryCutscene: !batteryInstalledRef.current && backpack.includes('battery')`,
+   so any dropped purchase sync self-corrects within 30s.
+5. **Resume condition** (GameMap.tsx:2035) now resumes battery cutscene when
+   `backpack.includes('battery') || pendingBatteryCutscene` (flag = durable source of truth
+   if the backpack save raced/lagged, e.g. empty backpack + flag=true resumes fine).
+
+### Verification (on deployed worker `https://robocode.rahejaom.workers.dev`)
+- Wipe removed: same seed → profile keeps `backpack=['battery']`, `money=10`.
+- Flag round-trip: `/api/sync { pendingBatteryCutscene: true }` → profile returns true (note:
+  immediate GET can hit D1 read-replica lag — retry if false).
+- Playwright E2E (flag path, EMPTY backpack + flag=true): first load AND reload both hide the
+  Mission box → battery cutscene resumes both times. Negative control (flag=false, empty
+  backpack, money 5) → Mission box visible ("Talk to Sparky."). Proves the assertion + fix.
+
+### Notes
+- Apartment-door battery trigger (GameMap.tsx:4071) still uses only `backpack.includes('battery')`;
+  the flag is only needed for the reload-resume path and self-heals via periodic sync.
+- `npx tsc --noEmit` clean.
+
+### Branch
+`y-up-v3` (commit `36b53c9`, pushed + deployed)
+
+---
+
 ## Session History (Jul 22 2026)
 
 ### Goal
