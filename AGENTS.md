@@ -495,6 +495,37 @@ Fix scrap follower closure bug, scrap body donut issue, add per-line TTS to lapt
 
 ---
 
+## Session History (Aug 9 2026) — Part 2
+
+### Goal
+Fix confusing workshop spec-sheet rejection when a player types `int toolCapacity = 5; String color = "gold";`.
+
+### Root Cause
+- Not a color bug: `String color = "gold";` validates fine. The blocker was `toolCapacity = 5`
+  with a 4-arm robot — expected value is `arms * 5 = 20` (example: 3 arms → `canCarry = 15`).
+- **Misleading error message**: the any-order matcher showed the FIRST unmatched hint, which for
+  `int toolCapacity = 5;` was the `color` expectation → "Wrong type. Use String for this field,
+  not int. (looking for: color)". Players blamed color instead of the wrong toolCapacity value.
+
+### Change Made
+`src/components/game/helpers.ts` (spec-sheet unmatched-line branch): when a line matches no
+expectation, select the hint from the expectation whose declared **variable name** matches, then
+type, falling back to the first. So `int toolCapacity = 5;` now reports
+"Wrong value. Expected 20, got 5. (looking for: int toolCapacity)" instead of a color/type hint.
+
+### Verified
+Replicated `validateWorkshopCode` standalone:
+- `int toolCapacity = 5; String color = "gold";` → "Wrong value. Expected 20, got 5."
+- `int toolCapacity = 20; String color = "gold";` (and reversed order) → valid
+- `String toolCapacity = "20";` → "Wrong type. Use int for this field, not String."
+- 1 arm → `toolCapacity = 5` still valid (capacity is arms*5)
+- `npx tsc --noEmit` clean.
+
+### Branch
+`y-up-v3`
+
+---
+
 ## Session History (Aug 9 2026)
 
 ### Goal

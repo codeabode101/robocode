@@ -227,12 +227,27 @@ export function validateWorkshopCode(input: string, request: CustomerRequest) {
         }
       }
       if (!matched) {
-        // Show best error from first unmatched expectation
+        // Show the MOST relevant error: prefer expectations whose declared variable name
+        // (then type) matches this line, so a wrong value on the intended var surfaces
+        // instead of a misleading hint from an unrelated expectation.
+        const declaredType = line.match(/^\s*(String|int|double|boolean|char)\b/)?.[1];
+        const declaredName = line.match(/^\s*(?:String|int|double|boolean|char)\s+([A-Za-z_][A-Za-z0-9_]*)/)?.[1];
+        let first: { hint: string; label: string } | null = null;
+        let best: { hint: string; label: string } | null = null;
         for (let i = 0; i < expects.length; i++) {
           if (used[i]) continue;
           const hint = checkLine(line, expects[i].name, expects[i].type, expects[i].value);
-          if (hint) return { valid: false, error: `${hint} (looking for: ${expects[i].label})` };
+          if (!hint) continue;
+          const slot = { hint, label: expects[i].label };
+          if (!first) first = slot;
+          if (declaredName === expects[i].name) {
+            best = slot;
+          } else if (declaredType === expects[i].type && !best) {
+            best = slot;
+          }
         }
+        const chosen = best ?? first;
+        if (chosen) return { valid: false, error: `${chosen.hint} (looking for: ${chosen.label})` };
         return { valid: false, error: `Couldn't match this line to any expected declaration.` };
       }
     }
