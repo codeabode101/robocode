@@ -108,6 +108,11 @@ const BATTERY_DLG_STEPS = [
   { speaker: 'Sparky', text: "I've written a letter to Rafiq at the robot shop. Take this to him — he'll sort you out with a job so you can earn enough for a battery." },
   { speaker: 'Sparky', text: "Rafiq's shop is just outside, down the street. Show him my letter and he'll know what to do. Good luck!" },
 ];
+const BATTERY_INSTALL_DLG_STEPS = [
+  { speaker: 'Sparky', text: "Scrap is all yours! He'll power the workstation — finally we can help people with their busted bots." },
+  { speaker: 'Sparky', text: "The world's a wreck. Folks drag in robots with fried circuits, dead power cells... they need someone who can do the math to bring 'em back." },
+  { speaker: 'Sparky', text: "Head outside to the repair kiosk. Customers are waiting — and every fix earns you something." },
+] as const;
 const RAFIQ_GREET_STEPS = [
   { speaker: 'Rafiq', text: "Wait — who are you?" },
   { speaker: 'Rafiq', text: "I wasn't expecting anyone today." },
@@ -407,11 +412,19 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const sparkyInstallTimerRef = useRef(0);
   const sparkyInstallPartIdRef = useRef<ScrapPartId | null>(null);
   const sparkyInstallNextStageRef = useRef<SparkyQuestStage | null>(null);
-  const installBatteryPhaseRef = useRef<'approach' | 'hand-off' | 'sparky-walk' | 'open-chest' | 'place-battery' | 'chest-glow' | 'done' | null>(null);
+  const installBatteryPhaseRef = useRef<'approach' | 'hand-off' | 'sparky-walk' | 'open-chest' | 'place-battery' | 'close-chest' | 'power-on' | 'celebration' | 'done' | null>(null);
   const installBatteryTimerRef = useRef(0);
   const batteryInstalledRef = useRef(false);
   const batteryGlowRef = useRef<THREE.Mesh | null>(null);
+  const chestHingeGroupRef = useRef<THREE.Group | null>(null);
   const chestPanelRef = useRef<THREE.Mesh | null>(null);
+  const batteryHandGroupRef = useRef<THREE.Group | null>(null);
+  const celebrationTimerRef = useRef(0);
+  const savedSceneBgRef = useRef<THREE.Color | THREE.Texture | null>(null);
+  const savedScrapPosRef = useRef(new THREE.Vector3());
+  const savedScrapScaleRef = useRef(new THREE.Vector3());
+  const savedScrapQuatRef = useRef(new THREE.Quaternion());
+  const batteryInstallDialogGuardRef = useRef(false);
   const scrapOrigBodyRef = useRef<{ mesh: THREE.Mesh; parent: THREE.Object3D } | null>(null);
   const installBatteryPropRef = useRef<THREE.Group | null>(null);
   const batteryLerpStartPosRef = useRef(new THREE.Vector3());
@@ -667,6 +680,11 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
   const [workshopIntroStep, setWorkshopIntroStep] = useState(0);
   const [cutsceneDone, setCutsceneDone] = useState(false);
   const [batteryInstalled, setBatteryInstalled] = useState(false);
+  const [showBatteryInstallDlg, setShowBatteryInstallDlg] = useState(false);
+  const [batteryInstallStep, setBatteryInstallStep] = useState(0);
+  const [batteryInstallText, setBatteryInstallText] = useState('');
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [showLightFlash, setShowLightFlash] = useState(false);
   const [inApartmentRoom, setInApartmentRoom] = useState(false);
   const [showSparkyDlg, setShowSparkyDlg] = useState(false);
   const [sparkyDlgFull, setSparkyDlgFull] = useState('');
@@ -839,6 +857,34 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     fetch('/api/profile/money', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: val }), keepalive: true }).catch(() => {});
     lastConfirmedMoneyRef.current = val;
   }, []);
+
+  const activateScrapFollower = useCallback(() => {
+    scrapFollowerEnabledRef.current = true;
+    scrapVisibleRef.current = true;
+    setScrapVisible(true);
+    setShowScrapToggle(true);
+    if (scrapFollowerRef.current) {
+      scrapFollowerRef.current.root.visible = true;
+      scrapFollowerRef.current.root.position.set(-2.87, 0.24, 5.3);
+    }
+    if (scrapRobotRef.current) scrapRobotRef.current.root.visible = false;
+  }, []);
+
+  const finishBatteryInstall = useCallback(() => {
+    if (batteryInstallDialogGuardRef.current) return;
+    batteryInstallDialogGuardRef.current = true;
+    setShowBatteryInstallDlg(false);
+    const currentBackpack = gameStore.get('backpack') as ScrapPartId[];
+    const newBackpack: ScrapPartId[] = currentBackpack.filter(id => id !== 'battery');
+    updateBackpack(newBackpack);
+    updateQuestStage('all-done');
+    apiSync({ batteryInstalled: true, questStage: 'all-done', pendingBatteryCutscene: false });
+    if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
+      setHeldSlotIndex(null);
+      heldSlotIndexRef.current = null;
+    }
+    activateScrapFollower();
+  }, [activateScrapFollower, updateBackpack, updateQuestStage, apiSync]);
 
   const createCustomerCargoRobot = useCallback((customerName: string, petColor: string) => {
     const colorHex = PET_COLOR_HEX[petColor] ?? 0x8b5cf6;
@@ -1492,6 +1538,30 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     osc.stop(now + 0.15);
   };
 
+  const playAchievementSound = () => {
+    const context = audioRef.current || new AudioContext();
+    audioRef.current = context;
+    const now = context.currentTime;
+    const playTone = (frequency: number, start: number, duration: number, gain: number) => {
+      const oscillator = context.createOscillator();
+      const volume = context.createGain();
+      oscillator.type = 'triangle';
+      oscillator.frequency.value = frequency;
+      volume.gain.setValueAtTime(0.0001, start);
+      volume.gain.exponentialRampToValueAtTime(gain, start + 0.01);
+      volume.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      oscillator.connect(volume);
+      volume.connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(start + duration + 0.02);
+    };
+    playTone(523.25, now, 0.1, 0.045);
+    playTone(659.25, now + 0.12, 0.1, 0.045);
+    playTone(783.99, now + 0.24, 0.1, 0.045);
+    playTone(1046.5, now + 0.36, 0.1, 0.05);
+    playTone(1318.5, now + 0.48, 0.25, 0.05);
+  };
+
   const triggerAttentionEvent = () => {
     playSparkBurst();
     const kioskPos = new THREE.Vector3(NPC_POSITION.x, 0.15, -NPC_POSITION.y - 0.1);
@@ -1654,6 +1724,13 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
     const nextStep = electrocuteStep + 1;
     if (nextStep < cutsceneDlgSteps.length) { setElectrocuteStep(nextStep); }
     else { setShowElectrocuteDlg(false); electrocuteDlgShownRef.current = false; aptCutscenePhaseRef.current = 'walk-to-laptop'; aptCutsceneTimerRef.current = 0; }
+  });
+
+  useTypewriterDialog(showBatteryInstallDlg, batteryInstallStep, BATTERY_INSTALL_DLG_STEPS, setBatteryInstallText);
+  useDialogEnter(showBatteryInstallDlg, () => {
+    const nextStep = batteryInstallStep + 1;
+    if (nextStep < BATTERY_INSTALL_DLG_STEPS.length) { setBatteryInstallStep(nextStep); }
+    else { stopTts(); finishBatteryInstall(); }
   });
 
   useTypewriterDialog(showBatteryDlg, batteryDlgStep, BATTERY_DLG_STEPS, setBatteryDlgText);
@@ -5376,36 +5453,68 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             }
           } else if (ibPhase === 'hand-off') {
             installBatteryTimerRef.current += delta;
-            animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
-            if (installBatteryTimerRef.current < delta) playHappyChime();
-            if (installBatteryTimerRef.current > 0.6) {
-              // Remove battery from backpack — handed to Sparky
-              const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
-              updateBackpack(newBackpack);
+            const rightArm = aptSparky.rightArm;
+            // Sparky turns right toward player (0.8s), then turns back with battery (0.6s)
+            const turnRight = Math.min(installBatteryTimerRef.current / 0.8, 1);
+            const rightAngle = -Math.PI / 2 * turnRight;
+            const rightFacingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rightAngle);
+            if (installBatteryTimerRef.current < 0.8) {
+              if (aptBaseQuatRef.current) aptSparky.root.quaternion.copy(aptBaseQuatRef.current).premultiply(rightFacingQ);
+              animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
+            } else if (installBatteryTimerRef.current < 0.9) {
+              // Pause facing player — battery appears in Sparky's hand
+              if (aptBaseQuatRef.current) aptSparky.root.quaternion.copy(aptBaseQuatRef.current).premultiply(rightFacingQ);
+              animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
+              if (installBatteryTimerRef.current - delta < 0.8 && installBatteryTimerRef.current >= 0.8) {
+                playHappyChime();
+                // Create battery in Sparky's right hand
+                const batteryGroup = createPartModel('battery');
+                batteryGroup.scale.set(2, 2, 2);
+                batteryGroup.position.set(0.1, -0.08, 0.08);
+                batteryGroup.rotation.set(Math.PI / 2, 0, 0);
+                if (rightArm) {
+                  rightArm.add(batteryGroup);
+                  batteryHandGroupRef.current = batteryGroup;
+                }
+              }
+            } else {
+              // Turn back north-facing (0.8 -> 1.4)
+              const turnBack = Math.min((installBatteryTimerRef.current - 0.9) / 0.6, 1);
+              const backAngle = -Math.PI / 2 * (1 - turnBack);
+              const backFacingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), backAngle);
+              if (aptBaseQuatRef.current) aptSparky.root.quaternion.copy(aptBaseQuatRef.current).premultiply(backFacingQ);
+              animateRobotVisual(aptSparky, worldTime, 0, 0, 0);
+            }
+            if (installBatteryTimerRef.current > 1.4) {
+              if (aptBaseQuatRef.current) aptSparky.root.quaternion.copy(aptBaseQuatRef.current);
               installBatteryPhaseRef.current = 'sparky-walk';
               installBatteryTimerRef.current = 0;
             }
           } else if (ibPhase === 'sparky-walk') {
             installBatteryTimerRef.current += delta;
-            // Sparky walks toward Scrap
-            const sparkyTarget = new THREE.Vector3(-2.6, 0.28, -0.2);
+            // Sparky walks toward Scrap (Y-up: move x/z, height fixed at y)
+            const sparkyTarget = new THREE.Vector3(-2.6, 0.28, -1.05);
             const dist = aptPos.distanceTo(sparkyTarget);
             if (dist > 0.05) {
-              const dir = new THREE.Vector2(sparkyTarget.x - aptPos.x, sparkyTarget.y - aptPos.y).normalize();
-              aptPos.x += dir.x * MOVE_SPEED * 1.36 * delta;
-              aptPos.y += dir.y * MOVE_SPEED * 1.36 * delta;
-              const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.atan2(dir.x, dir.y));
+              const dz = sparkyTarget.z - aptPos.z;
+              const dx = sparkyTarget.x - aptPos.x;
+              const dLen = Math.hypot(dx, dz);
+              const dir = scratchVec2.current.set(dx / dLen, dz / dLen);
+              aptPos.x += dir.x * MOVE_SPEED * 0.29 * delta;
+              aptPos.z += dir.y * MOVE_SPEED * 0.29 * delta;
+              const moveFacing = Math.atan2(dir.x, dir.y);
+              const facingQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), moveFacing);
               if (aptBaseQuatRef.current) aptSparky.root.quaternion.copy(aptBaseQuatRef.current).premultiply(facingQ);
               animateRobotVisual(aptSparky, worldTime, 1, dir.x, dir.y);
             } else {
-              // Sparky arrived — face north toward Scrap
+              // Sparky arrived — reset base-facing
               if (aptBaseQuatRef.current) aptSparky.root.quaternion.copy(aptBaseQuatRef.current);
               installBatteryPhaseRef.current = 'open-chest';
               installBatteryTimerRef.current = 0;
             }
           } else if (ibPhase === 'open-chest') {
             installBatteryTimerRef.current += delta;
-            // First frame: replace cylinder body with torus for chest-open animation
+            // First frame: replace cylinder body with torus + hinged hatch
             if (installBatteryTimerRef.current < delta && scrapRobotRef.current && !scrapOrigBodyRef.current) {
               const scrap = scrapRobotRef.current;
               scrapOrigBodyRef.current = { mesh: scrap.body, parent: scrap.root };
@@ -5416,30 +5525,46 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               scrap.body.visible = false;
               scrap.body = torusBody as unknown as typeof scrap.body;
               scrap.root.add(torusBody);
+              // Hinged chest hatch — pivot at top rim, swings open like a lid
+              const hingeGroup = new THREE.Group();
+              hingeGroup.position.set(0, 0.17, 0.08);
+              torusBody.add(hingeGroup);
+              chestHingeGroupRef.current = hingeGroup;
               const chestPanel = new THREE.Mesh(new THREE.CircleGeometry(0.09, 16), createToonMaterial(0x2a1a0a));
-              chestPanel.position.set(0, 0.08, 0);
-              torusBody.add(chestPanel);
+              chestPanel.position.set(0, -0.17, 0);
+              hingeGroup.add(chestPanel);
               chestPanelRef.current = chestPanel;
             }
             if (installBatteryTimerRef.current < delta) playToolClank();
-            if (chestPanelRef.current) {
-              const openZ = 0.08 + Math.min(installBatteryTimerRef.current / 1.0, 1) * 0.15;
-              chestPanelRef.current.position.y = openZ;
+            if (chestHingeGroupRef.current) {
+              const openAngle = Math.min(installBatteryTimerRef.current / 0.8, 1) * (-Math.PI / 2);
+              chestHingeGroupRef.current.rotation.x = openAngle;
             }
-            if (installBatteryTimerRef.current > 1.0) {
+            if (installBatteryTimerRef.current > 0.8) {
               installBatteryPhaseRef.current = 'place-battery';
               installBatteryTimerRef.current = 0;
-              const batteryGroup = createPartModel('battery');
-              batteryGroup.scale.set(2, 2, 2);
-              batteryGroup.position.set(aptPos.x, 0.4, -aptPos.y + 0.3);
-              apartmentRoomGroupRef.current?.add(batteryGroup);
-              installBatteryPropRef.current = batteryGroup;
-              batteryLerpStartPosRef.current.copy(batteryGroup.position);
-              if (chestPanelRef.current) {
-                const endPos = new THREE.Vector3();
-                chestPanelRef.current.getWorldPosition(endPos);
-                apartmentRoomGroupRef.current?.worldToLocal(endPos);
-                batteryLerpEndPosRef.current.copy(endPos);
+              // Detach battery from Sparky's hand, attach to room
+              const batGroup = batteryHandGroupRef.current;
+              const rightArm = aptSparky.rightArm;
+              if (batGroup) {
+                const worldPos = new THREE.Vector3();
+                batGroup.getWorldPosition(worldPos);
+                if (rightArm) rightArm.remove(batGroup);
+                apartmentRoomGroupRef.current?.add(batGroup);
+                batGroup.position.copy(apartmentRoomGroupRef.current!.worldToLocal(worldPos.clone()));
+                installBatteryPropRef.current = batGroup;
+                batteryLerpStartPosRef.current.copy(batGroup.position);
+              }
+              // Target position: inside the chest (torus center)
+              const scrapBody = scrapRobotRef.current?.body;
+              if (scrapBody) {
+                const chestCenter = new THREE.Vector3();
+                scrapBody.getWorldPosition(chestCenter);
+                if (apartmentRoomGroupRef.current) {
+                  apartmentRoomGroupRef.current.worldToLocal(chestCenter);
+                }
+                chestCenter.z += 0.02;
+                batteryLerpEndPosRef.current.copy(chestCenter);
               }
             }
           } else if (ibPhase === 'place-battery') {
@@ -5447,46 +5572,132 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             if (installBatteryTimerRef.current < delta) playSparkBurst();
             const prop = installBatteryPropRef.current;
             if (prop) {
-              const progress = Math.min(installBatteryTimerRef.current / 1.2, 1);
+              const progress = Math.min(installBatteryTimerRef.current / 0.8, 1);
               prop.position.lerpVectors(batteryLerpStartPosRef.current, batteryLerpEndPosRef.current, progress);
-              prop.rotation.y = progress * Math.PI * 2;
-              prop.scale.setScalar(2 + progress * 0.3);
+              prop.rotation.z = progress * Math.PI * 2;
+              prop.scale.setScalar(2 + progress * 0.2);
             }
-            if (installBatteryTimerRef.current > 1.2) {
+            if (installBatteryTimerRef.current > 0.8) {
+              if (installBatteryPropRef.current) installBatteryPropRef.current.visible = false;
+              installBatteryPhaseRef.current = 'close-chest';
+              installBatteryTimerRef.current = 0;
+            }
+          } else if (ibPhase === 'close-chest') {
+            installBatteryTimerRef.current += delta;
+            // Hinged hatch closes
+            if (chestHingeGroupRef.current) {
+              const closeProgress = Math.min(installBatteryTimerRef.current / 0.5, 1);
+              const closeAngle = (-Math.PI / 2) * (1 - closeProgress);
+              chestHingeGroupRef.current.rotation.x = closeAngle;
+            }
+            if (installBatteryTimerRef.current > 0.5) {
+              if (chestHingeGroupRef.current) chestHingeGroupRef.current.rotation.x = 0;
+              if (installBatteryTimerRef.current - delta < 0.5 && installBatteryTimerRef.current >= 0.5) {
+                playToolClank();
+              }
+              installBatteryPhaseRef.current = 'power-on';
+              installBatteryTimerRef.current = 0;
+            }
+          } else if (ibPhase === 'power-on') {
+            installBatteryTimerRef.current += delta;
+            const t = installBatteryTimerRef.current;
+            if (t < delta) {
+              // Snap eyes cyan
+              if (scrapRobotRef.current) {
+                if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
+                if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
+              }
+              // Create glow sphere in chest
               const scrap = scrapRobotRef.current;
               if (scrap && scrap.body && !batteryGlowRef.current) {
                 const glow = new THREE.Mesh(
                   new THREE.SphereGeometry(0.05, 10, 10),
                   new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.3 })
                 );
-                glow.position.set(0, 0.24, 0);
+                glow.position.set(0, 0, 0.24);
                 scrap.body.add(glow);
                 batteryGlowRef.current = glow;
               }
-              if (installBatteryPropRef.current) installBatteryPropRef.current.visible = false;
-              installBatteryPhaseRef.current = 'chest-glow';
-              installBatteryTimerRef.current = 0;
+              // White flash at start
+              setShowLightFlash(true);
+              setTimeout(() => setShowLightFlash(false), 200);
             }
-          } else if (ibPhase === 'chest-glow') {
-            installBatteryTimerRef.current += delta;
-            if (installBatteryTimerRef.current < delta) {
-              playHappyChime();
+            // 0.0-0.2: vibration (whole-body Y-axis oscillation — Y-up height)
+            if (t < 0.2) {
+              const shake = Math.sin(t * 100) * 0.012 * (1 - t / 0.2);
               if (scrapRobotRef.current) {
-                if (scrapRobotRef.current.leftPupil) scrapRobotRef.current.leftPupil.material.color.setHex(0x22d3ee);
-                if (scrapRobotRef.current.rightPupil) scrapRobotRef.current.rightPupil.material.color.setHex(0x22d3ee);
+                scrapRobotRef.current.root.position.y = 0.24 + shake;
               }
             }
+            // 0.2: spark burst sound
+            if (t > 0.2 && t - delta <= 0.2) {
+              playSparkBurst();
+            }
+            // 0.45: happy chime (success)
+            if (t > 0.45 && t - delta <= 0.45) {
+              playHappyChime();
+            }
+            // Glow pulse (faster)
             if (batteryGlowRef.current) {
               const glow = batteryGlowRef.current;
-              const intensity = 0.3 + Math.sin(installBatteryTimerRef.current * 6) * 0.15;
-              (glow.material as THREE.MeshBasicMaterial).opacity = intensity;
+              const rampUp = Math.min(t / 0.4, 1);
+              const pulse = 0.3 + Math.sin(t * 10) * 0.18;
+              (glow.material as THREE.MeshBasicMaterial).opacity = rampUp * pulse;
             }
-            if (chestPanelRef.current) {
-              const closeProgress = Math.min(installBatteryTimerRef.current / 1.0, 1);
-              const closedZ = 0.23 - closeProgress * 0.15;
-              chestPanelRef.current.position.y = closedZ;
+            if (t > 1.2) {
+              // Reset Scrap position
+              if (scrapRobotRef.current) {
+                scrapRobotRef.current.root.position.y = 0.24;
+              }
+              installBatteryPhaseRef.current = 'celebration';
+              installBatteryTimerRef.current = 0;
+              celebrationTimerRef.current = 0;
+              setShowCelebration(true);
+              playAchievementSound();
             }
-            if (installBatteryTimerRef.current > 2.0) {
+          } else if (ibPhase === 'celebration') {
+            installBatteryTimerRef.current += delta;
+            const t = installBatteryTimerRef.current;
+            if (t < delta) {
+              // Save and setup scene
+              const scene = sceneRef.current;
+              if (scene) {
+                savedSceneBgRef.current = scene.background?.clone() ?? null;
+                scene.background = new THREE.Color(0x2563eb);
+              }
+              const scrap = scrapRobotRef.current;
+              if (scrap) {
+                savedScrapPosRef.current.copy(scrap.root.position);
+                savedScrapScaleRef.current.copy(scrap.root.scale);
+                savedScrapQuatRef.current.copy(scrap.root.quaternion);
+                scrap.root.scale.set(1.2, 1.2, 1.2);
+              }
+              // Keep apartment visible (floor/walls = ground reference)
+            }
+            // Scrap 360° rotation — quaternion around world Y axis (Y-up ground spin)
+            if (scrapRobotRef.current) {
+              const spinQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI + t * (Math.PI * 2 / 3));
+              scrapRobotRef.current.root.quaternion.copy(savedScrapQuatRef.current).premultiply(spinQ);
+              scrapRobotRef.current.root.position.z = -1.2 + Math.sin(t * 8) * 0.06;
+            }
+            // Camera zooms in on Scrap
+            scratchVec3.current.set(-2.6, 1.2, -0.2);
+            camera.position.lerp(scratchVec3.current, 0.03);
+            camera.lookAt(-2.6, 0.3, -1.2);
+            if (t > 3.0) {
+              // Restore everything
+              const scene = sceneRef.current;
+              if (scene && savedSceneBgRef.current) scene.background = savedSceneBgRef.current as THREE.Color | THREE.Texture;
+              const scrap = scrapRobotRef.current;
+              if (scrap) {
+                scrap.root.position.copy(savedScrapPosRef.current);
+                scrap.root.scale.copy(savedScrapScaleRef.current);
+                scrap.root.quaternion.copy(savedScrapQuatRef.current);
+                scrap.root.position.z = -1.2;
+                if (scrap.leftPupil) scrap.leftPupil.position.x = -0.07;
+                if (scrap.rightPupil) scrap.rightPupil.position.x = 0.07;
+              }
+              setShowCelebration(false);
               installBatteryPhaseRef.current = 'done';
               installBatteryTimerRef.current = 0;
             }
@@ -5497,6 +5708,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               const scrap = scrapRobotRef.current;
               const orig = scrapOrigBodyRef.current;
               chestPanelRef.current = null;
+              chestHingeGroupRef.current = null;
               const glowChildren: THREE.Object3D[] = [];
               scrap.body.children.forEach((c) => glowChildren.push(c));
               scrap.root.remove(scrap.body);
@@ -5507,6 +5719,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               scrap.root.add(orig.mesh);
               glowChildren.forEach((c) => orig.mesh.add(c));
               scrapOrigBodyRef.current = null;
+            }
+            if (batteryGlowRef.current) {
+              batteryGlowRef.current.parent?.remove(batteryGlowRef.current);
+              batteryGlowRef.current = null;
             }
             batteryInstalledRef.current = true;
             setBatteryInstalled(true);
@@ -5519,28 +5735,16 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
               disposeObject(installBatteryPropRef.current);
               installBatteryPropRef.current = null;
             }
+            if (batteryHandGroupRef.current) {
+              batteryHandGroupRef.current.parent?.remove(batteryHandGroupRef.current);
+              disposeObject(batteryHandGroupRef.current);
+              batteryHandGroupRef.current = null;
+            }
             endCinematicCutscene();
             // Move Sparky back to his usual spot near the bed
-            aptPos.set(0.2, 2.2, 0.28);
-            setSparkyDlgFull("Scrap is all yours! He'll follow you everywhere.");
-            setShowSparkyDlg(true);
-            onSparkyDlgCloseRef.current = () => {
-              setShowSparkyDlg(false);
-              onSparkyDlgCloseRef.current = null;
-              const newBackpack: ScrapPartId[] = gameStore.get('backpack').filter(id => id !== 'battery');
-              updateBackpack(newBackpack);
-              updateQuestStage('all-done');
-              apiSync({ batteryInstalled: true, questStage: 'all-done' });
-              if (heldSlotIndexRef.current !== null && (heldSlotIndexRef.current >= newBackpack.length || !newBackpack.includes(gameStore.get('backpack')[heldSlotIndexRef.current]))) {
-                setHeldSlotIndex(null);
-                heldSlotIndexRef.current = null;
-              }
-              scrapFollowerEnabledRef.current = true;
-              scrapVisibleRef.current = true;
-              setScrapVisible(true);
-              setShowScrapToggle(true);
-              if (scrapFollowerRef.current) scrapFollowerRef.current.root.visible = true;
-            };
+            aptPos.set(0.2, 0.28, -2.2);
+            setShowBatteryInstallDlg(true);
+            setBatteryInstallStep(0);
           }
         } else if (sparkyInstallPhaseRef.current && aptSparky) {
           const phase = sparkyInstallPhaseRef.current;
@@ -6403,11 +6607,15 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             } else if (ibPhase === 'sparky-walk') {
               scratchVec3.current.set(-2.6, 1.8, 0.2);
               camera.position.lerp(scratchVec3.current, 0.06);
-              camera.lookAt(-2.6, 0.3, 0.6);
-            } else {
+              camera.lookAt(-2.6, 0.3, -0.6);
+            } else if (ibPhase === 'open-chest' || ibPhase === 'place-battery' || ibPhase === 'close-chest') {
               scratchVec3.current.set(-3.5, 1.8, -0.7);
               camera.position.lerp(scratchVec3.current, 0.08);
-              camera.lookAt(-2.6, 0.3, 0.7);
+              camera.lookAt(-2.6, 0.3, -0.7);
+            } else {
+              scratchVec3.current.set(-3.2, 1.6, -0.6);
+              camera.position.lerp(scratchVec3.current, 0.06);
+              camera.lookAt(-2.6, 0.3, -0.9);
             }
           } else if (csSparky) {
             const sp = csSparky.root.position;
@@ -7295,6 +7503,43 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         .animate-modal-pop {
           animation: modal-pop 0.4s ease-out forwards;
         }
+        @keyframes confetti-fall {
+          0% { opacity: 1; transform: translateY(-10vh) rotate(0deg); }
+          100% { opacity: 0; transform: translateY(110vh) rotate(720deg); }
+        }
+        .animate-confetti-fall {
+          animation: confetti-fall 2s ease-in forwards;
+        }
+        @keyframes celebration-pop {
+          0% { opacity: 0; transform: scale(0.3); filter: brightness(0.5); }
+          50% { opacity: 1; transform: scale(1.1); filter: brightness(1.5); }
+          100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+        }
+        .animate-celebration-pop {
+          animation: celebration-pop 0.8s ease-out forwards;
+        }
+        @keyframes card-slide-up {
+          0% { opacity: 0; transform: translateY(40px) scale(0.8); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-card-slide-up {
+          animation: card-slide-up 0.5s ease-out forwards;
+        }
+        @keyframes flash-fade {
+          0% { opacity: 0.6; }
+          100% { opacity: 0; }
+        }
+        .animate-flash-fade {
+          animation: flash-fade 0.2s ease-out forwards;
+        }
+        @keyframes celebration-subtitle {
+          0% { opacity: 0; transform: translateY(10px); }
+          100% { opacity: 0.7; transform: translateY(0); }
+        }
+        .animate-celebration-subtitle {
+          animation: celebration-subtitle 0.8s ease-out 1.5s forwards;
+          opacity: 0;
+        }
       `}</style>
       {showSparkyExamples && inWorkshopRoom && (() => {
         const exMap = { String: { n: 'greeting', v: '"Hello"' }, int: { n: 'count', v: '42' }, double: { n: 'price', v: '3.5' }, boolean: { n: 'isCharged', v: 'true' } } as const;
@@ -7726,6 +7971,62 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         </div>
       )}
 
+      {showLightFlash && <div className="fixed inset-0 z-50 bg-white pointer-events-none animate-flash-fade" />}
+
+      {showCelebration && (() => {
+        const confettiColors = ['#fbbf24', '#22d3ee', '#f472b6', '#a78bfa', '#34d399', '#fb923c', '#f87171'];
+        const confettiPieces = Array.from({ length: 40 }, (_, i) => ({
+          left: `${Math.random() * 100}%`,
+          color: confettiColors[i % confettiColors.length],
+          delay: `${Math.random() * 1.5}s`,
+          duration: `${1.5 + Math.random() * 1.5}s`,
+          rotation: `${Math.random() * 360}deg`,
+          size: `${4 + Math.random() * 6}px`,
+        }));
+        return (
+          <div className="fixed inset-0 z-[90] flex flex-col select-none overflow-hidden cursor-pointer" onClick={() => { setShowCelebration(false); installBatteryPhaseRef.current = 'done'; installBatteryTimerRef.current = 0; }}>
+            {confettiPieces.map((p, i) => (
+              <div key={i} className="absolute top-0 animate-confetti-fall" style={{
+                left: p.left, width: p.size, height: p.size,
+                backgroundColor: p.color, animationDelay: p.delay, animationDuration: p.duration,
+                transform: `rotate(${p.rotation})`,
+                borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+              }} />
+            ))}
+            <div className="flex items-center justify-center bg-gradient-to-b from-blue-700 via-blue-600 to-blue-500/90 h-[30vh] z-10">
+              <div className="text-center">
+                <div className="text-5xl font-bold text-amber-300 tracking-wider drop-shadow-[0_0_30px_rgba(251,191,36,0.5)] animate-celebration-pop">
+                  ⚡ POWER CORE UNLOCKED
+                </div>
+                <div className="text-slate-300 text-sm mt-3 opacity-0 animate-celebration-subtitle">New ability available</div>
+              </div>
+            </div>
+            <div className="flex-1" />
+            <div className="flex items-center justify-center bg-gradient-to-t from-cyan-600 via-blue-500 to-blue-400/80 h-[30vh] z-10">
+              <div className="flex justify-center gap-4">
+                {[{ icon: '⚡', name: 'Power Up', unlocked: true }, { icon: '🔒', name: '???', unlocked: false }, { icon: '🔒', name: '???', unlocked: false }, { icon: '🔒', name: '???', unlocked: false }].map((card, i) => (
+                  <div key={i} className={`w-28 h-40 rounded-xl border-2 flex flex-col items-center justify-center gap-2 ${card.unlocked ? 'border-amber-400/60 bg-slate-800/80 shadow-[0_0_15px_rgba(251,191,36,0.2)]' : 'border-slate-600/50 bg-slate-800/40'} animate-card-slide-up`}
+                    style={{ animationDelay: `${i * 150}ms` }}>
+                    {card.unlocked ? (
+                      <>
+                        <span className="text-3xl">{card.icon}</span>
+                        <span className="text-sm font-semibold text-slate-200">{card.name}</span>
+                        <span className="text-xs font-bold text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full border border-green-400/30">UNLOCKED</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-3xl">{card.icon}</span>
+                        <span className="text-sm text-slate-500">{card.name}</span>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       <TFB show={showBatteryDlg} step={batteryDlgStep} steps={BATTERY_DLG_STEPS} text={batteryDlgText}
         icon="robot" onEnter={() => {
           stopTts();
@@ -7740,6 +8041,10 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           }
         }}
         ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
+        onTtsToggle={onTtsToggle} />
+
+      <TFB show={showBatteryInstallDlg} step={batteryInstallStep} steps={BATTERY_INSTALL_DLG_STEPS} text={batteryInstallText}
+        icon="auto" onEnter={() => { stopTts(); const next = batteryInstallStep + 1; if (next < BATTERY_INSTALL_DLG_STEPS.length) { setBatteryInstallStep(next); } else { finishBatteryInstall(); } }} ttsOn={ttsUtteranceRef.current !== null} ttsCharIdx={ttsCharIndexRef.current}
         onTtsToggle={onTtsToggle} />
 
       <TFB show={showWhoDlg} step={whoStep} steps={RAFIQ_GREET_STEPS} text={whoText}
