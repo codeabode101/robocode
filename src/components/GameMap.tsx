@@ -4161,7 +4161,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
       }
       if (rightArmPivotRef.current) {
         if (isHolding) {
-          rightArmPivotRef.current.rotation.x = -0.7;
+          rightArmPivotRef.current.rotation.x = 0.7;
         } else {
           rightArmPivotRef.current.rotation.x = -0.42;
         }
@@ -4182,8 +4182,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
           const arm = rightArmRef.current;
           if (arm && heldGroup.parent !== arm) arm.add(heldGroup);
           heldGroup.position.set(0, -0.125, 0);
-          heldGroup.rotation.set(0, 0, 0);
-          heldGroup.rotation.y = Math.sin(worldTime * 2) * 0.1;
+          heldGroup.rotation.set(0, Math.PI + Math.sin(worldTime * 2) * 0.1, 0);
           heldGroup.scale.set(1.5, 1.5, 1.5);
         } else {
           if (heldGroup.parent !== localGroup) localGroup.add(heldGroup);
