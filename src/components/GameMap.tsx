@@ -2032,7 +2032,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
         pendingRafiqCutsceneRef.current = true;
       } else if (data.position?.room === 'apartment' && !data.cutsceneDone) {
         pendingAptCutsceneRef.current = true;
-      } else if (data.position?.room === 'apartment' && data.cutsceneDone && Array.isArray(data.backpack) && data.backpack.includes('battery') && !batteryInstalledRef.current) {
+      } else if (data.position?.room === 'apartment' && data.cutsceneDone && ((Array.isArray(data.backpack) && data.backpack.includes('battery')) || (data as any).pendingBatteryCutscene) && !batteryInstalledRef.current) {
+        // Resume battery install cutscene even if the backpack save raced/lagged behind — a
+        // pendingBatteryCutscene server flag (set on purchase) is the durable source of truth.
         pendingBatteryCutsceneRef.current = true;
         startCinematicCutscene();
       }
@@ -4209,6 +4211,7 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
             backpack: gameStore.get('backpack'),
             money: gameStore.get('money'),
             playtime: Math.floor(sessionPlaytimeRef.current),
+            pendingBatteryCutscene: !batteryInstalledRef.current && ((gameStore.get('backpack') as ScrapPartId[]).includes('battery' as ScrapPartId)),
           }),
           keepalive: true,
         }).catch(() => {});
@@ -7897,6 +7900,9 @@ export default function GameMap({ userId, apinatorAppKey, apinatorCluster }: Gam
                                 const newMoney = money - part.cost;
                                 updateMoney(newMoney);
                                 updateBackpack(newBackpack);
+                                if (part.id === 'battery') {
+                                  apiSync({ money: newMoney, backpack: newBackpack, pendingBatteryCutscene: true });
+                                }
                                 setShowShopModal(false);
                               }}
                             >
